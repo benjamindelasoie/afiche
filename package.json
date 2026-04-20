@@ -11,10 +11,12 @@
     "db:migrate": "dotenv -e .env.local -- drizzle-kit migrate",
     "db:studio": "dotenv -e .env.local -- drizzle-kit studio",
     "db:push": "dotenv -e .env.local -- drizzle-kit push",
-    "db:seed": "dotenv -e .env.local -- tsx src/db/seed.ts"
+    "db:seed": "dotenv -e .env.local -- tsx src/db/seed.ts",
+    "db:scrape": "dotenv -e .env.local -- tsx src/scrapers/run.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.17.2",
+    "cheerio": "^1.2.0",
     "drizzle-orm": "^0.45.2",
     "next": "16.2.4",
     "react": "19.2.4",
