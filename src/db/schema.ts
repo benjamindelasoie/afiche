@@ -1,0 +1,149 @@
+/**
+ * Afiche database schema.
+ *
+ * Four tables: cinemas, films, screenings, providers.
+ *
+ * Design notes:
+ *   - All timestamps stored as UTC Unix integers. Rendering code converts to
+ *     America/Argentina/Buenos_Aires timezone.
+ *   - films.scraped_title preserves the raw title as first seen by a scraper —
+ *     useful for debugging fuzzy-match quality against TMDB.
+ *   - films.match_source tracks whether the TMDB link came from auto fuzzy-match,
+ *     a manual override file, or is absent entirely.
+ *   - providers table is observability: tracks per-scraper health (last run,
+ *     last success, last error, count of screenings scraped).
+ */
+
+import { sqliteTable, text, integer, real, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
+
+// ---------------------------------------------------------------------------
+// cinemas — the venues we scrape
+// ---------------------------------------------------------------------------
+export const cinemas = sqliteTable('cinemas', {
+  id: text('id').primaryKey(),                   // slug: 'malba', 'lugones', 'cinepolis-recoleta'
+  name: text('name').notNull(),                  // 'MALBA'
+  neighborhood: text('neighborhood'),            // 'Palermo'
+  type: text('type', { enum: ['indie', 'chain'] }).notNull(),  // drives UX tier
+  address: text('address'),
+  ticketingBaseUrl: text('ticketing_base_url'),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+// ---------------------------------------------------------------------------
+// films — canonical film records, enriched by TMDB at ingest (best-effort)
+// ---------------------------------------------------------------------------
+export const films = sqliteTable(
+  'films',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    // Title used for display. Populated from override > TMDB canonical > scraped.
+    title: text('title').notNull(),
+    // Original-language title from TMDB (e.g. "Сталкер" for Stalker). May be null.
+    titleOriginal: text('title_original'),
+    // Raw title as first seen by a scraper — preserved for dedup / match audits.
+    scrapedTitle: text('scraped_title').notNull(),
+    director: text('director'),
+    year: integer('year'),
+    country: text('country'),
+    runtimeMin: integer('runtime_min'),
+    synopsisEs: text('synopsis_es'),
+    // TMDB's canonical ID. Populated when fuzzy match >= 0.8 OR via overrides.
+    tmdbId: integer('tmdb_id'),
+    // Cross-reference from TMDB response.
+    imdbId: text('imdb_id'),
+    // Own-CDN URL (Vercel Blob / R2), never a tmdb.org hotlink.
+    posterUrl: text('poster_url'),
+    // Similarity score at match time; null if override or no match.
+    matchConfidence: real('match_confidence'),
+    // Provenance of the TMDB link.
+    matchSource: text('match_source', { enum: ['auto', 'override', 'none'] })
+      .notNull()
+      .default('none'),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [
+    // Prevent duplicate film rows from the same scraped title + year combination.
+    uniqueIndex('films_scraped_title_year_idx').on(t.scrapedTitle, t.year),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// providers — scraper health + observability, one row per cinema
+// ---------------------------------------------------------------------------
+export const providers = sqliteTable('providers', {
+  id: text('id').primaryKey().references(() => cinemas.id),  // same as cinemas.id
+  lastRunAt: integer('last_run_at', { mode: 'timestamp' }),
+  lastSuccessAt: integer('last_success_at', { mode: 'timestamp' }),
+  lastError: text('last_error'),
+  screeningCount: integer('screening_count').default(0),
+});
+
+// ---------------------------------------------------------------------------
+// screenings — the core table
+// ---------------------------------------------------------------------------
+export const screenings = sqliteTable(
+  'screenings',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    filmId: integer('film_id')
+      .notNull()
+      .references(() => films.id, { onDelete: 'cascade' }),
+    cinemaId: text('cinema_id')
+      .notNull()
+      .references(() => cinemas.id, { onDelete: 'cascade' }),
+    // Always UTC. Rendering code converts to America/Argentina/Buenos_Aires.
+    startsAtUtc: integer('starts_at_utc', { mode: 'timestamp' }).notNull(),
+    // JSON array of ScreeningTag values.
+    tags: text('tags', { mode: 'json' }).$type<ScreeningTag[]>().notNull().default([]),
+    // Back-link to the cinema's ticketing or programming page for this screening.
+    sourceUrl: text('source_url'),
+    scrapedAt: integer('scraped_at', { mode: 'timestamp' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [
+    // Fast "next 7 days" query
+    index('screenings_starts_idx').on(t.startsAtUtc),
+    // Fast "by cinema" filter + stale-data check
+    index('screenings_cinema_idx').on(t.cinemaId),
+    // Prevent duplicate screenings from multiple scraper runs (same film, cinema, time)
+    uniqueIndex('screenings_unique_idx').on(t.filmId, t.cinemaId, t.startsAtUtc),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export type ScreeningTag =
+  | 'unique'          // ÚNICA FUNCIÓN
+  | 'restored'        // COPIA RESTAURADA
+  | 'retrospective'   // RETROSPECTIVA
+  | 'premiere'        // ESTRENO
+  | 'cycle'           // CICLO
+  | 'vos'             // versión original subtitulada
+  | 'dubbed';         // doblada
+
+export const TAG_LABELS_ES: Record<ScreeningTag, string> = {
+  unique: 'ÚNICA FUNCIÓN',
+  restored: 'COPIA RESTAURADA',
+  retrospective: 'RETROSPECTIVA',
+  premiere: 'ESTRENO',
+  cycle: 'CICLO',
+  vos: 'VOS',
+  dubbed: 'DOBLADA',
+};
+
+// Drizzle's auto-derived row types (use these in your code)
+export type Cinema = typeof cinemas.$inferSelect;
+export type CinemaInsert = typeof cinemas.$inferInsert;
+export type Film = typeof films.$inferSelect;
+export type FilmInsert = typeof films.$inferInsert;
+export type Screening = typeof screenings.$inferSelect;
+export type ScreeningInsert = typeof screenings.$inferInsert;
+export type Provider = typeof providers.$inferSelect;
+export type ProviderInsert = typeof providers.$inferInsert;
