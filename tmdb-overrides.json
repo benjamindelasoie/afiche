@@ -1,0 +1,10 @@
+{
+  "$schema-doc": "Manual overrides for films where TMDB fuzzy match fails or picks the wrong result. Each entry maps a (scraped_title, year?) key to a TMDB ID. The enrich layer checks this file FIRST before hitting the API.",
+  "$example": {
+    "scrapedTitle": "Some Rare Argentine Film",
+    "year": 2003,
+    "tmdbId": 12345,
+    "note": "TMDB has it under a different title; see tmdb.org/movie/12345"
+  },
+  "overrides": []
+}

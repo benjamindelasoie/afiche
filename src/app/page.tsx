@@ -66,7 +66,25 @@ export default async function HomePage() {
                       </div>
                     )}
 
-                    <div className="flex items-baseline justify-between gap-6">
+                    <div className="flex items-start justify-between gap-6">
+                      {/* Poster thumbnail or typographic fallback */}
+                      {s.cinema.type === 'indie' && (
+                        <div className="shrink-0 w-20 h-28 bg-black text-[#f4ebd8] flex items-center justify-center overflow-hidden border border-black shadow-[4px_4px_0_#c1272d]">
+                          {s.film.posterUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={s.film.posterUrl}
+                              alt={s.film.title}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <span className="text-[10px] italic text-center px-1 leading-tight">
+                              {s.film.title}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <div className="flex-1">
                         <h3 className="text-2xl font-black italic leading-tight">
                           {s.film.title}

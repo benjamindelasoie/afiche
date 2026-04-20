@@ -23,7 +23,6 @@ if (!url) {
 
 // Reuse the client across hot-reloads in dev — prevents "too many open" errors.
 declare global {
-  // eslint-disable-next-line no-var
   var __afiche_libsql_client: ReturnType<typeof createClient> | undefined;
 }
 

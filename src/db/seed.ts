@@ -198,7 +198,6 @@ async function seed() {
   ]);
 
   // Count rows in each table for confirmation
-  const [cinemaCount] = await db.select({ c: cinemas.id }).from(cinemas);
   const allCinemas = await db.select().from(cinemas);
   const allFilms = await db.select().from(films);
   const allScreenings = await db.select().from(screenings);

@@ -52,8 +52,14 @@ async function main() {
     }
 
     console.log(
-      `${label}   ingested → films: ${summary.filmsUpserted} · screenings: ${summary.screeningsInserted}\n`,
+      `${label}   ingested → films: ${summary.filmsUpserted} · screenings: ${summary.screeningsInserted}`,
     );
+    if (summary.filmsEnriched > 0 || summary.enrichSkipped > 0) {
+      console.log(
+        `${label}   TMDB     → enriched: ${summary.filmsEnriched} · skipped: ${summary.enrichSkipped}`,
+      );
+    }
+    console.log();
   }
 
   const anyFailed = summaries.some((s) => !s.success);

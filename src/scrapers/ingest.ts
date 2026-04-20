@@ -15,6 +15,8 @@
 import { and, eq, gt } from 'drizzle-orm';
 import { db, films, screenings, providers } from '@/db';
 import type { ProviderRunResult, ScrapedScreening } from '@/providers/types';
+import { enrichFilm, type EnrichResult } from '@/tmdb/enrich';
+import { hasTmdbToken } from '@/tmdb/client';
 
 export async function ingest(result: ProviderRunResult): Promise<IngestSummary> {
   const now = new Date();
@@ -24,6 +26,8 @@ export async function ingest(result: ProviderRunResult): Promise<IngestSummary> 
     screeningsScraped: result.screenings.length,
     screeningsInserted: 0,
     filmsUpserted: 0,
+    filmsEnriched: 0,
+    enrichSkipped: 0,
     warnings: result.warnings.slice(),
   };
 
@@ -37,6 +41,12 @@ export async function ingest(result: ProviderRunResult): Promise<IngestSummary> 
   // 1. Upsert films, building a map: scrapedTitle+year → film_id
   const filmIdByKey = await upsertFilms(result.screenings);
   summary.filmsUpserted = filmIdByKey.size;
+
+  // 1b. TMDB enrichment — runs on films that don't already have a tmdb_id.
+  // Non-fatal: if TMDB is down or the token is missing, we skip and continue.
+  const enrichStats = await enrichPendingFilms(summary.warnings);
+  summary.filmsEnriched = enrichStats.enriched;
+  summary.enrichSkipped = enrichStats.skipped;
 
   // 2. Clear existing future screenings for this cinema
   //    (keeps historical rows; only replaces what we're about to re-scrape).
@@ -90,6 +100,8 @@ export interface IngestSummary {
   screeningsScraped: number;
   screeningsInserted: number;
   filmsUpserted: number;
+  filmsEnriched: number;
+  enrichSkipped: number;
   warnings: string[];
 }
 
@@ -143,6 +155,75 @@ async function upsertFilms(
 
 function filmKey(title: string, year: number | undefined): string {
   return `${title}::${year ?? 'no-year'}`;
+}
+
+// ---------------------------------------------------------------------------
+// TMDB enrichment pass
+// ---------------------------------------------------------------------------
+/**
+ * For every film row whose match_source is still 'none' (never enriched),
+ * attempt a TMDB lookup. Results update the row with poster URL, director,
+ * runtime, etc. Non-fatal errors are recorded as warnings.
+ *
+ * Rate-limiting: TMDB free tier is ~40 req/sec. For safety we sleep 100ms
+ * between lookups — gives us ~10 req/sec which is plenty.
+ */
+async function enrichPendingFilms(
+  warnings: string[],
+): Promise<{ enriched: number; skipped: number }> {
+  if (!hasTmdbToken()) {
+    return { enriched: 0, skipped: 0 };
+  }
+
+  const pending = await db
+    .select({
+      id: films.id,
+      scrapedTitle: films.scrapedTitle,
+      year: films.year,
+    })
+    .from(films)
+    .where(eq(films.matchSource, 'none'));
+
+  let enriched = 0;
+  let skipped = 0;
+
+  for (const f of pending) {
+    const result: EnrichResult = await enrichFilm(f.scrapedTitle, f.year ?? undefined);
+    if (result.delta) {
+      await db
+        .update(films)
+        .set({
+          tmdbId: result.delta.tmdbId,
+          imdbId: result.delta.imdbId,
+          title: result.delta.title,
+          titleOriginal: result.delta.titleOriginal,
+          director: result.delta.director,
+          country: result.delta.country,
+          year: result.delta.year ?? f.year,
+          runtimeMin: result.delta.runtimeMin,
+          posterUrl: result.delta.posterUrl,
+          matchConfidence: result.delta.matchConfidence,
+          matchSource: result.delta.matchSource,
+        })
+        .where(eq(films.id, f.id));
+      enriched++;
+    } else {
+      skipped++;
+      if (result.reason === 'error') {
+        warnings.push(
+          `TMDB error for "${f.scrapedTitle}" (${f.year ?? 'no year'}): ${result.error}`,
+        );
+      }
+    }
+    // Be kind to TMDB
+    await sleep(100);
+  }
+
+  return { enriched, skipped };
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((res) => setTimeout(res, ms));
 }
 
 // ---------------------------------------------------------------------------
