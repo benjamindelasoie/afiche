@@ -165,10 +165,19 @@ function filmKey(title: string, year: number | undefined): string {
  * attempt a TMDB lookup. Results update the row with poster URL, director,
  * runtime, etc. Non-fatal errors are recorded as warnings.
  *
+ * Miss semantics:
+ *   - A deterministic miss (no-candidates / low-confidence) sets
+ *     match_source='none-attempted' so we don't re-query TMDB for this
+ *     row on every subsequent scraper run.
+ *   - A transient miss (error / no-token) leaves match_source='none'
+ *     so the next run retries once the token is configured or TMDB recovers.
+ *
  * Rate-limiting: TMDB free tier is ~40 req/sec. For safety we sleep 100ms
  * between lookups — gives us ~10 req/sec which is plenty.
+ *
+ * Exported for tests. Not part of the public module contract.
  */
-async function enrichPendingFilms(
+export async function enrichPendingFilms(
   warnings: string[],
 ): Promise<{ enriched: number; skipped: number }> {
   if (!hasTmdbToken()) {
@@ -213,6 +222,12 @@ async function enrichPendingFilms(
         warnings.push(
           `TMDB error for "${f.scrapedTitle}" (${f.year ?? 'no year'}): ${result.error}`,
         );
+      }
+      if (result.reason === 'no-candidates' || result.reason === 'low-confidence') {
+        await db
+          .update(films)
+          .set({ matchSource: 'none-attempted' })
+          .where(eq(films.id, f.id));
       }
     }
     // Be kind to TMDB

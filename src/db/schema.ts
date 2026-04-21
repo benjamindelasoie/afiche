@@ -8,8 +8,17 @@
  *     America/Argentina/Buenos_Aires timezone.
  *   - films.scraped_title preserves the raw title as first seen by a scraper —
  *     useful for debugging fuzzy-match quality against TMDB.
- *   - films.match_source tracks whether the TMDB link came from auto fuzzy-match,
- *     a manual override file, or is absent entirely.
+ *   - films.match_source tracks the outcome of TMDB enrichment. Possible values:
+ *       'auto'            — fuzzy match succeeded, confidence >= threshold
+ *       'override'        — matched via tmdb-overrides.json
+ *       'none'            — never attempted (new row, or explicitly reset)
+ *       'none-attempted'  — attempted and failed (no candidates / low confidence);
+ *                           the scraper will NOT re-query TMDB for this row on
+ *                           subsequent runs. Transient errors (network, TMDB 5xx,
+ *                           missing token) leave the row at 'none' so it retries.
+ *                           To force a re-attempt after improving the matcher:
+ *                             UPDATE films SET match_source='none'
+ *                             WHERE match_source='none-attempted';
  *   - providers table is observability: tracks per-scraper health (last run,
  *     last success, last error, count of screenings scraped).
  */
@@ -57,8 +66,10 @@ export const films = sqliteTable(
     posterUrl: text('poster_url'),
     // Similarity score at match time; null if override or no match.
     matchConfidence: real('match_confidence'),
-    // Provenance of the TMDB link.
-    matchSource: text('match_source', { enum: ['auto', 'override', 'none'] })
+    // Provenance of the TMDB link. See schema-level doc comment above.
+    matchSource: text('match_source', {
+      enum: ['auto', 'override', 'none', 'none-attempted'],
+    })
       .notNull()
       .default('none'),
     createdAt: integer('created_at', { mode: 'timestamp' })
