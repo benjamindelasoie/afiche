@@ -27,9 +27,11 @@ export default async function HomePage() {
         </p>
       </header>
 
-      {/* Week context — orients the visitor at a glance. */}
+      {/* Week context — orients the visitor at a glance.
+          Left-aligned to match the rhythm of the day banners below; the
+          masthead up top is center-aligned because it's the brand block. */}
       {days.length > 0 && (
-        <p className="mt-6 text-center font-mono text-[11px] uppercase tracking-eyebrow text-neutral-600">
+        <p className="mt-8 font-mono text-[11px] uppercase tracking-eyebrow text-neutral-600">
           {weekRange}
           {' · '}
           {totalScreenings} {totalScreenings === 1 ? 'función' : 'funciones'}
@@ -39,11 +41,9 @@ export default async function HomePage() {
       )}
 
       {/* Week view */}
-      <section className="mt-10 space-y-12 md:mt-12">
+      <section className="mt-8 space-y-12 md:mt-12">
         {days.length === 0 ? (
-          <p className="text-center italic text-neutral-500">
-            No hay funciones cargadas. Ejecutá <code>npm run db:seed</code> para ver datos de ejemplo.
-          </p>
+          <EmptyState />
         ) : (
           days.map((day) => (
             <div key={day.dateKey}>
@@ -63,7 +63,7 @@ export default async function HomePage() {
               </div>
 
               {/* Screening rows */}
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {day.screenings.map((s) => {
                   const cardBody = (
                     <>
@@ -194,6 +194,27 @@ export default async function HomePage() {
         </p>
       </footer>
     </main>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Empty state — shown when the DB has no upcoming screenings.
+//
+// User-facing copy first. The dev hint is gated on NODE_ENV so it
+// doesn't leak to visitors if the scraper hasn't run yet in prod.
+// ---------------------------------------------------------------------------
+function EmptyState() {
+  return (
+    <div className="text-center space-y-3 py-12">
+      <p className="italic text-neutral-500">
+        La cartelera se actualiza todas las madrugadas. Volvé en unas horas.
+      </p>
+      {process.env.NODE_ENV !== 'production' && (
+        <p className="font-mono text-[11px] uppercase tracking-eyebrow text-neutral-400">
+          dev hint: ejecutá <code>npm run db:seed</code> para cargar datos de ejemplo
+        </p>
+      )}
+    </div>
   );
 }
 
