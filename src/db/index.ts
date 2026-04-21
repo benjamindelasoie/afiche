@@ -11,6 +11,7 @@ export {
   films,
   screenings,
   providers,
+  scrapeRuns,
   TAG_LABELS_ES,
 } from './schema';
 export type {
@@ -22,5 +23,7 @@ export type {
   ScreeningInsert,
   Provider,
   ProviderInsert,
+  ScrapeRun,
+  ScrapeRunInsert,
   ScreeningTag,
 } from './schema';

@@ -1,7 +1,7 @@
 /**
  * Afiche database schema.
  *
- * Four tables: cinemas, films, screenings, providers.
+ * Five tables: cinemas, films, screenings, providers, scrape_runs.
  *
  * Design notes:
  *   - All timestamps stored as UTC Unix integers. Rendering code converts to
@@ -19,8 +19,12 @@
  *                           To force a re-attempt after improving the matcher:
  *                             UPDATE films SET match_source='none'
  *                             WHERE match_source='none-attempted';
- *   - providers table is observability: tracks per-scraper health (last run,
- *     last success, last error, count of screenings scraped).
+ *   - providers table is "latest state" observability: one row per cinema,
+ *     holds last-run / last-success / last-error / current screening_count.
+ *   - scrape_runs table is "history" observability: one row per cinema per run,
+ *     never overwritten. Use for trend analysis, miss-rate over time, debugging
+ *     ephemeral Vercel cron output after the fact. Warnings from each run are
+ *     captured as a JSON array so individual TMDB misses stay searchable.
  */
 
 import { sqliteTable, text, integer, real, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
@@ -94,6 +98,56 @@ export const providers = sqliteTable('providers', {
 });
 
 // ---------------------------------------------------------------------------
+// scrape_runs — history of every scraper invocation, one row per (cinema, run)
+// ---------------------------------------------------------------------------
+//
+//     startRun() ──► inserts row with status='in-progress', started_at=now
+//                    returns run_id
+//     finishRun() ─► updates same row: status='success', finished_at,
+//                    duration_ms, counts, warnings[]
+//     failRun()  ──► updates same row: status='failure', error text
+//
+// Never overwritten. Retention is indefinite for now — at ~1 row per cinema
+// per day per run frequency, even 5 years is a few thousand rows.
+//
+export const scrapeRuns = sqliteTable(
+  'scrape_runs',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    cinemaId: text('cinema_id')
+      .notNull()
+      .references(() => cinemas.id, { onDelete: 'cascade' }),
+    startedAt: integer('started_at', { mode: 'timestamp' }).notNull(),
+    finishedAt: integer('finished_at', { mode: 'timestamp' }),
+    status: text('status', { enum: ['in-progress', 'success', 'failure'] })
+      .notNull()
+      .default('in-progress'),
+    durationMs: integer('duration_ms'),
+    // Fetch-phase count — what the provider returned before dedup.
+    screeningsScraped: integer('screenings_scraped'),
+    // Ingest-phase count — what made it into the screenings table this run.
+    screeningsInserted: integer('screenings_inserted'),
+    filmsUpserted: integer('films_upserted'),
+    filmsEnriched: integer('films_enriched'),
+    enrichSkipped: integer('enrich_skipped'),
+    // Fatal error string if status='failure'.
+    error: text('error'),
+    // Non-fatal warnings collected during the run (per-film TMDB errors,
+    // parsing quirks, etc.). Stored as JSON array of strings.
+    warnings: text('warnings', { mode: 'json' })
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+  },
+  (t) => [
+    // "show me the last 20 runs for Lugones" — most common query.
+    index('scrape_runs_cinema_started_idx').on(t.cinemaId, t.startedAt),
+    // "show me all runs today across all cinemas".
+    index('scrape_runs_started_idx').on(t.startedAt),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // screenings — the core table
 // ---------------------------------------------------------------------------
 export const screenings = sqliteTable(
@@ -158,3 +212,5 @@ export type Screening = typeof screenings.$inferSelect;
 export type ScreeningInsert = typeof screenings.$inferInsert;
 export type Provider = typeof providers.$inferSelect;
 export type ProviderInsert = typeof providers.$inferInsert;
+export type ScrapeRun = typeof scrapeRuns.$inferSelect;
+export type ScrapeRunInsert = typeof scrapeRuns.$inferInsert;
