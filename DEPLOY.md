@@ -37,8 +37,7 @@ DATABASE_URL='libsql://afiche-benjamindelasoie.aws-us-east-1.turso.io' \
 DATABASE_AUTH_TOKEN='<token>' \
   npx drizzle-kit migrate
 
-# Seed the cinemas table (prod-safe: ON CONFLICT DO NOTHING, no films/screenings)
-# DO NOT run `db:seed` against Turso — that script wipes + reseeds demo data.
+# Seed the cinemas table (prod-safe: ON CONFLICT DO NOTHING, no films/screenings).
 DATABASE_URL='libsql://afiche-benjamindelasoie.aws-us-east-1.turso.io' \
 DATABASE_AUTH_TOKEN='<token>' \
   npx tsx src/db/seed-cinemas.ts

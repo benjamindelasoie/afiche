@@ -61,7 +61,7 @@ cp .env.example .env.local
 # 3. Migrate the schema + seed baseline data
 npm run db:generate    # generate any pending Drizzle migrations
 npm run db:migrate     # apply them to local.db
-npm run db:seed        # seeds cinemas table (ONLY — safe to run repeatedly)
+npm run db:seed-cinemas  # seeds cinemas table (safe to run repeatedly)
 
 # 4. Run the scraper to populate real programming
 npm run db:scrape
