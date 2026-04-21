@@ -33,21 +33,22 @@ Apply the schema to the fresh DB:
 ```bash
 # Temporarily point .env.local at Turso to run migrations
 # (Keep the file local. Don't commit this change.)
-DATABASE_URL='libsql://afiche-<org>.turso.io' \
+DATABASE_URL='libsql://afiche-benjamindelasoie.aws-us-east-1.turso.io' \
 DATABASE_AUTH_TOKEN='<token>' \
   npx drizzle-kit migrate
 
-# Seed the cinemas table
-DATABASE_URL='libsql://afiche-<org>.turso.io' \
+# Seed the cinemas table (prod-safe: ON CONFLICT DO NOTHING, no films/screenings)
+# DO NOT run `db:seed` against Turso — that script wipes + reseeds demo data.
+DATABASE_URL='libsql://afiche-benjamindelasoie.aws-us-east-1.turso.io' \
 DATABASE_AUTH_TOKEN='<token>' \
-  npx tsx src/db/seed.ts
+  npx tsx src/db/seed-cinemas.ts
 ```
 
 Verify:
 
 ```bash
 turso db shell afiche "SELECT id, name FROM cinemas;"
-# → you should see 5 rows
+# → you should see 7 rows
 ```
 
 ---
