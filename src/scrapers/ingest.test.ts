@@ -16,7 +16,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { makeInMemoryDb, type TestDb } from '../../test/helpers/in-memory-db';
-import { films, cinemas } from '@/db/schema';
+import { films, cinemas, screenings } from '@/db/schema';
 
 // ---------------------------------------------------------------------------
 // Mocks — replace @/db and @/tmdb/enrich before the subject imports them.
@@ -202,5 +202,178 @@ describe('enrichPendingFilms — retry semantics (regression)', () => {
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain('Network Failure');
     expect(warnings[0]).toContain('ECONNRESET');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Merge-on-collision (regression for 2026-04-20 Lumiton bug)
+//
+// Year-less providers create rows with year=NULL. SQLite's UNIQUE on
+// (scraped_title, year) treats NULL as distinct, so a NULL-year row can
+// coexist with an existing (same_title, known_year) row. When TMDB then
+// resolves our row's year, the naïve UPDATE would trip the unique
+// constraint and crash the whole scrape. enrichPendingFilms must detect
+// this and merge: re-point screenings to the existing row, delete ours.
+// ---------------------------------------------------------------------------
+describe('enrichPendingFilms — merge on (scrapedTitle, year) collision', () => {
+  beforeEach(async () => {
+    testDb = await makeInMemoryDb();
+    enrichFilmMock.mockReset();
+    await seedCinema();
+  });
+
+  it('merges a null-year pending row into an existing year-known row when TMDB resolves the year', async () => {
+    // The existing row that was enriched in a prior run.
+    const existingId = await seedFilm({
+      scrapedTitle: 'LAWRENCE DE ARABIA',
+      year: 1962,
+      matchSource: 'auto',
+    });
+    // Our year-less pending row created by a year-less provider this run.
+    const pendingId = await seedFilm({
+      scrapedTitle: 'LAWRENCE DE ARABIA',
+      year: null,
+      matchSource: 'none',
+    });
+    // Two screenings pointing at the pending row — must survive the merge.
+    await testDb.insert(screenings).values([
+      {
+        filmId: pendingId,
+        cinemaId: 'lugones',
+        startsAtUtc: new Date('2026-04-23T21:00:00Z'),
+        tags: [],
+      },
+      {
+        filmId: pendingId,
+        cinemaId: 'lugones',
+        startsAtUtc: new Date('2026-04-24T21:00:00Z'),
+        tags: [],
+      },
+    ]);
+
+    enrichFilmMock.mockResolvedValue({
+      delta: {
+        tmdbId: 947,
+        imdbId: 'tt0056172',
+        title: 'Lawrence de Arabia',
+        titleOriginal: 'Lawrence of Arabia',
+        director: 'David Lean',
+        country: 'GB',
+        year: 1962,
+        runtimeMin: 228,
+        posterUrl: '/posters/947.jpg',
+        matchConfidence: 1.0,
+        matchSource: 'auto' as const,
+      },
+      reason: 'ok',
+    });
+
+    const warnings: string[] = [];
+    const result = await enrichPendingFilms(warnings);
+
+    expect(result.merged).toBe(1);
+    expect(result.enriched).toBe(0);
+
+    // The pending row is gone.
+    const pendingStillThere = await testDb
+      .select()
+      .from(films)
+      .where(eq(films.id, pendingId));
+    expect(pendingStillThere).toHaveLength(0);
+
+    // The existing row is UNCHANGED — the merge never UPDATEs it; it
+    // only re-points screenings and deletes the pending row.
+    const existingAfter = await testDb
+      .select()
+      .from(films)
+      .where(eq(films.id, existingId));
+    expect(existingAfter).toHaveLength(1);
+    expect(existingAfter[0].matchSource).toBe('auto');
+    expect(existingAfter[0].year).toBe(1962);
+
+    // Screenings now point at the existing row instead of the deleted one.
+    const repointedScreenings = await testDb
+      .select()
+      .from(screenings)
+      .where(eq(screenings.filmId, existingId));
+    expect(repointedScreenings).toHaveLength(2);
+    const orphanedScreenings = await testDb
+      .select()
+      .from(screenings)
+      .where(eq(screenings.filmId, pendingId));
+    expect(orphanedScreenings).toHaveLength(0);
+
+    // Merge event is surfaced as a warning for observability.
+    expect(warnings.some((w) => w.includes('merged'))).toBe(true);
+    expect(warnings.some((w) => w.includes(`id=${existingId}`))).toBe(true);
+  });
+
+  it('normal UPDATE (no merge) when TMDB resolves the year but no collision exists', async () => {
+    const id = await seedFilm({
+      scrapedTitle: 'Some Brand New Film',
+      year: null,
+      matchSource: 'none',
+    });
+    enrichFilmMock.mockResolvedValue({
+      delta: {
+        tmdbId: 12345,
+        imdbId: 'tt0000001',
+        title: 'Some Brand New Film',
+        titleOriginal: 'Some Brand New Film',
+        director: 'A Director',
+        country: 'AR',
+        year: 2024,
+        runtimeMin: 95,
+        posterUrl: null,
+        matchConfidence: 0.9,
+        matchSource: 'auto' as const,
+      },
+      reason: 'ok',
+    });
+
+    const warnings: string[] = [];
+    const result = await enrichPendingFilms(warnings);
+
+    expect(result.enriched).toBe(1);
+    expect(result.merged).toBe(0);
+    const [row] = await testDb.select().from(films).where(eq(films.id, id));
+    expect(row.year).toBe(2024);
+    expect(row.tmdbId).toBe(12345);
+    expect(row.matchSource).toBe('auto');
+  });
+
+  it('no merge when the pending row already has a year (known-year path)', async () => {
+    // A film with known year gets enriched normally — merge logic must
+    // not fire even if another row with the same (title, year) exists,
+    // because that would be an illegal state we shouldn't have created.
+    // (Defensive: the test seeds only the pending row. No collision row.)
+    const id = await seedFilm({
+      scrapedTitle: 'Known-Year Film',
+      year: 1990,
+      matchSource: 'none',
+    });
+    enrichFilmMock.mockResolvedValue({
+      delta: {
+        tmdbId: 777,
+        imdbId: null,
+        title: 'Known-Year Film',
+        titleOriginal: null,
+        director: null,
+        country: null,
+        year: 1990,
+        runtimeMin: null,
+        posterUrl: null,
+        matchConfidence: 0.88,
+        matchSource: 'auto' as const,
+      },
+      reason: 'ok',
+    });
+
+    const result = await enrichPendingFilms([]);
+
+    expect(result.enriched).toBe(1);
+    expect(result.merged).toBe(0);
+    const [row] = await testDb.select().from(films).where(eq(films.id, id));
+    expect(row.tmdbId).toBe(777);
   });
 });

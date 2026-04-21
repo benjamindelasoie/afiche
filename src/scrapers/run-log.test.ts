@@ -52,6 +52,7 @@ function makeSummary(overrides?: Partial<IngestSummary>): IngestSummary {
     screeningsInserted: 38,
     filmsUpserted: 12,
     filmsEnriched: 5,
+    filmsMerged: 0,
     enrichSkipped: 7,
     warnings: [],
     ...overrides,

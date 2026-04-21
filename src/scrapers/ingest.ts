@@ -12,7 +12,7 @@
  *     last_success_at, last_error, screening_count.
  */
 
-import { and, eq, gt } from 'drizzle-orm';
+import { and, eq, gt, ne } from 'drizzle-orm';
 import { db, films, screenings, providers } from '@/db';
 import type { ProviderRunResult, ScrapedScreening } from '@/providers/types';
 import { enrichFilm, type EnrichResult } from '@/tmdb/enrich';
@@ -27,6 +27,7 @@ export async function ingest(result: ProviderRunResult): Promise<IngestSummary> 
     screeningsInserted: 0,
     filmsUpserted: 0,
     filmsEnriched: 0,
+    filmsMerged: 0,
     enrichSkipped: 0,
     warnings: result.warnings.slice(),
   };
@@ -46,6 +47,7 @@ export async function ingest(result: ProviderRunResult): Promise<IngestSummary> 
   // Non-fatal: if TMDB is down or the token is missing, we skip and continue.
   const enrichStats = await enrichPendingFilms(summary.warnings);
   summary.filmsEnriched = enrichStats.enriched;
+  summary.filmsMerged = enrichStats.merged;
   summary.enrichSkipped = enrichStats.skipped;
 
   // 2. Clear existing future screenings for this cinema
@@ -101,6 +103,13 @@ export interface IngestSummary {
   screeningsInserted: number;
   filmsUpserted: number;
   filmsEnriched: number;
+  /**
+   * Count of rows collapsed into an existing (scrapedTitle, year) row
+   * during enrichment. Happens when a year-less provider creates a
+   * NULL-year row for a film that another provider already captured
+   * with a known year.
+   */
+  filmsMerged: number;
   enrichSkipped: number;
   warnings: string[];
 }
@@ -172,6 +181,15 @@ function filmKey(title: string, year: number | undefined): string {
  *   - A transient miss (error / no-token) leaves match_source='none'
  *     so the next run retries once the token is configured or TMDB recovers.
  *
+ * Merge-on-collision: the films unique index is on (scrapedTitle, year).
+ * SQLite treats NULL as distinct, so a year-less provider (e.g. Lumiton)
+ * can create a row with year=NULL that coexists with an older row that
+ * has (same title, year=1962). When TMDB then resolves our row's year to
+ * 1962, naïvely UPDATE-ing would trip the unique constraint. Instead we
+ * detect the would-be collision, re-point our screenings to the existing
+ * enriched row, and delete ours. The existing row wins (it's already
+ * enriched with trusted data from a prior run).
+ *
  * Rate-limiting: TMDB free tier is ~40 req/sec. For safety we sleep 100ms
  * between lookups — gives us ~10 req/sec which is plenty.
  *
@@ -179,9 +197,9 @@ function filmKey(title: string, year: number | undefined): string {
  */
 export async function enrichPendingFilms(
   warnings: string[],
-): Promise<{ enriched: number; skipped: number }> {
+): Promise<{ enriched: number; merged: number; skipped: number }> {
   if (!hasTmdbToken()) {
-    return { enriched: 0, skipped: 0 };
+    return { enriched: 0, merged: 0, skipped: 0 };
   }
 
   const pending = await db
@@ -194,11 +212,47 @@ export async function enrichPendingFilms(
     .where(eq(films.matchSource, 'none'));
 
   let enriched = 0;
+  let merged = 0;
   let skipped = 0;
 
   for (const f of pending) {
     const result: EnrichResult = await enrichFilm(f.scrapedTitle, f.year ?? undefined);
     if (result.delta) {
+      // Merge check: did we just learn this year-less row's year, and does
+      // a row already exist with (our scrapedTitle, the resolved year)?
+      const resolvedYear = result.delta.year ?? f.year;
+      const wouldSetYearFromNull =
+        f.year === null && resolvedYear !== null && resolvedYear !== undefined;
+      if (wouldSetYearFromNull) {
+        const existing = await db
+          .select({ id: films.id })
+          .from(films)
+          .where(
+            and(
+              eq(films.scrapedTitle, f.scrapedTitle),
+              eq(films.year, resolvedYear),
+              ne(films.id, f.id),
+            ),
+          )
+          .limit(1);
+        if (existing[0]) {
+          // Re-point our screenings to the already-enriched row, then drop
+          // ours. screenings.film_id has onDelete:cascade — re-pointing
+          // FIRST ensures no screenings get collateral-deleted.
+          await db
+            .update(screenings)
+            .set({ filmId: existing[0].id })
+            .where(eq(screenings.filmId, f.id));
+          await db.delete(films).where(eq(films.id, f.id));
+          merged++;
+          warnings.push(
+            `merged film ${f.id} "${f.scrapedTitle}" (no year) into existing id=${existing[0].id} after TMDB resolved year=${resolvedYear}`,
+          );
+          await sleep(100);
+          continue;
+        }
+      }
+
       await db
         .update(films)
         .set({
@@ -234,7 +288,7 @@ export async function enrichPendingFilms(
     await sleep(100);
   }
 
-  return { enriched, skipped };
+  return { enriched, merged, skipped };
 }
 
 function sleep(ms: number): Promise<void> {

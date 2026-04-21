@@ -67,9 +67,15 @@ async function main() {
       console.log(
         `${label}   ingested → films: ${summary.filmsUpserted} · screenings: ${summary.screeningsInserted}`,
       );
-      if (summary.filmsEnriched > 0 || summary.enrichSkipped > 0) {
+      if (
+        summary.filmsEnriched > 0 ||
+        summary.enrichSkipped > 0 ||
+        summary.filmsMerged > 0
+      ) {
+        const mergedPart =
+          summary.filmsMerged > 0 ? ` · merged: ${summary.filmsMerged}` : '';
         console.log(
-          `${label}   TMDB     → enriched: ${summary.filmsEnriched} · skipped: ${summary.enrichSkipped}`,
+          `${label}   TMDB     → enriched: ${summary.filmsEnriched} · skipped: ${summary.enrichSkipped}${mergedPart}`,
         );
       }
       if (runId !== null) console.log(`${label}   run_id   → ${runId}`);
@@ -87,6 +93,7 @@ async function main() {
         screeningsInserted: 0,
         filmsUpserted: 0,
         filmsEnriched: 0,
+        filmsMerged: 0,
         enrichSkipped: 0,
         warnings: [`uncaught: ${message}`],
       });
