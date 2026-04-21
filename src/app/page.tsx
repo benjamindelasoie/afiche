@@ -7,19 +7,39 @@ import { TAG_LABELS_ES } from '@/db';
 export default async function HomePage() {
   const days = await getThisWeeksScreenings();
 
+  // Week-context summary: total functions + distinct cinemas across the span.
+  const totalScreenings = days.reduce((n, d) => n + d.screenings.length, 0);
+  const distinctCinemas = new Set(
+    days.flatMap((d) => d.screenings.map((s) => s.cinema.id)),
+  ).size;
+  const weekRange = formatWeekRange(days);
+
   return (
-    <main className="mx-auto max-w-5xl px-6 py-16">
+    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 md:py-16">
       {/* Masthead */}
-      <header className="border-y-8 border-double border-black py-8 text-center">
-        <h1 className="text-8xl font-black italic tracking-tight">Afiche</h1>
+      <header className="border-y-8 border-double border-black py-6 text-center md:py-8">
+        <h1 className="text-6xl font-black italic tracking-tight sm:text-7xl md:text-8xl">
+          Afiche
+        </h1>
         <p className="mt-2 italic">cartelera curada de Buenos Aires</p>
-        <p className="mt-1 text-xs uppercase tracking-[0.3em] text-neutral-600">
+        <p className="mt-1 text-[10px] uppercase tracking-[0.3em] text-neutral-600 sm:text-xs">
           cine más allá de la pochoclera
         </p>
       </header>
 
+      {/* Week context — orients the visitor at a glance. */}
+      {days.length > 0 && (
+        <p className="mt-6 text-center font-mono text-[11px] uppercase tracking-[0.25em] text-neutral-600 sm:text-xs">
+          {weekRange}
+          {' · '}
+          {totalScreenings} {totalScreenings === 1 ? 'función' : 'funciones'}
+          {' · '}
+          {distinctCinemas} {distinctCinemas === 1 ? 'cine' : 'cines'}
+        </p>
+      )}
+
       {/* Week view */}
-      <section className="mt-12 space-y-12">
+      <section className="mt-10 space-y-12 md:mt-12">
         {days.length === 0 ? (
           <p className="text-center italic text-neutral-500">
             No hay funciones cargadas. Ejecutá <code>npm run db:seed</code> para ver datos de ejemplo.
@@ -29,102 +49,134 @@ export default async function HomePage() {
             <div key={day.dateKey}>
               {/* Day banner */}
               <div
-                className={`py-3 px-4 mb-6 ${
+                className={`py-3 px-3 mb-6 sm:px-4 ${
                   day.isToday ? 'bg-black text-[#f4ebd8]' : 'border-b-2 border-dashed border-black'
                 }`}
               >
-                <h2 className="text-3xl font-black italic tracking-widest uppercase">
+                <h2 className="text-xl font-black italic tracking-wide uppercase sm:text-2xl sm:tracking-widest md:text-3xl">
                   {day.label}
                 </h2>
-                <p className="text-xs font-mono uppercase tracking-[0.3em] mt-1 opacity-70">
-                  {day.screenings.length} función{day.screenings.length === 1 ? '' : 'es'}
+                <p className="text-[10px] font-mono uppercase tracking-[0.25em] mt-1 opacity-70 sm:text-xs sm:tracking-[0.3em]">
+                  {day.screenings.length}{' '}
+                  {day.screenings.length === 1 ? 'función' : 'funciones'}
                 </p>
               </div>
 
               {/* Screening rows */}
               <div className="space-y-4">
-                {day.screenings.map((s) => (
-                  <article
-                    key={s.id}
-                    className={`p-5 border ${
-                      s.cinema.type === 'indie'
-                        ? 'border-[#c1272d] bg-[#c1272d]/5 border-l-4'
-                        : 'border-neutral-300 bg-black/[0.02] opacity-80'
-                    }`}
-                  >
-                    {/* Tags */}
-                    {s.tags.length > 0 && (
-                      <div className="flex gap-2 mb-2 flex-wrap">
-                        {s.tags.map((t) => (
-                          <span
-                            key={t}
-                            className="text-[10px] font-mono tracking-[0.2em] uppercase px-2 py-0.5 bg-[#c1272d] text-[#f4ebd8]"
-                          >
-                            {TAG_LABELS_ES[t]}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="flex items-start justify-between gap-6">
-                      {/* Poster thumbnail or typographic fallback */}
-                      {s.cinema.type === 'indie' && (
-                        <div className="shrink-0 w-20 h-28 bg-black text-[#f4ebd8] flex items-center justify-center overflow-hidden border border-black shadow-[4px_4px_0_#c1272d]">
-                          {s.film.posterUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={s.film.posterUrl}
-                              alt={s.film.title}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <span className="text-[10px] italic text-center px-1 leading-tight">
-                              {s.film.title}
+                {day.screenings.map((s) => {
+                  const cardBody = (
+                    <>
+                      {/* Tags */}
+                      {s.tags.length > 0 && (
+                        <div className="flex gap-2 mb-2 flex-wrap">
+                          {s.tags.map((t) => (
+                            <span
+                              key={t}
+                              className="text-[10px] font-mono tracking-[0.2em] uppercase px-2 py-0.5 bg-[#c1272d] text-[#f4ebd8]"
+                            >
+                              {TAG_LABELS_ES[t]}
                             </span>
-                          )}
+                          ))}
                         </div>
                       )}
-                      <div className="flex-1">
-                        <h3 className="text-2xl font-black italic leading-tight">
-                          {s.film.title}
-                        </h3>
-                        {s.film.director && (
-                          <p className="text-sm italic text-neutral-600 mt-1">
-                            {s.film.director}
-                            {s.film.year && ` · ${s.film.year}`}
-                            {s.film.country && ` · ${s.film.country}`}
-                            {s.film.runtimeMin && ` · ${s.film.runtimeMin} min`}
-                          </p>
-                        )}
-                        {s.film.synopsisEs && s.cinema.type === 'indie' && (
-                          <p className="mt-3 text-sm italic border-l-2 border-[#c1272d] pl-3 max-w-2xl">
-                            {s.film.synopsisEs}
-                          </p>
-                        )}
-                      </div>
 
-                      <div className="text-right shrink-0">
-                        <p
-                          className={`text-xs font-mono tracking-[0.2em] uppercase ${
-                            s.cinema.type === 'indie' ? 'text-[#c1272d] font-bold' : 'text-neutral-600'
-                          }`}
-                        >
-                          {s.cinema.type === 'indie' && '★ '}
-                          {s.cinema.name}
-                        </p>
-                        {s.cinema.neighborhood && (
-                          <p className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 mt-1">
-                            {s.cinema.neighborhood}
+                      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
+                        {/* Top section: poster + film info.
+                            On mobile this is row 1. On desktop it's the left
+                            side of the card with the meta block on the right. */}
+                        <div className="flex gap-4 min-w-0 md:flex-1">
+                          {/* Poster thumbnail or typographic fallback (indie only) */}
+                          {s.cinema.type === 'indie' && (
+                            <div className="shrink-0 w-20 h-28 bg-black text-[#f4ebd8] flex items-center justify-center overflow-hidden border border-black shadow-[4px_4px_0_#c1272d]">
+                              {s.film.posterUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={s.film.posterUrl}
+                                  alt={s.film.title}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <span className="text-[10px] italic text-center px-1 leading-tight">
+                                  {s.film.title}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <h3 className="text-xl font-black italic leading-tight sm:text-2xl">
+                              {s.film.title}
+                            </h3>
+                            {s.film.director && (
+                              <p className="text-sm text-neutral-600 mt-1">
+                                {s.film.director}
+                                {s.film.year && ` · ${s.film.year}`}
+                                {s.film.country && ` · ${s.film.country}`}
+                                {s.film.runtimeMin && ` · ${s.film.runtimeMin} min`}
+                              </p>
+                            )}
+                            {s.film.synopsisEs && s.cinema.type === 'indie' && (
+                              <p className="mt-3 text-sm border-l-2 border-[#c1272d] pl-3 max-w-2xl line-clamp-3">
+                                {s.film.synopsisEs}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Meta block: cinema + time.
+                            Mobile: new row beneath, with cinema left / time right.
+                            Desktop: rightmost column of the card, stacked vertically. */}
+                        <div className="flex items-end justify-between gap-4 md:flex-col md:items-end md:text-right md:shrink-0 md:gap-0">
+                          <div>
+                            <p
+                              className={`text-xs font-mono tracking-[0.2em] uppercase ${
+                                s.cinema.type === 'indie' ? 'text-[#c1272d] font-bold' : 'text-neutral-600'
+                              }`}
+                            >
+                              {s.cinema.type === 'indie' && '★ '}
+                              {s.cinema.name}
+                            </p>
+                            {s.cinema.neighborhood && (
+                              <p className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 mt-1">
+                                {s.cinema.neighborhood}
+                              </p>
+                            )}
+                          </div>
+                          <p className="text-2xl font-black italic text-[#c1272d] md:mt-2">
+                            {formatTimeBA(s.startsAtUtc)}
                           </p>
-                        )}
-                        <p className="text-2xl font-black italic mt-2 text-[#c1272d]">
-                          {formatTimeBA(s.startsAtUtc)}
-                        </p>
+                        </div>
                       </div>
-                    </div>
-                  </article>
-                ))}
+                    </>
+                  );
+
+                  const cardClasses = `block p-4 border sm:p-5 transition-shadow ${
+                    s.cinema.type === 'indie'
+                      ? 'border-[#c1272d] bg-[#c1272d]/5 border-l-4 hover:shadow-[4px_4px_0_#c1272d] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c1272d]'
+                      : 'border-neutral-300 bg-black/[0.02] opacity-80 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black'
+                  }`;
+
+                  // If we have a source URL, the whole card is a tap target.
+                  // Opens in a new tab because destinations are external
+                  // ticketing / programming pages, not Afiche-internal routes.
+                  return s.sourceUrl ? (
+                    <a
+                      key={s.id}
+                      href={s.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cardClasses}
+                      aria-label={`${s.film.title} — ${s.cinema.name} — ${formatTimeBA(s.startsAtUtc)}`}
+                    >
+                      {cardBody}
+                    </a>
+                  ) : (
+                    <article key={s.id} className={cardClasses}>
+                      {cardBody}
+                    </article>
+                  );
+                })}
               </div>
             </div>
           ))
@@ -140,4 +192,38 @@ export default async function HomePage() {
       </footer>
     </main>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Week range helper — pulled out of the JSX for readability.
+// ---------------------------------------------------------------------------
+function formatWeekRange(days: Array<{ screenings: Array<{ startsAtUtc: Date }> }>): string {
+  // Find the earliest and latest screening timestamp to bracket the range.
+  const allStarts = days.flatMap((d) => d.screenings.map((s) => s.startsAtUtc));
+  if (allStarts.length === 0) return '';
+  const first = allStarts.reduce((a, b) => (a < b ? a : b));
+  const last = allStarts.reduce((a, b) => (a > b ? a : b));
+
+  const fmt = new Intl.DateTimeFormat('es-AR', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    day: 'numeric',
+    month: 'long',
+  });
+
+  // Same day → "23 de abril". Same month → "23 al 30 de abril".
+  // Different months → "23 de abril al 5 de mayo".
+  const firstParts = fmt.formatToParts(first);
+  const lastParts = fmt.formatToParts(last);
+  const firstMonth = firstParts.find((p) => p.type === 'month')?.value;
+  const lastMonth = lastParts.find((p) => p.type === 'month')?.value;
+  const firstDay = firstParts.find((p) => p.type === 'day')?.value;
+  const lastDay = lastParts.find((p) => p.type === 'day')?.value;
+
+  if (firstDay === lastDay && firstMonth === lastMonth) {
+    return `${firstDay} de ${firstMonth}`;
+  }
+  if (firstMonth === lastMonth) {
+    return `${firstDay} al ${lastDay} de ${firstMonth}`;
+  }
+  return `${firstDay} de ${firstMonth} al ${lastDay} de ${lastMonth}`;
 }

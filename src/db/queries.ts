@@ -120,13 +120,22 @@ function formatDateKeyBA(d: Date): string {
 }
 
 function formatDayLabel(d: Date): string {
-  // e.g. "Martes 19 de abril"
-  return new Intl.DateTimeFormat('es-AR', {
+  // e.g. "martes 19 de abril"
+  //
+  // Build the parts manually instead of using a single formatted string —
+  // es-AR's default "weekday, day de month" injects a comma we don't want
+  // ("jueves, 23 de abril" reads clunky when uppercased in the banner).
+  const fmt = new Intl.DateTimeFormat('es-AR', {
     timeZone: BA_TZ,
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-  }).format(d);
+  });
+  const parts = fmt.formatToParts(d);
+  const weekday = parts.find((p) => p.type === 'weekday')?.value ?? '';
+  const day = parts.find((p) => p.type === 'day')?.value ?? '';
+  const month = parts.find((p) => p.type === 'month')?.value ?? '';
+  return `${weekday} ${day} de ${month}`;
 }
 
 export function formatTimeBA(d: Date): string {
