@@ -22,14 +22,14 @@ export default async function HomePage() {
           Afiche
         </h1>
         <p className="mt-2 italic">cartelera curada de Buenos Aires</p>
-        <p className="mt-1 text-[10px] uppercase tracking-[0.3em] text-neutral-600 sm:text-xs">
+        <p className="mt-1 text-[11px] font-mono uppercase tracking-eyebrow text-neutral-600">
           cine más allá de la pochoclera
         </p>
       </header>
 
       {/* Week context — orients the visitor at a glance. */}
       {days.length > 0 && (
-        <p className="mt-6 text-center font-mono text-[11px] uppercase tracking-[0.25em] text-neutral-600 sm:text-xs">
+        <p className="mt-6 text-center font-mono text-[11px] uppercase tracking-eyebrow text-neutral-600">
           {weekRange}
           {' · '}
           {totalScreenings} {totalScreenings === 1 ? 'función' : 'funciones'}
@@ -50,13 +50,13 @@ export default async function HomePage() {
               {/* Day banner */}
               <div
                 className={`py-3 px-3 mb-6 sm:px-4 ${
-                  day.isToday ? 'bg-black text-[#f4ebd8]' : 'border-b-2 border-dashed border-black'
+                  day.isToday ? 'bg-black text-cream' : 'border-b-2 border-dashed border-black'
                 }`}
               >
                 <h2 className="text-xl font-black italic tracking-wide uppercase sm:text-2xl sm:tracking-widest md:text-3xl">
                   {day.label}
                 </h2>
-                <p className="text-[10px] font-mono uppercase tracking-[0.25em] mt-1 opacity-70 sm:text-xs sm:tracking-[0.3em]">
+                <p className="text-[11px] font-mono uppercase tracking-eyebrow mt-1 opacity-70">
                   {day.screenings.length}{' '}
                   {day.screenings.length === 1 ? 'función' : 'funciones'}
                 </p>
@@ -73,7 +73,7 @@ export default async function HomePage() {
                           {s.tags.map((t) => (
                             <span
                               key={t}
-                              className="text-[10px] font-mono tracking-[0.2em] uppercase px-2 py-0.5 bg-[#c1272d] text-[#f4ebd8]"
+                              className="text-[11px] font-mono tracking-card uppercase px-2 py-0.5 bg-carmine text-cream"
                             >
                               {TAG_LABELS_ES[t]}
                             </span>
@@ -86,9 +86,11 @@ export default async function HomePage() {
                             On mobile this is row 1. On desktop it's the left
                             side of the card with the meta block on the right. */}
                         <div className="flex gap-4 min-w-0 md:flex-1">
-                          {/* Poster thumbnail or typographic fallback (indie only) */}
+                          {/* Poster thumbnail or typographic fallback (indie only).
+                              The carmine offset shadow is the project's signature
+                              zine flourish — the only decorative shadow on the page. */}
                           {s.cinema.type === 'indie' && (
-                            <div className="shrink-0 w-20 h-28 bg-black text-[#f4ebd8] flex items-center justify-center overflow-hidden border border-black shadow-[4px_4px_0_#c1272d]">
+                            <div className="shrink-0 w-20 h-28 bg-black text-cream flex items-center justify-center overflow-hidden border border-black shadow-[4px_4px_0_var(--color-carmine)]">
                               {s.film.posterUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
@@ -98,7 +100,7 @@ export default async function HomePage() {
                                   loading="lazy"
                                 />
                               ) : (
-                                <span className="text-[10px] italic text-center px-1 leading-tight">
+                                <span className="text-[11px] italic text-center px-1 leading-tight">
                                   {s.film.title}
                                 </span>
                               )}
@@ -117,7 +119,7 @@ export default async function HomePage() {
                               </p>
                             )}
                             {s.film.synopsisEs && s.cinema.type === 'indie' && (
-                              <p className="mt-3 text-sm border-l-2 border-[#c1272d] pl-3 max-w-2xl line-clamp-3">
+                              <p className="mt-3 text-sm border-l-2 border-carmine pl-3 max-w-prose line-clamp-3">
                                 {s.film.synopsisEs}
                               </p>
                             )}
@@ -130,20 +132,20 @@ export default async function HomePage() {
                         <div className="flex items-end justify-between gap-4 md:flex-col md:items-end md:text-right md:shrink-0 md:gap-0">
                           <div>
                             <p
-                              className={`text-xs font-mono tracking-[0.2em] uppercase ${
-                                s.cinema.type === 'indie' ? 'text-[#c1272d] font-bold' : 'text-neutral-600'
+                              className={`text-xs font-mono tracking-card uppercase ${
+                                s.cinema.type === 'indie' ? 'text-carmine font-bold' : 'text-neutral-500'
                               }`}
                             >
                               {s.cinema.type === 'indie' && '★ '}
                               {s.cinema.name}
                             </p>
                             {s.cinema.neighborhood && (
-                              <p className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 mt-1">
+                              <p className="text-[11px] font-mono uppercase tracking-wider text-neutral-500 mt-1">
                                 {s.cinema.neighborhood}
                               </p>
                             )}
                           </div>
-                          <p className="text-2xl font-black italic text-[#c1272d] md:mt-2">
+                          <p className="text-2xl font-black italic text-carmine md:mt-2">
                             {formatTimeBA(s.startsAtUtc)}
                           </p>
                         </div>
@@ -151,10 +153,10 @@ export default async function HomePage() {
                     </>
                   );
 
-                  const cardClasses = `block p-4 border sm:p-5 transition-shadow ${
+                  const cardClasses = `block p-4 border sm:p-5 transition-[background-color,box-shadow] ${
                     s.cinema.type === 'indie'
-                      ? 'border-[#c1272d] bg-[#c1272d]/5 border-l-4 hover:shadow-[4px_4px_0_#c1272d] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c1272d]'
-                      : 'border-neutral-300 bg-black/[0.02] opacity-80 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black'
+                      ? 'border-carmine bg-carmine/5 border-l-4 hover:bg-carmine/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-carmine'
+                      : 'border-neutral-300 bg-black/[0.02] hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black'
                   }`;
 
                   // If we have a source URL, the whole card is a tap target.
@@ -166,6 +168,7 @@ export default async function HomePage() {
                       href={s.sourceUrl}
                       target="_blank"
                       rel="noopener noreferrer"
+                      data-screening-card
                       className={cardClasses}
                       aria-label={`${s.film.title} — ${s.cinema.name} — ${formatTimeBA(s.startsAtUtc)}`}
                     >
@@ -186,7 +189,7 @@ export default async function HomePage() {
       {/* Footer */}
       <footer className="mt-20 pt-8 border-t-8 border-double border-black text-center">
         <p className="italic">Afiche — hecho por cinéfilos, para cinéfilos</p>
-        <p className="text-[10px] font-mono uppercase tracking-[0.3em] text-neutral-500 mt-2">
+        <p className="text-[11px] font-mono uppercase tracking-eyebrow text-neutral-500 mt-2">
           última actualización · datos de ejemplo
         </p>
       </footer>

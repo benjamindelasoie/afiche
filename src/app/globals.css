@@ -1,22 +1,72 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/*
+ * Design tokens. These are the ONE source of truth for Afiche's palette
+ * and typographic rhythm. If you catch yourself writing `bg-[#c1272d]` or
+ * `tracking-[0.3em]` inline, reach for a token here instead.
+ *
+ * Brand palette (warm):
+ *   cream   — page background, inverted text on dark banners
+ *   carmine — accent (indie cinemas, timing, tags, active states)
+ *   ink     — body text
+ *
+ * The editorial character comes from the contrast of cream + ink +
+ * restrained carmine accents. Do not introduce a second accent color
+ * without a product-level reason.
+ */
+/*
+ * Font tokens — inline so they resolve via the CSS variables set on <html>
+ * by next/font. These OVERRIDE Tailwind's default font-sans / font-mono.
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/*
+ * New design tokens — regular @theme so Tailwind generates `.bg-cream`,
+ * `.text-carmine`, `.tracking-eyebrow` etc. as first-class utilities.
+ * Using `@theme inline` here would only publish the CSS vars without
+ * creating utilities (surprise I learned the hard way during the
+ * 2026-04-21 /design-review audit).
+ */
+@theme {
+  --color-cream: #f4ebd8;
+  --color-carmine: #c1272d;
+  --color-ink: #1a1a1a;
+
+  /* Eyebrow micro-caps tracking — masthead tagline, day function count,
+     footer, week context. Unified from ad-hoc 0.25em / 0.3em. */
+  --tracking-eyebrow: 0.25em;
+
+  /* Card-internal micro-caps tracking — tags, cinema name.
+     Slightly tighter than eyebrow because it sits in denser context. */
+  --tracking-card: 0.2em;
+}
+
+/*
+ * Motion accessibility — when the user has requested reduced motion,
+ * kill transitions and animations across the board. Catches anywhere
+ * a future change adds a transition without remembering this guard.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
   }
+}
+
+/*
+ * Visited screening cards fade slightly so a user browsing 70+ functions
+ * can see what they've already clicked through to. Scoped to the screening
+ * card anchors via data-screening-card to avoid affecting all links.
+ */
+a[data-screening-card]:visited {
+  opacity: 0.75;
 }
 
 /*
