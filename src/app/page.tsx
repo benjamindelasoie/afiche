@@ -16,52 +16,72 @@ export default async function HomePage() {
   const weekRange = formatWeekRange(days);
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 md:py-16">
-      {/* Masthead */}
-      <header className="border-y-8 border-double border-black py-6 text-center md:py-8">
-        <h1 className="text-6xl font-black italic tracking-tight sm:text-7xl md:text-8xl">
-          Afiche
-        </h1>
-        <p className="mt-2 italic">cartelera curada de Buenos Aires</p>
-        <p className="mt-1 text-[11px] font-mono uppercase tracking-eyebrow text-neutral-600">
-          cine más allá de la pochoclera
-        </p>
-      </header>
+    <>
+      {/* Skip link — keyboard users tab onto this first; hits the main
+          content, bypassing the masthead. Visually hidden by default,
+          shown on focus. */}
+      <a
+        href="#cartelera"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2 focus:bg-black focus:text-cream focus:font-mono focus:text-sm focus:tracking-card focus:uppercase"
+      >
+        Saltar al contenido
+      </a>
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 md:py-16">
+        {/* Masthead */}
+        <header className="border-y-8 border-double border-black py-6 text-center md:py-8">
+          <h1 className="text-6xl font-black italic tracking-tight text-balance sm:text-7xl md:text-8xl">
+            Afiche
+          </h1>
+          <p className="mt-2 italic">cartelera curada de Buenos Aires</p>
+          <p className="mt-1 text-[11px] font-mono uppercase tracking-eyebrow text-neutral-600">
+            cine más allá de la pochoclera
+          </p>
+        </header>
 
-      {/* Week context — orients the visitor at a glance.
-          Left-aligned to match the rhythm of the day banners below; the
-          masthead up top is center-aligned because it's the brand block. */}
-      {days.length > 0 && (
-        <p className="mt-8 font-mono text-[11px] uppercase tracking-eyebrow text-neutral-600">
-          {weekRange}
-          {' · '}
-          {totalScreenings} {totalScreenings === 1 ? 'función' : 'funciones'}
-          {' · '}
-          {distinctCinemas} {distinctCinemas === 1 ? 'cine' : 'cines'}
-        </p>
-      )}
+        {/* Week context — orients the visitor at a glance.
+            Left-aligned to match the rhythm of the day banners below; the
+            masthead up top is center-aligned because it's the brand block. */}
+        {days.length > 0 && (
+          <p className="mt-8 font-mono text-[11px] uppercase tracking-eyebrow text-neutral-600">
+            {weekRange}
+            {' · '}
+            {totalScreenings} {totalScreenings === 1 ? 'función' : 'funciones'}
+            {' · '}
+            {distinctCinemas} {distinctCinemas === 1 ? 'cine' : 'cines'}
+          </p>
+        )}
 
-      {/* Week view */}
-      <section className="mt-8 space-y-12 md:mt-12">
-        {days.length === 0 ? (
-          <EmptyState />
-        ) : (
-          days.map((day) => (
-            <div key={day.dateKey}>
-              {/* Day banner */}
-              <div
-                className={`py-3 px-3 mb-6 sm:px-4 ${
-                  day.isToday ? 'bg-black text-cream' : 'border-b-2 border-dashed border-black'
-                }`}
-              >
-                <h2 className="text-xl font-black italic tracking-wide uppercase sm:text-2xl sm:tracking-widest md:text-3xl">
-                  {day.label}
-                </h2>
-                <p className="text-[11px] font-mono uppercase tracking-eyebrow mt-1 opacity-70">
-                  {day.screenings.length}{' '}
-                  {day.screenings.length === 1 ? 'función' : 'funciones'}
-                </p>
-              </div>
+        {/* Week view */}
+        <section id="cartelera" className="mt-8 space-y-12 md:mt-12">
+          {days.length === 0 ? (
+            <EmptyState />
+          ) : (
+            days.map((day) => (
+              <div key={day.dateKey}>
+                {/* Day banner. aria-current="date" announces today to
+                    assistive tech; the HOY pill makes the same point
+                    visually for sighted users. */}
+                <div
+                  aria-current={day.isToday ? 'date' : undefined}
+                  className={`py-3 px-3 mb-6 sm:px-4 ${
+                    day.isToday ? 'bg-black text-cream' : 'border-b-2 border-dashed border-black'
+                  }`}
+                >
+                  <div className="flex items-baseline gap-3 flex-wrap">
+                    {day.isToday && (
+                      <span className="text-[11px] font-mono tracking-card uppercase px-2 py-0.5 bg-carmine text-cream">
+                        HOY
+                      </span>
+                    )}
+                    <h2 className="text-xl font-black italic tracking-wide uppercase text-balance sm:text-2xl sm:tracking-widest md:text-3xl">
+                      {day.label}
+                    </h2>
+                  </div>
+                  <p className="text-[11px] font-mono uppercase tracking-eyebrow mt-1 opacity-70">
+                    {day.screenings.length}{' '}
+                    {day.screenings.length === 1 ? 'función' : 'funciones'}
+                  </p>
+                </div>
 
               {/* Screening rows */}
               <div className="space-y-5">
@@ -108,14 +128,18 @@ export default async function HomePage() {
                             </div>
                           )}
                           <div className="min-w-0 flex-1">
-                            <h3 className="text-xl font-black italic leading-tight sm:text-2xl">
+                            <h3 className="text-xl font-black italic leading-tight text-balance sm:text-2xl">
                               {s.film.title}
                             </h3>
                             {s.film.director && (
                               <p className="text-sm text-neutral-600 mt-1">
                                 {s.film.director}
                                 {s.film.year && ` · ${s.film.year}`}
-                                {s.film.country && ` · ${s.film.country}`}
+                                {/* Country tucked away on mobile to prevent
+                                    the meta line from wrapping to two rows. */}
+                                {s.film.country && (
+                                  <span className="hidden sm:inline"> · {s.film.country}</span>
+                                )}
                                 {s.film.runtimeMin && ` · ${s.film.runtimeMin} min`}
                               </p>
                             )}
@@ -146,15 +170,18 @@ export default async function HomePage() {
                               </p>
                             )}
                           </div>
-                          <p className="text-2xl font-black italic text-carmine md:mt-2">
+                          <time
+                            dateTime={s.startsAtUtc.toISOString()}
+                            className="text-2xl font-black italic text-carmine tabular-nums md:mt-2"
+                          >
                             {formatTimeBA(s.startsAtUtc)}
-                          </p>
+                          </time>
                         </div>
                       </div>
                     </>
                   );
 
-                  const cardClasses = `block p-4 border sm:p-5 transition-[background-color,box-shadow] ${
+                  const cardClasses = `block p-4 border sm:p-5 transition-[background-color,box-shadow] active:translate-y-[1px] ${
                     s.cinema.type === 'indie'
                       ? 'border-carmine bg-carmine/5 border-l-4 hover:bg-carmine/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-carmine'
                       : 'border-neutral-300 bg-black/[0.02] hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black'
@@ -187,14 +214,15 @@ export default async function HomePage() {
         )}
       </section>
 
-      {/* Footer */}
-      <footer className="mt-20 pt-8 border-t-8 border-double border-black text-center">
-        <p className="italic">Afiche — hecho por cinéfilos, para cinéfilos</p>
-        <p className="text-[11px] font-mono uppercase tracking-eyebrow text-neutral-500 mt-2">
-          última actualización · datos de ejemplo
-        </p>
-      </footer>
-    </main>
+        {/* Footer */}
+        <footer className="mt-20 pt-8 border-t-8 border-double border-black text-center">
+          <p className="italic">Afiche — hecho por cinéfilos, para cinéfilos</p>
+          <p className="text-[11px] font-mono uppercase tracking-eyebrow text-neutral-500 mt-2">
+            última actualización · datos de ejemplo
+          </p>
+        </footer>
+      </main>
+    </>
   );
 }
 
