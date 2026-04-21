@@ -46,3 +46,4 @@ local.db-shm
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.gstack/
