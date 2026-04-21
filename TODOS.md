@@ -96,9 +96,59 @@ S3 (recurring-weekly) is still missing. Examples: Hijo mayor, Los dias chinos, P
 
 ---
 
-## Done (this session arc, 2026-04-20)
+## 5. Design-review findings backlog (F002-F025, from 2026-04-21 audit)
 
+Full audit report at `~/.gstack/projects/kino/designs/design-audit-20260421-0022/design-audit-afiche.md`.
+Overall Design Score at time of audit: **C+**.  AI Slop Score: **A**.
+F001 (Arial-not-Geist critical) fixed in commit `48cd1f1`. Remaining:
+
+### High impact (fix these next, move C+ → B+)
+
+- **F002 — Synopsis measure 96 chars/line on desktop.** `src/app/page.tsx:108` — change `max-w-2xl` → `max-w-prose` or `max-w-xl`.
+- **F003 — `<img>` tags missing `width`/`height`.** Causes CLS as posters load. `src/app/page.tsx:82-87` — add `width={80} height={112}` or switch to `next/image`.
+- **F004 — Color tokens declared but unused.** `globals.css:3-13` declares `--background`/`--foreground`/`--color-*`, but 10+ inline hexes in page.tsx. Add `--color-cream: #f4ebd8; --color-carmine: #c1272d; --color-ink: #1a1a1a;` to `@theme`, swap inline hexes for `bg-cream`/`text-carmine`/`text-ink`.
+- **F005 — Spacing rhythm ad-hoc.** Mixes `py-8`, `py-16`, `mt-6`, `mt-10`, `mt-12`, `space-y-12`, `mb-6`, `mb-2`, `space-y-4`, `mt-20`, `pt-8`, `mt-1`, `mt-2`, `mt-3`. Pick one rhythm (4/8/12/16/24/48) and stick.
+
+### Medium impact
+
+- **F006 — Alignment inconsistency.** Masthead + week-context center-aligned, day headers + cards left-aligned. `src/app/page.tsx:36` vs `:50`. Recommend left-aligning the week-context line.
+- **F007 — Dev-oriented empty state copy.** "Ejecutá `npm run db:seed`..." would ship to prod if DB is empty. `src/app/page.tsx:45-47` — change to user-facing copy, keep dev hint gated on `NODE_ENV !== 'production'`.
+- **F008 — Dead `prefers-color-scheme: dark` block in globals.css.** `globals.css:15-20` — delete. Brand is cream, not adaptive.
+- **F009 — Transitions don't respect `prefers-reduced-motion`.** Add global rule in globals.css: `@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }`.
+- **F010 — Chain card opacity change isn't animated.** `transition-shadow` only covers shadow; opacity jumps. `src/app/page.tsx:129` — change to `transition-[box-shadow,opacity]`.
+- **F011 — Today is visually marked (black bg) but not semantically labeled.** `src/app/page.tsx:33-36` — add `aria-current="date"` on the banner when `day.isToday`, and a visible "HOY" pill inside.
+- **F012 — `text-[10px]` borderline WCAG** at standard viewing distance. Used in 5 places. Bump to `text-[11px]` or define an eyebrow token.
+- **F013 — Tracking values ad-hoc.** `tracking-[0.3em]`, `tracking-[0.25em]`, `tracking-[0.2em]`, `tracking-widest`, `tracking-wide`. Collapse to 2 tokens (eyebrow = 0.25em, heading = 0.2em).
+- **F014 — Card hover shadow duplicates poster shadow.** The poster's `shadow-[4px_4px_0_#c1272d]` is the zine signature; duplicating on card hover dilutes it. `src/app/page.tsx:127` — replace hover with `hover:bg-[#c1272d]/10` or `hover:border-[3px]`.
+- **F015 — `opacity-80` on commercial cinema cards reads "broken/loading".** Use `text-neutral-500` + no accent to de-emphasize instead. `src/app/page.tsx:129`.
+
+### Polish
+
+- **F016 — No `text-wrap: balance` on headings.** Add `text-balance` (Tailwind 4) to h1/h2/h3.
+- **F017 — No `tabular-nums` on times.** Add `tabular-nums` on the time `<p>`.
+- **F018 — No visited-link state.** Add `a:visited { opacity: 0.75 }` scoped to cards in globals.css.
+- **F019 — No active/pressed state on cards.** Add `active:translate-y-[1px]` to the tappable card classes.
+- **F020 — Images missing `decoding="async"`.** Minor perf polish.
+- **F021 — Director meta wraps on mobile with 4 segments.** Hide country on mobile: wrap in `<span className="hidden sm:inline"> · {country}</span>`.
+- **F022 — Within-day card gap tight.** `space-y-4` → `space-y-5` or `space-y-6`.
+- **F023 — No `<time datetime>` wrapping the time display.** Screen readers + SEO lose machine-readable time. Wrap the `{formatTimeBA(...)}` `<p>` in `<time dateTime={s.startsAtUtc.toISOString()}>...</time>`.
+- **F024 — No skip-link, no `aria-current` on today banner.** Basic a11y polish. (Overlaps with F011.)
+- **F025 — Raw `<img>` with `eslint-disable`.** Switch to `next/image` for blur-up + format negotiation. You're self-hosting posters already.
+
+---
+
+## Done (this session arc)
+
+**2026-04-20:**
 - ✅ Fix re-enrichment loop for persistent misses — commit `cd6b1a9`
 - ✅ Log persistence for scraper runs (`scrape_runs` table + `run-log.ts`) — commit `44615b4`
 - ✅ MALBA scraper S1 (dense-cycle) with fixture-backed tests — commit `cc6df53`
 - ✅ MALBA scraper S2 (single-event / grouped-times) — commit `e616d33`
+
+**2026-04-21:**
+- ✅ Cine York scraper (lumiton.ar agenda) — commit `b8def6c`
+- ✅ Extracted shared Lumiton agenda parser — commit `90c326b`
+- ✅ Centro Cultural Munro + Lumiton providers — commit `86d5c98`
+- ✅ Fix: merge null-year film row on enrichment collision — commit `fa9978d`
+- ✅ UI responsive polish pass (mobile fixes, copy bugs, tappable cards) — commit `969eba8`
+- ✅ **F001** — Unbreak Geist (remove Arial body override) — commit `48cd1f1`
