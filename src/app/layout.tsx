@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Afiche — cartelera curada de Buenos Aires",
   description:
-    "Cartelera curada de cine en Buenos Aires — cine más allá de la pochoclera. MALBA, Cine Lorca, Sala Lugones, Cosmos, Gaumont, y más.",
+    "Cartelera curada de cine en Buenos Aires. MALBA, Cine Lorca, Sala Lugones, Cosmos, Gaumont, y más.",
 };
 
 export default function RootLayout({
