@@ -65,21 +65,22 @@ ORDER BY c.id, f.match_source;
 
 ---
 
-## 3. MALBA recurring-schedule cycles
+## 3. MALBA recurring-weekly cycles (S3 strategy)
 
-**What:** The MALBA provider shipped 2026-04-20 skips cycles that don't have a `<h3>Programación</h3>` block — notably the "weekly recurring" cycles like Hijo mayor, Los dias chinos, Pin de fartie, The Souffleur, LS83, El príncipe de Nanawa. Their listing entries say things like "Sábados a las 18:00" without a concrete date list.
+**What:** The MALBA provider now has two strategies (as of e616d33):
+- **S1 — dense-cycle**: `<h3>Programación</h3>` + per-day `<p>` blocks (e.g. Olivera-Aries)
+- **S2 — single-event**: prose regex `DAY N de MONTH a las TIME_LIST` (e.g. El Diablo viste a la moda 2)
 
-**Why:** The current MVP warns + skips these. That means ~60% of MALBA's cycle slots (by count, not by screening count) currently produce zero screenings. The 4 Olivera-Aries-style cycles that DO have day-by-day listings are the only ones flowing.
+S3 (recurring-weekly) is still missing. Examples: Hijo mayor, Los dias chinos, Pin de fartie, The Souffleur, LS83, El príncipe de Nanawa — cycles whose listing description is "Sábados a las 18:00" with no concrete date list. Their detail pages MAY have S2-style single-event prose too (some do in practice), so figure out which ones actually still fail by reading the `scrape_runs.warnings` column after the first production run.
 
-**Options:**
-- **A. Scrape each film's detail page** — each recurring cycle links to film detail pages (e.g., `/evento/hijo-mayor/`) that may have their own per-film date/time info. Unverified; would need to grab a fixture.
+**Why:** If a non-trivial fraction of cycles still produce zero screenings after S1+S2, we need a parser for the weekly-recurrence grammar. Otherwise defer — the problem may already be small.
+
+**Options when it's time:**
+- **A. Scrape each film's detail page** — each recurring cycle's listing links to per-film detail pages (e.g., `/evento/hijo-mayor/`) that may have S2-compatible prose schedules. Doesn't require new parsing, just more fetches.
 - **B. Expand the listing description** — parse "Sábados a las 18:00 En el mes de abril" into a set of Saturdays across April. Brittle but needs no extra fetches.
-- **C. Defer forever** — if the recurring cycles are a small fraction of actual weekly slots, maybe they don't matter.
+- **C. Defer** — if real-data warnings show recurring cycles are a small fraction of actual weekly slots, accept the gap.
 
-**Pros of solving:** Doubles MALBA's useful output.
-**Cons:** Unknown how consistent the recurring-cycle format is; could be N different edge cases.
-
-**Context:** Discovered during the 2026-04-20 MALBA provider build. Structure differs from the dense-Programación format the first fixture had. Fixtures for a recurring cycle would need to be captured to design the parser.
+**Trigger to act:** after a couple of successful end-to-end scrape runs, query `SELECT cinema_id, warnings FROM scrape_runs WHERE status = 'success'` and see which MALBA cycles still surface "no schedule recognized" warnings. If the list is short and recurring, do C. If it's long or growing, do A.
 
 **Depends on / blocked by:** Nothing, but lower priority than TODO #1.
 
@@ -99,4 +100,5 @@ ORDER BY c.id, f.match_source;
 
 - ✅ Fix re-enrichment loop for persistent misses — commit `cd6b1a9`
 - ✅ Log persistence for scraper runs (`scrape_runs` table + `run-log.ts`) — commit `44615b4`
-- ✅ MALBA scraper with fixture-backed tests — commit `cc6df53`
+- ✅ MALBA scraper S1 (dense-cycle) with fixture-backed tests — commit `cc6df53`
+- ✅ MALBA scraper S2 (single-event / grouped-times) — commit `e616d33`
