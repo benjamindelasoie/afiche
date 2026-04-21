@@ -11,6 +11,7 @@
 import 'dotenv/config';
 import { lugonesProvider } from '@/providers/lugones';
 import { malbaProvider } from '@/providers/malba';
+import { cineYorkProvider } from '@/providers/cine-york';
 import type { Provider } from '@/providers/types';
 import { ingest, type IngestSummary } from './ingest';
 import { startRun, finishRun, failRun } from './run-log';
@@ -18,6 +19,7 @@ import { startRun, finishRun, failRun } from './run-log';
 const providers: Provider[] = [
   lugonesProvider,
   malbaProvider,
+  cineYorkProvider,
   // future: lorcaProvider, cinepolisRecoletaProvider, ...
 ];
 
