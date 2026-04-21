@@ -1,0 +1,44 @@
+name: Scrape cinemas
+
+# Daily scrape of all cinema providers against the production Turso DB.
+# Runs at 08:00 UTC (05:00 Buenos Aires). Can also be triggered manually
+# from the Actions tab via "Run workflow".
+#
+# After a successful scrape we POST the site's revalidate webhook so the
+# week-view Server Component re-renders against fresh data on the next visit.
+
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Run scraper against Turso
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_AUTH_TOKEN: ${{ secrets.DATABASE_AUTH_TOKEN }}
+          TMDB_API_TOKEN: ${{ secrets.TMDB_API_TOKEN }}
+        run: npx tsx src/scrapers/run.ts
+
+      - name: Revalidate week-view cache
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+        run: |
+          curl -fsS -X POST \
+            -H "X-Revalidate-Secret: $REVALIDATE_SECRET" \
+            "$SITE_URL/api/revalidate"

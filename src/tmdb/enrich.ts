@@ -3,23 +3,28 @@
  *
  * Given a scraped (title, year), returns a full enrichment delta:
  *   { tmdbId, imdbId, title, titleOriginal, director, runtime, country,
- *     posterLocalUrl, confidence, matchSource }
+ *     posterUrl, confidence, matchSource }
  *
  * Or null if: no TMDB token set, the search returned no candidates, or
  * the fuzzy match fell below the confidence threshold and no override exists.
  *
  * NEVER throws — TMDB errors are converted to nulls so ingest can proceed
  * without the enrichment rather than failing the whole run.
+ *
+ * Poster strategy: we hotlink directly to TMDB's CDN
+ * (image.tmdb.org/t/p/w342{posterPath}). No local caching. Previously the
+ * enrich layer downloaded posters to /public/posters/*.jpg, but that
+ * directory is read-only at runtime on Vercel deployments, so production
+ * would have crashed on every miss. Hotlinking is also what TMDB
+ * recommends for client-side rendering and matches what next/image
+ * optimizes against via `remotePatterns: ['image.tmdb.org']`.
  */
 
-import { writeFile, mkdir } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
 import {
   hasTmdbToken,
   searchMovies,
   getMovie,
-  downloadPoster,
+  posterImageUrl,
   extractDirectors,
   type TmdbMovieDetails,
 } from './client';
@@ -45,8 +50,6 @@ export interface EnrichResult {
   reason: 'ok' | 'no-token' | 'no-candidates' | 'low-confidence' | 'error';
   error?: string;
 }
-
-const POSTER_DIR_REL = 'public/posters';
 
 export async function enrichFilm(
   scrapedTitle: string,
@@ -104,17 +107,6 @@ async function buildDelta(
     ? parseInt(details.release_date.slice(0, 4), 10)
     : null;
 
-  let posterUrl: string | null = null;
-  if (details.poster_path) {
-    try {
-      posterUrl = await cachePoster(details.id, details.poster_path);
-    } catch {
-      // Poster download failure is non-fatal — leave posterUrl null, fall
-      // back to typographic tile.
-      posterUrl = null;
-    }
-  }
-
   return {
     tmdbId: details.id,
     imdbId: details.imdb_id ?? null,
@@ -124,27 +116,12 @@ async function buildDelta(
     country,
     year: Number.isNaN(year) ? null : year,
     runtimeMin: details.runtime ?? null,
-    posterUrl,
+    // Hotlinked TMDB CDN URL. next/image handles optimization via the
+    // image.tmdb.org remotePattern in next.config.ts.
+    posterUrl: posterImageUrl(details.poster_path, 'w342'),
     matchConfidence: confidence,
     matchSource,
   };
-}
-
-/**
- * Download the poster into public/posters/{tmdbId}.jpg so Next.js serves
- * it from the same edge as the HTML. Returns the PUBLIC URL ('/posters/{id}.jpg').
- * If already cached, skips the download and returns the URL.
- */
-async function cachePoster(tmdbId: number, posterPath: string): Promise<string> {
-  const relPath = `/posters/${tmdbId}.jpg`;
-  const fsPath = resolve(process.cwd(), POSTER_DIR_REL, `${tmdbId}.jpg`);
-
-  if (existsSync(fsPath)) return relPath;
-
-  await mkdir(resolve(process.cwd(), POSTER_DIR_REL), { recursive: true });
-  const bytes = await downloadPoster(posterPath, 'w342');
-  await writeFile(fsPath, bytes);
-  return relPath;
 }
 
 export { MATCH_CONFIDENCE_THRESHOLD };
