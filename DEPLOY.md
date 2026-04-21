@@ -50,6 +50,25 @@ turso db shell afiche "SELECT id, name FROM cinemas;"
 # → you should see 7 rows
 ```
 
+### Re-scrape prod from scratch (recovery)
+
+If a scraper bug has poisoned prod with wrong data, wipe the programming
+tables (screenings + films + scrape_runs — cinemas/providers stay) and
+re-run the scrapers:
+
+```bash
+DATABASE_URL='libsql://afiche-benjamindelasoie.aws-us-east-1.turso.io' \
+DATABASE_AUTH_TOKEN='<token>' \
+  npx tsx src/db/reset-programming.ts
+
+DATABASE_URL='libsql://afiche-benjamindelasoie.aws-us-east-1.turso.io' \
+DATABASE_AUTH_TOKEN='<token>' \
+  npx tsx src/scrapers/run.ts
+```
+
+For local dev, the shortcut is `npm run db:rescrape` — chains
+`db:reset-programming && db:scrape` against `.env.local`.
+
 ---
 
 ## 2. Vercel (web frontend)
