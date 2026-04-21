@@ -1,33 +1,37 @@
 /**
  * MALBA provider.
  *
- * Strategy:
- *   1. Fetch the cartelera listing page:
- *      https://malba.org.ar/cine/
- *   2. Extract cycle tiles by pairing each <h2>TITLE</h2> with the first
- *      /evento/SLUG/ link that follows it (within the next <h2>'s window).
- *   3. For each cycle, fetch the detail page and parse the
- *      <h3>Programación</h3> block when present.
- *   4. Walk the <p> blocks: each <p> is one day. The first line is the day
- *      header ("JUEVES 2" or "VIERNES 1 de mayo"), the rest are showtime
- *      lines ("HH:MM <a>Title</a>, de Director").
- *   5. Emit one ScrapedScreening per (film × day × time).
+ * MALBA's detail pages come in several layouts. We try strategies in order:
  *
- * MALBA's format is more regular than Lugones — no state machine needed.
- * Quirks handled:
- *   - Year anchor comes from JSON-LD datePublished on the detail page.
- *     If missing, fall back to the current year.
- *   - Month is explicit on rollover only; otherwise inherit the previous
- *     day's month. No implicit rollovers (MALBA always writes "de MAYO"
- *     when crossing from April to May).
- *   - "24:00" is a valid start time meaning "midnight, end of this day".
- *     We emit it as 00:00 of the NEXT calendar day, in line with how users
- *     think about "Saturday night at midnight" screenings.
- *   - Cycles without a <h3>Programación</h3> block (recurring-schedule
- *     cycles, one-off dated events) are skipped with a warning.
+ *   S1 — DENSE-CYCLE (e.g. Olivera-Aries)
+ *     <h3>Programación</h3> followed by one <p> per day. Each <p> has a
+ *     day header line ("JUEVES 2" or "VIERNES 1 de mayo") and showtime
+ *     lines ("HH:MM <a>Title</a>, de Director").
+ *
+ *   S2 — SINGLE-EVENT / GROUPED-TIMES (e.g. El Diablo viste a la moda 2)
+ *     No <h3>Programación</h3>. The schedule is prose inside a text-editor
+ *     widget, with a single date and multiple comma-separated times:
+ *       "Miércoles 29 de abril a las 17:45, 21:00 y 24:00"
+ *     Film title defaults to the page's <h1>. Director unknown unless it
+ *     appears inline ("de Director Name").
+ *
+ *   S3 — RECURRING-WEEKLY (e.g. Hijo mayor, "Sábados a las 18:00")
+ *     Not yet implemented. See TODOS.md #3.
+ *
+ * The parser tries S1. If S1 returns zero screenings, it falls through to
+ * S2. If S2 also returns zero, a warning is emitted and the cycle is
+ * skipped. Production warnings surface which cycles still don't parse so
+ * we know when to build S3.
+ *
+ * Shared semantics:
+ *   - Year anchor: JSON-LD datePublished on the detail page. Falls back
+ *     to the current year if missing.
+ *   - "24:00" = midnight at the END of the given day (rolls the calendar
+ *     date forward by 1 and uses 00:00 locally).
+ *   - Argentina is UTC-3, no DST (stable since 2009).
  *
  * Politeness: MALBA rate-limits aggressively (429s on burst). We sleep
- * between detail-page fetches.
+ * 500ms between detail-page fetches.
  */
 
 import * as cheerio from 'cheerio';
@@ -200,25 +204,39 @@ export function parseDetailPage(
   warnings: string[],
 ): ScrapedScreening[] {
   const $ = cheerio.load(html);
+  const anchorYear = extractAnchorYear(html) ?? new Date().getUTCFullYear();
 
-  // Locate the Programación block: <h3>Programación</h3> followed by <p>
-  // siblings until something breaks the pattern. We iterate .nextUntil()
-  // to capture all day <p>s cleanly.
+  // --- Strategy 1: dense-cycle (h3 Programación + per-day <p>s) ----------
+  const s1 = parseS1DenseCycle($, cycle, anchorYear, warnings);
+  if (s1.length > 0) return s1;
+
+  // --- Strategy 2: single-event / grouped-times (prose schedule line) ----
+  const s2 = parseS2SingleEvent($, cycle, anchorYear, warnings);
+  if (s2.length > 0) return s2;
+
+  warnings.push(
+    `cycle "${cycle.slug}": no schedule recognized (tried dense-cycle + single-event strategies; likely recurring-weekly, see TODOS.md #3)`,
+  );
+  return [];
+}
+
+/**
+ * Strategy 1 — dense-cycle. Returns [] if the page doesn't have a
+ * <h3>Programación</h3> block or the block yields no parseable days.
+ */
+function parseS1DenseCycle(
+  $: cheerio.CheerioAPI,
+  cycle: CycleLink,
+  anchorYear: number,
+  warnings: string[],
+): ScrapedScreening[] {
   const $h3 = $('h3')
     .filter((_i, el) => {
       const t = $(el).text().trim().toLowerCase();
       return t === 'programación' || t === 'programacion';
     })
     .first();
-  if ($h3.length === 0) {
-    warnings.push(
-      `cycle "${cycle.slug}": no <h3>Programación</h3> block (likely recurring-schedule or one-off cycle)`,
-    );
-    return [];
-  }
-
-  // Year anchor: JSON-LD datePublished.
-  const anchorYear = extractAnchorYear(html) ?? new Date().getUTCFullYear();
+  if ($h3.length === 0) return [];
 
   const screenings: ScrapedScreening[] = [];
   let currentMonth: number | null = null;
@@ -330,6 +348,104 @@ export function parseDetailPage(
   }
 
   return screenings;
+}
+
+// ---------------------------------------------------------------------------
+// Strategy 2 — single-event / grouped-times
+// ---------------------------------------------------------------------------
+//
+// MALBA uses Elementor with auto-generated per-page hashes in class names,
+// so structural descent isn't portable across cycles. Instead we lean on the
+// schedule's distinctive grammar:
+//
+//     "Miércoles 29 de abril a las 17:45, 21:00 y 24:00"
+//
+// The "a las HH:MM" anchor rarely appears in synopsis prose, so a regex
+// against the full event-body text has low false-positive risk. If more
+// variants appear in production, they'll surface as warnings via the top-
+// level "no schedule recognized" path and we add regex cases here.
+//
+const S2_SCHEDULE_RE = new RegExp(
+  // Day name (with or without accents)
+  '(lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado|domingo)\\s+' +
+    // Day number
+    '(\\d{1,2})\\s+de\\s+' +
+    // Month name
+    '([a-záéíóú]+)\\s+' +
+    // Anchor
+    'a\\s+las\\s+' +
+    // Time list: one or more HH:MM separated by ", " / " y " / " e "
+    '((?:\\d{1,2}:\\d{2})(?:\\s*(?:,|\\sy\\s|\\se\\s)\\s*\\d{1,2}:\\d{2})*)',
+  'gi',
+);
+
+export function parseS2SingleEvent(
+  $: cheerio.CheerioAPI,
+  cycle: CycleLink,
+  anchorYear: number,
+  warnings: string[],
+): ScrapedScreening[] {
+  // Event title: the page's first <h1> (same as the cycle title in practice,
+  // but we pull it fresh in case the listing title was truncated).
+  const eventTitle = ($('h1').first().text().trim() || cycle.title).trim();
+
+  // Scope the text search to the event article body if we can find it. The
+  // site wraps events in <main> or a similar container; falling back to
+  // body text is fine because header/footer prose doesn't look like the
+  // schedule grammar.
+  const $scope =
+    $('main').first().length > 0 ? $('main').first() : $('body').first();
+  const text = $scope.text().replace(/\s+/g, ' ').trim();
+
+  const screenings: ScrapedScreening[] = [];
+  for (const m of text.matchAll(S2_SCHEDULE_RE)) {
+    const dayNum = parseInt(m[2], 10);
+    const monthName = m[3].toLowerCase();
+    const month = MONTH_INDEX[monthName];
+    if (month === undefined) {
+      warnings.push(
+        `cycle "${cycle.slug}": S2 saw unknown month "${monthName}" in "${m[0].slice(0, 80)}"`,
+      );
+      continue;
+    }
+    const times = parseS2TimeList(m[4]);
+    if (times.length === 0) {
+      warnings.push(
+        `cycle "${cycle.slug}": S2 parsed 0 times from "${m[4]}"`,
+      );
+      continue;
+    }
+    for (const { hour, minute } of times) {
+      const startsAt = buildBaLocalToUtc(anchorYear, month, dayNum, hour, minute);
+      screenings.push({
+        cinemaId: 'malba',
+        filmTitle: eventTitle,
+        startsAtUtc: startsAt,
+        tags: inferTags(cycle),
+        sourceUrl: cycle.detailUrl,
+      });
+    }
+  }
+
+  return screenings;
+}
+
+/**
+ * Split "17:45, 21:00 y 24:00" into parsed HH:MM tuples.
+ * Accepts commas, " y ", and " e " as separators.
+ */
+function parseS2TimeList(raw: string): Array<{ hour: number; minute: number }> {
+  const chunks = raw.split(/\s*(?:,|\sy\s|\se\s)\s*/);
+  const out: Array<{ hour: number; minute: number }> = [];
+  for (const chunk of chunks) {
+    const m = chunk.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) continue;
+    const hour = parseInt(m[1], 10);
+    const minute = parseInt(m[2], 10);
+    if (hour < 0 || hour > 24 || minute < 0 || minute > 59) continue;
+    out.push({ hour, minute });
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------

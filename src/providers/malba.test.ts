@@ -132,13 +132,157 @@ describe('parseDetailPage (Olivera-Aries cycle)', () => {
     }
   });
 
-  it('warns and returns [] when the page has no Programación block', () => {
-    const htmlNoProgramacion =
+  it('warns and returns [] when neither S1 (Programación) nor S2 (prose schedule) applies', () => {
+    const htmlNoSchedule =
       '<html><body><h1>Just a title</h1><p>No schedule here</p></body></html>';
     const warnings: string[] = [];
-    const out = parseDetailPage(htmlNoProgramacion, cycle, warnings);
+    const out = parseDetailPage(htmlNoSchedule, cycle, warnings);
     expect(out).toEqual([]);
-    expect(warnings[0]).toContain('no <h3>Programación</h3> block');
+    expect(warnings[0]).toContain('no schedule recognized');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Strategy 2 — single-event / grouped-times
+// ---------------------------------------------------------------------------
+// No captured fixture yet for single-event pages. Tests use synthetic HTML
+// that matches the schedule grammar MALBA actually ships:
+//     "Miércoles 29 de abril a las 17:45, 21:00 y 24:00"
+// If production warnings flag new grammars, add targeted tests here.
+// ---------------------------------------------------------------------------
+describe('parseDetailPage — Strategy 2 (single-event, prose schedule)', () => {
+  const cycle = {
+    slug: 'el-diablo-viste-a-la-moda-2',
+    title: 'El diablo viste a la moda 2',
+    detailUrl: 'https://malba.org.ar/evento/el-diablo-viste-a-la-moda-2/',
+  };
+
+  function makeHtml(scheduleLine: string, datePublished = '2026-04-01T00:00:00+00:00'): string {
+    return `
+      <html><body><main>
+        <h1>El diablo viste a la moda 2</h1>
+        <p>${scheduleLine} La Semana de la Alta Costura Argentina presenta la avant premiere.</p>
+        <script type="application/ld+json">{"datePublished":"${datePublished}"}</script>
+      </main></body></html>
+    `;
+  }
+
+  it('parses the canonical El-Diablo shape: one date, three comma+y separated times', () => {
+    const warnings: string[] = [];
+    const out = parseDetailPage(
+      makeHtml('Miércoles 29 de abril a las 17:45, 21:00 y 24:00'),
+      cycle,
+      warnings,
+    );
+    expect(out).toHaveLength(3);
+    expect(warnings).toEqual([]);
+    // Each screening uses the <h1> text as film title (not the cycle.title)
+    expect(out.every((s) => s.filmTitle === 'El diablo viste a la moda 2')).toBe(true);
+    // Times: 17:45, 21:00, 24:00 → UTC (BA is -3)
+    const isos = out.map((s) => s.startsAtUtc.toISOString()).sort();
+    expect(isos).toEqual([
+      '2026-04-29T20:45:00.000Z', // 17:45 local
+      '2026-04-30T00:00:00.000Z', // 21:00 local
+      '2026-04-30T03:00:00.000Z', // 24:00 → 2026-04-30 00:00 local
+    ]);
+  });
+
+  it('handles a single time with no separators', () => {
+    const out = parseDetailPage(
+      makeHtml('Jueves 15 de mayo a las 20:00'),
+      cycle,
+      [],
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0].startsAtUtc.toISOString()).toBe('2026-05-15T23:00:00.000Z');
+  });
+
+  it('handles two times joined with just " y "', () => {
+    const out = parseDetailPage(
+      makeHtml('Viernes 3 de abril a las 19:00 y 22:00'),
+      cycle,
+      [],
+    );
+    expect(out).toHaveLength(2);
+  });
+
+  it('captures multiple schedule lines on the same page', () => {
+    const html = `
+      <html><body><main>
+        <h1>A two-weekend event</h1>
+        <p>Viernes 4 de abril a las 20:00</p>
+        <p>Sábado 5 de abril a las 18:00, 21:00</p>
+        <script type="application/ld+json">{"datePublished":"2026-03-20T00:00:00+00:00"}</script>
+      </main></body></html>
+    `;
+    const out = parseDetailPage(html, cycle, []);
+    expect(out).toHaveLength(3);
+  });
+
+  it('is case-insensitive on day and month names', () => {
+    const out = parseDetailPage(
+      makeHtml('MIÉRCOLES 29 de ABRIL a las 17:45'),
+      cycle,
+      [],
+    );
+    expect(out).toHaveLength(1);
+  });
+
+  it('tolerates day-name accent stripping (Sabado vs Sábado)', () => {
+    const out = parseDetailPage(
+      makeHtml('Sabado 5 de julio a las 20:00'),
+      cycle,
+      [],
+    );
+    expect(out).toHaveLength(1);
+  });
+
+  it('falls through to the final "no schedule recognized" warning when both S1 and S2 fail', () => {
+    const htmlNoSchedule = `
+      <html><body><main>
+        <h1>Recurring thing</h1>
+        <p>Sábados a las 18:00 en el mes de abril</p>
+        <script type="application/ld+json">{"datePublished":"2026-03-20T00:00:00+00:00"}</script>
+      </main></body></html>
+    `;
+    const warnings: string[] = [];
+    const out = parseDetailPage(htmlNoSchedule, cycle, warnings);
+    expect(out).toEqual([]);
+    // Should reference both strategies having been tried
+    expect(warnings[0]).toContain('no schedule recognized');
+    expect(warnings[0]).toContain('dense-cycle');
+    expect(warnings[0]).toContain('single-event');
+  });
+
+  it('rolls hour 24 to the next day even when it is the last item in a comma list', () => {
+    const out = parseDetailPage(
+      makeHtml('Miércoles 29 de abril a las 17:45, 24:00'),
+      cycle,
+      [],
+    );
+    expect(out).toHaveLength(2);
+    const isos = out.map((s) => s.startsAtUtc.toISOString()).sort();
+    expect(isos[1]).toBe('2026-04-30T03:00:00.000Z');
+  });
+
+  it('prefers S1 when both Programación and a prose date line exist', () => {
+    // Programación (S1) + a single-event prose date that LOOKS like S2.
+    // S1 should win because it returns screenings first.
+    const html = `
+      <html><body><main>
+        <h1>Mixed-format cycle</h1>
+        <p>Miércoles 29 de abril a las 20:00</p>
+        <h3>Programación</h3>
+        <p>JUEVES 2 de abril<br />
+        19:00 <a href="x">Dense Film</a>, de Director A</p>
+        <script type="application/ld+json">{"datePublished":"2026-03-20T00:00:00+00:00"}</script>
+      </main></body></html>
+    `;
+    const out = parseDetailPage(html, cycle, []);
+    // Only the dense-cycle screening. S2 grammar on "Miércoles 29 de abril"
+    // is NOT emitted because S1 already produced results.
+    expect(out).toHaveLength(1);
+    expect(out[0].filmTitle).toBe('Dense Film');
   });
 });
 
