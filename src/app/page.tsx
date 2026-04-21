@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { getThisWeeksScreenings, formatTimeBA } from '@/db/queries';
 import { TAG_LABELS_ES } from '@/db';
 
@@ -92,12 +93,12 @@ export default async function HomePage() {
                           {s.cinema.type === 'indie' && (
                             <div className="shrink-0 w-20 h-28 bg-black text-cream flex items-center justify-center overflow-hidden border border-black shadow-[4px_4px_0_var(--color-carmine)]">
                               {s.film.posterUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
+                                <Image
                                   src={s.film.posterUrl}
                                   alt={s.film.title}
+                                  width={80}
+                                  height={112}
                                   className="w-full h-full object-cover"
-                                  loading="lazy"
                                 />
                               ) : (
                                 <span className="text-[11px] italic text-center px-1 leading-tight">
