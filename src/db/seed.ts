@@ -54,6 +54,14 @@ async function seed() {
       address: 'Arenales 2400',
       ticketingBaseUrl: 'https://cinepolis.com.ar',
     },
+    {
+      id: 'cine-york',
+      name: 'Cine York',
+      neighborhood: 'Olivos',
+      type: 'indie',
+      address: 'Alberdi 895, Olivos',
+      ticketingBaseUrl: 'https://lumiton.ar',
+    },
   ]);
 
   // --- Films ---
