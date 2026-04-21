@@ -4,26 +4,7 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
-## 1. Fix re-enrichment loop for persistent misses
-
-**What:** Change `enrichPendingFilms` in `src/scrapers/ingest.ts:185` to filter out films that have already been attempted and failed, not only films that have never been attempted.
-
-**Why:** Today the filter is `match_source = 'none'`. Successfully-matched films are excluded (good). But films that fail TMDB match also stay at `'none'`, so every scraper run re-queries TMDB for every persistent miss. At ~58% miss rate × ~100 films/week × daily scrapes = ~400 redundant TMDB calls per week. Wasteful, noisy in logs, and couples scrape success to TMDB's availability for films that definitely aren't resolving.
-
-**Pros:** Eliminates silent waste. Logs get clean — a miss shows up once, not every day. Reduces TMDB API surface. Sets up the matching rate to stabilize at a knowable ceiling instead of constantly re-computing.
-
-**Cons:** Introduces an enum value (`'none-attempted'`). Re-triggering enrichment after improving the matcher requires a manual SQL reset (`UPDATE films SET match_source='none' WHERE …`). The override file path is unaffected — it always runs before the sentinel filter — so manual overrides still work.
-
-**Context:** This is a tiny, isolated PR (~10 min of work). Discovered during the 2026-04-20 /plan-eng-review as eng-review Issue 1. Approved by user. Keep scope strictly to:
-1. Migration: extend `match_source` enum in `src/db/schema.ts` to add `'none-attempted'`
-2. Flyway/Drizzle migration generated via `drizzle-kit generate`
-3. `src/scrapers/ingest.ts:185`: after calling `enrichFilm`, if the delta is null, set `match_source='none-attempted'` before the sleep
-
-**Depends on / blocked by:** Nothing. Do this before the Cinépolis/MALBA scrapers so those get the improved retry semantics from day one.
-
----
-
-## 2. Ship Cinépolis Recoleta + MALBA scrapers
+## 1. Ship Cinépolis Recoleta + MALBA scrapers
 
 **What:** Build the remaining two scrapers from the original scope (Playwright-based for Cinépolis's API/JSON case, cheerio or Playwright for MALBA's CMS). Connect them to the existing ingest pipeline.
 
@@ -35,13 +16,13 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 **Cons:** Cinépolis may require Playwright for the JS-rendered API response. MALBA's CMS is "weird" per prior notes and may need deeper scraper work. Neither is blocker-level.
 
-**Context:** Original assignment from the 2026-04-19 office hours. Partially blocked by Lugones debugging, then by the TMDB match rate rabbit hole (which the 2026-04-20 /plan-eng-review rejected as premature). Picking it back up now.
+**Context:** Original assignment from the 2026-04-19 office hours. Partially blocked by Lugones debugging, then by the TMDB match rate rabbit hole (which the 2026-04-20 /plan-eng-review rejected as premature). Picking it back up now. Both predecessors (the `none-attempted` retry semantics fix and the `scrape_runs` observability table) are in place, so new scrapers will benefit from both from day one.
 
-**Depends on / blocked by:** TODO #1 first (so the new scrapers get the improved retry semantics from their first run).
+**Depends on / blocked by:** Nothing.
 
 ---
 
-## 3. Revisit TMDB match-rate strategy after multi-cinema data lands
+## 2. Revisit TMDB match-rate strategy after multi-cinema data lands
 
 **What:** Once Cinépolis + MALBA scrapers are in production and have produced ≥2 weeks of data, measure the aggregate match rate across all three cinemas and the per-cinema breakdown. Decide whether matching still needs work, and if so, pick a strategy based on actual failure distribution.
 
@@ -53,8 +34,22 @@ Captured work that was considered but deferred. Each item has enough context tha
 - Wikidata `wbsearchentities` by es label is ~50% accurate with confident-wrong failures (returned Crown Vic for "Mientras la ciudad duerme")
 
 Given these findings, the likely right path IF aggregate match rate proves too low is:
-- **Approach C from the design doc** (hand-curated `tmdb-overrides.json`): 100% precision, bounded work (~80 entries per cinema-year), survives every Cinépolis/MALBA quirk that shows up
+- **Approach C from the superseded design doc** (hand-curated `tmdb-overrides.json`): 100% precision, bounded work (~80 entries per cinema-year), survives every Cinépolis/MALBA quirk that shows up
 - The Wikipedia and Wikidata pivot plans are both dead ends for BA rep programming
+
+**Useful query once multi-cinema data is in:**
+```sql
+-- overall match rate
+SELECT match_source, COUNT(*) FROM films GROUP BY match_source;
+
+-- per-cinema miss distribution (join via screenings)
+SELECT c.id, f.match_source, COUNT(*)
+FROM films f
+JOIN screenings s ON s.film_id = f.id
+JOIN cinemas c ON c.id = s.cinema_id
+GROUP BY c.id, f.match_source
+ORDER BY c.id, f.match_source;
+```
 
 **Pros:** Avoids premature optimization. The problem may shrink on its own once Lugones is no longer the only cinema in the dataset.
 
@@ -62,20 +57,11 @@ Given these findings, the likely right path IF aggregate match rate proves too l
 
 **Context:** Captured in the 2026-04-20 eng-review supersession note at `~/.gstack/projects/kino/benjamin.delasoie-main-design-20260420-203414.md`. Empirical validation data is preserved there so we don't re-run the MediaWiki/Wikidata probes when we come back to this.
 
-**Depends on / blocked by:** TODO #2 (need the multi-cinema data first).
+**Depends on / blocked by:** TODO #1 (need the multi-cinema data first).
 
 ---
 
-## 4. Log persistence for scraper runs in production
+## Done (this session)
 
-**What:** When the scraper runs on Vercel cron (or wherever it lands in production), stdout logs are ephemeral and truncated. Design a log persistence strategy so you can actually read what the scraper did, find persistent misses, and mine the data.
-
-**Why:** Several current and future workflows depend on being able to grep the scraper output after a run: finding unmatched films to add to `tmdb-overrides.json`, debugging a provider that suddenly returns zero screenings, auditing TMDB match-path distribution over time. Today this is trivial because you run locally; it breaks the moment the scraper runs headlessly.
-
-**Pros:** Makes production scraper runs diagnosable. Necessary groundwork for any real observability (a dashboard showing match-rate trend, provider health over time, etc).
-
-**Cons:** Adds surface area. A SQLite table (e.g., `scrape_runs` with a `log_payload` JSON column) is the simplest option, but you also want retention policies so the DB doesn't bloat.
-
-**Context:** Flagged during the 2026-04-20 /plan-eng-review (Issue 3 in Architecture, deferred). Not a blocker for the current pre-deploy phase; becomes urgent the week you cut over to Vercel cron.
-
-**Depends on / blocked by:** Deploy to production.
+- ✅ Fix re-enrichment loop for persistent misses — commit `cd6b1a9`
+- ✅ Log persistence for scraper runs — `scrape_runs` table + `run-log.ts` module, commit `44615b4`
