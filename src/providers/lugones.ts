@@ -393,17 +393,21 @@ function matchTimeMarker(text: string): number[] | null {
  *   2. "Del 15 al 26 de abril"            → same month
  *   3. "A partir del 7 de mayo"           → open-ended
  */
-function parseDateRange(
+export function parseDateRange(
   text: string,
 ): { startMonth: number; startYear: number } | null {
   const cleaned = text.toLowerCase().replace(/[°º]/g, '').trim();
 
+  // Each form captures [startDay, startMonth, ...]. Group 2 is always the
+  // start month — the month name that goes with the START day, which is the
+  // one we anchor the parser on. Form 1 has a trailing end-month group that
+  // we intentionally discard.
   const forms = [
-    // "del D1 de MONTH1 al D2 de MONTH2"
+    // "del D1 de MONTH1 al D2 de MONTH2" → m[1]=D1, m[2]=MONTH1, m[3]=MONTH2
     /del\s+(\d{1,2})\s+de\s+([a-záéíóú]+)\s+al\s+\d{1,2}\s+de\s+([a-záéíóú]+)/i,
-    // "del D1 al D2 de MONTH"   (same-month shortened form)
+    // "del D1 al D2 de MONTH" → m[1]=D1, m[2]=MONTH
     /del\s+(\d{1,2})\s+al\s+\d{1,2}\s+de\s+([a-záéíóú]+)/i,
-    // "a partir del D1 de MONTH"
+    // "a partir del D1 de MONTH" → m[1]=D1, m[2]=MONTH
     /a\s+partir\s+del\s+(\d{1,2})\s+de\s+([a-záéíóú]+)/i,
   ];
 
@@ -414,8 +418,7 @@ function parseDateRange(
     const m = cleaned.match(form);
     if (!m) continue;
     startDay = parseInt(m[1], 10);
-    // The month name is always the LAST capture group for all three forms.
-    monthName = m[m.length - 1];
+    monthName = m[2];
     break;
   }
 
