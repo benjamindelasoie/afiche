@@ -62,6 +62,22 @@ async function seed() {
       address: 'Alberdi 895, Olivos',
       ticketingBaseUrl: 'https://lumiton.ar',
     },
+    {
+      id: 'centro-cultural-munro',
+      name: 'Centro Cultural Munro',
+      neighborhood: 'Munro',
+      type: 'indie',
+      address: 'Av. Mitre 4155, Munro',
+      ticketingBaseUrl: 'https://lumiton.ar',
+    },
+    {
+      id: 'lumiton',
+      name: 'Lumiton',
+      neighborhood: 'Vicente López',
+      type: 'indie',
+      address: 'Av. del Libertador 800, Vicente López',
+      ticketingBaseUrl: 'https://lumiton.ar',
+    },
   ]);
 
   // --- Films ---
