@@ -60,6 +60,8 @@ async function seedFilm(args: {
   scrapedTitle: string;
   year: number | null;
   matchSource: 'auto' | 'override' | 'none' | 'none-attempted';
+  titleOriginal?: string | null;
+  director?: string | null;
 }): Promise<number> {
   const [row] = await testDb
     .insert(films)
@@ -67,6 +69,8 @@ async function seedFilm(args: {
       title: args.scrapedTitle,
       scrapedTitle: args.scrapedTitle,
       year: args.year,
+      titleOriginal: args.titleOriginal ?? null,
+      director: args.director ?? null,
       matchSource: args.matchSource,
     })
     .returning({ id: films.id });
@@ -143,8 +147,47 @@ describe('enrichPendingFilms — retry semantics (regression)', () => {
     const result = await enrichPendingFilms(warnings);
 
     expect(result.enriched).toBe(1);
-    expect(enrichFilmMock).toHaveBeenCalledWith('Tempestad de pasiones', 1952);
+    expect(enrichFilmMock).toHaveBeenCalledWith('Tempestad de pasiones', 1952, {
+      titleOriginal: undefined,
+      director: undefined,
+    });
     expect(await getMatchSource(resetId)).toBe('auto');
+  });
+
+  // Regression: films seeded with titleOriginal + director (e.g. Lugones
+  // provider) must forward those hints to enrichFilm so TMDB can search
+  // by the original title and fall back to a director-confirmed match.
+  it('passes titleOriginal + director hints from films row through to enrichFilm', async () => {
+    await seedFilm({
+      scrapedTitle: 'Los inadaptados',
+      year: 1961,
+      titleOriginal: 'The Misfits',
+      director: 'John Huston',
+      matchSource: 'none',
+    });
+    enrichFilmMock.mockResolvedValue({
+      delta: {
+        tmdbId: 887,
+        imdbId: 'tt0055184',
+        title: 'Vidas rebeldes',
+        titleOriginal: 'The Misfits',
+        director: 'John Huston',
+        country: 'US',
+        year: 1961,
+        runtimeMin: 124,
+        posterUrl: 'https://image.tmdb.org/t/p/w342/misfits.jpg',
+        matchConfidence: 0.92,
+        matchSource: 'auto',
+      },
+      reason: 'ok',
+    });
+
+    await enrichPendingFilms([]);
+
+    expect(enrichFilmMock).toHaveBeenCalledWith('Los inadaptados', 1961, {
+      titleOriginal: 'The Misfits',
+      director: 'John Huston',
+    });
   });
 
   it('marks a deterministic miss (no-candidates) as "none-attempted"', async () => {

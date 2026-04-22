@@ -2,14 +2,18 @@
  * Fuzzy-match a scraped film against TMDB search results.
  *
  * Strategy:
- *   1. Score each candidate against (scraped_title, year) using Jaro-Winkler
- *      on BOTH the candidate's localized title AND original_title, taking
- *      the max. This handles cases where the CTBA scrape gave us the
- *      Spanish title but TMDB stores the entry under the original.
+ *   1. Score each candidate against the scraped title (and optionally the
+ *      scraped original title) using Jaro-Winkler on BOTH the candidate's
+ *      localized title AND original_title, taking the max across all
+ *      combinations. This handles cases where:
+ *        - The scrape gave us the Spanish title but TMDB stores the entry
+ *          under the original (e.g. "Los inadaptados" vs "The Misfits").
+ *        - TMDB's es-AR localized title differs from the Argentinian
+ *          release name (e.g. "Vidas Rebeldes" vs "Los Inadaptados").
  *   2. Year must match within ±1 (some TMDB release dates are slightly
  *      different from the theatrical release in Argentina).
- *   3. Confidence threshold: 0.85. Below that, report "no match" and let
- *      the typographic fallback render.
+ *   3. Confidence threshold: 0.85. Below that, pickBestMatch returns null
+ *      and enrich.ts's director fallback path takes over.
  *
  * Tunable knobs are exported as constants so we can revisit after seeing
  * real match quality.
@@ -21,6 +25,11 @@ import type { TmdbMovieSummary } from './client';
 export const MATCH_CONFIDENCE_THRESHOLD = 0.85;
 export const YEAR_TOLERANCE = 1;
 
+export interface MatchHints {
+  /** Original-language title from the scrape (e.g. "The Misfits"). */
+  titleOriginal?: string;
+}
+
 export interface MatchResult {
   candidate: TmdbMovieSummary;
   confidence: number;
@@ -28,34 +37,60 @@ export interface MatchResult {
   matchedAgainst: 'title' | 'original_title';
 }
 
+/**
+ * Score every candidate and return them sorted best-first. Exposed so
+ * enrich.ts can walk the top-N for director-fallback rescue even when
+ * no candidate cleared the confidence threshold.
+ *
+ * Ties (within 0.01) are broken by TMDB popularity.
+ */
+export function scoreCandidates(
+  candidates: TmdbMovieSummary[],
+  scrapedTitle: string,
+  scrapedYear?: number,
+  hints?: MatchHints,
+): MatchResult[] {
+  const queries: string[] = [scrapedTitle];
+  if (hints?.titleOriginal && hints.titleOriginal !== scrapedTitle) {
+    queries.push(hints.titleOriginal);
+  }
+
+  const out: MatchResult[] = [];
+  for (const c of candidates) {
+    if (!yearAcceptable(c.release_date, scrapedYear)) continue;
+
+    let bestScore = 0;
+    let matchedAgainst: 'title' | 'original_title' = 'title';
+    for (const q of queries) {
+      const titleScore = jaroWinkler(q, c.title ?? '');
+      const origScore = jaroWinkler(q, c.original_title ?? '');
+      if (titleScore > bestScore) {
+        bestScore = titleScore;
+        matchedAgainst = 'title';
+      }
+      if (origScore > bestScore) {
+        bestScore = origScore;
+        matchedAgainst = 'original_title';
+      }
+    }
+    out.push({ candidate: c, confidence: bestScore, matchedAgainst });
+  }
+
+  out.sort((a, b) => {
+    if (Math.abs(a.confidence - b.confidence) > 0.01) return b.confidence - a.confidence;
+    return (b.candidate.popularity ?? 0) - (a.candidate.popularity ?? 0);
+  });
+  return out;
+}
+
 export function pickBestMatch(
   candidates: TmdbMovieSummary[],
   scrapedTitle: string,
   scrapedYear?: number,
+  hints?: MatchHints,
 ): MatchResult | null {
-  if (candidates.length === 0) return null;
-
-  let best: MatchResult | null = null;
-
-  for (const c of candidates) {
-    if (!yearAcceptable(c.release_date, scrapedYear)) continue;
-
-    const titleScore = jaroWinkler(scrapedTitle, c.title ?? '');
-    const origScore = jaroWinkler(scrapedTitle, c.original_title ?? '');
-    const score = Math.max(titleScore, origScore);
-    const matchedAgainst: 'title' | 'original_title' =
-      titleScore >= origScore ? 'title' : 'original_title';
-
-    // Small popularity tiebreaker: if scores are within 0.01, prefer more popular.
-    if (!best || score > best.confidence + 0.01) {
-      best = { candidate: c, confidence: score, matchedAgainst };
-    } else if (Math.abs(score - best.confidence) < 0.01) {
-      if ((c.popularity ?? 0) > (best.candidate.popularity ?? 0)) {
-        best = { candidate: c, confidence: score, matchedAgainst };
-      }
-    }
-  }
-
+  const sorted = scoreCandidates(candidates, scrapedTitle, scrapedYear, hints);
+  const best = sorted[0];
   if (!best || best.confidence < MATCH_CONFIDENCE_THRESHOLD) return null;
   return best;
 }

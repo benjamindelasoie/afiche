@@ -240,6 +240,8 @@ export async function enrichPendingFilms(
     .select({
       id: films.id,
       scrapedTitle: films.scrapedTitle,
+      titleOriginal: films.titleOriginal,
+      director: films.director,
       year: films.year,
     })
     .from(films)
@@ -250,7 +252,14 @@ export async function enrichPendingFilms(
   let skipped = 0;
 
   for (const f of pending) {
-    const result: EnrichResult = await enrichFilm(f.scrapedTitle, f.year ?? undefined);
+    // Pass every signal the scraper gave us. Providers like Lugones and the
+    // Lumiton-family pull titleOriginal + director from detail pages; TMDB
+    // search on the Spanish localized title alone misses ~20% of films
+    // that a search on the original title + director match finds instantly.
+    const result: EnrichResult = await enrichFilm(f.scrapedTitle, f.year ?? undefined, {
+      titleOriginal: f.titleOriginal ?? undefined,
+      director: f.director ?? undefined,
+    });
     if (result.delta) {
       // Merge check: did we just learn this year-less row's year, and does
       // a row already exist with (our scrapedTitle, the resolved year)?

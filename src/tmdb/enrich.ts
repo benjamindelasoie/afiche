@@ -27,8 +27,13 @@ import {
   posterImageUrl,
   extractDirectors,
   type TmdbMovieDetails,
+  type TmdbMovieSummary,
 } from './client';
-import { pickBestMatch, MATCH_CONFIDENCE_THRESHOLD } from './match';
+import {
+  pickBestMatch,
+  scoreCandidates,
+  MATCH_CONFIDENCE_THRESHOLD,
+} from './match';
 import { findOverride } from './overrides';
 
 export interface EnrichmentDelta {
@@ -51,16 +56,29 @@ export interface EnrichResult {
   error?: string;
 }
 
+/**
+ * Optional hints from the scraper that help TMDB matching for films whose
+ * Spanish title is ambiguous or unindexed. These fields are already pulled
+ * by providers like Lugones (from the parenthesized "(Original; Country;
+ * Year)" block) and Lumiton-family (from detail-page enrichment) — passing
+ * them through rescues ~20% of films that title-only search misses.
+ */
+export interface EnrichHints {
+  titleOriginal?: string;
+  director?: string;
+}
+
 export async function enrichFilm(
   scrapedTitle: string,
   year: number | undefined,
+  hints: EnrichHints = {},
 ): Promise<EnrichResult> {
   if (!hasTmdbToken()) {
     return { delta: null, reason: 'no-token' };
   }
 
   try {
-    // 1. Manual override check
+    // 1. Manual override check — always takes precedence.
     const overrideId = await findOverride(scrapedTitle, year);
     if (overrideId !== null) {
       const details = await getMovie(overrideId);
@@ -68,22 +86,63 @@ export async function enrichFilm(
       return { delta, reason: 'ok' };
     }
 
-    // 2. TMDB search
-    const candidates = await searchMovies(scrapedTitle, year);
+    // 2. Union search across scrapedTitle AND titleOriginal (when distinct).
+    // TMDB's search ranks partial matches liberally, so "Los inadaptados"
+    // alone can miss "The Misfits" even with year=1961; adding the original
+    // title query expands the candidate pool. Deduplicated by TMDB id.
+    const queries: string[] = [scrapedTitle];
+    if (hints.titleOriginal && hints.titleOriginal !== scrapedTitle) {
+      queries.push(hints.titleOriginal);
+    }
+    const seenIds = new Set<number>();
+    const candidates: TmdbMovieSummary[] = [];
+    for (const q of queries) {
+      const results = await searchMovies(q, year);
+      for (const r of results) {
+        if (!seenIds.has(r.id)) {
+          seenIds.add(r.id);
+          candidates.push(r);
+        }
+      }
+    }
     if (candidates.length === 0) {
       return { delta: null, reason: 'no-candidates' };
     }
 
-    // 3. Fuzzy match
-    const match = pickBestMatch(candidates, scrapedTitle, year);
-    if (!match) {
-      return { delta: null, reason: 'low-confidence' };
+    // 3. Fuzzy match with both title hints.
+    const match = pickBestMatch(candidates, scrapedTitle, year, {
+      titleOriginal: hints.titleOriginal,
+    });
+    if (match) {
+      const details = await getMovie(match.candidate.id);
+      const delta = await buildDelta(details, 'auto', match.confidence);
+      return { delta, reason: 'ok' };
     }
 
-    // 4. Full details
-    const details = await getMovie(match.candidate.id);
-    const delta = await buildDelta(details, 'auto', match.confidence);
-    return { delta, reason: 'ok' };
+    // 4. Director fallback — for films whose string similarity is below
+    // the 0.85 threshold (localized titles that drift significantly from
+    // both the scrape and the TMDB entry), fetch credits for the top-3
+    // candidates and accept any whose credited director matches.
+    // This costs 1–3 extra API calls per low-confidence film, only.
+    if (hints.director) {
+      const sorted = scoreCandidates(candidates, scrapedTitle, year, {
+        titleOriginal: hints.titleOriginal,
+      });
+      for (const { candidate, confidence } of sorted.slice(0, 3)) {
+        const details = await getMovie(candidate.id);
+        const tmdbDirectors = extractDirectors(details);
+        if (directorsMatch(hints.director, tmdbDirectors)) {
+          // Confidence boost: director match is a strong disambiguator,
+          // so we credit this match at threshold level for traceability
+          // even if the string score was below it.
+          const boosted = Math.max(confidence, MATCH_CONFIDENCE_THRESHOLD);
+          const delta = await buildDelta(details, 'auto', boosted);
+          return { delta, reason: 'ok' };
+        }
+      }
+    }
+
+    return { delta: null, reason: 'low-confidence' };
   } catch (err) {
     return {
       delta: null,
@@ -91,6 +150,28 @@ export async function enrichFilm(
       error: err instanceof Error ? err.message : String(err),
     };
   }
+}
+
+/**
+ * Compare a scraped director string against TMDB's credited directors.
+ * Accepts comma-separated names in the scraped string (co-directed films),
+ * normalizes accents + case, and requires at least one pair to match
+ * exactly. Last-name fuzzy match is intentionally not attempted — prefer
+ * a missed fallback over a false positive.
+ */
+function directorsMatch(scraped: string, tmdbDirectors: string[]): boolean {
+  const normalize = (s: string) =>
+    s
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  const scrapedNames = scraped
+    .split(/\s*,\s*/)
+    .map(normalize)
+    .filter(Boolean);
+  const tmdbNames = tmdbDirectors.map(normalize);
+  return scrapedNames.some((s) => tmdbNames.some((t) => t === s));
 }
 
 async function buildDelta(
