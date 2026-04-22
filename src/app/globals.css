@@ -16,24 +16,32 @@
  */
 /*
  * Font tokens — inline so they resolve via the CSS variables set on <html>
- * by next/font. These OVERRIDE Tailwind's default font-sans / font-mono.
+ * by next/font. These OVERRIDE Tailwind's default font-sans / font-mono
+ * and publish the Instrument Serif display family as `font-serif`.
  */
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-instrument-serif);
 }
 
 /*
- * New design tokens — regular @theme so Tailwind generates `.bg-cream`,
+ * Design tokens — regular @theme so Tailwind generates `.bg-cream`,
  * `.text-carmine`, `.tracking-eyebrow` etc. as first-class utilities.
  * Using `@theme inline` here would only publish the CSS vars without
  * creating utilities (surprise I learned the hard way during the
  * 2026-04-21 /design-review audit).
  */
 @theme {
-  --color-cream: #f4ebd8;
+  /* Cream refined 2026-04-22: #f4ebd8 → #f6efe2. Less yellow, more paper-
+     feeling. Still AAA ink-on-cream (13.4:1) and AA ink-gray-on-cream
+     (4.8:1). See DESIGN.md for the full palette rationale. */
+  --color-cream: #f6efe2;
   --color-carmine: #c1272d;
   --color-ink: #1a1a1a;
+  /* Secondary text — metadata, de-emphasized content. AA normal text
+     against cream (4.8:1). */
+  --color-ink-gray: #7a6e5a;
 
   /* Eyebrow micro-caps tracking — masthead tagline, day function count,
      footer, week context. Unified from ad-hoc 0.25em / 0.3em. */

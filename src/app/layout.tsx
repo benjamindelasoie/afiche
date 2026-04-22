@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -10,6 +10,20 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+// Instrument Serif is the display family — masthead, day banners, film
+// titles, time. Regular + italic in one weight (400). `display: swap`
+// with Georgia fallback keeps the first paint fast; next/font auto-
+// generates size-adjust metrics on Georgia to minimize layout shift
+// when the real font swaps in.
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-instrument-serif",
+  weight: "400",
+  style: ["normal", "italic"],
+  subsets: ["latin"],
+  display: "swap",
+  fallback: ["Georgia", "serif"],
 });
 
 export const metadata: Metadata = {
@@ -26,7 +40,7 @@ export default function RootLayout({
   return (
     <html
       lang="es-AR"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-cream text-ink">
         {children}
