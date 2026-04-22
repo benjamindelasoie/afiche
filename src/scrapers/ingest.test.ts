@@ -377,3 +377,121 @@ describe('enrichPendingFilms — merge on (scrapedTitle, year) collision', () =>
     expect(row.tmdbId).toBe(777);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression: ingest used to throw "No values to set" when a provider emitted
+// screenings with only a filmTitle (MALBA S2 single-event pages). The set
+// clause of onConflictDoUpdate was all-undefined, and Drizzle's mapUpdateSet
+// strips those at SQL-build time and throws on the empty object. Whole MALBA
+// ingest blew up on the first such cycle.
+// ---------------------------------------------------------------------------
+const { ingest } = await import('./ingest');
+
+describe('ingest — bare-metadata films (regression for MALBA S2 crash)', () => {
+  beforeEach(async () => {
+    testDb = await makeInMemoryDb();
+    enrichFilmMock.mockReset();
+    enrichFilmMock.mockResolvedValue({ delta: null, reason: 'no-candidates' });
+    await testDb
+      .insert(cinemas)
+      .values({ id: 'malba', name: 'MALBA', type: 'indie' });
+  });
+
+  it('ingests screenings whose film has no metadata beyond title (year undefined, no director/country/runtime)', async () => {
+    const result = await ingest({
+      cinemaId: 'malba',
+      success: true,
+      warnings: [],
+      screenings: [
+        {
+          cinemaId: 'malba',
+          filmTitle: 'El diablo viste a la moda 2',
+          startsAtUtc: new Date('2026-04-29T20:45:00Z'),
+          tags: ['premiere'],
+          sourceUrl: 'https://malba.org.ar/evento/moda-2/',
+        },
+        {
+          cinemaId: 'malba',
+          filmTitle: 'El diablo viste a la moda 2',
+          startsAtUtc: new Date('2026-04-30T00:00:00Z'),
+          tags: ['premiere'],
+          sourceUrl: 'https://malba.org.ar/evento/moda-2/',
+        },
+      ],
+    });
+
+    expect(result.filmsUpserted).toBe(1);
+    expect(result.screeningsInserted).toBe(2);
+    expect(result.success).toBe(true);
+  });
+
+  it('re-ingesting a bare-metadata film does not throw (regardless of row dedup)', async () => {
+    // NOTE: year=undefined becomes NULL in SQLite, which the unique index
+    // treats as distinct — so re-ingests create a separate row. That's a
+    // pre-existing design behavior (see ingest.ts comments); the TMDB
+    // enrichment merge-on-collision path consolidates the duplicates once
+    // a year is resolved. This test locks the crash behavior only: the
+    // second ingest must NOT throw "No values to set".
+    const input = {
+      cinemaId: 'malba',
+      success: true as const,
+      warnings: [],
+      screenings: [
+        {
+          cinemaId: 'malba',
+          filmTitle: 'Blue Heron',
+          startsAtUtc: new Date('2026-05-02T21:00:00Z'),
+          tags: ['cycle' as const],
+          sourceUrl: 'https://malba.org.ar/evento/blue-heron/',
+        },
+      ],
+    };
+
+    await expect(ingest(input)).resolves.toBeDefined();
+    await expect(ingest(input)).resolves.toBeDefined();
+  });
+
+  it('still refreshes metadata on conflict when the scrape DOES provide new fields (year-known path)', async () => {
+    // First ingest: year known, bare director.
+    await ingest({
+      cinemaId: 'malba',
+      success: true,
+      warnings: [],
+      screenings: [
+        {
+          cinemaId: 'malba',
+          filmTitle: 'Padre',
+          year: 2026,
+          startsAtUtc: new Date('2026-05-10T20:00:00Z'),
+          tags: [],
+          sourceUrl: 'https://malba.org.ar/evento/padre/',
+        },
+      ],
+    });
+
+    // Second ingest: same title+year, but now director is known. Conflict
+    // target (scraped_title, year=2026) hits — onConflictDoUpdate refreshes.
+    await ingest({
+      cinemaId: 'malba',
+      success: true,
+      warnings: [],
+      screenings: [
+        {
+          cinemaId: 'malba',
+          filmTitle: 'Padre',
+          year: 2026,
+          director: 'Mariano Luque',
+          startsAtUtc: new Date('2026-05-10T20:00:00Z'),
+          tags: [],
+          sourceUrl: 'https://malba.org.ar/evento/padre/',
+        },
+      ],
+    });
+
+    const [row] = await testDb
+      .select()
+      .from(films)
+      .where(eq(films.scrapedTitle, 'Padre'));
+    expect(row.director).toBe('Mariano Luque');
+  });
+});

@@ -12,7 +12,7 @@
  *     last_success_at, last_error, screening_count.
  */
 
-import { and, eq, gt, ne } from 'drizzle-orm';
+import { and, eq, gt, isNull, ne } from 'drizzle-orm';
 import { db, films, screenings, providers } from '@/db';
 import type { ProviderRunResult, ScrapedScreening } from '@/providers/types';
 import { enrichFilm, type EnrichResult } from '@/tmdb/enrich';
@@ -128,35 +128,69 @@ async function upsertFilms(
 
   const idByKey = new Map<string, number>();
 
-  // SQLite supports upsert via ON CONFLICT; drizzle exposes .onConflictDoUpdate
+  // SQLite supports upsert via ON CONFLICT; drizzle exposes .onConflictDoUpdate.
+  // Some providers (MALBA S2 single-event pages) only know the film title —
+  // every metadata field is undefined. Drizzle's mapUpdateSet strips undefined
+  // keys at SQL-build time and throws "No values to set" on an empty set clause,
+  // which would blow up the whole ingest. So we branch: update only when there
+  // is something worth refreshing.
   for (const [key, s] of byKey) {
-    const [row] = await db
-      .insert(films)
-      .values({
-        title: s.filmTitle,
-        scrapedTitle: s.filmTitle,
-        titleOriginal: s.filmTitleOriginal,
-        director: s.director,
-        year: s.year,
-        country: s.country,
-        runtimeMin: s.runtimeMin,
-        synopsisEs: s.synopsisEs,
-        matchSource: 'none',
-      })
-      .onConflictDoUpdate({
-        target: [films.scrapedTitle, films.year],
-        set: {
-          // Refresh metadata in case the source updated anything.
-          titleOriginal: s.filmTitleOriginal,
-          director: s.director,
-          country: s.country,
-          runtimeMin: s.runtimeMin,
-          synopsisEs: s.synopsisEs,
-        },
-      })
-      .returning({ id: films.id });
+    const insertValues = {
+      title: s.filmTitle,
+      scrapedTitle: s.filmTitle,
+      titleOriginal: s.filmTitleOriginal,
+      director: s.director,
+      year: s.year,
+      country: s.country,
+      runtimeMin: s.runtimeMin,
+      synopsisEs: s.synopsisEs,
+      matchSource: 'none' as const,
+    };
 
-    if (row) idByKey.set(key, row.id);
+    const updateSet: Record<string, unknown> = {};
+    if (s.filmTitleOriginal !== undefined) updateSet.titleOriginal = s.filmTitleOriginal;
+    if (s.director !== undefined) updateSet.director = s.director;
+    if (s.country !== undefined) updateSet.country = s.country;
+    if (s.runtimeMin !== undefined) updateSet.runtimeMin = s.runtimeMin;
+    if (s.synopsisEs !== undefined) updateSet.synopsisEs = s.synopsisEs;
+
+    let filmId: number | undefined;
+
+    if (Object.keys(updateSet).length > 0) {
+      const [row] = await db
+        .insert(films)
+        .values(insertValues)
+        .onConflictDoUpdate({
+          target: [films.scrapedTitle, films.year],
+          set: updateSet,
+        })
+        .returning({ id: films.id });
+      filmId = row?.id;
+    } else {
+      // Nothing to refresh. Insert if new, otherwise leave existing row alone
+      // and look its id up. onConflictDoNothing + .returning() omits the row
+      // when the insert was a no-op, so we fall back to a SELECT in that case.
+      const [inserted] = await db
+        .insert(films)
+        .values(insertValues)
+        .onConflictDoNothing()
+        .returning({ id: films.id });
+      if (inserted) {
+        filmId = inserted.id;
+      } else {
+        const yearCond = s.year === undefined
+          ? isNull(films.year)
+          : eq(films.year, s.year);
+        const [existing] = await db
+          .select({ id: films.id })
+          .from(films)
+          .where(and(eq(films.scrapedTitle, s.filmTitle), yearCond))
+          .limit(1);
+        filmId = existing?.id;
+      }
+    }
+
+    if (filmId !== undefined) idByKey.set(key, filmId);
   }
 
   return idByKey;
