@@ -42,8 +42,15 @@ export interface LumitonVenueConfig {
 
 /**
  * Fetch the agenda, parse all event tiles, filter by this venue's
- * location slug, return a ProviderRunResult. Never throws; fetch/parse
- * failures are converted to { success: false, error }.
+ * location slug, then enrich each unique detail page for metadata
+ * (director, titleOriginal, year, country, runtimeMin). Never throws;
+ * fetch/parse failures are converted to { success: false, error }.
+ *
+ * Why always-fetch instead of lazy-on-TMDB-miss: the agenda tile has
+ * no metadata beyond title+date+synopsis, so ~20% of films TMDB can't
+ * resolve would otherwise land in the DB with null director/year/
+ * poster and a broken card on the site. Detail pages are ~4KB and
+ * the host is forgiving; rescuing the long tail is worth the fetches.
  */
 export async function fetchAndParse(
   config: LumitonVenueConfig,
@@ -62,6 +69,8 @@ export async function fetchAndParse(
         error: `No ${config.displayName} screenings parsed from agenda page — selector likely broke or the location slug "${config.locationSlug}" changed.`,
       };
     }
+
+    await enrichFromDetailPages(screenings, warnings);
 
     return {
       cinemaId: config.cinemaId,
@@ -146,6 +155,160 @@ export function parseAgenda(
   });
 
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Event detail page — enrichment
+// ---------------------------------------------------------------------------
+
+export interface EventDetail {
+  director?: string;
+  titleOriginal?: string;
+  year?: number;
+  country?: string;
+  runtimeMin?: number;
+}
+
+/**
+ * Pure parser for a single event detail page. The metadata block looks like:
+ *
+ *   <div class="mb-4 uppercase">
+ *     <b>Dirección</b>
+ *     John Ford <br>
+ *     <b>Título Original</b>
+ *     Grapes of wrath
+ *     <div class="text-sm">EE.UU..  129 min.  1940.</div>
+ *   </div>
+ *
+ * All fields are optional — missing ones come back undefined.
+ */
+export function parseEventDetail(html: string): EventDetail {
+  const $ = cheerio.load(html);
+  const out: EventDetail = {};
+
+  const $block = $('article .mb-4.uppercase').first();
+  if ($block.length === 0) return out;
+
+  $block.find('b').each((_i, el) => {
+    const label = normalizeLabel($(el).text());
+    const value = textUntilNextBlock(el);
+    if (!value) return;
+    if (label.startsWith('direccion')) out.director = value;
+    else if (label.startsWith('titulo original')) out.titleOriginal = value;
+  });
+
+  const smText = $block
+    .find('.text-sm')
+    .first()
+    .text()
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (smText) {
+    const runtimeMatch = smText.match(/(\d{1,3})\s*min\b\.?/i);
+    if (runtimeMatch) out.runtimeMin = parseInt(runtimeMatch[1], 10);
+
+    const yearMatch = smText.match(/\b(19|20)\d{2}\b/);
+    if (yearMatch) out.year = parseInt(yearMatch[0], 10);
+
+    // Country is whatever precedes the first numeric token (runtime or year).
+    // Trailing punctuation is stripped so "EE.UU.." collapses to "EE.UU".
+    let firstIdx = Infinity;
+    if (runtimeMatch?.index !== undefined) firstIdx = runtimeMatch.index;
+    if (yearMatch?.index !== undefined && yearMatch.index < firstIdx) {
+      firstIdx = yearMatch.index;
+    }
+    const countryPart = (Number.isFinite(firstIdx) ? smText.slice(0, firstIdx) : smText)
+      .replace(/[.,\s]+$/, '')
+      .trim();
+    if (countryPart) out.country = countryPart;
+  }
+
+  return out;
+}
+
+/**
+ * Enrich screenings in-place with detail-page metadata. Dedupes by
+ * sourceUrl — a single film with N showtimes triggers one fetch.
+ * Only `/evento/` URLs are fetched (screenings that fell back to the
+ * agenda URL as sourceUrl are left alone).
+ *
+ * Exported so tests can inject a fake fetcher.
+ */
+export async function enrichFromDetailPages(
+  screenings: ScrapedScreening[],
+  warnings: string[],
+  fetcher: (url: string) => Promise<string> = fetchText,
+  concurrency = 5,
+): Promise<void> {
+  const urls = Array.from(
+    new Set(
+      screenings
+        .map((s) => s.sourceUrl)
+        .filter((u) => u.includes('/evento/')),
+    ),
+  );
+  if (urls.length === 0) return;
+
+  const detailByUrl = new Map<string, EventDetail>();
+
+  for (let i = 0; i < urls.length; i += concurrency) {
+    const batch = urls.slice(i, i + concurrency);
+    const results = await Promise.allSettled(
+      batch.map(async (url) => {
+        const html = await fetcher(url);
+        return { url, detail: parseEventDetail(html) };
+      }),
+    );
+    results.forEach((r, j) => {
+      if (r.status === 'fulfilled') {
+        detailByUrl.set(r.value.url, r.value.detail);
+      } else {
+        const reason = r.reason instanceof Error ? r.reason.message : String(r.reason);
+        warnings.push(`detail fetch failed for ${batch[j]}: ${reason}`);
+      }
+    });
+  }
+
+  for (const s of screenings) {
+    const d = detailByUrl.get(s.sourceUrl);
+    if (!d) continue;
+    if (d.director && !s.director) s.director = d.director;
+    if (d.titleOriginal && !s.filmTitleOriginal) s.filmTitleOriginal = d.titleOriginal;
+    if (d.year !== undefined && s.year === undefined) s.year = d.year;
+    if (d.country && !s.country) s.country = d.country;
+    if (d.runtimeMin !== undefined && s.runtimeMin === undefined) {
+      s.runtimeMin = d.runtimeMin;
+    }
+  }
+}
+
+function normalizeLabel(raw: string): string {
+  // Lowercase + strip accents so "Dirección" and "Título Original" match
+  // a plain ASCII comparison.
+  return raw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+/**
+ * Walk sibling nodes after `el` collecting text, stopping at the next
+ * <br>, <b>, or <div>. Matches the "label + value until next divider"
+ * shape used by Lumiton's detail-page metadata block.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function textUntilNextBlock(el: any): string {
+  let value = '';
+  let cur = el.next;
+  while (cur) {
+    if (cur.type === 'tag' && (cur.name === 'br' || cur.name === 'b' || cur.name === 'div')) {
+      break;
+    }
+    if (cur.type === 'text') value += cur.data;
+    cur = cur.next;
+  }
+  return value.replace(/\s+/g, ' ').trim();
 }
 
 // ---------------------------------------------------------------------------
