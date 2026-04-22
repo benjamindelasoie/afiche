@@ -25,3 +25,7 @@ Key routing rules:
 - Architecture review → invoke plan-eng-review
 - Save progress, checkpoint, resume → invoke checkpoint
 - Code quality, health check → invoke health
+
+## Design System
+
+Always read `DESIGN.md` before any visual or UI change. All font choices, colors, spacing, motion, and aesthetic direction are defined there. Do not deviate without explicit user approval. Flag any code that contradicts `DESIGN.md` in QA/review.
