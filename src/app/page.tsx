@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import { getThisWeeksScreenings, formatTimeBA } from '@/db/queries';
 import { TAG_LABELS_ES } from '@/db';
+import { getEditionNumber, editionFullSentence } from '@/lib/iso-week';
 
 // This page is a Server Component — it runs on the server, awaits the DB
 // directly, and ships rendered HTML. Zero client-side JS is shipped for the
@@ -13,7 +14,11 @@ export default async function HomePage() {
   const distinctCinemas = new Set(
     days.flatMap((d) => d.screenings.map((s) => s.cinema.id)),
   ).size;
-  const weekRange = formatWeekRange(days);
+
+  // Edition metadata — ISO week number + formatted range + counts. All four
+  // derived from the same compute so the abbreviated visible dateline and
+  // the sr-only full sentence never fall out of sync.
+  const edition = days.length > 0 ? computeEdition(days, totalScreenings, distinctCinemas) : null;
 
   return (
     <>
@@ -27,57 +32,79 @@ export default async function HomePage() {
         Saltar al contenido
       </a>
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 md:py-16">
-        {/* Masthead */}
-        <header className="border-y-8 border-double border-black py-6 text-center md:py-8">
-          <h1 className="text-6xl font-black italic tracking-tight text-balance sm:text-7xl md:text-8xl">
+        {/* Masthead — edition dateline treats the site like a weekly print
+            issue. The visible mono line is abbreviated; the sr-only
+            paragraph reads the full Spanish sentence for screen readers.
+            Both derive from the same computation (see computeEdition
+            below) so they can never drift. */}
+        <header className="border-y-8 border-double border-black py-8 text-center md:py-12">
+          <h1
+            className="font-serif text-balance leading-[0.9] tracking-tight"
+            style={{ fontSize: 'clamp(4rem, 12vw, 8rem)' }}
+          >
             Afiche
           </h1>
-          <p className="mt-2 italic">cartelera curada de Buenos Aires</p>
+          {edition && (
+            <>
+              <p
+                className="mt-4 font-mono text-[11px] uppercase tracking-eyebrow text-ink-gray flex items-center justify-center flex-wrap gap-x-2 gap-y-1"
+                aria-hidden="true"
+              >
+                <span className="text-carmine font-bold">Edición Nº {edition.editionNumber}</span>
+                <span className="text-ink-gray/60">·</span>
+                <span>Semana del {edition.weekRangeLabel}</span>
+                <span className="text-ink-gray/60">·</span>
+                <span>
+                  {totalScreenings} {totalScreenings === 1 ? 'función' : 'funciones'}
+                </span>
+                <span className="text-ink-gray/60">·</span>
+                <span>
+                  {distinctCinemas} {distinctCinemas === 1 ? 'sala' : 'salas'}
+                </span>
+              </p>
+              <p className="sr-only">{edition.fullSentence}</p>
+            </>
+          )}
+          <p className="mt-3 font-serif italic text-ink-gray text-lg md:text-xl">
+            cartelera curada de Buenos Aires
+          </p>
         </header>
 
-        {/* Week context — orients the visitor at a glance.
-            Left-aligned to match the rhythm of the day banners below; the
-            masthead up top is center-aligned because it's the brand block. */}
-        {days.length > 0 && (
-          <p className="mt-8 font-mono text-[11px] uppercase tracking-eyebrow text-neutral-600">
-            {weekRange}
-            {' · '}
-            {totalScreenings} {totalScreenings === 1 ? 'función' : 'funciones'}
-            {' · '}
-            {distinctCinemas} {distinctCinemas === 1 ? 'cine' : 'cines'}
-          </p>
-        )}
-
         {/* Week view */}
-        <section id="cartelera" className="mt-8 space-y-12 md:mt-12">
+        <section id="cartelera" className="mt-10 space-y-12 md:mt-14">
           {days.length === 0 ? (
             <EmptyState />
           ) : (
             days.map((day) => (
               <div key={day.dateKey}>
-                {/* Day banner. aria-current="date" announces today to
-                    assistive tech; the HOY pill makes the same point
-                    visually for sighted users. */}
+                {/* Day banner — tracked mono label on left (with HOY pill
+                    when applicable), serif dateline on right, screening
+                    count far right. Double-border top + bottom echoes
+                    the masthead rule. aria-current="date" announces
+                    today to assistive tech. */}
                 <div
                   aria-current={day.isToday ? 'date' : undefined}
-                  className={`py-3 px-3 mb-6 sm:px-4 ${
-                    day.isToday ? 'bg-black text-cream' : 'border-b-2 border-dashed border-black'
-                  }`}
+                  className="border-t border-b-[3px] border-double border-black py-3 mb-6 flex items-baseline justify-between gap-3 flex-wrap"
                 >
-                  <div className="flex items-baseline gap-3 flex-wrap">
+                  <span className="font-mono text-[11px] uppercase tracking-eyebrow text-balance">
+                    {day.label}
                     {day.isToday && (
-                      <span className="text-[11px] font-mono tracking-card uppercase px-2 py-0.5 bg-carmine text-cream">
+                      <span className="ml-2 px-1.5 py-0.5 bg-carmine text-cream no-underline">
                         HOY
                       </span>
                     )}
-                    <h2 className="text-xl font-black italic tracking-wide uppercase text-balance sm:text-2xl sm:tracking-widest md:text-3xl">
-                      {day.label}
-                    </h2>
-                  </div>
-                  <p className="text-[11px] font-mono uppercase tracking-eyebrow mt-1 opacity-70">
+                  </span>
+                  <span
+                    className={`font-serif italic leading-none text-2xl md:text-3xl ${
+                      day.isToday ? 'text-carmine' : 'text-ink'
+                    }`}
+                  >
+                    {day.isToday ? 'Hoy' : formatDayShort(day.dateKey)}
+                  </span>
+                  <span className="font-mono text-[11px] uppercase tracking-eyebrow text-ink-gray">
                     {day.screenings.length}{' '}
                     {day.screenings.length === 1 ? 'función' : 'funciones'}
-                  </p>
+                  </span>
                 </div>
 
               {/* Screening rows */}
@@ -118,18 +145,37 @@ export default async function HomePage() {
                                   className="w-full h-full object-cover"
                                 />
                               ) : (
-                                <span className="text-[11px] italic text-center px-1 leading-tight">
+                                <span className="font-serif italic text-center px-1 leading-tight text-sm">
                                   {s.film.title}
                                 </span>
                               )}
                             </div>
                           )}
                           <div className="min-w-0 flex-1">
-                            <h3 className="text-xl font-black italic leading-tight text-balance sm:text-2xl">
-                              {s.film.title}
-                            </h3>
+                            {/* Film title — editorial serif display. On chain
+                                cards the title drops to Geist 500 for
+                                de-emphasis (handled below by the branch). */}
+                            {s.cinema.type === 'indie' ? (
+                              <h3 className="font-serif text-2xl sm:text-3xl leading-tight tracking-tight text-balance">
+                                {s.film.title}
+                              </h3>
+                            ) : (
+                              <h3 className="font-sans font-medium text-lg leading-tight text-balance">
+                                {s.film.title}
+                              </h3>
+                            )}
+                            {/* Original title — italic serif subtitle, only
+                                when we have it AND it differs from the
+                                scraped title. Quoted with Spanish « ». */}
+                            {s.film.titleOriginal &&
+                              s.film.titleOriginal.toLowerCase() !==
+                                s.film.title.toLowerCase() && (
+                                <p className="font-serif italic text-ink-gray mt-0.5 text-base sm:text-lg">
+                                  «{s.film.titleOriginal}»
+                                </p>
+                              )}
                             {s.film.director && (
-                              <p className="text-sm text-neutral-600 mt-1">
+                              <p className="text-sm text-ink-gray mt-1">
                                 {s.film.director}
                                 {s.film.year && ` · ${s.film.year}`}
                                 {/* Country tucked away on mobile to prevent
@@ -155,21 +201,21 @@ export default async function HomePage() {
                           <div>
                             <p
                               className={`text-xs font-mono tracking-card uppercase ${
-                                s.cinema.type === 'indie' ? 'text-carmine font-bold' : 'text-neutral-500'
+                                s.cinema.type === 'indie' ? 'text-carmine font-bold' : 'text-ink-gray'
                               }`}
                             >
                               {s.cinema.type === 'indie' && '★ '}
                               {s.cinema.name}
                             </p>
                             {s.cinema.neighborhood && (
-                              <p className="text-[11px] font-mono uppercase tracking-wider text-neutral-500 mt-1">
+                              <p className="text-[11px] font-mono uppercase tracking-wider text-ink-gray mt-1">
                                 {s.cinema.neighborhood}
                               </p>
                             )}
                           </div>
                           <time
                             dateTime={s.startsAtUtc.toISOString()}
-                            className="text-2xl font-black italic text-carmine tabular-nums md:mt-2"
+                            className="font-serif italic text-4xl leading-none text-carmine tabular-nums md:mt-2"
                           >
                             {formatTimeBA(s.startsAtUtc)}
                           </time>
@@ -211,10 +257,13 @@ export default async function HomePage() {
         )}
       </section>
 
-        {/* Footer */}
+        {/* Footer — editorial signature. Kept cream-on-cream so it closes
+            the page softly, matching the masthead's editorial weight. */}
         <footer className="mt-20 pt-8 border-t-8 border-double border-black text-center">
-          <p className="italic">Afiche — hecho por cinéfilos, para cinéfilos</p>
-          <p className="text-[11px] font-mono uppercase tracking-eyebrow text-neutral-500 mt-2">
+          <p className="font-serif italic text-lg">
+            Afiche — hecho por cinéfilos, para cinéfilos
+          </p>
+          <p className="text-[11px] font-mono uppercase tracking-eyebrow text-ink-gray mt-2">
             última actualización · datos de ejemplo
           </p>
         </footer>
@@ -232,12 +281,13 @@ export default async function HomePage() {
 function EmptyState() {
   return (
     <div className="text-center space-y-3 py-12">
-      <p className="italic text-neutral-500">
+      <p className="font-serif italic text-ink-gray text-lg">
         La cartelera se actualiza todas las madrugadas. Volvé en unas horas.
       </p>
       {process.env.NODE_ENV !== 'production' && (
-        <p className="font-mono text-[11px] uppercase tracking-eyebrow text-neutral-400">
-          dev hint: ejecutá <code>npm run db:seed</code> para cargar datos de ejemplo
+        <p className="font-mono text-[11px] uppercase tracking-eyebrow text-ink-gray/70">
+          dev hint: ejecutá <code>npm run db:seed-cinemas</code> y{' '}
+          <code>npm run db:scrape</code> para cargar datos
         </p>
       )}
     </div>
@@ -245,23 +295,54 @@ function EmptyState() {
 }
 
 // ---------------------------------------------------------------------------
-// Week range helper — pulled out of the JSX for readability.
+// Edition helpers — edition number, week range label, and the full sr-only
+// sentence all derive from the same inputs. This is the single source of
+// truth for the masthead dateline; the visible mono line and the sr-only
+// paragraph both read from this return value.
 // ---------------------------------------------------------------------------
-function formatWeekRange(days: Array<{ screenings: Array<{ startsAtUtc: Date }> }>): string {
-  // Find the earliest and latest screening timestamp to bracket the range.
+interface EditionInfo {
+  editionNumber: number;
+  weekRangeLabel: string;
+  fullSentence: string;
+}
+
+function computeEdition(
+  days: Array<{ screenings: Array<{ startsAtUtc: Date }> }>,
+  totalScreenings: number,
+  distinctCinemas: number,
+): EditionInfo {
+  // All starts, sorted, so we can pick the earliest as the representative
+  // date for the ISO week. Data-driven rather than `new Date()` means the
+  // edition number always matches the actual programming window.
   const allStarts = days.flatMap((d) => d.screenings.map((s) => s.startsAtUtc));
-  if (allStarts.length === 0) return '';
   const first = allStarts.reduce((a, b) => (a < b ? a : b));
   const last = allStarts.reduce((a, b) => (a > b ? a : b));
 
+  const editionNumber = getEditionNumber(first);
+  const weekRangeLabel = formatWeekRange(first, last);
+  const fullSentence = editionFullSentence({
+    editionNumber,
+    weekRangeLabel,
+    totalScreenings,
+    distinctCinemas,
+  });
+
+  return { editionNumber, weekRangeLabel, fullSentence };
+}
+
+// ---------------------------------------------------------------------------
+// Week range helper — bracket the programming span for the masthead.
+// Same day   → "23 de abril"
+// Same month → "23 al 30 de abril"
+// Spanning   → "23 de abril al 5 de mayo"
+// ---------------------------------------------------------------------------
+function formatWeekRange(first: Date, last: Date): string {
   const fmt = new Intl.DateTimeFormat('es-AR', {
     timeZone: 'America/Argentina/Buenos_Aires',
     day: 'numeric',
     month: 'long',
   });
 
-  // Same day → "23 de abril". Same month → "23 al 30 de abril".
-  // Different months → "23 de abril al 5 de mayo".
   const firstParts = fmt.formatToParts(first);
   const lastParts = fmt.formatToParts(last);
   const firstMonth = firstParts.find((p) => p.type === 'month')?.value;
@@ -276,4 +357,28 @@ function formatWeekRange(days: Array<{ screenings: Array<{ startsAtUtc: Date }> 
     return `${firstDay} al ${lastDay} de ${firstMonth}`;
   }
   return `${firstDay} de ${firstMonth} al ${lastDay} de ${lastMonth}`;
+}
+
+// ---------------------------------------------------------------------------
+// Short date form for the day banner dateline (e.g., "23 Abr"). Distinct
+// from the full `day.label` which reads "miércoles 23 de abril" as a
+// screen-reader-friendly full phrase.
+// ---------------------------------------------------------------------------
+function formatDayShort(dateKey: string): string {
+  // dateKey is "YYYY-MM-DD" in BA time; construct a Date at noon UTC to
+  // avoid timezone drift when we format in BA.
+  const [y, m, d] = dateKey.split('-').map((s) => parseInt(s, 10));
+  const date = new Date(Date.UTC(y, m - 1, d, 12));
+  const fmt = new Intl.DateTimeFormat('es-AR', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    day: 'numeric',
+    month: 'short',
+  });
+  const parts = fmt.formatToParts(date);
+  const day = parts.find((p) => p.type === 'day')?.value ?? '';
+  // Month is "abr." — strip trailing dot, capitalize first letter.
+  let month = parts.find((p) => p.type === 'month')?.value ?? '';
+  month = month.replace(/\.$/, '');
+  month = month.charAt(0).toUpperCase() + month.slice(1);
+  return `${day} ${month}`;
 }

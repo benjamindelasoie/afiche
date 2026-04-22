@@ -17,6 +17,7 @@ export interface ScreeningRow {
   film: {
     id: number;
     title: string;
+    titleOriginal: string | null;
     director: string | null;
     year: number | null;
     country: string | null;
@@ -80,6 +81,7 @@ export async function getThisWeeksScreenings(): Promise<DayGroup[]> {
       film: {
         id: row.film.id,
         title: row.film.title,
+        titleOriginal: row.film.titleOriginal,
         director: row.film.director,
         year: row.film.year,
         country: row.film.country,
