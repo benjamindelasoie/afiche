@@ -203,11 +203,13 @@ export default async function HomePage() {
                                 {s.film.runtimeMin && ` · ${s.film.runtimeMin} min`}
                               </p>
                             )}
-                            {s.film.synopsisEs && s.cinema.type === 'indie' && (
-                              <p className="mt-3 text-sm border-l-2 border-carmine pl-3 max-w-prose line-clamp-3">
-                                {s.film.synopsisEs}
-                              </p>
-                            )}
+                            {s.film.synopsisEs &&
+                              s.cinema.type === 'indie' &&
+                              isCompleteSynopsis(s.film.synopsisEs) && (
+                                <p className="mt-3 text-sm border-l-2 border-carmine pl-3 max-w-prose line-clamp-3">
+                                  {s.film.synopsisEs}
+                                </p>
+                              )}
                           </div>
                         </div>
 
@@ -394,6 +396,25 @@ function formatWeekRange(first: Date, last: Date): string {
 // from the full `day.label` which reads "miércoles 23 de abril" as a
 // screen-reader-friendly full phrase.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Display guard: is this synopsis worth rendering?
+//
+// The Lumiton-family agenda tiles historically yielded ~100-140 char
+// synopses CSS-truncated mid-sentence (dangling commas, connectives like
+// "a menudo", "de dinero,"). The scraper no longer captures those, but DB
+// rows ingested before that fix still carry the bad text. Hide anything
+// that obviously trails off rather than render a broken-looking card.
+//
+// Heuristic: needs to be long-ish AND end with terminal punctuation
+// (., !, ?, …, closing quote). A well-formed short synopsis (e.g.,
+// "Un western clásico.") still passes because it ends on a period.
+// ---------------------------------------------------------------------------
+function isCompleteSynopsis(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length < 60) return false;
+  return /[.!?…»"']$/.test(trimmed);
+}
+
 function formatDayShort(dateKey: string): string {
   // dateKey is "YYYY-MM-DD" in BA time; construct a Date at noon UTC to
   // avoid timezone drift when we format in BA.
