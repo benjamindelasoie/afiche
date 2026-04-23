@@ -1,15 +1,22 @@
 name: Scrape cinemas
 
-# Daily scrape of all cinema providers against the production Turso DB.
-# Runs at 08:00 UTC (05:00 Buenos Aires). Can also be triggered manually
-# from the Actions tab via "Run workflow".
+# Manual scrape of all cinema providers against the production Turso DB.
+#
+# Daily cron was DISABLED on 2026-04-23 because GitHub Actions runner IPs
+# get HTTP 403 from lumiton.ar (Cloudflare) and complejoteatral.gob.ar
+# (datacenter-IP reputation heuristics). Only MALBA succeeds from runner
+# IPs; the other 4 providers fail silently. Running from a residential
+# IP works — use `npm run scrape:prod` from the dev machine instead,
+# which is the currently supported path.
+#
+# This workflow is kept around with manual trigger only (workflow_dispatch)
+# so we can re-enable it cheaply if we ever put a proxy (CF Worker /
+# Vercel Edge / paid residential) in front of the scraper.
 #
 # After a successful scrape we POST the site's revalidate webhook so the
 # week-view Server Component re-renders against fresh data on the next visit.
 
 on:
-  schedule:
-    - cron: '0 8 * * *'
   workflow_dispatch:
 
 jobs:

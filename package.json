@@ -15,6 +15,7 @@
     "db:reset-programming": "dotenv -e .env.local -- tsx src/db/reset-programming.ts",
     "db:scrape": "dotenv -e .env.local -- tsx src/scrapers/run.ts",
     "db:rescrape": "npm run db:reset-programming && npm run db:scrape",
+    "scrape:prod": "./scripts/scrape-prod.sh",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage"
