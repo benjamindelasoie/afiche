@@ -96,6 +96,27 @@ S3 (recurring-weekly) is still missing. Examples: Hijo mayor, Los dias chinos, P
 
 ---
 
+## 8. MALBA "24:00" midnight parsing — david-lynch-x5 cycle + future midnight cineclubs
+
+**What:** MALBA publishes a recurring midnight cineclub (Saturday 24:00 → technically Sunday 00:00). On 2026-04-23's scrape the warnings showed 4 unparseable lines in a row from the `david-lynch-x5` cycle:
+
+```
+[malba] cycle "david-lynch-x5" day 4: unparseable line "24:00 Terciopelo azul"
+[malba] cycle "david-lynch-x5" day 11: unparseable line "24:00 Corazón salvaje"
+[malba] cycle "david-lynch-x5" day 18: unparseable line "24:00 Carretera perdida"
+[malba] cycle "david-lynch-x5" day 25: unparseable line "24:00 Una historia sencilla"
+```
+
+The parser rejects "24:00" because standard time regex caps hour at 23. MALBA's editorial convention is to keep the screening under the Saturday column even though it's actually 00:00 Sunday.
+
+**Why it matters:** This cineclub is a real Buenos Aires institution that plays every Saturday at midnight. Missing it silently means users coming to Afiche for the "midnight movie" slot find nothing. Also affects any future Lynch/Kubrick/Hitchcock midnight cycle MALBA does.
+
+**Fix:** In `src/providers/malba.ts` time parser, accept `24:00` → map to `00:00 of (date+1)`. Need to also handle other 24:XX values just in case (24:15, 24:30 are editorial conventions). One regex widening + one date adjustment. Add a test fixture with the david-lynch-x5 markup.
+
+**Depends on / blocked by:** Nothing. ~30min including the test.
+
+---
+
 ## 7. Rethink card composition (DESIGN — /design-consultation candidate)
 
 **What:** The current card works, but it was sized for an indie-vs-chain contrast that no longer exists (chain/Cinépolis deferred behind Cloudflare). With CICLO + ★ dropped, the card is cleaner, but the spacing, the content mix, and the information hierarchy could still earn a real pass now that we know what the cartelera actually is (all-indie, Spanish-native, weekly edition).
@@ -136,6 +157,13 @@ S3 (recurring-weekly) is still missing. Examples: Hijo mayor, Los dias chinos, P
 ## 5. /design-review 2026-04-22 follow-ups (MEDIUM / POLISH)
 
 Deferred findings from the full live audit of afiche.vercel.app. HIGH-severity items (F-001, F-002, F-003, F-004, F-011) shipped this session. The remaining items below are spec-alignment and polish — real but not trust-damaging.
+
+**F-012 — Masthead "Afiche" rendering glitch: f serif overlaps the i.** Observed 2026-04-23 by Benjamin. The "f" letter's serif appears to overlap the adjacent "i" in the Instrument Serif masthead h1. Could be:
+  - Instrument Serif variable-font glyph quirk at clamp scale (`clamp(3.5rem, 12vw, 8rem)`)
+  - Aggressive `tracking-tight` + `-0.02em` letter-spacing crushing letters together
+  - Font swap period (Georgia fallback doesn't have this issue; switch to loaded font might be what's visible)
+  - CSS `text-balance` interaction
+  Start by comparing the same string with / without `tracking-tight`, with / without `text-balance`, at several font-sizes. If it's an Instrument Serif rendering bug at large sizes (known in some variable-font implementations), consider swapping to a different serif for the masthead only. Screenshot when next in front of the issue so we can pin down the viewport + weight.
 
 ~~**F-005 — CICLO tag on 80 of 81 cards drains signal value.**~~ Resolved 2026-04-22 (/qa). Filter `'cycle'` out of `s.tags` at render; meaningful tags (retrospective, restored, named festivals) still show. ★ star prefix on cinema names also dropped — same universal-signal reasoning. Commit `aca2dde`.
 
