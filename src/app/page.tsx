@@ -3,6 +3,7 @@ import {
   getThisWeekScreenings,
   getThisMonthScreenings,
   getUpcomingScreenings,
+  getLastScrapeTime,
   formatTimeBA,
   formatDayShortBA,
   type DayGroup,
@@ -29,10 +30,11 @@ import {
 export default async function HomePage() {
   const now = new Date();
 
-  const [thisWeek, thisMonth, upcoming] = await Promise.all([
+  const [thisWeek, thisMonth, upcoming, lastScrape] = await Promise.all([
     getThisWeekScreenings(now),
     getThisMonthScreenings(now),
     getUpcomingScreenings(now),
+    getLastScrapeTime(),
   ]);
 
   // Masthead counts reflect THIS WEEK only — it's the edition.
@@ -170,11 +172,18 @@ export default async function HomePage() {
 
         {/* Footer — editorial signature. Kept cream-on-cream so it closes
             the page softly, matching the masthead's editorial weight.
-            Real last-scrape timestamp wiring tracked in TODOS.md (F-004b). */}
+            "Actualizado el DD de MMMM a las HH:MM" only renders when a
+            successful scrape run exists — silence rather than lie when
+            there's no timestamp to show. */}
         <footer className="mt-20 pt-8 border-t-8 border-double border-black text-center">
           <p className="font-serif italic text-lg">
             Afiche — hecho por cinéfilos, para cinéfilos
           </p>
+          {lastScrape && (
+            <p className="mt-2 font-mono text-[11px] uppercase tracking-eyebrow text-ink-gray">
+              Actualizado el {formatLastScrape(lastScrape)}
+            </p>
+          )}
         </footer>
       </main>
     </>
@@ -715,4 +724,23 @@ function formatRangeLabel(first: Date, last: Date): string {
 function dateKeyToDate(dateKey: string): Date {
   const [y, m, d] = dateKey.split('-').map((s) => parseInt(s, 10));
   return new Date(Date.UTC(y, m - 1, d, 15)); // 12:00 BA = 15:00 UTC
+}
+
+/**
+ * Footer timestamp — "23 de abril a las 14:30" in BA time. Rendered after
+ * "Actualizado el " so the reader sees the freshness of the cartelera
+ * without a label they have to parse. Uppercased by the Tailwind class
+ * applied in the footer, so the mo-name lowercase here is fine.
+ */
+function formatLastScrape(d: Date): string {
+  const dateFmt = new Intl.DateTimeFormat('es-AR', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    day: 'numeric',
+    month: 'long',
+  });
+  const parts = dateFmt.formatToParts(d);
+  const day = parts.find((p) => p.type === 'day')?.value ?? '';
+  const month = parts.find((p) => p.type === 'month')?.value ?? '';
+  const time = formatTimeBA(d);
+  return `${day} de ${month} a las ${time}`;
 }

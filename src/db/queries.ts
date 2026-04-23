@@ -16,8 +16,8 @@
  * All functions run on the server (Server Components) and return plain data.
  */
 
-import { and, eq, gte, lt, asc } from 'drizzle-orm';
-import { db, screenings, films, cinemas } from './index';
+import { and, eq, gte, lt, asc, desc } from 'drizzle-orm';
+import { db, screenings, films, cinemas, scrapeRuns } from './index';
 import type { ScreeningTag } from './schema';
 import {
   getTodayStartBA,
@@ -158,6 +158,26 @@ export async function getThisMonthScreenings(
   if (lower.getTime() >= upper.getTime()) return [];
   const rows = await fetchRows({ lower, upper });
   return groupByDay(rows, now);
+}
+
+/**
+ * Latest successful scrape run across all cinemas. Returns the Date the
+ * most recent success finished at, or null if no successful run exists
+ * yet (fresh DB, all failures, or in-progress-only).
+ *
+ * Rendered in the footer as "Actualizado el DD de MMMM a las HH:MM" so
+ * users know how fresh the cartelera is. Silence-rather-than-lie: when
+ * there's no successful run, render nothing — same pattern as the earlier
+ * F-004 footer cleanup.
+ */
+export async function getLastScrapeTime(): Promise<Date | null> {
+  const [row] = await db
+    .select({ finishedAt: scrapeRuns.finishedAt })
+    .from(scrapeRuns)
+    .where(eq(scrapeRuns.status, 'success'))
+    .orderBy(desc(scrapeRuns.finishedAt))
+    .limit(1);
+  return row?.finishedAt ?? null;
 }
 
 /**
