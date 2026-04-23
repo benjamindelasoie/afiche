@@ -337,13 +337,19 @@ function ScreeningCard({
               className={`shrink-0 ${posterSize} bg-cream flex items-center justify-center overflow-hidden border border-black ${posterShadow}`}
             >
               {s.film.posterUrl ? (
+                // Next 16: `priority` is deprecated. Use explicit
+                // loading + fetchPriority so the LCP poster is announced
+                // to the browser preload scanner. The prod console on
+                // afiche.vercel.app was emitting the 'add loading=eager'
+                // warning because priority was silently a no-op here.
                 <Image
                   src={s.film.posterUrl}
                   alt={s.film.title}
                   width={isCompact ? 56 : 80}
                   height={isCompact ? 80 : 112}
                   sizes={isCompact ? '56px' : '80px'}
-                  priority={isAboveFold}
+                  loading={isAboveFold ? 'eager' : 'lazy'}
+                  fetchPriority={isAboveFold ? 'high' : 'auto'}
                   className="w-full h-full object-cover"
                 />
               ) : (
