@@ -444,7 +444,12 @@ function UpcomingIndex({ screenings }: { screenings: ScreeningRow[] }) {
               </span>
             </div>
 
-            {/* Title + original title (center) */}
+            {/* Title only (center). The original title is deliberately
+                omitted here — on mobile 375, titles like "Los caballeros
+                las prefieren rubias «Gentlemen Prefer Blondes»" overflow
+                the row. Tier 3 is the awareness layer; the full canonical
+                title is what users scan for. Original titles live in the
+                full / compact cards where there's room. */}
             <div className="min-w-0">
               <span
                 className={
@@ -455,13 +460,6 @@ function UpcomingIndex({ screenings }: { screenings: ScreeningRow[] }) {
               >
                 {s.film.title}
               </span>
-              {s.film.titleOriginal &&
-                s.film.titleOriginal.toLowerCase() !==
-                  s.film.title.toLowerCase() && (
-                  <span className="font-serif italic text-ink-gray text-sm ml-2">
-                    «{s.film.titleOriginal}»
-                  </span>
-                )}
             </div>
 
             {/* Cinema (right — its own row on mobile). Star prefix
