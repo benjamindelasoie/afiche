@@ -128,8 +128,13 @@ export default async function HomePage() {
                 <EmptyWeekMessage hasFollowup={thisMonth.length > 0 || upcoming.length > 0} />
               ) : (
                 <div className="mt-10 space-y-12">
-                  {thisWeek.map((day) => (
-                    <DaySection key={day.dateKey} day={day} variant="full" />
+                  {thisWeek.map((day, dayIdx) => (
+                    <DaySection
+                      key={day.dateKey}
+                      day={day}
+                      variant="full"
+                      isFirstDay={dayIdx === 0}
+                    />
                   ))}
                 </div>
               )}
@@ -209,9 +214,15 @@ function SectionHeader({
 function DaySection({
   day,
   variant,
+  isFirstDay = false,
 }: {
   day: DayGroup;
   variant: 'full' | 'compact';
+  // First day of Tier 1. Drives Next/Image priority on the top cards so
+  // the LCP poster loads eagerly even when today has no screenings
+  // (otherwise day.isToday is never true and no card gets priority —
+  // that was the prod console warning on afiche.vercel.app after deploy).
+  isFirstDay?: boolean;
 }) {
   return (
     <div>
@@ -248,7 +259,9 @@ function DaySection({
             key={s.id}
             s={s}
             variant={variant}
-            isAboveFold={day.isToday && idx < 3 && variant === 'full'}
+            isAboveFold={
+              variant === 'full' && (day.isToday || isFirstDay) && idx < 3
+            }
           />
         ))}
       </div>
