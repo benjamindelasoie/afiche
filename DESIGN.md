@@ -35,16 +35,19 @@ Every subsequent design decision serves this memorable thing.
 ### Scale
 | Role | Size | Line | Tracking | Weight |
 |------|------|------|----------|--------|
-| display-xl (masthead) | clamp(4rem, 12vw, 8rem) | 0.9 | -0.02em | 400 |
-| display-lg | 4.5rem | 0.95 | -0.02em | 400 |
-| display-md (card title, section) | 2.25rem | 1.1 | -0.01em | 400 |
-| display-sm (subtitle, original title) | 1.5rem italic | 1.25 | 0 | 400i |
-| time (card time) | 2.5rem italic | 1 | 0 | 400i |
+| display-xl (masthead) | clamp(3.5rem, 12vw, 8rem) | 0.9 | -0.02em | 400 |
+| display-lg (section header: Esta semana / Este mes / Próximamente) | 2.25rem mobile / 3rem md | 1 | 0 | 400i |
+| display-md (indie card title) | 1.5rem mobile / 1.875rem sm (text-2xl / text-3xl) | 1.1 | -0.01em | 400 |
+| display-sm (subtitle, original title, compact card title) | 1.25rem mobile / 1.5rem sm | 1.25 | 0 | 400i |
+| time-xl (time on full indie card) | 2.25rem italic (text-4xl) | 1 | 0 | 400i |
+| time-lg (time on compact card + Tier 3 index row) | 1.875rem italic (text-3xl) | 1 | 0 | 400i |
 | body-base | 1rem | 1.5 | 0 | 400 |
-| body-sm (synopsis) | 0.9rem | 1.55 | 0 | 400 |
-| body-xs (metadata) | 0.85rem | 1.55 | 0 | 400 |
-| eyebrow | 0.7rem upper | 1.6 | 0.25em | 400 mono |
-| card-caps | 0.7rem upper | 1.6 | 0.2em | 500 mono |
+| body-sm (synopsis) | 0.875rem | 1.55 | 0 | 400 |
+| body-xs (metadata) | 0.75rem | 1.55 | 0 | 400 |
+| eyebrow | 0.6875rem upper | 1.6 | 0.25em | 400 mono |
+| card-caps | 0.6875rem upper | 1.6 | 0.2em | 500 mono |
+
+Scale ranges track what actually renders at 375 / 640 / 768 viewports; desktop takes the upper bound. Earlier revisions of this table claimed 2.25rem for card titles — that was aspirational, never shipped. 1.5rem → 1.875rem reads better at the current card density and leaves the italic serif time as the decisive element.
 
 Time uses `font-variant-numeric: tabular-nums` everywhere.
 
