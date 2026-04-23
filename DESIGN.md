@@ -112,17 +112,31 @@ Scan order within a card (eye tracking):
 6. **Synopsis** (Geist, carmine left-rule) — why this film, not the others today.
 7. **Cinema name** (right-aligned tracked Mono, carmine on indie) — the "where."
 
-Page-level flow:
-1. **Masthead** — edition dateline + title + tagline. Orients: "this is Afiche, this is week X."
-2. **Week context** — density signal (`N funciones · N salas`). Reader knows what's ahead.
-3. **Today's day banner** (`aria-current="date"`, inverted bg) — anchors present.
-4. **Today's screenings** — the decision layer.
-5. **Future days, chronologically** — planning layer.
-6. **Footer** — editorial signature, close.
+Page-level flow — **three tiers**:
+1. **Masthead** — edition dateline (`Edición Nº N · Semana del X al Y · N funciones · M salas`). Orients: "this is Afiche, this is week N, and these counts are THIS WEEK." Dateline bounds derive from ISO-week bounds of today (`getIsoWeekStartBA(now)` / `getIsoWeekEndBA(now)`) — NOT from data. On Wed when the first screening is Thu, the dateline still says "Semana del 20 al 26 de abril" because we are inside edition 17.
+2. **Tier 1 — Esta semana** (decision layer): full cards grouped by day, today's banner anchored with `aria-current="date"`. Query: today 00:00 BA → next ISO Monday 00:00 BA. Lower bound is TODAY'S midnight, not now, so a user on Sunday at 23:00 still sees Sunday's earlier screenings — the cartelera anchors in *today*, not *right now*.
+3. **Tier 2 — Este mes** (planning layer): compact cards grouped by day, between next ISO Monday and start of next month. Hidden when the week already crosses the month boundary (late-April case). Section header is `<h2 class="font-serif italic text-4xl md:text-5xl">` inside a double-border frame, with a mono subtitle carrying range + counts.
+4. **Tier 3 — Próximamente** (awareness layer): flat chronological text index, one screening per row, no day grouping (each row carries its own date chip). After max(weekEnd, monthEnd), open-ended. Reads like the back-of-zine program guide.
+5. **Footer** — editorial signature, close.
+
+Each later tier steps down in density:
+- Tier 1 = full card with synopsis + poster at `w-20 h-28` + `border-l-4`
+- Tier 2 = compact card, no synopsis, poster at `w-14 h-20`, `border-l-[3px]`, lighter offset shadow (3px)
+- Tier 3 = text row, no poster, no card background, hairline separator
+
+The step-down is intentional: the eye should slow down as the horizon gets further. Decisions live in Tier 1.
 
 **First-fold expectations** (intentional):
-- Mobile (375×667): masthead + week context + today's day banner. First screening card below fold. Editorial grandeur is worth the scroll; scan order remains legible.
-- Desktop (1440×900): masthead + week context + today's day banner + 1–2 screening cards above fold. Full hierarchy visible immediately.
+- Mobile (375×667): masthead + first day banner + first Tier 1 card. Editorial grandeur is worth the scroll; scan order remains legible.
+- Desktop (1440×900): masthead + first day banner + 1–2 Tier 1 cards above fold. Full hierarchy visible immediately. Tier 2 + Tier 3 progressively revealed by scroll.
+
+**Sunday-late edge** (explicit product call):
+- On Sunday at 23:00 BA, Tier 1 still shows all of Sunday's screenings — including the 18:00 one that's already over. The job is "what's playing today," not "what's still startable."
+
+**Empty states** (in priority order):
+- Everything empty (rare — fresh DB): existing `EmptyStateAll` message + dev-only hint.
+- Esta semana empty but later tiers have content: editorial copy *"Esta semana las salas descansan."* + pointer `Lo que viene ↓`, with Tier 2/3 rendering below as usual.
+- Later tiers empty: just hide those sections. No messaging needed.
 
 ## Interaction States
 
@@ -146,7 +160,7 @@ Page-level flow:
 
 | Viewport | Layout |
 |---|---|
-| **Mobile 375–639px** | Single column. Cards stack poster-above-body. Cinema address line `hidden sm:inline`. Masthead: 64px (`text-6xl` baseline). Container padding: `px-4 py-8`. |
+| **Mobile 375–639px** | Single column. Cards render as horizontal flex: poster-left + body-right (density-preserving; the earlier "poster-above-body" spec was superseded by the actual layout on 2026-04-22). Cinema address line `hidden sm:inline`. Masthead: 64px (`text-6xl` baseline). Container padding: `px-4 py-8`. Tier 3 rows wrap to 2 lines on mobile (date+time+title row, cinema row). |
 | **Tablet 640–767px** | Single-column list, cards go to horizontal flex: time-poster-body-venue left-to-right. Cinema address visible. Masthead: 72px (`text-7xl`). Container padding: `sm:px-6`. |
 | **Desktop 768–1023px** | Same horizontal card layout, wider body column. Content max-width engages. Masthead: 96px (`text-8xl`). Container padding: `md:py-16`. |
 | **Large 1024px+** | `max-w-5xl mx-auto` clamp — content doesn't widen further. Generous side margins for editorial breathing room. |
@@ -181,3 +195,8 @@ The curation stance is made visible through typography and density, not through 
 | 2026-04-22 | Spanish-first editorial voice locked | Differentiates from MUBI/Screen Slate/Metrograph (all English-native). Proper Spanish punctuation («», em-dashes) is free signature. |
 | 2026-04-22 | Special events at chain venues stay chain-styled | Operational character doesn't change with a festival tag. The `ciclo` / `festival` tag in the card strip provides the curation signal. |
 | 2026-04-22 | ScreeningCard component extraction deferred to next cycle | Second consumer (film detail + cinema pages) needed to justify the abstraction. Right-sized diff preserved for this cycle. |
+| 2026-04-22 | Three-tier view: esta semana / este mes / próximamente | The earlier single-stream list labelled a 34-day Lugones cycle as "Semana del 23 de abril al 27 de mayo" — edition number (ISO week) and content didn't match. Split into tiers so the "Edición Nº N" metaphor holds (tier 1 IS the edition) and the longer horizon gets progressively de-emphasized. The three-tier weight ladder (full → compact → text index) is the structural carrier of the zine hierarchy. |
+| 2026-04-22 | "This week" query lower bound is today 00:00 BA, not now | Sunday at 23:00 BA still shows Sunday's programming. The job is "what's playing today," not "what's still startable." |
+| 2026-04-22 | Edition dateline anchors on ISO-week bounds regardless of data | Previously derived from min/max of returned screenings; broke coherence when data spanned multiple weeks. Now `Semana del 20 al 26 de abril` holds even on Wednesday when the first scheduled screening is Thursday — we're inside edition 17 independent of what's in the DB. |
+| 2026-04-22 | Tier 3 (Próximamente) drops day grouping | At that horizon each row carries its own date chip — day banners would just add visual chatter. The index format echoes a zine's back-page program guide. |
+| 2026-04-22 | Esta mes section hides when week crosses month boundary | Late-April users (Tue Apr 28 → week ends May 4) have an empty "rest of April" — surfacing an empty section would add noise without value. |
