@@ -24,8 +24,13 @@ import type { ScreeningTag } from '@/db';
 
 const LISTING_URL = 'https://complejoteatral.gob.ar/sala-leopoldo-lugones';
 const DETAIL_BASE = 'https://complejoteatral.gob.ar/ver/';
+// Realistic desktop Chrome UA. The honest 'AficheScraper/0.1' UA earns
+// 403s from complejoteatral.gob.ar + lumiton.ar when the request comes
+// from GitHub Actions runner IPs (datacenter ranges are already flagged
+// by most anti-bot heuristics; a scraper-shaped UA tips them over).
+// Locally on a residential IP the old UA worked fine.
 const USER_AGENT =
-  'Mozilla/5.0 (compatible; AficheScraper/0.1; +https://afiche.ar)';
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 const MONTH_INDEX: Record<string, number> = {
   enero: 0,

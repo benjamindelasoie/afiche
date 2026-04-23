@@ -83,8 +83,11 @@ async function main() {
     } catch (err) {
       // Uncaught error mid-provider — record it and keep going. Don't crash
       // the whole scrape just because one provider threw unexpectedly.
+      // Log the full error object so err.cause chains (Drizzle wraps libsql
+      // errors and the underlying reason lives on .cause) surface in CI logs
+      // instead of bare "Failed query" messages with no diagnostic value.
       const message = err instanceof Error ? err.message : String(err);
-      console.error(`${label} 💥 uncaught:`, message);
+      console.error(`${label} 💥 uncaught:`, err);
       await failRun(runId, message, Date.now() - t0);
       summaries.push({
         cinemaId: provider.id,

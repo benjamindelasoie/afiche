@@ -28,8 +28,9 @@ import type { ProviderRunResult, ScrapedScreening } from './types';
 import type { ScreeningTag } from '@/db';
 
 export const AGENDA_URL = 'https://lumiton.ar/agenda-presencial/';
+// See lugones.ts comment — realistic browser UA for GH runner IPs.
 const USER_AGENT =
-  'Mozilla/5.0 (compatible; AficheScraper/0.1; +https://afiche.ar)';
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 export interface LumitonVenueConfig {
   /** cinemas.id in the DB — stamped onto every emitted screening. */
