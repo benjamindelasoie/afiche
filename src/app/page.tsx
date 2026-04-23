@@ -66,7 +66,7 @@ export default async function HomePage() {
             className="font-serif text-balance leading-[0.9] tracking-tight"
             style={{ fontSize: 'clamp(4rem, 12vw, 8rem)' }}
           >
-            Afiche
+            afiche
           </h1>
           <p
             className="mt-4 font-mono text-[11px] uppercase tracking-eyebrow text-ink-gray flex items-center justify-center flex-wrap gap-x-2 gap-y-1"
@@ -189,25 +189,26 @@ function DaySection({
   return (
     <div>
       {/* Day banner — rendered as <h2> for screen-reader outline.
-          aria-current='date' flags today for assistive tech. */}
+          aria-current='date' flags today for assistive tech.
+          Two columns (no serif center date): the full mono label on the
+          left already carries the date. Showing "23 Abr" in a second
+          font was editorial repetition, not rhythm — the serif flourish
+          lives on each card's time instead, where it's decisive. */}
       <h2
         aria-current={day.isToday ? 'date' : undefined}
         className="border-t border-b-[3px] border-double border-black py-3 mb-6 flex items-baseline justify-between gap-3 flex-wrap font-normal"
       >
-        <span className="font-mono text-[11px] uppercase tracking-eyebrow text-balance">
+        <span
+          className={`font-mono text-[11px] uppercase tracking-eyebrow text-balance ${
+            day.isToday ? 'text-carmine font-bold' : 'text-ink'
+          }`}
+        >
           {day.label}
           {day.isToday && (
             <span className="ml-2 px-1.5 py-0.5 bg-carmine text-cream no-underline">
               HOY
             </span>
           )}
-        </span>
-        <span
-          className={`font-serif italic leading-none text-2xl md:text-3xl ${
-            day.isToday ? 'text-carmine' : 'text-ink'
-          }`}
-        >
-          {day.isToday ? 'Hoy' : formatDayShortBA(dateKeyToDate(day.dateKey))}
         </span>
         <span className="font-mono text-[11px] uppercase tracking-eyebrow text-ink-gray">
           {day.screenings.length}{' '}
