@@ -49,6 +49,7 @@ describe('editionFullSentence — screen reader dateline', () => {
         weekRangeLabel: '23 al 30 de abril',
         totalScreenings: 81,
         distinctCinemas: 5,
+        isWeekSpan: true,
       }),
     ).toBe(
       'Edición número 17. Semana del 23 al 30 de abril. 81 funciones en 5 salas.',
@@ -62,6 +63,7 @@ describe('editionFullSentence — screen reader dateline', () => {
         weekRangeLabel: '1 de enero',
         totalScreenings: 1,
         distinctCinemas: 1,
+        isWeekSpan: true,
       }),
     ).toBe('Edición número 1. Semana del 1 de enero. 1 función en 1 sala.');
   });
@@ -73,9 +75,26 @@ describe('editionFullSentence — screen reader dateline', () => {
         weekRangeLabel: '1 al 7 de febrero',
         totalScreenings: 1,
         distinctCinemas: 3,
+        isWeekSpan: true,
       }),
     ).toBe(
       'Edición número 5. Semana del 1 al 7 de febrero. 1 función en 3 salas.',
+    );
+  });
+
+  it('drops "Semana del" when range spans more than a week', () => {
+    // A 34-day Lugones cycle labelled "Semana del" would be dishonest.
+    // When isWeekSpan is false, use "Próximas funciones del X al Y" instead.
+    expect(
+      editionFullSentence({
+        editionNumber: 17,
+        weekRangeLabel: '23 de abril al 27 de mayo',
+        totalScreenings: 81,
+        distinctCinemas: 5,
+        isWeekSpan: false,
+      }),
+    ).toBe(
+      'Edición número 17. Próximas funciones del 23 de abril al 27 de mayo. 81 funciones en 5 salas.',
     );
   });
 });

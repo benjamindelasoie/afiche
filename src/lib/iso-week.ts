@@ -23,6 +23,14 @@ export interface EditionDatelineParams {
   weekRangeLabel: string;
   totalScreenings: number;
   distinctCinemas: number;
+  /**
+   * When true, the range fits in a calendar week and the sentence uses
+   * "Semana del …". When false (e.g. a Lugones 30-day cycle dragging the
+   * range out), we drop the weekly framing: "Próximas funciones del X al Y."
+   * Labelling a 34-day span "Semana" is the kind of small dishonesty a
+   * careful editorial voice doesn't allow.
+   */
+  isWeekSpan: boolean;
 }
 
 /**
@@ -31,15 +39,20 @@ export interface EditionDatelineParams {
  * of this — both are composed from the same params, which ensures the
  * two versions can never silently fall out of sync.
  *
- * Example:
+ * Example (week span):
  *   "Edición número 17. Semana del 23 al 30 de abril. 81 funciones en 5 salas."
+ * Example (wider span):
+ *   "Edición número 17. Próximas funciones del 23 de abril al 27 de mayo. 81 funciones en 5 salas."
  */
 export function editionFullSentence(params: EditionDatelineParams): string {
   const funciones = params.totalScreenings === 1 ? 'función' : 'funciones';
   const salas = params.distinctCinemas === 1 ? 'sala' : 'salas';
+  const rangeSentence = params.isWeekSpan
+    ? `Semana del ${params.weekRangeLabel}.`
+    : `Próximas funciones del ${params.weekRangeLabel}.`;
   return (
     `Edición número ${params.editionNumber}. ` +
-    `Semana del ${params.weekRangeLabel}. ` +
+    `${rangeSentence} ` +
     `${params.totalScreenings} ${funciones} en ${params.distinctCinemas} ${salas}.`
   );
 }

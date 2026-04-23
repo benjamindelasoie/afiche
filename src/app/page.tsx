@@ -52,7 +52,10 @@ export default async function HomePage() {
               >
                 <span className="text-carmine font-bold">Edición Nº {edition.editionNumber}</span>
                 <span className="text-ink-gray/60">·</span>
-                <span>Semana del {edition.weekRangeLabel}</span>
+                <span>
+                  {edition.isWeekSpan ? 'Semana del ' : 'Del '}
+                  {edition.weekRangeLabel}
+                </span>
                 <span className="text-ink-gray/60">·</span>
                 <span>
                   {totalScreenings} {totalScreenings === 1 ? 'función' : 'funciones'}
@@ -304,6 +307,11 @@ interface EditionInfo {
   editionNumber: number;
   weekRangeLabel: string;
   fullSentence: string;
+  // True when the programming span fits inside a single calendar week
+  // (<=7 days). When false, the masthead drops the "Semana del" framing
+  // in favor of an honest "Próximas funciones del X al Y" — otherwise
+  // the site labels a 34-day Lugones cycle as a "week," which it isn't.
+  isWeekSpan: boolean;
 }
 
 function computeEdition(
@@ -318,6 +326,9 @@ function computeEdition(
   const first = allStarts.reduce((a, b) => (a < b ? a : b));
   const last = allStarts.reduce((a, b) => (a > b ? a : b));
 
+  const spanDays = Math.floor((last.getTime() - first.getTime()) / 86_400_000);
+  const isWeekSpan = spanDays <= 7;
+
   const editionNumber = getEditionNumber(first);
   const weekRangeLabel = formatWeekRange(first, last);
   const fullSentence = editionFullSentence({
@@ -325,9 +336,10 @@ function computeEdition(
     weekRangeLabel,
     totalScreenings,
     distinctCinemas,
+    isWeekSpan,
   });
 
-  return { editionNumber, weekRangeLabel, fullSentence };
+  return { editionNumber, weekRangeLabel, fullSentence, isWeekSpan };
 }
 
 // ---------------------------------------------------------------------------
