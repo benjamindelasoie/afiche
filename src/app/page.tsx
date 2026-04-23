@@ -83,11 +83,13 @@ export default async function HomePage() {
                 {/* Day banner — tracked mono label on left (with HOY pill
                     when applicable), serif dateline on right, screening
                     count far right. Double-border top + bottom echoes
-                    the masthead rule. aria-current="date" announces
-                    today to assistive tech. */}
-                <div
+                    the masthead rule. Rendered as <h2> so screen readers
+                    get the document outline (Afiche → day → day → day)
+                    and keyboard users can jump between days by heading.
+                    aria-current="date" announces today to assistive tech. */}
+                <h2
                   aria-current={day.isToday ? 'date' : undefined}
-                  className="border-t border-b-[3px] border-double border-black py-3 mb-6 flex items-baseline justify-between gap-3 flex-wrap"
+                  className="border-t border-b-[3px] border-double border-black py-3 mb-6 flex items-baseline justify-between gap-3 flex-wrap font-normal"
                 >
                   <span className="font-mono text-[11px] uppercase tracking-eyebrow text-balance">
                     {day.label}
@@ -108,7 +110,7 @@ export default async function HomePage() {
                     {day.screenings.length}{' '}
                     {day.screenings.length === 1 ? 'función' : 'funciones'}
                   </span>
-                </div>
+                </h2>
 
               {/* Screening rows */}
               <div className="space-y-5">
