@@ -95,20 +95,24 @@ export default async function HomePage() {
                     </span>
                     <span className="text-ink-gray/60">·</span>
                     <span>Semana del {edition.weekRangeLabel}</span>
-                    {/* {thisWeekTotal > 0 && (
+                    {/* Counts are desktop-only — on mobile 375 the subtitle
+                        wraps to 3 lines when they're shown and adds
+                        density without navigation value. Keeps the
+                        headers parallel across all three tiers at md+. */}
+                    {thisWeekTotal > 0 && (
                       <>
-                        <span className="text-ink-gray/60">·</span>
-                        <span>
+                        <span className="hidden md:inline text-ink-gray/60">·</span>
+                        <span className="hidden md:inline">
                           {thisWeekTotal}{' '}
                           {thisWeekTotal === 1 ? 'función' : 'funciones'}
                         </span>
-                        <span className="text-ink-gray/60">·</span>
-                        <span>
+                        <span className="hidden md:inline text-ink-gray/60">·</span>
+                        <span className="hidden md:inline">
                           {thisWeekCinemas}{' '}
                           {thisWeekCinemas === 1 ? 'sala' : 'salas'}
                         </span>
                       </>
-                    )} */}
+                    )}
                   </>
                 }
               />
@@ -133,7 +137,7 @@ export default async function HomePage() {
               <section id="este-mes" className="mt-16 md:mt-24">
                 <SectionHeader
                   title="Este mes"
-                  subtitle={rangeSubtitleFromDays(thisMonth)}
+                  subtitle={<SectionSubtitle parts={rangeSubtitleFromDays(thisMonth)} />}
                 />
                 <div className="mt-10 space-y-10">
                   {thisMonth.map((day) => (
@@ -148,7 +152,7 @@ export default async function HomePage() {
               <section id="proximamente" className="mt-16 md:mt-24">
                 <SectionHeader
                   title="Próximamente"
-                  subtitle={rangeSubtitleFromFlat(upcoming)}
+                  subtitle={<SectionSubtitle parts={rangeSubtitleFromFlat(upcoming)} />}
                 />
                 <UpcomingIndex screenings={upcoming} />
               </section>
@@ -565,26 +569,53 @@ function EmptyWeekMessage({ hasFollowup }: { hasFollowup: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
-// Subtitle builders — mono line under each section header.
+// Subtitle builders — return {range, counts} so the page can hide the
+// counts segment on mobile (hidden md:inline) while keeping the range
+// always visible. On narrow screens the counts ('15 funciones en 5
+// salas') add density without navigation value.
 // ---------------------------------------------------------------------------
 
-function rangeSubtitleFromDays(days: DayGroup[]): string {
+interface SectionSubtitleParts {
+  range: string;
+  counts: string;
+}
+
+function countsLabel(total: number, cinemas: number): string {
+  return `${total} ${total === 1 ? 'función' : 'funciones'} en ${cinemas} ${cinemas === 1 ? 'sala' : 'salas'}`;
+}
+
+function rangeSubtitleFromDays(days: DayGroup[]): SectionSubtitleParts {
   const totalScreenings = days.reduce((n, d) => n + d.screenings.length, 0);
   const cinemas = new Set(
     days.flatMap((d) => d.screenings.map((s) => s.cinema.id)),
   ).size;
   const first = dateKeyToDate(days[0].dateKey);
   const last = dateKeyToDate(days[days.length - 1].dateKey);
-  const range = formatRangeLabel(first, last);
-  return `${range} · ${totalScreenings} ${totalScreenings === 1 ? 'función' : 'funciones'} en ${cinemas} ${cinemas === 1 ? 'sala' : 'salas'}`;
+  return {
+    range: formatRangeLabel(first, last),
+    counts: countsLabel(totalScreenings, cinemas),
+  };
 }
 
-function rangeSubtitleFromFlat(rows: ScreeningRow[]): string {
+function rangeSubtitleFromFlat(rows: ScreeningRow[]): SectionSubtitleParts {
   const first = rows[0].startsAtUtc;
   const last = rows[rows.length - 1].startsAtUtc;
   const cinemas = new Set(rows.map((r) => r.cinema.id)).size;
-  const range = formatRangeLabel(first, last);
-  return `${range} · ${rows.length} ${rows.length === 1 ? 'función' : 'funciones'} en ${cinemas} ${cinemas === 1 ? 'sala' : 'salas'}`;
+  return {
+    range: formatRangeLabel(first, last),
+    counts: countsLabel(rows.length, cinemas),
+  };
+}
+
+/** Render {range, counts} as JSX with counts hidden on mobile. */
+function SectionSubtitle({ parts }: { parts: SectionSubtitleParts }) {
+  return (
+    <>
+      <span>{parts.range}</span>
+      <span className="hidden md:inline text-ink-gray/60">·</span>
+      <span className="hidden md:inline">{parts.counts}</span>
+    </>
+  );
 }
 
 // ---------------------------------------------------------------------------
