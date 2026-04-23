@@ -96,6 +96,26 @@ S3 (recurring-weekly) is still missing. Examples: Hijo mayor, Los dias chinos, P
 
 ---
 
+## 5. /design-review 2026-04-22 follow-ups (MEDIUM / POLISH)
+
+Deferred findings from the full live audit of afiche.vercel.app. HIGH-severity items (F-001, F-002, F-003, F-004, F-011) shipped this session. The remaining items below are spec-alignment and polish — real but not trust-damaging.
+
+**F-005 — CICLO tag on 80 of 81 cards drains signal value.** `src/providers/lugones.ts:461-468` `inferTags()` unconditionally pushes `'cycle'` for every Lugones program. When universal, the tag is noise. Options: (a) drop the blanket 'cycle' tag; (b) use the actual cycle name ("CICLO HITCHCOCK") instead of bare "CICLO"; (c) hide the tag row at render when the only tag is bare 'cycle'. Recommendation: (c) — minimal blast radius, keeps tag infrastructure for when real curation signals exist.
+
+**F-006 — DESIGN.md:149 says "Cards stack poster-above-body" on mobile; reality is horizontal poster-left-body-right.** The current horizontal layout at 375px is readable and keeps density. Recommend updating DESIGN.md to match rendered behavior rather than changing the code.
+
+**F-007 — Card title renders at 30px; DESIGN.md scale table specifies display-md = 36px.** `src/app/page.tsx:159` uses `text-2xl sm:text-3xl` (caps at 30px on small+). At the current card density 30px is well-proportioned — 36px would crowd the time. Two paths: (a) bump to `text-3xl md:text-4xl` to honor the spec; (b) update DESIGN.md scale to reflect the 30px reality. Recommendation: (b). Root cause: codebase uses Tailwind's preset classes rather than custom tokens that match DESIGN.md's scale. A later cycle should extend `tailwind.config` with named font-size tokens (`display-md: 2.25rem`, etc.) so DESIGN.md becomes self-enforcing.
+
+**F-008 — Posters served at 96px natural, soft on retina displays.** `<Image>` srcset only contains `w=96` at 1x; on 2x-DPR screens the browser needs ~160-192px for sharpness. Fix already partially landed (`sizes="80px"` from F-002) — Next/image now should serve 2x variant automatically. Verify after deploy; if still only 96px, set explicit `sizes="(min-resolution: 2dppx) 160px, 80px"` or configure next.config.ts `imageSizes`.
+
+**F-009 — Dateline wraps with leading "·" on mobile and tablet.** Visible on viewports <1280. The separator-and-token pairs need `white-space: nowrap` or the `·` should render inside the trailing span so it can't orphan. CSS-only fix.
+
+**F-010 — Day banner rhythm: "6 FUNCIONES" drops below the label on mobile 375.** Intentional flex-wrap fallout. Either make the banner three-column-always (shrink label + count), or accept the wrap. POLISH.
+
+**Follow-ups from HIGH fixes this session:**
+- **F-004b — Re-introduce real last-scrape timestamp in footer.** F-004 removed the dangling "última actualización" label. Wire it properly by querying `MAX(finished_at) FROM scrape_runs WHERE status = 'success'` and formatting as "Actualizado el DD de MMMM a las HH:MM". One small query + formatter.
+- **F-011b — Enrich Lumiton-family synopses from the /evento/ detail page body.** F-011 stopped scraping the truncated tile preview; the detail page has the full synopsis. `parseEventDetail()` in `src/providers/lumiton-agenda.ts:185` currently extracts director/titleOriginal/year/country/runtime — extend it to also extract the synopsis body. Needs fetching one Lumiton detail page to identify the right selector.
+
 ---
 
 ## Done (this session arc)
@@ -120,3 +140,13 @@ S3 (recurring-weekly) is still missing. Examples: Hijo mayor, Los dias chinos, P
 - ✅ **F011, F016, F017, F019, F021, F023, F024** — Semantic + a11y pass — commit `894e9dc`
 
 **Design Score: C+ → A-** (AI Slop Score A throughout). All 25 audit findings resolved. Pre-deploy polish complete.
+
+**2026-04-22 (/design-review live audit):**
+- ✅ **F-001** — Masthead dateline: "Semana del" → "Próximas funciones del" when range > 7 days — commit `cd73664`
+- ✅ **F-002** — Poster tiles: cream bg placeholder + above-fold `priority` — commit `415489f`
+- ✅ **F-003** — Day banners render as `<h2>`, not `<div>` (screen-reader outline) — commit `209603d`
+- ✅ **F-004** — Drop broken "última actualización · datos de ejemplo" footer line — commit `736a9b2`
+- ✅ **F-011** — Stop scraping truncated Lumiton tile synopses — commit `8ff01fe`
+- ✅ **F-011 part 2** — Display guard hides mid-sentence synopses from legacy DB rows — commit `2fb8f4a`
+
+**Baseline → After:** Design Score B+ → A- · AI Slop A (unchanged) · Goodwill Reservoir 65 → ~85. 115 tests passing (was 114; +1 regression test on `isWeekSpan`).
