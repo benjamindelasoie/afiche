@@ -120,7 +120,7 @@ S3 (recurring-weekly) is still missing. Examples: Hijo mayor, Los dias chinos, P
 
 Deferred findings from the full live audit of afiche.vercel.app. HIGH-severity items (F-001, F-002, F-003, F-004, F-011) shipped this session. The remaining items below are spec-alignment and polish — real but not trust-damaging.
 
-**F-005 — CICLO tag on 80 of 81 cards drains signal value.** `src/providers/lugones.ts:461-468` `inferTags()` unconditionally pushes `'cycle'` for every Lugones program. When universal, the tag is noise. Options: (a) drop the blanket 'cycle' tag; (b) use the actual cycle name ("CICLO HITCHCOCK") instead of bare "CICLO"; (c) hide the tag row at render when the only tag is bare 'cycle'. Recommendation: (c) — minimal blast radius, keeps tag infrastructure for when real curation signals exist.
+~~**F-005 — CICLO tag on 80 of 81 cards drains signal value.**~~ Resolved 2026-04-22 (/qa). Filter `'cycle'` out of `s.tags` at render; meaningful tags (retrospective, restored, named festivals) still show. ★ star prefix on cinema names also dropped — same universal-signal reasoning. Commit `aca2dde`.
 
 **F-006 — DESIGN.md:149 says "Cards stack poster-above-body" on mobile; reality is horizontal poster-left-body-right.** The current horizontal layout at 375px is readable and keeps density. Recommend updating DESIGN.md to match rendered behavior rather than changing the code.
 
@@ -130,7 +130,7 @@ Deferred findings from the full live audit of afiche.vercel.app. HIGH-severity i
 
 **F-009 — Dateline wraps with leading "·" on mobile and tablet.** Visible on viewports <1280. The separator-and-token pairs need `white-space: nowrap` or the `·` should render inside the trailing span so it can't orphan. CSS-only fix.
 
-**F-010 — Day banner rhythm: "6 FUNCIONES" drops below the label on mobile 375.** Intentional flex-wrap fallout. Either make the banner three-column-always (shrink label + count), or accept the wrap. POLISH.
+~~**F-010 — Day banner rhythm: "6 FUNCIONES" drops below the label on mobile 375.**~~ Resolved 2026-04-22 (/qa). Day banner dedup'd to two columns — dropped the redundant serif center date, making the mono label + count fit cleanly on mobile. Commit `48dd7f6`.
 
 **Follow-ups from HIGH fixes this session:**
 - **F-004b — Re-introduce real last-scrape timestamp in footer.** F-004 removed the dangling "última actualización" label. Wire it properly by querying `MAX(finished_at) FROM scrape_runs WHERE status = 'success'` and formatting as "Actualizado el DD de MMMM a las HH:MM". One small query + formatter.
@@ -170,3 +170,10 @@ Deferred findings from the full live audit of afiche.vercel.app. HIGH-severity i
 - ✅ **F-011 part 2** — Display guard hides mid-sentence synopses from legacy DB rows — commit `2fb8f4a`
 
 **Baseline → After:** Design Score B+ → A- · AI Slop A (unchanged) · Goodwill Reservoir 65 → ~85. 115 tests passing (was 114; +1 regression test on `isWeekSpan`).
+
+**2026-04-22 (/qa mobile polish, after 3-tier landing):**
+- ✅ **Day banner dedup** — dropped redundant serif "23 Abr" center column; mono label + count now fit cleanly on mobile 375 (closed F-010) — commit `48dd7f6`
+- ✅ **CICLO tag + ★ star prefix** — both were universal curation signals designed to contrast with chain content; dropped now that cartelera is all-indie (closed F-005) — commit `aca2dde`
+- ✅ **Tier 3 original title overflow** — dropped the italic "«Original Title»" subtitle on Próximamente rows; long Spanish titles no longer overflow mobile — commit `fe8303d`
+
+Open question flagged for a future /design-consultation: **what's carmine's job in a one-type cartelera?** Left-bar + card bg + cinema color were indie-vs-chain differentiators; now they're just "the Afiche card look." Rethink candidate.
