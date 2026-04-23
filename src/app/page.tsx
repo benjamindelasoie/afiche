@@ -275,13 +275,17 @@ export default async function HomePage() {
       </section>
 
         {/* Footer — editorial signature. Kept cream-on-cream so it closes
-            the page softly, matching the masthead's editorial weight. */}
+            the page softly, matching the masthead's editorial weight.
+            The old "última actualización · datos de ejemplo" line was
+            removed: "datos de ejemplo" (sample data) shipped to production
+            reads as "don't trust me" to any Spanish reader, and the
+            "última actualización" label was dangling (no timestamp was
+            ever wired). The fix to re-introduce a real last-scrape
+            timestamp is tracked in TODOS.md — until then the cleanest
+            thing is to say nothing rather than lie. */}
         <footer className="mt-20 pt-8 border-t-8 border-double border-black text-center">
           <p className="font-serif italic text-lg">
             Afiche — hecho por cinéfilos, para cinéfilos
-          </p>
-          <p className="text-[11px] font-mono uppercase tracking-eyebrow text-ink-gray mt-2">
-            última actualización · datos de ejemplo
           </p>
         </footer>
       </main>
