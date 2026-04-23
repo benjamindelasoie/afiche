@@ -12,7 +12,7 @@
  *     last_success_at, last_error, screening_count.
  */
 
-import { and, eq, gt, isNull, ne } from 'drizzle-orm';
+import { and, eq, gt, isNull, ne, sql } from 'drizzle-orm';
 import { db, films, screenings, providers } from '@/db';
 import type { ProviderRunResult, ScrapedScreening } from '@/providers/types';
 import { enrichFilm, type EnrichResult } from '@/tmdb/enrich';
@@ -43,13 +43,6 @@ export async function ingest(result: ProviderRunResult): Promise<IngestSummary> 
   const filmIdByKey = await upsertFilms(result.screenings);
   summary.filmsUpserted = filmIdByKey.size;
 
-  // 1b. TMDB enrichment — runs on films that don't already have a tmdb_id.
-  // Non-fatal: if TMDB is down or the token is missing, we skip and continue.
-  const enrichStats = await enrichPendingFilms(summary.warnings);
-  summary.filmsEnriched = enrichStats.enriched;
-  summary.filmsMerged = enrichStats.merged;
-  summary.enrichSkipped = enrichStats.skipped;
-
   // 2. Clear existing future screenings for this cinema
   //    (keeps historical rows; only replaces what we're about to re-scrape).
   await db
@@ -58,7 +51,15 @@ export async function ingest(result: ProviderRunResult): Promise<IngestSummary> 
       and(eq(screenings.cinemaId, result.cinemaId), gt(screenings.startsAtUtc, now)),
     );
 
-  // 3. Insert the new screenings
+  // 3. Insert the new screenings — done BEFORE enrichment on purpose.
+  //    enrichPendingFilms may merge duplicate film rows (collapsing a
+  //    year-less or wrong-year row into an existing enriched one), and
+  //    the merge deletes the losing row. If enrichment ran first, the
+  //    film_ids in filmIdByKey could point at rows that the merge just
+  //    deleted — FOREIGN KEY violation on screening INSERT. With the
+  //    order reversed, screenings land first, and the merge's own
+  //    `UPDATE screenings SET film_id = existingId WHERE film_id = f.id`
+  //    re-points them to the surviving row safely.
   if (result.screenings.length > 0) {
     const toInsert = result.screenings
       .map((s) => {
@@ -82,6 +83,15 @@ export async function ingest(result: ProviderRunResult): Promise<IngestSummary> 
       summary.screeningsInserted = toInsert.length;
     }
   }
+
+  // 3b. TMDB enrichment — now safe to merge duplicates because the merge
+  //     re-points live screenings (just inserted) before dropping the
+  //     losing film row. Non-fatal: if TMDB is down or the token is
+  //     missing, we skip and continue.
+  const enrichStats = await enrichPendingFilms(summary.warnings);
+  summary.filmsEnriched = enrichStats.enriched;
+  summary.filmsMerged = enrichStats.merged;
+  summary.enrichSkipped = enrichStats.skipped;
 
   // 4. Update provider success row
   await db
@@ -261,12 +271,24 @@ export async function enrichPendingFilms(
       director: f.director ?? undefined,
     });
     if (result.delta) {
-      // Merge check: did we just learn this year-less row's year, and does
-      // a row already exist with (our scrapedTitle, the resolved year)?
+      // Merge check: TMDB just resolved a year that might collide with
+      // another row having the same (scraped_title, year). Two cases:
+      //   a) f.year was null, TMDB provides one (classic duplicate from
+      //      the scraper emitting the same title pre- vs post-year-match)
+      //   b) f.year was WRONG (scraper's best guess), TMDB corrects it —
+      //      e.g., scraper said 2024, TMDB returns 2025 and a row with
+      //      (same title, 2025) already exists from a prior enrichment.
+      // Both trigger the unique constraint `(scraped_title, year)` at
+      // UPDATE time. Catch either by checking: would the resolved year
+      // differ from what we have AND would it collide with an existing
+      // row? If yes, re-point screenings to the existing row and drop
+      // ours, same as before.
       const resolvedYear = result.delta.year ?? f.year;
-      const wouldSetYearFromNull =
-        f.year === null && resolvedYear !== null && resolvedYear !== undefined;
-      if (wouldSetYearFromNull) {
+      const yearWouldChange =
+        resolvedYear !== f.year &&
+        resolvedYear !== null &&
+        resolvedYear !== undefined;
+      if (yearWouldChange) {
         const existing = await db
           .select({ id: films.id })
           .from(films)
@@ -279,17 +301,25 @@ export async function enrichPendingFilms(
           )
           .limit(1);
         if (existing[0]) {
-          // Re-point our screenings to the already-enriched row, then drop
-          // ours. screenings.film_id has onDelete:cascade — re-pointing
-          // FIRST ensures no screenings get collateral-deleted.
-          await db
-            .update(screenings)
-            .set({ filmId: existing[0].id })
-            .where(eq(screenings.filmId, f.id));
+          // Re-point our screenings to the already-enriched row. Use
+          // UPDATE OR IGNORE: some of our screenings may duplicate
+          // screenings already pointing at the existing film (same
+          // cinema + same starts_at, just inserted by this or a prior
+          // run). For those, the unique index (film_id, cinema_id,
+          // starts_at_utc) would fire on UPDATE; OR IGNORE makes the
+          // conflicting UPDATEs silently skip. The losing rows stay
+          // with filmId=f.id and get cleaned up by the cascade when we
+          // DELETE films.id=f.id below.
+          await db.run(sql`
+            UPDATE OR IGNORE screenings
+            SET film_id = ${existing[0].id}
+            WHERE film_id = ${f.id}
+          `);
           await db.delete(films).where(eq(films.id, f.id));
           merged++;
+          const fromYear = f.year === null ? 'no year' : `year=${f.year}`;
           warnings.push(
-            `merged film ${f.id} "${f.scrapedTitle}" (no year) into existing id=${existing[0].id} after TMDB resolved year=${resolvedYear}`,
+            `merged film ${f.id} "${f.scrapedTitle}" (${fromYear}) into existing id=${existing[0].id} after TMDB resolved year=${resolvedYear}`,
           );
           await sleep(100);
           continue;

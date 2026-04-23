@@ -419,6 +419,72 @@ describe('enrichPendingFilms — merge on (scrapedTitle, year) collision', () =>
     const [row] = await testDb.select().from(films).where(eq(films.id, id));
     expect(row.tmdbId).toBe(777);
   });
+
+  it('merges when TMDB changes a wrong year into a colliding row (Tardes de soledad case)', async () => {
+    // Regression: observed live on 2026-04-23.
+    //   Scraper emits "TARDES DE SOLEDAD" with year=2024 (its best guess
+    //   from surrounding context). Inserts as new row since
+    //   (scrapedTitle, year) doesn't match any existing row.
+    //   Earlier scrape had inserted same title with year=2025 (TMDB had
+    //   already enriched it). Now the 2024 row enriches — TMDB returns
+    //   year=2025 — UPDATE collides with the 2025 row's unique index.
+    // The merge check used to only fire when f.year === null. Broadened
+    // to any year change that would collide.
+    const existingId = await seedFilm({
+      scrapedTitle: 'TARDES DE SOLEDAD',
+      year: 2025,
+      matchSource: 'auto',
+    });
+    const pendingId = await seedFilm({
+      scrapedTitle: 'TARDES DE SOLEDAD',
+      year: 2024,
+      matchSource: 'none',
+    });
+    // A screening pointing at the pending (wrong-year) row — must survive
+    // the merge by getting re-pointed to the existing row.
+    // (Uses 'lugones' because seedCinema only seeds that one.)
+    await testDb.insert(screenings).values({
+      filmId: pendingId,
+      cinemaId: 'lugones',
+      startsAtUtc: new Date('2026-05-01T18:00:00Z'),
+      tags: ['cycle'],
+    });
+    enrichFilmMock.mockResolvedValue({
+      delta: {
+        tmdbId: 975324,
+        imdbId: 'tt26245982',
+        title: 'Tardes de soledad',
+        titleOriginal: 'Tardes de soledad',
+        director: 'Albert Serra',
+        country: 'ES',
+        year: 2025,
+        runtimeMin: 126,
+        posterUrl: 'https://image.tmdb.org/t/p/w342/x.jpg',
+        matchConfidence: 1,
+        matchSource: 'auto' as const,
+      },
+      reason: 'ok',
+    });
+
+    const warnings: string[] = [];
+    const result = await enrichPendingFilms(warnings);
+
+    expect(result.merged).toBe(1);
+    // The wrong-year row is gone.
+    const dropped = await testDb.select().from(films).where(eq(films.id, pendingId));
+    expect(dropped).toHaveLength(0);
+    // The existing row is untouched — merge never UPDATEs it.
+    const [kept] = await testDb.select().from(films).where(eq(films.id, existingId));
+    expect(kept.year).toBe(2025);
+    // Screenings re-pointed to the existing row, not collateral-deleted.
+    const reparented = await testDb
+      .select()
+      .from(screenings)
+      .where(eq(screenings.filmId, existingId));
+    expect(reparented).toHaveLength(1);
+    // Warning surfaces the year transition, not "no year".
+    expect(warnings.some((w) => w.includes('year=2024') && w.includes('year=2025'))).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
