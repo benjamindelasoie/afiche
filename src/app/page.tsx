@@ -56,41 +56,19 @@ export default async function HomePage() {
         Saltar al contenido
       </a>
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 md:py-16">
-        {/* Masthead — edition dateline treats the site like a weekly print
-            issue. The visible mono line is abbreviated; the sr-only
-            paragraph reads the full Spanish sentence for screen readers.
-            Both derive from the same computation (computeEdition) so they
-            can never drift. */}
+        {/* Masthead — pure brand moment. The edition dateline used to
+            hang under the h1, but that blurred the brand with the
+            "this week" section label. Now the masthead carries only
+            the name + tagline; edition metadata moved into the
+            "Esta semana" section header below so all three section
+            headers (Esta semana / Este mes / Próximamente) are parallel. */}
         <header className="border-y-8 border-double border-black py-8 text-center md:py-12">
           <h1
             className="font-serif text-balance leading-[0.9] tracking-tight"
             style={{ fontSize: 'clamp(4rem, 12vw, 8rem)' }}
           >
-            afiche
+            afiche semanal
           </h1>
-          <p
-            className="mt-4 font-mono text-[11px] uppercase tracking-eyebrow text-ink-gray flex items-center justify-center flex-wrap gap-x-2 gap-y-1"
-            aria-hidden="true"
-          >
-            <span className="text-carmine font-bold">
-              Edición Nº {edition.editionNumber}
-            </span>
-            <span className="text-ink-gray/60">·</span>
-            <span>Semana del {edition.weekRangeLabel}</span>
-            {thisWeekTotal > 0 && (
-              <>
-                <span className="text-ink-gray/60">·</span>
-                <span>
-                  {thisWeekTotal} {thisWeekTotal === 1 ? 'función' : 'funciones'}
-                </span>
-                <span className="text-ink-gray/60">·</span>
-                <span>
-                  {thisWeekCinemas} {thisWeekCinemas === 1 ? 'sala' : 'salas'}
-                </span>
-              </>
-            )}
-          </p>
-          <p className="sr-only">{edition.fullSentence}</p>
           <p className="mt-3 font-serif italic text-ink-gray text-lg md:text-xl">
             cartelera curada de Buenos Aires
           </p>
@@ -101,13 +79,46 @@ export default async function HomePage() {
         ) : (
           <>
             {/* Tier 1 — Esta semana. The decision layer. Full cards. */}
-            <section id="cartelera" className="mt-10 space-y-12 md:mt-14">
+            <section id="cartelera" className="mt-16">
+              <SectionHeader
+                title="Esta semana"
+                subtitle={
+                  <>
+                    <span className="text-carmine font-bold">
+                      Edición Nº {edition.editionNumber}
+                    </span>
+                    <span className="text-ink-gray/60">·</span>
+                    <span>Semana del {edition.weekRangeLabel}</span>
+                    {thisWeekTotal > 0 && (
+                      <>
+                        <span className="text-ink-gray/60">·</span>
+                        <span>
+                          {thisWeekTotal}{' '}
+                          {thisWeekTotal === 1 ? 'función' : 'funciones'}
+                        </span>
+                        <span className="text-ink-gray/60">·</span>
+                        <span>
+                          {thisWeekCinemas}{' '}
+                          {thisWeekCinemas === 1 ? 'sala' : 'salas'}
+                        </span>
+                      </>
+                    )}
+                  </>
+                }
+              />
+              {/* Full edition sentence for screen readers. Placed with the
+                  Esta semana header since that's where the span is now
+                  announced visually. Keeps the single-source compute
+                  so visible + sr-only can't drift. */}
+              <p className="sr-only">{edition.fullSentence}</p>
               {thisWeek.length === 0 ? (
                 <EmptyWeekMessage hasFollowup={thisMonth.length > 0 || upcoming.length > 0} />
               ) : (
-                thisWeek.map((day) => (
-                  <DaySection key={day.dateKey} day={day} variant="full" />
-                ))
+                <div className="mt-10 space-y-12">
+                  {thisWeek.map((day) => (
+                    <DaySection key={day.dateKey} day={day} variant="full" />
+                  ))}
+                </div>
               )}
             </section>
 
@@ -161,14 +172,17 @@ function SectionHeader({
   subtitle,
 }: {
   title: string;
-  subtitle: string;
+  // ReactNode so the Esta semana header can pass the rich edition line
+  // (carmine "Edición Nº 17" + the rest in ink-gray) while Este mes and
+  // Próximamente keep using plain strings.
+  subtitle: React.ReactNode;
 }) {
   return (
     <div className="text-center border-t-[3px] border-b-[3px] border-double border-black py-6">
       <h2 className="font-serif italic text-4xl md:text-5xl leading-none text-balance">
         {title}
       </h2>
-      <p className="mt-3 font-mono text-[11px] uppercase tracking-eyebrow text-ink-gray">
+      <p className="mt-3 font-mono text-[11px] uppercase tracking-eyebrow text-ink-gray flex items-center justify-center flex-wrap gap-x-2 gap-y-1">
         {subtitle}
       </p>
     </div>
