@@ -82,10 +82,13 @@ export default async function HomePage() {
         ) : (
           <>
             {/* Tier 1 — Esta semana. The decision layer. Full cards.
-                mt-10 mobile / mt-16 desktop — the masthead sits closer to
-                the first section on phones so the section header lands
-                above the fold without the double-header feeling rushed. */}
-            <section id="cartelera" className="mt-10 md:mt-16">
+                mt-4 mobile / mt-16 desktop — on phones the masthead's
+                bottom double-border + the section header's own top
+                double-border already do the "new section" work; 40px
+                of extra air between them (the earlier mt-10) just read
+                as wasted fold. Desktop keeps the generous breathing
+                room because the breaks aren't competing for fold space. */}
+            <section id="cartelera" className="mt-4 md:mt-16">
               <SectionHeader
                 title="Esta semana"
                 subtitle={
