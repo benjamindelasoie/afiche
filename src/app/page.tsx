@@ -61,15 +61,18 @@ export default async function HomePage() {
             "this week" section label. Now the masthead carries only
             the name + tagline; edition metadata moved into the
             "Esta semana" section header below so all three section
-            headers (Esta semana / Este mes / Próximamente) are parallel. */}
-        <header className="border-y-8 border-double border-black py-8 text-center md:py-12">
+            headers (Esta semana / Este mes / Próximamente) are parallel.
+            Mobile padding tightened (py-5 vs py-12 desktop) and the
+            h1 clamp minimum lowered so the first screening card returns
+            to first-fold on a 375×812 viewport. Desktop rhythm unchanged. */}
+        <header className="border-y-8 border-double border-black py-5 text-center md:py-12">
           <h1
             className="font-serif text-balance leading-[0.9] tracking-tight"
-            style={{ fontSize: 'clamp(4rem, 12vw, 8rem)' }}
+            style={{ fontSize: 'clamp(3.5rem, 12vw, 8rem)' }}
           >
-            afiche semanal
+            Afiche
           </h1>
-          <p className="mt-3 font-serif italic text-ink-gray text-lg md:text-xl">
+          <p className="mt-2 font-serif italic text-ink-gray text-lg md:mt-3 md:text-xl">
             cartelera curada de Buenos Aires
           </p>
         </header>
@@ -78,8 +81,11 @@ export default async function HomePage() {
           <EmptyStateAll />
         ) : (
           <>
-            {/* Tier 1 — Esta semana. The decision layer. Full cards. */}
-            <section id="cartelera" className="mt-16">
+            {/* Tier 1 — Esta semana. The decision layer. Full cards.
+                mt-10 mobile / mt-16 desktop — the masthead sits closer to
+                the first section on phones so the section header lands
+                above the fold without the double-header feeling rushed. */}
+            <section id="cartelera" className="mt-10 md:mt-16">
               <SectionHeader
                 title="Esta semana"
                 subtitle={
@@ -89,7 +95,7 @@ export default async function HomePage() {
                     </span>
                     <span className="text-ink-gray/60">·</span>
                     <span>Semana del {edition.weekRangeLabel}</span>
-                    {thisWeekTotal > 0 && (
+                    {/* {thisWeekTotal > 0 && (
                       <>
                         <span className="text-ink-gray/60">·</span>
                         <span>
@@ -102,7 +108,7 @@ export default async function HomePage() {
                           {thisWeekCinemas === 1 ? 'sala' : 'salas'}
                         </span>
                       </>
-                    )}
+                    )} */}
                   </>
                 }
               />
@@ -124,7 +130,7 @@ export default async function HomePage() {
 
             {/* Tier 2 — Este mes. Planning layer. Compact cards. */}
             {thisMonth.length > 0 && (
-              <section id="este-mes" className="mt-24">
+              <section id="este-mes" className="mt-16 md:mt-24">
                 <SectionHeader
                   title="Este mes"
                   subtitle={rangeSubtitleFromDays(thisMonth)}
@@ -139,7 +145,7 @@ export default async function HomePage() {
 
             {/* Tier 3 — Próximamente. Awareness layer. Text index. */}
             {upcoming.length > 0 && (
-              <section id="proximamente" className="mt-24">
+              <section id="proximamente" className="mt-16 md:mt-24">
                 <SectionHeader
                   title="Próximamente"
                   subtitle={rangeSubtitleFromFlat(upcoming)}
@@ -178,11 +184,11 @@ function SectionHeader({
   subtitle: React.ReactNode;
 }) {
   return (
-    <div className="text-center border-t-[3px] border-b-[3px] border-double border-black py-6">
+    <div className="text-center border-t-[3px] border-b-[3px] border-double border-black py-4 md:py-6">
       <h2 className="font-serif italic text-4xl md:text-5xl leading-none text-balance">
         {title}
       </h2>
-      <p className="mt-3 font-mono text-[11px] uppercase tracking-eyebrow text-ink-gray flex items-center justify-center flex-wrap gap-x-2 gap-y-1">
+      <p className="mt-2 md:mt-3 font-mono text-[11px] uppercase tracking-eyebrow text-ink-gray flex items-center justify-center flex-wrap gap-x-2 gap-y-1">
         {subtitle}
       </p>
     </div>
