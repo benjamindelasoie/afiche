@@ -1,7 +1,13 @@
 # Deploying Afiche
 
-First-time deploy to Vercel (web) + Turso (DB) + GitHub Actions (daily scrape).
+First-time deploy to Vercel (web) + Turso (DB) + dev-machine cron (daily scrape).
 Follow this top to bottom — each step feeds env vars into the next.
+
+> **Note on the scrape cron.** Daily scraping runs from the dev machine via
+> `npm run scrape:prod`, NOT from GitHub Actions. Runner IPs get HTTP 403 from
+> lumiton.ar (Cloudflare) and complejoteatral.gob.ar (datacenter-IP reputation).
+> The GHA workflow is kept around as `workflow_dispatch` only (manual trigger)
+> in case we ever put a proxy in front of the scraper. See section 4.
 
 ---
 
@@ -19,7 +25,7 @@ turso auth signup    # or: turso auth login
 # Create the prod DB
 turso db create afiche
 
-# Grab the URL — save it, you'll need it for Vercel + GHA
+# Grab the URL — save it, you'll need it for Vercel (and scrape-prod.sh hardcodes it)
 turso db show afiche --url
 # → libsql://afiche-<org>.turso.io
 
@@ -88,41 +94,79 @@ For local dev, the shortcut is `npm run db:rescrape` — chains
 5. **Deploy.** First build takes ~2 min. You'll get a URL like `afiche-xyz.vercel.app`.
 6. (Optional) **Domains** → add a custom domain if you have one.
 
-Copy the production URL — you'll need it for the GHA scraper webhook.
+Copy the production URL — `scrape-prod.sh` hardcodes it as the revalidate target, so if yours differs from `afiche.vercel.app` you'll want to edit `scripts/scrape-prod.sh:25`.
 
 ---
 
-## 3. GitHub Actions secrets (for daily scraping)
+## 3. Dev-machine .env.local (the prod scrape path)
 
-Open https://github.com/benjamindelasoie/afiche → **Settings → Secrets and variables → Actions → New repository secret**. Add:
+Daily scraping runs from your dev machine via `npm run scrape:prod`. That wraps
+`scripts/scrape-prod.sh`, which sources `.env.local` and overrides `DATABASE_URL`
+to the Turso prod endpoint for just that run.
+
+Add these to `.env.local` alongside the dev values you already have:
 
 | Name                   | Value                                                 |
 |------------------------|-------------------------------------------------------|
-| `DATABASE_URL`         | same as Vercel                                        |
-| `DATABASE_AUTH_TOKEN`  | same as Vercel                                        |
-| `TMDB_API_TOKEN`       | same as Vercel                                        |
-| `REVALIDATE_SECRET`    | same as Vercel (they must match)                      |
-| `SITE_URL`             | `https://afiche-xyz.vercel.app` (no trailing slash)   |
+| `DATABASE_URL`         | `file:./local.db` — leave pointing at local SQLite for dev |
+| `DATABASE_AUTH_TOKEN`  | Turso token from step 1 (used only by scrape-prod.sh) |
+| `TMDB_API_TOKEN`       | your v4 Read Access Token                             |
+| `REVALIDATE_SECRET`    | same 32-byte hex as Vercel (must match)               |
+
+`scrape-prod.sh` hardcodes the production Turso URL and the Vercel site URL
+(both public), then pulls `DATABASE_AUTH_TOKEN`, `TMDB_API_TOKEN`, and
+`REVALIDATE_SECRET` from `.env.local`. It fails loudly if any secret is missing
+rather than running with a broken token.
+
+### GitHub Actions secrets (optional, for the manual-trigger fallback)
+
+The GHA workflow is `workflow_dispatch` only now, but if you want the option of
+re-running from the Actions tab (e.g. after putting a proxy in front of the
+scraper), set the same secrets at
+**Settings → Secrets and variables → Actions**:
+
+| Name                   | Value                                                 |
+|------------------------|-------------------------------------------------------|
+| `DATABASE_URL`         | `libsql://afiche-<org>.turso.io`                      |
+| `DATABASE_AUTH_TOKEN`  | same as dev machine                                   |
+| `TMDB_API_TOKEN`       | same                                                  |
+| `REVALIDATE_SECRET`    | same                                                  |
+| `SITE_URL`             | `https://afiche.vercel.app` (no trailing slash)       |
 
 ---
 
-## 4. First scrape
+## 4. First scrape (and ongoing refresh)
 
-The schedule is `0 8 * * *` (daily 08:00 UTC = 05:00 BA). To run it immediately:
+From the dev machine, once Vercel is deployed and `.env.local` has the Turso
+token:
 
-1. Go to **Actions → Scrape cinemas**
-2. Click **Run workflow** → `main` → **Run**
-3. Watch the run. Expected:
-   - `Run scraper against Turso` logs per-cinema stats
-   - `Revalidate week-view cache` returns `{ "revalidated": true, "path": "/" }`
-4. Visit the site. The week view should render real data from Turso.
+```bash
+npm run scrape:prod
+```
+
+Expected output:
+- `🎞  Scraping against Turso prod...` followed by per-cinema stats
+- `🔄 Revalidating https://afiche.vercel.app...` → `✓ Cache revalidated.`
+- `Done. Check https://afiche.vercel.app to verify.`
+
+Visit the site. The cartelera should render real data from Turso on next load.
+
+Run this on whatever cadence feels right — daily is fine, the providers haven't
+shown meaningful intra-day churn. If you want literal cron, wire it via
+`crontab -e` on the dev machine.
+
+**Manual GHA fallback (not currently working — reserved for when a proxy lands):**
+Go to **Actions → Scrape cinemas → Run workflow → main → Run**. 4 of 5
+providers will currently return 403; use this path only if you've put a proxy
+(CF Worker, Vercel Edge, paid residential) in front of the scraper first.
 
 ---
 
 ## 5. What to monitor
 
 - **Vercel → Deployments** for build failures on push
-- **GitHub Actions → Scrape cinemas** for daily scrape health (warnings column in `scrape_runs` will surface provider-level issues)
+- **scrape-prod.sh exit status** on the dev machine; warnings column in `scrape_runs` surfaces provider-level issues
 - **Turso → Dashboard** for query / storage usage (free tier is generous)
 
-If a scrape fails, the workflow fails loudly. You can re-run it from the Actions tab without waiting for the next cron.
+If a scrape fails, the script exits non-zero and prints the failing step. Re-run
+it manually once you've fixed the issue.
