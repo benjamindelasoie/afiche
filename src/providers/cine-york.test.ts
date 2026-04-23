@@ -58,14 +58,17 @@ describe('parseAgenda — Cine York filter + extraction', () => {
     }
   });
 
-  it('populates synopsisEs from the line-clamp-3 paragraph', () => {
+  it('leaves synopsisEs undefined — tile preview is truncated mid-sentence', () => {
+    // The Lumiton agenda tile renders synopses inside p.line-clamp-3 at
+    // ~100-140 chars, always cut mid-sentence. Rendering that on the
+    // Afiche card reads as "broken data" — every card trails off with a
+    // dangling comma. Design choice: prefer no synopsis over a bad one.
+    // The full synopsis body lives on the /evento/ detail page and
+    // enrichment from there is tracked separately.
     const out = parseAgenda(html, []);
-    const lawrence = out.find((s) => s.filmTitle === 'LAWRENCE DE ARABIA');
-    expect(lawrence?.synopsisEs).toBeDefined();
-    expect(lawrence!.synopsisEs!.length).toBeGreaterThan(10);
-    // Strip trailing "…" / "&hellip;" artifacts from the truncation.
-    expect(lawrence!.synopsisEs!.endsWith('…')).toBe(false);
-    expect(lawrence!.synopsisEs!.endsWith('&hellip;')).toBe(false);
+    for (const s of out) {
+      expect(s.synopsisEs).toBeUndefined();
+    }
   });
 });
 

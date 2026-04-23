@@ -134,12 +134,13 @@ export function parseAgenda(
       return;
     }
 
-    const synopsis = $a
-      .find('p.line-clamp-3')
-      .first()
-      .text()
-      .trim()
-      .replace(/&hellip;$|…$/, '');
+    // Don't scrape a synopsis from the agenda tile: the tile's
+    // p.line-clamp-3 is Lumiton's own CSS-truncated preview (~100-140
+    // chars, always cut mid-sentence, dangling commas/connectives).
+    // Rendering that in a card reads as "broken data." Better to show
+    // no synopsis (DESIGN.md line 136: "Card renders without synopsis
+    // block"). Full synopses live on the /evento/ detail page body;
+    // enriching from there is tracked in TODOS.md.
 
     const detailHref = $a.find('a[href*="/evento/"]').first().attr('href');
     const sourceUrl = detailHref ?? AGENDA_URL;
@@ -149,7 +150,6 @@ export function parseAgenda(
       filmTitle: title,
       startsAtUtc: buildBaLocalToUtc(date, time.hour, time.minute),
       tags: inferTags($a),
-      synopsisEs: synopsis || undefined,
       sourceUrl,
     });
   });
