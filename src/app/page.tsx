@@ -260,13 +260,19 @@ function ScreeningCard({
   // as "related to this week but less important."
   const leftBar = isCompact ? 'border-l-[3px]' : 'border-l-4';
 
+  // Filter out 'cycle' — it's on every Lugones card (inferTags pushes it
+  // unconditionally), so universal ≠ signal. Only meaningful tags like
+  // 'retrospective' / 'restored' / actual festival names render. When the
+  // only tag was the bare cycle, the tag row disappears entirely.
+  const visibleTags = s.tags.filter((t) => t !== 'cycle');
+
   const cardBody = (
     <>
       {/* Tags — only in full variant. Compact / próximamente drop them
           to reduce visual chatter when the card is already smaller. */}
-      {!isCompact && s.tags.length > 0 && (
+      {!isCompact && visibleTags.length > 0 && (
         <div className="flex gap-2 mb-2 flex-wrap">
-          {s.tags.map((t) => (
+          {visibleTags.map((t) => (
             <span
               key={t}
               className="text-[11px] font-mono tracking-card uppercase px-2 py-0.5 bg-carmine text-cream"
@@ -357,6 +363,11 @@ function ScreeningCard({
             Desktop: rightmost column of the card, stacked vertically. */}
         <div className="flex items-end justify-between gap-4 md:flex-col md:items-end md:text-right md:shrink-0 md:gap-0">
           <div>
+            {/* Cinema name — carmine bold for indie, grey for chain.
+                The ★ prefix was dropped when the cartelera went all-indie:
+                a curation signal with nothing to contrast against just
+                adds noise. The color difference is the differentiator
+                when chain content returns. */}
             <p
               className={`text-xs font-mono tracking-card uppercase ${
                 s.cinema.type === 'indie'
@@ -364,7 +375,6 @@ function ScreeningCard({
                   : 'text-ink-gray'
               }`}
             >
-              {s.cinema.type === 'indie' && '★ '}
               {s.cinema.name}
             </p>
             {s.cinema.neighborhood && (
@@ -454,13 +464,13 @@ function UpcomingIndex({ screenings }: { screenings: ScreeningRow[] }) {
                 )}
             </div>
 
-            {/* Cinema (right — its own row on mobile) */}
+            {/* Cinema (right — its own row on mobile). Star prefix
+                dropped alongside the card-level one. */}
             <div
               className={`col-span-2 md:col-span-1 font-mono text-[11px] uppercase tracking-card whitespace-nowrap ${
                 isIndie ? 'text-carmine font-bold' : 'text-ink-gray'
               }`}
             >
-              {isIndie && '★ '}
               {s.cinema.name}
             </div>
           </div>
