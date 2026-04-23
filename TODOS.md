@@ -150,7 +150,7 @@ Deferred findings from the full live audit of afiche.vercel.app. HIGH-severity i
 ~~**F-010 — Day banner rhythm: "6 FUNCIONES" drops below the label on mobile 375.**~~ Resolved 2026-04-22 (/qa). Day banner dedup'd to two columns — dropped the redundant serif center date, making the mono label + count fit cleanly on mobile. Commit `48dd7f6`.
 
 **Follow-ups from HIGH fixes this session:**
-- **F-004b — Re-introduce real last-scrape timestamp in footer.** F-004 removed the dangling "última actualización" label. Wire it properly by querying `MAX(finished_at) FROM scrape_runs WHERE status = 'success'` and formatting as "Actualizado el DD de MMMM a las HH:MM". One small query + formatter.
+- ~~**F-004b — Re-introduce real last-scrape timestamp in footer.**~~ Resolved 2026-04-23 (/qa). New query `getLastScrapeTime()` reads `MAX(finished_at)` from `scrape_runs` WHERE `status='success'`. Footer renders "Actualizado el DD de MMMM a las HH:MM" in BA time when non-null, silent otherwise. Commit `0407828`.
 - **F-011b — Enrich Lumiton-family synopses from the /evento/ detail page body.** F-011 stopped scraping the truncated tile preview; the detail page has the full synopsis. `parseEventDetail()` in `src/providers/lumiton-agenda.ts:185` currently extracts director/titleOriginal/year/country/runtime — extend it to also extract the synopsis body. Needs fetching one Lumiton detail page to identify the right selector.
 
 ---
