@@ -178,18 +178,6 @@ export async function getUpcomingScreenings(
   return fetchRows({ lower });
 }
 
-/**
- * @deprecated Use the three tier queries above. Retained temporarily so
- * the current page.tsx keeps compiling while the 3-tier view is landed
- * in a follow-up commit. Returns all future screenings (from `now` on),
- * grouped by day — the pre-restructure behavior.
- */
-export async function getThisWeeksScreenings(): Promise<DayGroup[]> {
-  const now = new Date();
-  const rows = await fetchRows({ lower: now });
-  return groupByDay(rows, now);
-}
-
 // ---------------------------------------------------------------------------
 // Date formatting helpers — always in America/Argentina/Buenos_Aires
 // ---------------------------------------------------------------------------
