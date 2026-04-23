@@ -112,7 +112,12 @@ export default async function HomePage() {
 
               {/* Screening rows */}
               <div className="space-y-5">
-                {day.screenings.map((s) => {
+                {day.screenings.map((s, idx) => {
+                  // Above-fold posters get eager-loaded with high priority so
+                  // the first screen never flashes empty tiles. Below-fold
+                  // images keep next/image's default lazy strategy — good
+                  // for bandwidth on a page with ~80 posters.
+                  const isAboveFold = day.isToday && idx < 3;
                   const cardBody = (
                     <>
                       {/* Tags */}
@@ -136,19 +141,26 @@ export default async function HomePage() {
                         <div className="flex gap-4 min-w-0 md:flex-1">
                           {/* Poster thumbnail or typographic fallback (indie only).
                               The carmine offset shadow is the project's signature
-                              zine flourish — the only decorative shadow on the page. */}
+                              zine flourish — the only decorative shadow on the page.
+                              Outer tile is cream so lazy-loading images reveal on
+                              paper rather than flashing solid black; the black bg
+                              is scoped to the true no-poster fallback span so that
+                              "no poster" still looks like an editorial decision
+                              (italic title on black, per DESIGN.md). */}
                           {s.cinema.type === 'indie' && (
-                            <div className="shrink-0 w-20 h-28 bg-black text-cream flex items-center justify-center overflow-hidden border border-black shadow-[4px_4px_0_var(--color-carmine)]">
+                            <div className="shrink-0 w-20 h-28 bg-cream flex items-center justify-center overflow-hidden border border-black shadow-[4px_4px_0_var(--color-carmine)]">
                               {s.film.posterUrl ? (
                                 <Image
                                   src={s.film.posterUrl}
                                   alt={s.film.title}
                                   width={80}
                                   height={112}
+                                  sizes="80px"
+                                  priority={isAboveFold}
                                   className="w-full h-full object-cover"
                                 />
                               ) : (
-                                <span className="font-serif italic text-center px-1 leading-tight text-sm">
+                                <span className="w-full h-full bg-black text-cream flex items-center justify-center font-serif italic text-center px-1 leading-tight text-sm">
                                   {s.film.title}
                                 </span>
                               )}
