@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Pre-push gate: catch what Vitest can't (TypeScript strict) + enforce
+# lint + format. Runs before anything leaves the machine so a failing
+# Vercel build from type errors becomes a local error instead.
+#
+# Wire this up once per clone:
+#   git config core.hooksPath .githooks
+#
+# Skip for a one-off:  git push --no-verify   (use sparingly — the whole
+# point is that bad code doesn't escape to prod)
+
+set -euo pipefail
+
+# Source nvm + use the repo's Node version. Hooks inherit a minimal
+# PATH — don't assume `node` on PATH resolves to the right version.
+if [ -s "$HOME/.nvm/nvm.sh" ]; then
+  # shellcheck disable=SC1091
+  \. "$HOME/.nvm/nvm.sh"
+  nvm use --silent > /dev/null 2>&1 || true
+fi
+
+echo "→ typecheck (tsc --noEmit)"
+npx --no-install tsc --noEmit
+
+echo "→ lint (eslint)"
+npm run --silent lint
+
+echo "→ format check (prettier)"
+npx --no-install prettier --check .
+
+echo "→ tests (vitest run)"
+npx --no-install vitest run --reporter=dot
+
+echo "✓ pre-push OK"

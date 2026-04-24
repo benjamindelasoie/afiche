@@ -52,6 +52,11 @@ Each cinema has a dedicated provider module in [`src/providers/`](src/providers)
 # 1. Install deps
 npm install
 
+# 1b. Wire up the pre-push hook (typecheck + lint + format + tests).
+# One-time per clone; catches tsc errors and unformatted code before
+# they reach Vercel. Skip a run with `git push --no-verify`.
+git config core.hooksPath .githooks
+
 # 2. Set up env
 cp .env.example .env.local
 # then edit .env.local:
