@@ -68,9 +68,20 @@ export default async function HomePage() {
             h1 clamp minimum lowered so the first screening card returns
             to first-fold on a 375×812 viewport. Desktop rhythm unchanged. */}
         <header className="border-y-8 border-double border-black py-5 text-center md:py-12">
+          {/* tracking-[-0.02em] matches the DESIGN.md display-xl spec
+              exactly. The earlier `tracking-tight` (-0.025em) was a hair
+              tighter and caused Instrument Serif's `f` terminal to crash
+              into the `i` stem at clamp-max (128px) on desktop. Explicit
+              `fontKerning` + `fontFeatureSettings: liga` also turn on the
+              fi ligature that Next/font-loaded Instrument Serif ships
+              with but doesn't apply by default. */}
           <h1
-            className="font-serif text-balance leading-[0.9] tracking-tight"
-            style={{ fontSize: 'clamp(3.5rem, 12vw, 8rem)' }}
+            className="font-serif text-balance leading-[0.9] tracking-[-0.02em]"
+            style={{
+              fontSize: 'clamp(3.5rem, 12vw, 8rem)',
+              fontKerning: 'normal',
+              fontFeatureSettings: '"liga", "kern"',
+            }}
           >
             Afiche
           </h1>
@@ -298,9 +309,11 @@ function ScreeningCard({
   const posterShadow = isCompact
     ? 'shadow-[3px_3px_0_var(--color-carmine)]'
     : 'shadow-[4px_4px_0_var(--color-carmine)]';
+  // DESIGN.md display-md spec: tracking -0.01em (not Tailwind's tracking-tight
+  // = -0.025em). Looser tracking is more legible at 24–30px card-title sizes.
   const titleClass = isCompact
-    ? 'font-serif text-xl sm:text-2xl leading-tight tracking-tight text-balance'
-    : 'font-serif text-2xl sm:text-3xl leading-tight tracking-tight text-balance';
+    ? 'font-serif text-xl sm:text-2xl leading-tight tracking-[-0.01em] text-balance'
+    : 'font-serif text-2xl sm:text-3xl leading-tight tracking-[-0.01em] text-balance';
   const timeClass = isCompact
     ? 'font-serif italic text-3xl leading-none text-carmine tabular-nums md:mt-2'
     : 'font-serif italic text-4xl leading-none text-carmine tabular-nums md:mt-2';
