@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+build
+coverage
+local.db
+local.db-journal
+drizzle
+test/fixtures
+package-lock.json
+
+# Markdown docs are often hand-wrapped for editorial intent (DESIGN.md,
+# TODOS.md). Don't reformat — keep blame clean and preserve deliberate
+# line breaks.
+*.md
