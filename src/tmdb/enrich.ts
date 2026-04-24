@@ -29,11 +29,7 @@ import {
   type TmdbMovieDetails,
   type TmdbMovieSummary,
 } from './client';
-import {
-  pickBestMatch,
-  scoreCandidates,
-  MATCH_CONFIDENCE_THRESHOLD,
-} from './match';
+import { pickBestMatch, scoreCandidates, MATCH_CONFIDENCE_THRESHOLD } from './match';
 import { findOverride } from './overrides';
 
 export interface EnrichmentDelta {

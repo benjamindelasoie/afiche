@@ -15,9 +15,7 @@ import type { IngestSummary } from './ingest';
 let testDb: TestDb;
 
 vi.mock('@/db', async () => {
-  const schema = await vi.importActual<typeof import('@/db/schema')>(
-    '@/db/schema',
-  );
+  const schema = await vi.importActual<typeof import('@/db/schema')>('@/db/schema');
   return {
     ...schema,
     get db() {
@@ -37,10 +35,7 @@ async function seedCinema(): Promise<void> {
 }
 
 async function getRun(id: number) {
-  const [row] = await testDb
-    .select()
-    .from(scrapeRuns)
-    .where(eq(scrapeRuns.id, id));
+  const [row] = await testDb.select().from(scrapeRuns).where(eq(scrapeRuns.id, id));
   return row;
 }
 

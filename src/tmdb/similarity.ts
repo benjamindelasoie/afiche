@@ -48,9 +48,7 @@ export function jaroWinkler(a: string, b: string): number {
   transpositions /= 2;
 
   const jaro =
-    (matches / s1.length +
-      matches / s2.length +
-      (matches - transpositions) / matches) /
+    (matches / s1.length + matches / s2.length + (matches - transpositions) / matches) /
     3;
 
   // Winkler boost: up to 4 characters of common prefix, scaled by 0.1.
@@ -67,8 +65,8 @@ function normalize(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')  // strip combining diacritics
-    .replace(/[^\w\s]/g, '')           // strip punctuation
+    .replace(/[\u0300-\u036f]/g, '') // strip combining diacritics
+    .replace(/[^\w\s]/g, '') // strip punctuation
     .replace(/\s+/g, ' ')
     .trim();
 }

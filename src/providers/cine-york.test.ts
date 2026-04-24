@@ -16,10 +16,7 @@ import { resolve } from 'node:path';
 import { parseAgenda } from './cine-york';
 
 function fixture(name: string): string {
-  return readFileSync(
-    resolve(__dirname, '../../test/fixtures/cine-york', name),
-    'utf8',
-  );
+  return readFileSync(resolve(__dirname, '../../test/fixtures/cine-york', name), 'utf8');
 }
 
 describe('parseAgenda — Cine York filter + extraction', () => {
@@ -76,12 +73,14 @@ describe('parseAgenda — Cine York filter + extraction', () => {
 // Synthetic edge cases
 // ---------------------------------------------------------------------------
 describe('parseAgenda — synthetic edge cases', () => {
-  function oneTile(overrides: {
-    date?: string;
-    locations?: string;
-    time?: string;
-    title?: string;
-  } = {}): string {
+  function oneTile(
+    overrides: {
+      date?: string;
+      locations?: string;
+      time?: string;
+      title?: string;
+    } = {},
+  ): string {
     const date = overrides.date ?? '2026-05-15';
     const locations = overrides.locations ?? '["cine-york"]';
     const time = overrides.time ?? '20:30';

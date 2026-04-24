@@ -123,9 +123,7 @@ export function parseAgenda(
       .trim();
     const time = parseTime(timeText);
     if (!time) {
-      warnings.push(
-        `${config.cinemaId}: could not parse time "${timeText}" for ${date}`,
-      );
+      warnings.push(`${config.cinemaId}: could not parse time "${timeText}" for ${date}`);
       return;
     }
 
@@ -198,12 +196,7 @@ export function parseEventDetail(html: string): EventDetail {
     else if (label.startsWith('titulo original')) out.titleOriginal = value;
   });
 
-  const smText = $block
-    .find('.text-sm')
-    .first()
-    .text()
-    .replace(/\s+/g, ' ')
-    .trim();
+  const smText = $block.find('.text-sm').first().text().replace(/\s+/g, ' ').trim();
   if (smText) {
     const runtimeMatch = smText.match(/(\d{1,3})\s*min\b\.?/i);
     if (runtimeMatch) out.runtimeMin = parseInt(runtimeMatch[1], 10);
@@ -242,11 +235,7 @@ export async function enrichFromDetailPages(
   concurrency = 5,
 ): Promise<void> {
   const urls = Array.from(
-    new Set(
-      screenings
-        .map((s) => s.sourceUrl)
-        .filter((u) => u.includes('/evento/')),
-    ),
+    new Set(screenings.map((s) => s.sourceUrl).filter((u) => u.includes('/evento/'))),
   );
   if (urls.length === 0) return;
 
@@ -303,7 +292,10 @@ function textUntilNextBlock(el: any): string {
   let value = '';
   let cur = el.next;
   while (cur) {
-    if (cur.type === 'tag' && (cur.name === 'br' || cur.name === 'b' || cur.name === 'div')) {
+    if (
+      cur.type === 'tag' &&
+      (cur.name === 'br' || cur.name === 'b' || cur.name === 'div')
+    ) {
       break;
     }
     if (cur.type === 'text') value += cur.data;
@@ -347,11 +339,7 @@ function parseTime(raw: string): { hour: number; minute: number } | null {
  * with no DST (stable since 2009). Hour 24 means midnight at the end of
  * the given day — roll one calendar day forward and use 00:00 locally.
  */
-function buildBaLocalToUtc(
-  isoDate: string,
-  hourBa: number,
-  minuteBa: number,
-): Date {
+function buildBaLocalToUtc(isoDate: string, hourBa: number, minuteBa: number): Date {
   const [y, m, d] = isoDate.split('-').map((s) => parseInt(s, 10));
   let year = y;
   let month = m - 1;

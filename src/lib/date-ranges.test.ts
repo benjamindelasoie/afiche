@@ -82,19 +82,31 @@ describe('getIsoWeekEndBA — last instant of Sunday BA', () => {
 
 describe('getNextMonthStartBA — upper bound of "este mes"', () => {
   it('Wed 2026-04-22 → May 1 00:00 BA', () => {
-    iso('2026-05-01T03:00:00.000Z', getNextMonthStartBA(new Date('2026-04-22T15:00:00Z')));
+    iso(
+      '2026-05-01T03:00:00.000Z',
+      getNextMonthStartBA(new Date('2026-04-22T15:00:00Z')),
+    );
   });
 
   it('Thu 2026-04-30 (end of April) → May 1 00:00 BA', () => {
-    iso('2026-05-01T03:00:00.000Z', getNextMonthStartBA(new Date('2026-04-30T15:00:00Z')));
+    iso(
+      '2026-05-01T03:00:00.000Z',
+      getNextMonthStartBA(new Date('2026-04-30T15:00:00Z')),
+    );
   });
 
   it('Dec 2026-12-15 rolls over year: → Jan 1 2027 00:00 BA', () => {
-    iso('2027-01-01T03:00:00.000Z', getNextMonthStartBA(new Date('2026-12-15T15:00:00Z')));
+    iso(
+      '2027-01-01T03:00:00.000Z',
+      getNextMonthStartBA(new Date('2026-12-15T15:00:00Z')),
+    );
   });
 
   it('Jan 2026-01-05 → Feb 1 00:00 BA', () => {
-    iso('2026-02-01T03:00:00.000Z', getNextMonthStartBA(new Date('2026-01-05T15:00:00Z')));
+    iso(
+      '2026-02-01T03:00:00.000Z',
+      getNextMonthStartBA(new Date('2026-01-05T15:00:00Z')),
+    );
   });
 });
 

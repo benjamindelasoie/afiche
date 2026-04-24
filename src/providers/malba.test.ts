@@ -15,10 +15,7 @@ import { resolve } from 'node:path';
 import { extractCycles, parseDetailPage } from './malba';
 
 function fixture(name: string): string {
-  return readFileSync(
-    resolve(__dirname, '../../test/fixtures/malba', name),
-    'utf8',
-  );
+  return readFileSync(resolve(__dirname, '../../test/fixtures/malba', name), 'utf8');
 }
 
 describe('extractCycles (listing page)', () => {
@@ -32,8 +29,7 @@ describe('extractCycles (listing page)', () => {
 
     expect(byTitle['Olivera-Aries Un cine para la historia']).toEqual({
       slug: 'ciclo-aries-cinematografica-argentina',
-      detailUrl:
-        'https://malba.org.ar/evento/ciclo-aries-cinematografica-argentina/',
+      detailUrl: 'https://malba.org.ar/evento/ciclo-aries-cinematografica-argentina/',
     });
     expect(byTitle['David Lynch x5']?.slug).toBe('david-lynch-x5');
     expect(byTitle['Revista Caligari']?.slug).toBe('revista-caligari-2');
@@ -56,8 +52,7 @@ describe('parseDetailPage (Olivera-Aries cycle)', () => {
   const cycle = {
     slug: 'ciclo-aries-cinematografica-argentina',
     title: 'Olivera-Aries Un cine para la historia',
-    detailUrl:
-      'https://malba.org.ar/evento/ciclo-aries-cinematografica-argentina/',
+    detailUrl: 'https://malba.org.ar/evento/ciclo-aries-cinematografica-argentina/',
   };
 
   it('parses the full 2026 April+May schedule into 22 screenings', () => {
@@ -92,13 +87,9 @@ describe('parseDetailPage (Olivera-Aries cycle)', () => {
   it('converts hour 24 ("midnight") to 00:00 of the NEXT calendar day', () => {
     const screenings = parseDetailPage(html, cycle, []);
     // VIERNES 1 de mayo 24:00 "Hotel alojamiento" → 2026-05-02 00:00 BA = 2026-05-02T03:00 UTC
-    const midnight = screenings.find(
-      (s) => s.filmTitle === 'Hotel alojamiento',
-    );
+    const midnight = screenings.find((s) => s.filmTitle === 'Hotel alojamiento');
     expect(midnight).toBeDefined();
-    expect(midnight!.startsAtUtc.toISOString()).toBe(
-      '2026-05-02T03:00:00.000Z',
-    );
+    expect(midnight!.startsAtUtc.toISOString()).toBe('2026-05-02T03:00:00.000Z');
   });
 
   it('attaches the cycle source URL and the "cycle" tag to every screening', () => {
@@ -116,9 +107,7 @@ describe('parseDetailPage (Olivera-Aries cycle)', () => {
     const patagonia = screenings.find((s) => s.filmTitle === 'La patagonia rebelde');
     expect(patagonia?.director).toBe('Héctor Olivera');
     // "No habrá más penas ni olvido" preserves á
-    const nopenas = screenings.find((s) =>
-      s.filmTitle.startsWith('No habrá'),
-    );
+    const nopenas = screenings.find((s) => s.filmTitle.startsWith('No habrá'));
     expect(nopenas).toBeDefined();
   });
 
@@ -157,7 +146,10 @@ describe('parseDetailPage — Strategy 2 (single-event, prose schedule)', () => 
     detailUrl: 'https://malba.org.ar/evento/el-diablo-viste-a-la-moda-2/',
   };
 
-  function makeHtml(scheduleLine: string, datePublished = '2026-04-01T00:00:00+00:00'): string {
+  function makeHtml(
+    scheduleLine: string,
+    datePublished = '2026-04-01T00:00:00+00:00',
+  ): string {
     return `
       <html><body><main>
         <h1>El diablo viste a la moda 2</h1>
@@ -188,11 +180,7 @@ describe('parseDetailPage — Strategy 2 (single-event, prose schedule)', () => 
   });
 
   it('handles a single time with no separators', () => {
-    const out = parseDetailPage(
-      makeHtml('Jueves 15 de mayo a las 20:00'),
-      cycle,
-      [],
-    );
+    const out = parseDetailPage(makeHtml('Jueves 15 de mayo a las 20:00'), cycle, []);
     expect(out).toHaveLength(1);
     expect(out[0].startsAtUtc.toISOString()).toBe('2026-05-15T23:00:00.000Z');
   });
@@ -220,20 +208,12 @@ describe('parseDetailPage — Strategy 2 (single-event, prose schedule)', () => 
   });
 
   it('is case-insensitive on day and month names', () => {
-    const out = parseDetailPage(
-      makeHtml('MIÉRCOLES 29 de ABRIL a las 17:45'),
-      cycle,
-      [],
-    );
+    const out = parseDetailPage(makeHtml('MIÉRCOLES 29 de ABRIL a las 17:45'), cycle, []);
     expect(out).toHaveLength(1);
   });
 
   it('tolerates day-name accent stripping (Sabado vs Sábado)', () => {
-    const out = parseDetailPage(
-      makeHtml('Sabado 5 de julio a las 20:00'),
-      cycle,
-      [],
-    );
+    const out = parseDetailPage(makeHtml('Sabado 5 de julio a las 20:00'), cycle, []);
     expect(out).toHaveLength(1);
   });
 

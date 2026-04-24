@@ -30,9 +30,7 @@ async function resetProgramming() {
   const [fRow] = await db.select({ n: count }).from(films);
   const [rRow] = await db.select({ n: count }).from(scrapeRuns);
 
-  console.log(
-    `   Current: ${sRow.n} screenings, ${fRow.n} films, ${rRow.n} scrape_runs`,
-  );
+  console.log(`   Current: ${sRow.n} screenings, ${fRow.n} films, ${rRow.n} scrape_runs`);
 
   // Order matters for FK constraints: screenings reference both films and
   // scrape_runs, so wipe them first. Cinemas + providers are untouched.

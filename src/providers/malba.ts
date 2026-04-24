@@ -252,26 +252,24 @@ function parseS1DenseCycle(
   }> = [];
 
   const dayParagraphs: string[] = [];
-  $h3
-    .nextAll('p')
-    .each((_i, el) => {
-      // Stop collecting once we hit a <p> that contains the "Comprar entradas"
-      // button or that has no day-header shape at all — those are the
-      // sibling trailers after Programación.
-      const $p = $(el);
-      const text = $p.text().trim();
-      const looksLikeDay = matchDayHeader(splitFirstLine(text).first);
-      const hasDecidirLink =
-        $p.find('a[href*="liit.com.ar/decidir"]').length > 0 ||
-        /comprar entradas/i.test(text);
-      if (!looksLikeDay || hasDecidirLink) {
-        // Not a day <p>. If we've already collected some, stop — anything
-        // further is footer material.
-        if (dayParagraphs.length > 0) return false; // break out of .each()
-        return; // skip but keep looking
-      }
-      dayParagraphs.push($.html($p));
-    });
+  $h3.nextAll('p').each((_i, el) => {
+    // Stop collecting once we hit a <p> that contains the "Comprar entradas"
+    // button or that has no day-header shape at all — those are the
+    // sibling trailers after Programación.
+    const $p = $(el);
+    const text = $p.text().trim();
+    const looksLikeDay = matchDayHeader(splitFirstLine(text).first);
+    const hasDecidirLink =
+      $p.find('a[href*="liit.com.ar/decidir"]').length > 0 ||
+      /comprar entradas/i.test(text);
+    if (!looksLikeDay || hasDecidirLink) {
+      // Not a day <p>. If we've already collected some, stop — anything
+      // further is footer material.
+      if (dayParagraphs.length > 0) return false; // break out of .each()
+      return; // skip but keep looking
+    }
+    dayParagraphs.push($.html($p));
+  });
 
   for (const pHtml of dayParagraphs) {
     const block = parseDayParagraph(pHtml, warnings, cycle);
@@ -394,8 +392,7 @@ export function parseS2SingleEvent(
   // site wraps events in <main> or a similar container; falling back to
   // body text is fine because header/footer prose doesn't look like the
   // schedule grammar.
-  const $scope =
-    $('main').first().length > 0 ? $('main').first() : $('body').first();
+  const $scope = $('main').first().length > 0 ? $('main').first() : $('body').first();
   const text = $scope.text().replace(/\s+/g, ' ').trim();
 
   const screenings: ScrapedScreening[] = [];
@@ -411,9 +408,7 @@ export function parseS2SingleEvent(
     }
     const times = parseS2TimeList(m[4]);
     if (times.length === 0) {
-      warnings.push(
-        `cycle "${cycle.slug}": S2 parsed 0 times from "${m[4]}"`,
-      );
+      warnings.push(`cycle "${cycle.slug}": S2 parsed 0 times from "${m[4]}"`);
       continue;
     }
     for (const { hour, minute } of times) {
@@ -477,10 +472,7 @@ function parseDayParagraph(
   if (lines.length === 0) return null;
 
   // First line = day header.
-  const firstText = cheerio
-    .load(`<root>${lines[0]}</root>`)('root')
-    .text()
-    .trim();
+  const firstText = cheerio.load(`<root>${lines[0]}</root>`)('root').text().trim();
   const dayMatch = matchDayHeader(firstText);
   if (!dayMatch) return null;
 
@@ -491,10 +483,7 @@ function parseDayParagraph(
     const show = parseShowtimeLine(lineHtml);
     if (show) shows.push(show);
     else {
-      const textOnly = cheerio
-        .load(`<root>${lineHtml}</root>`)('root')
-        .text()
-        .trim();
+      const textOnly = cheerio.load(`<root>${lineHtml}</root>`)('root').text().trim();
       if (textOnly) {
         warnings.push(
           `cycle "${cycle.slug}" day ${dayMatch.day}: unparseable line "${textOnly.slice(0, 80)}"`,
@@ -534,14 +523,8 @@ function parseShowtimeLine(
   };
 }
 
-function matchDayHeader(
-  text: string,
-): { day: number; monthName?: string } | null {
-  const cleaned = text
-    .toLowerCase()
-    .replace(/[°º]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+function matchDayHeader(text: string): { day: number; monthName?: string } | null {
+  const cleaned = text.toLowerCase().replace(/[°º]/g, '').replace(/\s+/g, ' ').trim();
   // "JUEVES 2" — bare
   // "VIERNES 1 DE MAYO" — with month
   const dayAlt = DAY_NAMES.map((d) => d.replace(/[̀-ͯ]/g, '')).join('|');
@@ -581,9 +564,11 @@ function findFirstMonthInText(text: string): number | null {
 
 function extractAnchorYear(html: string): number | null {
   // Prefer JSON-LD datePublished (most reliable).
-  const jsonLdBlocks = [...html.matchAll(
-    /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g,
-  )];
+  const jsonLdBlocks = [
+    ...html.matchAll(
+      /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g,
+    ),
+  ];
   for (const m of jsonLdBlocks) {
     const body = m[1];
     const dp = body.match(/"datePublished"\s*:\s*"(\d{4})-/);

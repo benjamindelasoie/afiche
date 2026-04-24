@@ -127,9 +127,7 @@ export interface IngestSummary {
 // ---------------------------------------------------------------------------
 // Films upsert — one row per unique (scrapedTitle, year) combination
 // ---------------------------------------------------------------------------
-async function upsertFilms(
-  scraped: ScrapedScreening[],
-): Promise<Map<string, number>> {
+async function upsertFilms(scraped: ScrapedScreening[]): Promise<Map<string, number>> {
   const byKey = new Map<string, ScrapedScreening>();
   for (const s of scraped) {
     const key = filmKey(s.filmTitle, s.year);
@@ -188,9 +186,8 @@ async function upsertFilms(
       if (inserted) {
         filmId = inserted.id;
       } else {
-        const yearCond = s.year === undefined
-          ? isNull(films.year)
-          : eq(films.year, s.year);
+        const yearCond =
+          s.year === undefined ? isNull(films.year) : eq(films.year, s.year);
         const [existing] = await db
           .select({ id: films.id })
           .from(films)
@@ -285,9 +282,7 @@ export async function enrichPendingFilms(
       // ours, same as before.
       const resolvedYear = result.delta.year ?? f.year;
       const yearWouldChange =
-        resolvedYear !== f.year &&
-        resolvedYear !== null &&
-        resolvedYear !== undefined;
+        resolvedYear !== f.year && resolvedYear !== null && resolvedYear !== undefined;
       if (yearWouldChange) {
         const existing = await db
           .select({ id: films.id })

@@ -24,9 +24,7 @@ import { films, cinemas, screenings } from '@/db/schema';
 let testDb: TestDb;
 
 vi.mock('@/db', async () => {
-  const schema = await vi.importActual<typeof import('@/db/schema')>(
-    '@/db/schema',
-  );
+  const schema = await vi.importActual<typeof import('@/db/schema')>('@/db/schema');
   return {
     ...schema,
     get db() {
@@ -483,7 +481,9 @@ describe('enrichPendingFilms — merge on (scrapedTitle, year) collision', () =>
       .where(eq(screenings.filmId, existingId));
     expect(reparented).toHaveLength(1);
     // Warning surfaces the year transition, not "no year".
-    expect(warnings.some((w) => w.includes('year=2024') && w.includes('year=2025'))).toBe(true);
+    expect(warnings.some((w) => w.includes('year=2024') && w.includes('year=2025'))).toBe(
+      true,
+    );
   });
 });
 
@@ -501,9 +501,7 @@ describe('ingest — bare-metadata films (regression for MALBA S2 crash)', () =>
     testDb = await makeInMemoryDb();
     enrichFilmMock.mockReset();
     enrichFilmMock.mockResolvedValue({ delta: null, reason: 'no-candidates' });
-    await testDb
-      .insert(cinemas)
-      .values({ id: 'malba', name: 'MALBA', type: 'indie' });
+    await testDb.insert(cinemas).values({ id: 'malba', name: 'MALBA', type: 'indie' });
   });
 
   it('ingests screenings whose film has no metadata beyond title (year undefined, no director/country/runtime)', async () => {

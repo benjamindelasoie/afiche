@@ -135,9 +135,7 @@ function groupByDay(rows: ScreeningRow[], now: Date): DayGroup[] {
  * end of the current ISO week (exclusive upper bound = next Monday 00:00 BA).
  * Grouped by day.
  */
-export async function getThisWeekScreenings(
-  now: Date = new Date(),
-): Promise<DayGroup[]> {
+export async function getThisWeekScreenings(now: Date = new Date()): Promise<DayGroup[]> {
   const lower = getTodayStartBA(now);
   const upper = getNextIsoMondayBA(now);
   const rows = await fetchRows({ lower, upper });

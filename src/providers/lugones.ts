@@ -302,7 +302,10 @@ export function parseDetailPage(
 
     // Director line
     if (/^Dirección:/i.test(text) && !film.director) {
-      film.director = text.replace(/^Dirección:\s*/i, '').replace(/\.$/, '').trim();
+      film.director = text
+        .replace(/^Dirección:\s*/i, '')
+        .replace(/\.$/, '')
+        .trim();
       return;
     }
 
@@ -443,11 +446,7 @@ export function parseDateRange(
   return { startMonth, startYear };
 }
 
-function buildBaLocalToUtc(
-  dayUtcMidnight: Date,
-  hourBa: number,
-  minuteBa: number,
-): Date {
+function buildBaLocalToUtc(dayUtcMidnight: Date, hourBa: number, minuteBa: number): Date {
   // Argentina is UTC-3 with no DST (stable since 2009).
   const utcHour = hourBa + 3;
   return new Date(

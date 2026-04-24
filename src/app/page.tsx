@@ -11,10 +11,7 @@ import {
 } from '@/db/queries';
 import { TAG_LABELS_ES } from '@/db';
 import { getEditionNumber, editionFullSentence } from '@/lib/iso-week';
-import {
-  getIsoWeekStartBA,
-  getIsoWeekEndBA,
-} from '@/lib/date-ranges';
+import { getIsoWeekStartBA, getIsoWeekEndBA } from '@/lib/date-ranges';
 
 // This page is a Server Component — it runs on the server, awaits the DB
 // directly, and ships rendered HTML. Zero client-side JS is shipped for the
@@ -53,7 +50,7 @@ export default async function HomePage() {
           shown on focus. */}
       <a
         href="#cartelera"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2 focus:bg-black focus:text-cream focus:font-mono focus:text-sm focus:tracking-card focus:uppercase"
+        className="focus:text-cream focus:tracking-card sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-black focus:px-3 focus:py-2 focus:font-mono focus:text-sm focus:uppercase"
       >
         Saltar al contenido
       </a>
@@ -76,7 +73,7 @@ export default async function HomePage() {
               fi ligature that Next/font-loaded Instrument Serif ships
               with but doesn't apply by default. */}
           <h1
-            className="font-serif text-balance leading-[0.9] tracking-[-0.02em]"
+            className="font-serif leading-[0.9] tracking-[-0.02em] text-balance"
             style={{
               fontSize: 'clamp(3.5rem, 12vw, 8rem)',
               fontKerning: 'normal',
@@ -85,7 +82,7 @@ export default async function HomePage() {
           >
             Afiche
           </h1>
-          <p className="mt-2 font-serif italic text-ink-gray text-lg md:mt-3 md:text-xl">
+          <p className="text-ink-gray mt-2 font-serif text-lg italic md:mt-3 md:text-xl">
             cartelera curada de Buenos Aires
           </p>
         </header>
@@ -117,15 +114,13 @@ export default async function HomePage() {
                         headers parallel across all three tiers at md+. */}
                     {thisWeekTotal > 0 && (
                       <>
-                        <span className="hidden md:inline text-ink-gray/60">·</span>
+                        <span className="text-ink-gray/60 hidden md:inline">·</span>
                         <span className="hidden md:inline">
-                          {thisWeekTotal}{' '}
-                          {thisWeekTotal === 1 ? 'función' : 'funciones'}
+                          {thisWeekTotal} {thisWeekTotal === 1 ? 'función' : 'funciones'}
                         </span>
-                        <span className="hidden md:inline text-ink-gray/60">·</span>
+                        <span className="text-ink-gray/60 hidden md:inline">·</span>
                         <span className="hidden md:inline">
-                          {thisWeekCinemas}{' '}
-                          {thisWeekCinemas === 1 ? 'sala' : 'salas'}
+                          {thisWeekCinemas} {thisWeekCinemas === 1 ? 'sala' : 'salas'}
                         </span>
                       </>
                     )}
@@ -138,7 +133,9 @@ export default async function HomePage() {
                   so visible + sr-only can't drift. */}
               <p className="sr-only">{edition.fullSentence}</p>
               {thisWeek.length === 0 ? (
-                <EmptyWeekMessage hasFollowup={thisMonth.length > 0 || upcoming.length > 0} />
+                <EmptyWeekMessage
+                  hasFollowup={thisMonth.length > 0 || upcoming.length > 0}
+                />
               ) : (
                 <div className="mt-10 space-y-12">
                   {thisWeek.map((day, dayIdx) => (
@@ -186,12 +183,12 @@ export default async function HomePage() {
             "Actualizado el DD de MMMM a las HH:MM" only renders when a
             successful scrape run exists — silence rather than lie when
             there's no timestamp to show. */}
-        <footer className="mt-20 pt-8 border-t-8 border-double border-black text-center">
-          <p className="font-serif italic text-lg">
+        <footer className="mt-20 border-t-8 border-double border-black pt-8 text-center">
+          <p className="font-serif text-lg italic">
             Afiche — hecho por cinéfilos, para cinéfilos
           </p>
           {lastScrape && (
-            <p className="mt-2 font-mono text-[11px] uppercase tracking-eyebrow text-ink-gray">
+            <p className="tracking-eyebrow text-ink-gray mt-2 font-mono text-[11px] uppercase">
               Actualizado el {formatLastScrape(lastScrape)}
             </p>
           )}
@@ -216,11 +213,11 @@ function SectionHeader({
   subtitle: React.ReactNode;
 }) {
   return (
-    <div className="text-center border-t-[3px] border-b-[3px] border-double border-black py-4 md:py-6">
-      <h2 className="font-serif italic text-4xl md:text-5xl leading-none text-balance">
+    <div className="border-t-[3px] border-b-[3px] border-double border-black py-4 text-center md:py-6">
+      <h2 className="font-serif text-4xl leading-none text-balance italic md:text-5xl">
         {title}
       </h2>
-      <p className="mt-2 md:mt-3 font-mono text-[11px] uppercase tracking-eyebrow text-ink-gray flex items-center justify-center flex-wrap gap-x-2 gap-y-1">
+      <p className="tracking-eyebrow text-ink-gray mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-[11px] uppercase md:mt-3">
         {subtitle}
       </p>
     </div>
@@ -254,23 +251,22 @@ function DaySection({
           lives on each card's time instead, where it's decisive. */}
       <h2
         aria-current={day.isToday ? 'date' : undefined}
-        className="border-t border-b-[3px] border-double border-black py-3 mb-6 flex items-baseline justify-between gap-3 flex-wrap font-normal"
+        className="mb-6 flex flex-wrap items-baseline justify-between gap-3 border-t border-b-[3px] border-double border-black py-3 font-normal"
       >
         <span
-          className={`font-mono text-[11px] uppercase tracking-eyebrow text-balance ${
+          className={`tracking-eyebrow font-mono text-[11px] text-balance uppercase ${
             day.isToday ? 'text-carmine font-bold' : 'text-ink'
           }`}
         >
           {day.label}
           {day.isToday && (
-            <span className="ml-2 px-1.5 py-0.5 bg-carmine text-cream no-underline">
+            <span className="bg-carmine text-cream ml-2 px-1.5 py-0.5 no-underline">
               HOY
             </span>
           )}
         </span>
-        <span className="font-mono text-[11px] uppercase tracking-eyebrow text-ink-gray">
-          {day.screenings.length}{' '}
-          {day.screenings.length === 1 ? 'función' : 'funciones'}
+        <span className="tracking-eyebrow text-ink-gray font-mono text-[11px] uppercase">
+          {day.screenings.length} {day.screenings.length === 1 ? 'función' : 'funciones'}
         </span>
       </h2>
       <div className={variant === 'compact' ? 'space-y-3' : 'space-y-5'}>
@@ -279,9 +275,7 @@ function DaySection({
             key={s.id}
             s={s}
             variant={variant}
-            isAboveFold={
-              variant === 'full' && (day.isToday || isFirstDay) && idx < 3
-            }
+            isAboveFold={variant === 'full' && (day.isToday || isFirstDay) && idx < 3}
           />
         ))}
       </div>
@@ -333,11 +327,11 @@ function ScreeningCard({
       {/* Tags — only in full variant. Compact / próximamente drop them
           to reduce visual chatter when the card is already smaller. */}
       {!isCompact && visibleTags.length > 0 && (
-        <div className="flex gap-2 mb-2 flex-wrap">
+        <div className="mb-2 flex flex-wrap gap-2">
           {visibleTags.map((t) => (
             <span
               key={t}
-              className="text-[11px] font-mono tracking-card uppercase px-2 py-0.5 bg-carmine text-cream"
+              className="tracking-card bg-carmine text-cream px-2 py-0.5 font-mono text-[11px] uppercase"
             >
               {TAG_LABELS_ES[t]}
             </span>
@@ -349,7 +343,7 @@ function ScreeningCard({
         {/* Top section: poster + film info.
             On mobile this is row 1. On desktop it's the left
             side of the card with the meta block on the right. */}
-        <div className="flex gap-4 min-w-0 md:flex-1">
+        <div className="flex min-w-0 gap-4 md:flex-1">
           {/* Poster thumbnail or typographic fallback (indie only).
               Outer tile is cream so lazy-loading images reveal on paper
               rather than flashing solid black; the black bg is scoped to
@@ -372,10 +366,10 @@ function ScreeningCard({
                   sizes={isCompact ? '56px' : '80px'}
                   loading={isAboveFold ? 'eager' : 'lazy'}
                   fetchPriority={isAboveFold ? 'high' : 'auto'}
-                  className="w-full h-full object-cover"
+                  className="h-full w-full object-cover"
                 />
               ) : (
-                <span className="w-full h-full bg-black text-cream flex items-center justify-center font-serif italic text-center px-1 leading-tight text-sm">
+                <span className="text-cream flex h-full w-full items-center justify-center bg-black px-1 text-center font-serif text-sm leading-tight italic">
                   {s.film.title}
                 </span>
               )}
@@ -385,15 +379,14 @@ function ScreeningCard({
             {s.cinema.type === 'indie' ? (
               <h3 className={titleClass}>{s.film.title}</h3>
             ) : (
-              <h3 className="font-sans font-medium text-lg leading-tight text-balance">
+              <h3 className="font-sans text-lg leading-tight font-medium text-balance">
                 {s.film.title}
               </h3>
             )}
             {s.film.titleOriginal &&
-              s.film.titleOriginal.toLowerCase() !==
-                s.film.title.toLowerCase() && (
+              s.film.titleOriginal.toLowerCase() !== s.film.title.toLowerCase() && (
                 <p
-                  className={`font-serif italic text-ink-gray mt-0.5 ${
+                  className={`text-ink-gray mt-0.5 font-serif italic ${
                     isCompact ? 'text-sm' : 'text-base sm:text-lg'
                   }`}
                 >
@@ -401,9 +394,7 @@ function ScreeningCard({
                 </p>
               )}
             {s.film.director && (
-              <p
-                className={`${isCompact ? 'text-xs' : 'text-sm'} text-ink-gray mt-1`}
-              >
+              <p className={`${isCompact ? 'text-xs' : 'text-sm'} text-ink-gray mt-1`}>
                 {s.film.director}
                 {s.film.year && ` · ${s.film.year}`}
                 {s.film.country && (
@@ -419,7 +410,7 @@ function ScreeningCard({
               s.film.synopsisEs &&
               s.cinema.type === 'indie' &&
               isCompleteSynopsis(s.film.synopsisEs) && (
-                <p className="mt-3 text-sm border-l-2 border-carmine pl-3 max-w-prose line-clamp-3">
+                <p className="border-carmine mt-3 line-clamp-3 max-w-prose border-l-2 pl-3 text-sm">
                   {s.film.synopsisEs}
                 </p>
               )}
@@ -429,7 +420,7 @@ function ScreeningCard({
         {/* Meta block: cinema + time.
             Mobile: new row beneath, with cinema left / time right.
             Desktop: rightmost column of the card, stacked vertically. */}
-        <div className="flex items-end justify-between gap-4 md:flex-col md:items-end md:text-right md:shrink-0 md:gap-0">
+        <div className="flex items-end justify-between gap-4 md:shrink-0 md:flex-col md:items-end md:gap-0 md:text-right">
           <div>
             {/* Cinema name — carmine bold for indie, grey for chain.
                 The ★ prefix was dropped when the cartelera went all-indie:
@@ -437,24 +428,19 @@ function ScreeningCard({
                 adds noise. The color difference is the differentiator
                 when chain content returns. */}
             <p
-              className={`text-xs font-mono tracking-card uppercase ${
-                s.cinema.type === 'indie'
-                  ? 'text-carmine font-bold'
-                  : 'text-ink-gray'
+              className={`tracking-card font-mono text-xs uppercase ${
+                s.cinema.type === 'indie' ? 'text-carmine font-bold' : 'text-ink-gray'
               }`}
             >
               {s.cinema.name}
             </p>
             {s.cinema.neighborhood && (
-              <p className="text-[11px] font-mono uppercase tracking-wider text-ink-gray mt-1">
+              <p className="text-ink-gray mt-1 font-mono text-[11px] tracking-wider uppercase">
                 {s.cinema.neighborhood}
               </p>
             )}
           </div>
-          <time
-            dateTime={s.startsAtUtc.toISOString()}
-            className={timeClass}
-          >
+          <time dateTime={s.startsAtUtc.toISOString()} className={timeClass}>
             {formatTimeBA(s.startsAtUtc)}
           </time>
         </div>
@@ -496,18 +482,12 @@ function UpcomingIndex({ screenings }: { screenings: ScreeningRow[] }) {
       {screenings.map((s) => {
         const isIndie = s.cinema.type === 'indie';
         const rowBody = (
-          <div className="grid grid-cols-[auto_1fr] md:grid-cols-[auto_1fr_auto] gap-x-4 gap-y-1 py-3 px-1 items-baseline">
+          <div className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1 px-1 py-3 md:grid-cols-[auto_1fr_auto]">
             {/* Date + time column (left) */}
-            <div className="font-mono text-[11px] uppercase tracking-eyebrow whitespace-nowrap">
-              <span className="text-ink-gray">
-                {formatDayShortBA(s.startsAtUtc)}
-              </span>
-              <span className="mx-1 text-ink-gray/60">·</span>
-              <span
-                className={
-                  isIndie ? 'text-carmine font-bold' : 'text-ink'
-                }
-              >
+            <div className="tracking-eyebrow font-mono text-[11px] whitespace-nowrap uppercase">
+              <span className="text-ink-gray">{formatDayShortBA(s.startsAtUtc)}</span>
+              <span className="text-ink-gray/60 mx-1">·</span>
+              <span className={isIndie ? 'text-carmine font-bold' : 'text-ink'}>
                 {formatTimeBA(s.startsAtUtc)}
               </span>
             </div>
@@ -523,7 +503,7 @@ function UpcomingIndex({ screenings }: { screenings: ScreeningRow[] }) {
                 className={
                   isIndie
                     ? 'font-serif text-lg leading-tight'
-                    : 'font-sans font-medium text-base'
+                    : 'font-sans text-base font-medium'
                 }
               >
                 {s.film.title}
@@ -533,7 +513,7 @@ function UpcomingIndex({ screenings }: { screenings: ScreeningRow[] }) {
             {/* Cinema (right — its own row on mobile). Star prefix
                 dropped alongside the card-level one. */}
             <div
-              className={`col-span-2 md:col-span-1 font-mono text-[11px] uppercase tracking-card whitespace-nowrap ${
+              className={`tracking-card col-span-2 font-mono text-[11px] whitespace-nowrap uppercase md:col-span-1 ${
                 isIndie ? 'text-carmine font-bold' : 'text-ink-gray'
               }`}
             >
@@ -550,7 +530,7 @@ function UpcomingIndex({ screenings }: { screenings: ScreeningRow[] }) {
                 target="_blank"
                 rel="noopener noreferrer"
                 data-screening-card
-                className="block hover:bg-carmine/5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-carmine"
+                className="hover:bg-carmine/5 focus-visible:outline-carmine block transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
                 aria-label={`${s.film.title} — ${s.cinema.name} — ${formatTimeBA(s.startsAtUtc)}`}
               >
                 {rowBody}
@@ -577,12 +557,12 @@ function UpcomingIndex({ screenings }: { screenings: ScreeningRow[] }) {
 function EmptyStateAll() {
   return (
     <section className="mt-10 md:mt-14">
-      <div className="text-center space-y-3 py-12">
-        <p className="font-serif italic text-ink-gray text-lg">
+      <div className="space-y-3 py-12 text-center">
+        <p className="text-ink-gray font-serif text-lg italic">
           La cartelera se actualiza todas las madrugadas. Volvé en unas horas.
         </p>
         {process.env.NODE_ENV !== 'production' && (
-          <p className="font-mono text-[11px] uppercase tracking-eyebrow text-ink-gray/70">
+          <p className="tracking-eyebrow text-ink-gray/70 font-mono text-[11px] uppercase">
             dev hint: ejecutá <code>npm run db:seed-cinemas</code> y{' '}
             <code>npm run db:scrape</code> para cargar datos
           </p>
@@ -599,12 +579,12 @@ function EmptyStateAll() {
  */
 function EmptyWeekMessage({ hasFollowup }: { hasFollowup: boolean }) {
   return (
-    <div className="text-center space-y-3 py-8">
-      <p className="font-serif italic text-ink-gray text-lg">
+    <div className="space-y-3 py-8 text-center">
+      <p className="text-ink-gray font-serif text-lg italic">
         Esta semana las salas descansan.
       </p>
       {hasFollowup && (
-        <p className="font-mono text-[11px] uppercase tracking-eyebrow text-ink-gray">
+        <p className="tracking-eyebrow text-ink-gray font-mono text-[11px] uppercase">
           Lo que viene ↓
         </p>
       )}
@@ -630,9 +610,7 @@ function countsLabel(total: number, cinemas: number): string {
 
 function rangeSubtitleFromDays(days: DayGroup[]): SectionSubtitleParts {
   const totalScreenings = days.reduce((n, d) => n + d.screenings.length, 0);
-  const cinemas = new Set(
-    days.flatMap((d) => d.screenings.map((s) => s.cinema.id)),
-  ).size;
+  const cinemas = new Set(days.flatMap((d) => d.screenings.map((s) => s.cinema.id))).size;
   const first = dateKeyToDate(days[0].dateKey);
   const last = dateKeyToDate(days[days.length - 1].dateKey);
   return {
@@ -656,7 +634,7 @@ function SectionSubtitle({ parts }: { parts: SectionSubtitleParts }) {
   return (
     <>
       <span>{parts.range}</span>
-      <span className="hidden md:inline text-ink-gray/60">·</span>
+      <span className="text-ink-gray/60 hidden md:inline">·</span>
       <span className="hidden md:inline">{parts.counts}</span>
     </>
   );

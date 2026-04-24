@@ -210,9 +210,7 @@ describe('enrichFromDetailPages — dedup, merge, resilience', () => {
       calls.push(url);
       return eventDetailHtml;
     };
-    const screenings = [
-      makeScreening('https://lumiton.ar/agenda-presencial/'),
-    ];
+    const screenings = [makeScreening('https://lumiton.ar/agenda-presencial/')];
 
     await enrichFromDetailPages(screenings, [], fetcher);
 
@@ -243,9 +241,7 @@ describe('enrichFromDetailPages — dedup, merge, resilience', () => {
     const fetcher = async () => eventDetailHtml;
     const url = 'https://lumiton.ar/evento/vinas-de-ira/';
     // Imagine a hypothetical future where the agenda pre-populates director.
-    const screenings = [
-      makeScreening(url, { director: 'Ford, John (agenda-provided)' }),
-    ];
+    const screenings = [makeScreening(url, { director: 'Ford, John (agenda-provided)' })];
 
     await enrichFromDetailPages(screenings, [], fetcher);
 

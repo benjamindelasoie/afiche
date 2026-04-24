@@ -92,7 +92,12 @@ describe('enrichFilm — token + override gates', () => {
   it('uses the manual override path before touching search', async () => {
     findOverrideMock.mockResolvedValue(887);
     getMovieMock.mockResolvedValue(
-      details({ id: 887, title: 'Vidas Rebeldes', original_title: 'The Misfits', release_date: '1961-02-01' }),
+      details({
+        id: 887,
+        title: 'Vidas Rebeldes',
+        original_title: 'The Misfits',
+        release_date: '1961-02-01',
+      }),
     );
 
     const r = await enrichFilm('Los inadaptados', 1961, { titleOriginal: 'The Misfits' });
@@ -116,7 +121,12 @@ describe('enrichFilm — union search (scrapedTitle + titleOriginal)', () => {
       if (q === 'Los inadaptados') return Promise.resolve([]);
       if (q === 'The Misfits') {
         return Promise.resolve([
-          summary({ id: 887, title: 'Vidas Rebeldes', original_title: 'The Misfits', release_date: '1961-02-01' }),
+          summary({
+            id: 887,
+            title: 'Vidas Rebeldes',
+            original_title: 'The Misfits',
+            release_date: '1961-02-01',
+          }),
         ]);
       }
       return Promise.resolve([]);
@@ -128,7 +138,12 @@ describe('enrichFilm — union search (scrapedTitle + titleOriginal)', () => {
         original_title: 'The Misfits',
         release_date: '1961-02-01',
         runtime: 124,
-        credits: { cast: [], crew: [{ id: 1, name: 'John Huston', job: 'Director', department: 'Directing' }] },
+        credits: {
+          cast: [],
+          crew: [
+            { id: 1, name: 'John Huston', job: 'Director', department: 'Directing' },
+          ],
+        },
       }),
     );
 
@@ -147,10 +162,20 @@ describe('enrichFilm — union search (scrapedTitle + titleOriginal)', () => {
 
   it('uses only scrapedTitle query when titleOriginal is absent or equal', async () => {
     searchMock.mockResolvedValue([
-      summary({ id: 1, title: 'Casablanca', original_title: 'Casablanca', release_date: '1942-11-26' }),
+      summary({
+        id: 1,
+        title: 'Casablanca',
+        original_title: 'Casablanca',
+        release_date: '1942-11-26',
+      }),
     ]);
     getMovieMock.mockResolvedValue(
-      details({ id: 1, title: 'Casablanca', original_title: 'Casablanca', release_date: '1942-11-26' }),
+      details({
+        id: 1,
+        title: 'Casablanca',
+        original_title: 'Casablanca',
+        release_date: '1942-11-26',
+      }),
     );
 
     await enrichFilm('Casablanca', 1942);
@@ -170,7 +195,8 @@ describe('enrichFilm — union search (scrapedTitle + titleOriginal)', () => {
     });
     searchMock.mockImplementation((q: string) => {
       // Both queries return the same candidate.
-      if (q === 'Los inadaptados' || q === 'The Misfits') return Promise.resolve([shared]);
+      if (q === 'Los inadaptados' || q === 'The Misfits')
+        return Promise.resolve([shared]);
       return Promise.resolve([]);
     });
     getMovieMock.mockResolvedValue(
@@ -214,7 +240,12 @@ describe('enrichFilm — director fallback (rescues below-threshold matches)', (
     getMovieMock.mockResolvedValue(
       details({
         ...cand,
-        credits: { cast: [], crew: [{ id: 1, name: 'John Huston', job: 'Director', department: 'Directing' }] },
+        credits: {
+          cast: [],
+          crew: [
+            { id: 1, name: 'John Huston', job: 'Director', department: 'Directing' },
+          ],
+        },
       }),
     );
 
@@ -239,7 +270,12 @@ describe('enrichFilm — director fallback (rescues below-threshold matches)', (
     getMovieMock.mockResolvedValue(
       details({
         ...cand,
-        credits: { cast: [], crew: [{ id: 1, name: 'Agnès Varda', job: 'Director', department: 'Directing' }] },
+        credits: {
+          cast: [],
+          crew: [
+            { id: 1, name: 'Agnès Varda', job: 'Director', department: 'Directing' },
+          ],
+        },
       }),
     );
 
@@ -263,7 +299,17 @@ describe('enrichFilm — director fallback (rescues below-threshold matches)', (
     getMovieMock.mockResolvedValue(
       details({
         ...cand,
-        credits: { cast: [], crew: [{ id: 1, name: 'Different Director', job: 'Director', department: 'Directing' }] },
+        credits: {
+          cast: [],
+          crew: [
+            {
+              id: 1,
+              name: 'Different Director',
+              job: 'Director',
+              department: 'Directing',
+            },
+          ],
+        },
       }),
     );
 

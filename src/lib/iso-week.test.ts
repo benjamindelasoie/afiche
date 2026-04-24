@@ -51,9 +51,7 @@ describe('editionFullSentence — screen reader dateline', () => {
         distinctCinemas: 5,
         isWeekSpan: true,
       }),
-    ).toBe(
-      'Edición número 17. Semana del 23 al 30 de abril. 81 funciones en 5 salas.',
-    );
+    ).toBe('Edición número 17. Semana del 23 al 30 de abril. 81 funciones en 5 salas.');
   });
 
   it('uses singular "función" / "sala" when exactly one of each', () => {
@@ -77,9 +75,7 @@ describe('editionFullSentence — screen reader dateline', () => {
         distinctCinemas: 3,
         isWeekSpan: true,
       }),
-    ).toBe(
-      'Edición número 5. Semana del 1 al 7 de febrero. 1 función en 3 salas.',
-    );
+    ).toBe('Edición número 5. Semana del 1 al 7 de febrero. 1 función en 3 salas.');
   });
 
   it('drops "Semana del" when range spans more than a week', () => {

@@ -14,10 +14,7 @@ import { resolve } from 'node:path';
 import { parseDetailPage, parseDateRange, type ProgramLink } from './lugones';
 
 function fixture(name: string): string {
-  return readFileSync(
-    resolve(__dirname, '../../test/fixtures/lugones', name),
-    'utf8',
-  );
+  return readFileSync(resolve(__dirname, '../../test/fixtures/lugones', name), 'utf8');
 }
 
 describe('parseDateRange', () => {
@@ -101,9 +98,7 @@ describe('parseDetailPage (Boris Karloff Parte 2 fixture)', () => {
     const warnings: string[] = [];
     const screenings = parseDetailPage(html, program, warnings);
 
-    const elHijo = screenings.filter(
-      (s) => s.filmTitle === 'El hijo de Frankenstein',
-    );
+    const elHijo = screenings.filter((s) => s.filmTitle === 'El hijo de Frankenstein');
     // Cycle has: Apr 28 (15+21), Apr 30 (18). 3 total.
     expect(elHijo).toHaveLength(3);
 

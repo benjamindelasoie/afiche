@@ -20,7 +20,7 @@ export interface TmdbMovieSummary {
   title: string;
   original_title: string;
   original_language: string;
-  release_date: string;    // 'YYYY-MM-DD' or ''
+  release_date: string; // 'YYYY-MM-DD' or ''
   overview: string;
   poster_path: string | null;
   popularity: number;
@@ -134,7 +134,5 @@ export async function downloadPoster(
  */
 export function extractDirectors(details: TmdbMovieDetails): string[] {
   if (!details.credits?.crew) return [];
-  return details.credits.crew
-    .filter((c) => c.job === 'Director')
-    .map((c) => c.name);
+  return details.credits.crew.filter((c) => c.job === 'Director').map((c) => c.name);
 }

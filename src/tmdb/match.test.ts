@@ -12,11 +12,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  pickBestMatch,
-  scoreCandidates,
-  MATCH_CONFIDENCE_THRESHOLD,
-} from './match';
+import { pickBestMatch, scoreCandidates, MATCH_CONFIDENCE_THRESHOLD } from './match';
 import type { TmdbMovieSummary } from './client';
 
 function candidate(overrides: Partial<TmdbMovieSummary>): TmdbMovieSummary {
@@ -230,12 +226,9 @@ describe('scoreCandidates — sorted list for director fallback', () => {
       original_title: 'The Misfits',
       release_date: '1961-01-01',
     });
-    const sorted = scoreCandidates(
-      [spanishOnly, englishOnly],
-      'Los inadaptados',
-      1961,
-      { titleOriginal: 'The Misfits' },
-    );
+    const sorted = scoreCandidates([spanishOnly, englishOnly], 'Los inadaptados', 1961, {
+      titleOriginal: 'The Misfits',
+    });
     // Both should clear threshold with the hint — spanishOnly on scrapedTitle,
     // englishOnly on titleOriginal.
     expect(sorted).toHaveLength(2);

@@ -27,16 +27,23 @@
  *     captured as a JSON array so individual TMDB misses stay searchable.
  */
 
-import { sqliteTable, text, integer, real, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
+import {
+  sqliteTable,
+  text,
+  integer,
+  real,
+  uniqueIndex,
+  index,
+} from 'drizzle-orm/sqlite-core';
 
 // ---------------------------------------------------------------------------
 // cinemas — the venues we scrape
 // ---------------------------------------------------------------------------
 export const cinemas = sqliteTable('cinemas', {
-  id: text('id').primaryKey(),                   // slug: 'malba', 'lugones', 'cinepolis-recoleta'
-  name: text('name').notNull(),                  // 'MALBA'
-  neighborhood: text('neighborhood'),            // 'Palermo'
-  type: text('type', { enum: ['indie', 'chain'] }).notNull(),  // drives UX tier
+  id: text('id').primaryKey(), // slug: 'malba', 'lugones', 'cinepolis-recoleta'
+  name: text('name').notNull(), // 'MALBA'
+  neighborhood: text('neighborhood'), // 'Palermo'
+  type: text('type', { enum: ['indie', 'chain'] }).notNull(), // drives UX tier
   address: text('address'),
   ticketingBaseUrl: text('ticketing_base_url'),
   createdAt: integer('created_at', { mode: 'timestamp' })
@@ -90,7 +97,9 @@ export const films = sqliteTable(
 // providers — scraper health + observability, one row per cinema
 // ---------------------------------------------------------------------------
 export const providers = sqliteTable('providers', {
-  id: text('id').primaryKey().references(() => cinemas.id),  // same as cinemas.id
+  id: text('id')
+    .primaryKey()
+    .references(() => cinemas.id), // same as cinemas.id
   lastRunAt: integer('last_run_at', { mode: 'timestamp' }),
   lastSuccessAt: integer('last_success_at', { mode: 'timestamp' }),
   lastError: text('last_error'),
@@ -134,10 +143,7 @@ export const scrapeRuns = sqliteTable(
     error: text('error'),
     // Non-fatal warnings collected during the run (per-film TMDB errors,
     // parsing quirks, etc.). Stored as JSON array of strings.
-    warnings: text('warnings', { mode: 'json' })
-      .$type<string[]>()
-      .notNull()
-      .default([]),
+    warnings: text('warnings', { mode: 'json' }).$type<string[]>().notNull().default([]),
   },
   (t) => [
     // "show me the last 20 runs for Lugones" — most common query.
@@ -185,13 +191,13 @@ export const screenings = sqliteTable(
 // ---------------------------------------------------------------------------
 
 export type ScreeningTag =
-  | 'unique'          // ÚNICA FUNCIÓN
-  | 'restored'        // COPIA RESTAURADA
-  | 'retrospective'   // RETROSPECTIVA
-  | 'premiere'        // ESTRENO
-  | 'cycle'           // CICLO
-  | 'vos'             // versión original subtitulada
-  | 'dubbed';         // doblada
+  | 'unique' // ÚNICA FUNCIÓN
+  | 'restored' // COPIA RESTAURADA
+  | 'retrospective' // RETROSPECTIVA
+  | 'premiere' // ESTRENO
+  | 'cycle' // CICLO
+  | 'vos' // versión original subtitulada
+  | 'dubbed'; // doblada
 
 export const TAG_LABELS_ES: Record<ScreeningTag, string> = {
   unique: 'ÚNICA FUNCIÓN',
