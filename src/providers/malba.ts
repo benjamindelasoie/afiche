@@ -456,7 +456,7 @@ function parseS2TimeList(raw: string): Array<{ hour: number; minute: number }> {
 interface DayBlock {
   day: number;
   monthName?: string;
-  shows: Array<{ hour: number; minute: number; title: string; director: string }>;
+  shows: Array<{ hour: number; minute: number; title: string; director?: string }>;
 }
 
 function parseDayParagraph(
@@ -512,21 +512,25 @@ function parseDayParagraph(
 
 function parseShowtimeLine(
   lineHtml: string,
-): { hour: number; minute: number; title: string; director: string } | null {
-  // Typical line: "19:00 <a href="...">Title</a>, de Director"
-  // Occasionally: "19:00 Title, de Director"  (no link)
+): { hour: number; minute: number; title: string; director?: string } | null {
+  // Typical line:  "19:00 <a href="...">Title</a>, de Director"
+  // Occasionally:  "19:00 Title, de Director"       (no link)
+  // Director-less: "24:00 Terciopelo azul"          (cycle-all-one-director,
+  //                MALBA drops the ", de X" on midnight repeats — e.g. the
+  //                david-lynch-x5 Saturday midnights).
   const $ = cheerio.load(`<root>${lineHtml}</root>`);
   const text = $('root').text().trim().replace(/\s+/g, ' ');
-  const m = text.match(/^(\d{1,2}):(\d{2})\s+(.+?),\s+de\s+(.+?)$/);
+  const m = text.match(/^(\d{1,2}):(\d{2})\s+(.+?)(?:,\s+de\s+(.+?))?$/);
   if (!m) return null;
   const hour = parseInt(m[1], 10);
   const minute = parseInt(m[2], 10);
   if (hour < 0 || hour > 24 || minute < 0 || minute > 59) return null;
+  const director = m[4]?.replace(/\.$/, '').trim();
   return {
     hour,
     minute,
     title: m[3].trim(),
-    director: m[4].replace(/\.$/, '').trim(),
+    ...(director ? { director } : {}),
   };
 }
 
@@ -616,7 +620,7 @@ function emitBlock(
     out.push({
       cinemaId: 'malba',
       filmTitle: show.title,
-      director: show.director,
+      ...(show.director ? { director: show.director } : {}),
       startsAtUtc: startsAt,
       tags: inferTags(cycle),
       sourceUrl: cycle.detailUrl,

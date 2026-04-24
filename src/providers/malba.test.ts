@@ -357,4 +357,32 @@ describe('parseDetailPage — synthetic edge cases', () => {
     // Unparseable line produces a warning, not a silent drop.
     expect(warnings.some((w) => w.includes('unparseable'))).toBe(true);
   });
+
+  it('parses midnight repeats with NO ", de Director" suffix (david-lynch-x5 pattern)', () => {
+    // The David Lynch x5 cycle lists regular evening shows as
+    // "20:00 Title, de David Lynch" but drops the director on the Saturday
+    // 24:00 repeats: "24:00 Terciopelo azul". Four such lines surfaced as
+    // "unparseable" warnings before the fix.
+    const html = `
+      <html><body>
+        <h3>Programación</h3>
+        <p>SÁBADO 4 de abril<br />
+        20:00 <a href="x">Terciopelo azul</a>, de David Lynch<br />
+        24:00 Terciopelo azul</p>
+        <script type="application/ld+json">{"datePublished":"2026-03-20T00:00:00+00:00"}</script>
+      </body></html>
+    `;
+    const warnings: string[] = [];
+    const screenings = parseDetailPage(html, cycle, warnings);
+    expect(screenings).toHaveLength(2);
+    expect(warnings.filter((w) => w.includes('unparseable'))).toEqual([]);
+
+    const midnight = screenings.find(
+      (s) => s.startsAtUtc.toISOString() === '2026-04-05T03:00:00.000Z',
+    );
+    expect(midnight).toBeDefined();
+    expect(midnight!.filmTitle).toBe('Terciopelo azul');
+    // No director is emitted for the midnight repeat.
+    expect(midnight!.director).toBeUndefined();
+  });
 });
