@@ -248,7 +248,7 @@ function parseS1DenseCycle(
   // rollover reveals it.
   const pendingDayBlocks: Array<{
     day: number;
-    shows: Array<{ hour: number; minute: number; title: string; director: string }>;
+    shows: Array<{ hour: number; minute: number; title: string; director?: string }>;
   }> = [];
 
   const dayParagraphs: string[] = [];
