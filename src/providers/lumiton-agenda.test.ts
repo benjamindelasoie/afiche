@@ -121,6 +121,28 @@ describe('parseEventDetail — Viñas de Ira fixture (full metadata)', () => {
     // Source HTML is "EE.UU.."  — we keep the internal dot but trim trailing.
     expect(detail.country).toBe('EE.UU');
   });
+
+  it('extracts the editorial synopsis from the .prose body, joined by paragraph breaks', () => {
+    expect(detail.synopsis).toBeDefined();
+    // First paragraph is the short logline; second is the full editorial.
+    expect(detail.synopsis!.startsWith('Durante la Gran Depresión')).toBe(true);
+    expect(detail.synopsis).toContain('La adaptación de John Ford');
+    // Two paragraphs present → joined with one blank line.
+    expect(detail.synopsis).toMatch(
+      /cumplir condena en prisión[\s\S]*\n\n[\s\S]*La adaptación/,
+    );
+  });
+
+  it('strips <em> venue + entrance metadata from the synopsis end', () => {
+    // The Viñas de Ira fixture's last paragraph ends with two <em> blocks
+    // ("en Cine York ..." and "Entrada Gratuita ...") that are venue
+    // metadata, not editorial. They must NOT bleed into the card synopsis.
+    expect(detail.synopsis).not.toContain('Cine York');
+    expect(detail.synopsis).not.toContain('Entrada Gratuita');
+    expect(detail.synopsis).not.toContain('Juan Bautista Alberdi');
+    // Editorial prose terminates cleanly at the last sentence.
+    expect(detail.synopsis!.trimEnd().endsWith('en cada plano.')).toBe(true);
+  });
 });
 
 describe('parseEventDetail — resilience to missing fields', () => {
@@ -158,6 +180,40 @@ describe('parseEventDetail — resilience to missing fields', () => {
     expect(d.runtimeMin).toBe(90);
     expect(d.country).toBe('Francia');
     expect(d.year).toBeUndefined();
+  });
+
+  it('returns synopsis undefined when the .prose block is absent', () => {
+    const html = `
+      <html><body><article>
+        <h1>No prose</h1>
+      </article></body></html>
+    `;
+    expect(parseEventDetail(html).synopsis).toBeUndefined();
+  });
+
+  it('returns synopsis undefined when .prose contains only stripped <em> metadata', () => {
+    // Edge case: a detail page where the entire body is venue/entrance info
+    // (no editorial prose). Don't emit an empty string.
+    const html = `
+      <html><body><article>
+        <div class="prose"><p><em>en Cine York</em><br><em>Entrada Gratuita</em></p></div>
+      </article></body></html>
+    `;
+    expect(parseEventDetail(html).synopsis).toBeUndefined();
+  });
+
+  it('joins multiple <p> children with paragraph breaks and ignores empty <p>', () => {
+    const html = `
+      <html><body><article>
+        <div class="prose">
+          <p>First paragraph.</p>
+          <p></p>
+          <p>Second paragraph.</p>
+        </div>
+      </article></body></html>
+    `;
+    const d = parseEventDetail(html);
+    expect(d.synopsis).toBe('First paragraph.\n\nSecond paragraph.');
   });
 });
 
@@ -250,5 +306,33 @@ describe('enrichFromDetailPages — dedup, merge, resilience', () => {
     // But fields the agenda didn't set DO get filled from detail.
     expect(screenings[0].year).toBe(1940);
     expect(screenings[0].runtimeMin).toBe(129);
+  });
+
+  it('populates synopsisEs from the detail page when the agenda left it blank', async () => {
+    // F-011 stopped scraping the truncated tile preview. F-011b lands the
+    // editorial body from /evento/ here. The card display guard
+    // (isCompleteSynopsis in src/app/page.tsx) verifies terminal punctuation,
+    // so the value we emit must end on a sentence-final character.
+    const fetcher = async () => eventDetailHtml;
+    const url = 'https://lumiton.ar/evento/vinas-de-ira/';
+    const screenings = [makeScreening(url)];
+
+    await enrichFromDetailPages(screenings, [], fetcher);
+
+    expect(screenings[0].synopsisEs).toBeDefined();
+    expect(screenings[0].synopsisEs!.length).toBeGreaterThan(60);
+    expect(screenings[0].synopsisEs!.trimEnd()).toMatch(/[.!?…»"']$/);
+  });
+
+  it('does not overwrite an agenda-provided synopsis with the detail-page version', async () => {
+    const fetcher = async () => eventDetailHtml;
+    const url = 'https://lumiton.ar/evento/vinas-de-ira/';
+    const screenings = [
+      makeScreening(url, { synopsisEs: 'Agenda-provided synopsis (verbatim).' }),
+    ];
+
+    await enrichFromDetailPages(screenings, [], fetcher);
+
+    expect(screenings[0].synopsisEs).toBe('Agenda-provided synopsis (verbatim).');
   });
 });

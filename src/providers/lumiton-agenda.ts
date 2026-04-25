@@ -166,6 +166,8 @@ export interface EventDetail {
   year?: number;
   country?: string;
   runtimeMin?: number;
+  /** Editorial synopsis from the article body (Lumiton-curated, native rioplatense). */
+  synopsis?: string;
 }
 
 /**
@@ -179,42 +181,70 @@ export interface EventDetail {
  *     <div class="text-sm">EE.UU..  129 min.  1940.</div>
  *   </div>
  *
- * All fields are optional — missing ones come back undefined.
+ * The synopsis lives separately in the article body:
+ *
+ *   <div class="prose prose-slate lg:prose-lg text-justify">
+ *     <p>Editorial paragraph one.</p>
+ *     <p>Editorial paragraph two.<br><br>
+ *       <em>en <strong>Cine York</strong> (...)</em><br>
+ *       <em>Entrada Gratuita ...</em>
+ *     </p>
+ *   </div>
+ *
+ * Synopsis extraction strips <em> venue/entrance metadata from each paragraph
+ * (Lumiton's convention is reliable: editorial prose is plain text + <strong>,
+ * never <em>; venue + entrance lines are always wrapped in <em>). All fields
+ * are optional — missing ones come back undefined.
  */
 export function parseEventDetail(html: string): EventDetail {
   const $ = cheerio.load(html);
   const out: EventDetail = {};
 
   const $block = $('article .mb-4.uppercase').first();
-  if ($block.length === 0) return out;
+  if ($block.length > 0) {
+    $block.find('b').each((_i, el) => {
+      const label = normalizeLabel($(el).text());
+      const value = textUntilNextBlock(el);
+      if (!value) return;
+      if (label.startsWith('direccion')) out.director = value;
+      else if (label.startsWith('titulo original')) out.titleOriginal = value;
+    });
 
-  $block.find('b').each((_i, el) => {
-    const label = normalizeLabel($(el).text());
-    const value = textUntilNextBlock(el);
-    if (!value) return;
-    if (label.startsWith('direccion')) out.director = value;
-    else if (label.startsWith('titulo original')) out.titleOriginal = value;
-  });
+    const smText = $block.find('.text-sm').first().text().replace(/\s+/g, ' ').trim();
+    if (smText) {
+      const runtimeMatch = smText.match(/(\d{1,3})\s*min\b\.?/i);
+      if (runtimeMatch) out.runtimeMin = parseInt(runtimeMatch[1], 10);
 
-  const smText = $block.find('.text-sm').first().text().replace(/\s+/g, ' ').trim();
-  if (smText) {
-    const runtimeMatch = smText.match(/(\d{1,3})\s*min\b\.?/i);
-    if (runtimeMatch) out.runtimeMin = parseInt(runtimeMatch[1], 10);
+      const yearMatch = smText.match(/\b(19|20)\d{2}\b/);
+      if (yearMatch) out.year = parseInt(yearMatch[0], 10);
 
-    const yearMatch = smText.match(/\b(19|20)\d{2}\b/);
-    if (yearMatch) out.year = parseInt(yearMatch[0], 10);
-
-    // Country is whatever precedes the first numeric token (runtime or year).
-    // Trailing punctuation is stripped so "EE.UU.." collapses to "EE.UU".
-    let firstIdx = Infinity;
-    if (runtimeMatch?.index !== undefined) firstIdx = runtimeMatch.index;
-    if (yearMatch?.index !== undefined && yearMatch.index < firstIdx) {
-      firstIdx = yearMatch.index;
+      // Country is whatever precedes the first numeric token (runtime or year).
+      // Trailing punctuation is stripped so "EE.UU.." collapses to "EE.UU".
+      let firstIdx = Infinity;
+      if (runtimeMatch?.index !== undefined) firstIdx = runtimeMatch.index;
+      if (yearMatch?.index !== undefined && yearMatch.index < firstIdx) {
+        firstIdx = yearMatch.index;
+      }
+      const countryPart = (Number.isFinite(firstIdx) ? smText.slice(0, firstIdx) : smText)
+        .replace(/[.,\s]+$/, '')
+        .trim();
+      if (countryPart) out.country = countryPart;
     }
-    const countryPart = (Number.isFinite(firstIdx) ? smText.slice(0, firstIdx) : smText)
-      .replace(/[.,\s]+$/, '')
-      .trim();
-    if (countryPart) out.country = countryPart;
+  }
+
+  const $prose = $('article .prose').first();
+  if ($prose.length > 0) {
+    // Clone before stripping so we don't mutate the original DOM (parseEventDetail
+    // is pure — callers may reuse the cheerio instance).
+    const $clone = $prose.clone();
+    $clone.find('em').remove();
+    const paragraphs = $clone
+      .find('p')
+      .map((_i, el) => $(el).text().replace(/\s+/g, ' ').trim())
+      .get()
+      .filter((p) => p.length > 0);
+    const synopsis = paragraphs.join('\n\n').trim();
+    if (synopsis.length > 0) out.synopsis = synopsis;
   }
 
   return out;
@@ -269,6 +299,7 @@ export async function enrichFromDetailPages(
     if (d.runtimeMin !== undefined && s.runtimeMin === undefined) {
       s.runtimeMin = d.runtimeMin;
     }
+    if (d.synopsis && !s.synopsisEs) s.synopsisEs = d.synopsis;
   }
 }
 

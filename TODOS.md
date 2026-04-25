@@ -157,7 +157,7 @@ Deferred findings from the full live audit of afiche.vercel.app. HIGH-severity i
 
 **Follow-ups from HIGH fixes this session:**
 - ~~**F-004b — Re-introduce real last-scrape timestamp in footer.**~~ Resolved 2026-04-23 (/qa). New query `getLastScrapeTime()` reads `MAX(finished_at)` from `scrape_runs` WHERE `status='success'`. Footer renders "Actualizado el DD de MMMM a las HH:MM" in BA time when non-null, silent otherwise. Commit `0407828`.
-- **F-011b — Enrich Lumiton-family synopses from the /evento/ detail page body.** F-011 stopped scraping the truncated tile preview; the detail page has the full synopsis. `parseEventDetail()` in `src/providers/lumiton-agenda.ts:185` currently extracts director/titleOriginal/year/country/runtime — extend it to also extract the synopsis body. Needs fetching one Lumiton detail page to identify the right selector.
+- ~~**F-011b — Enrich Lumiton-family synopses from the /evento/ detail page body.**~~ Resolved 2026-04-24. `parseEventDetail()` in `src/providers/lumiton-agenda.ts` now also extracts `synopsis` from the `article .prose` block. Strip rule: `<em>` children removed before joining `<p>` text — Lumiton's editorial convention reliably wraps venue + entrance metadata ("en Cine York ...", "Entrada Gratuita ...") in `<em>`, never editorial italics, so the strip cleanly separates editorial prose from venue noise. `enrichFromDetailPages()` writes through to `screening.synopsisEs` only when the agenda layer left it blank (provider-fields-win precedent preserved). 7 new tests cover happy path, missing-prose, em-only-prose, multi-paragraph join, agenda-doesn't-clobber, and ends-with-terminal-punctuation (so the F-011 `isCompleteSynopsis` display guard accepts the result).
 
 ---
 
