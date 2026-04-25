@@ -12,7 +12,13 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { extractCycles, parseDetailPage } from './malba';
+import {
+  extractCycles,
+  parseDetailPage,
+  parseFilmSynopsis,
+  enrichFromFilmDetailPages,
+} from './malba';
+import type { ScrapedScreening } from './types';
 
 function fixture(name: string): string {
   return readFileSync(resolve(__dirname, '../../test/fixtures/malba', name), 'utf8');
@@ -99,6 +105,21 @@ describe('parseDetailPage (Olivera-Aries cycle)', () => {
       expect(s.tags).toContain('cycle');
       expect(s.cinemaId).toBe('malba');
     }
+  });
+
+  it("captures filmDetailUrl from each showtime line's <a href> when present", () => {
+    const screenings = parseDetailPage(html, cycle, []);
+    // Every olivera-aries showtime line has an /evento/<film>/ link, so
+    // every screening should carry a filmDetailUrl distinct from sourceUrl.
+    for (const s of screenings) {
+      expect(s.filmDetailUrl).toMatch(
+        /^https:\/\/malba\.org\.ar\/evento\/[a-z0-9-]+\/?$/,
+      );
+      expect(s.filmDetailUrl).not.toBe(s.sourceUrl);
+    }
+    // Spot-check: La nona points at its own /evento/la-nona/ page.
+    const lanona = screenings.find((s) => s.filmTitle === 'La nona');
+    expect(lanona?.filmDetailUrl).toBe('https://malba.org.ar/evento/la-nona/');
   });
 
   it('captures the director and preserves accents in the film title', () => {
@@ -415,5 +436,188 @@ describe('parseDetailPage — synthetic edge cases', () => {
     expect(midnight!.filmTitle).toBe('Terciopelo azul');
     // No director is emitted for the midnight repeat.
     expect(midnight!.director).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Per-film synopsis enrichment (parseFilmSynopsis + enrichFromFilmDetailPages)
+//
+// MALBA aggressively rate-limits per-film fetches, so the test suite uses
+// synthetic HTML matching the Elementor structure confirmed in the real
+// olivera-aries cycle fixture (.elementor-widget-text-editor wrappers).
+// When a real per-film fixture is captured, swap the synthetic HTML below
+// for fixture('evento-<film>.html') and add an end-to-end assertion that
+// the synopsis text matches the one MALBA actually publishes.
+// ---------------------------------------------------------------------------
+describe('parseFilmSynopsis (Elementor text-editor pattern)', () => {
+  function makeFilmPage(blocks: string[]): string {
+    return `
+      <html><body>${blocks
+        .map(
+          (text) => `
+        <div class="elementor-widget elementor-widget-text-editor">
+          <div class="elementor-widget-container">${text}</div>
+        </div>`,
+        )
+        .join('')}</body></html>
+    `;
+  }
+
+  it('returns the longest text-editor body and ignores short metadata blocks', () => {
+    const html = makeFilmPage([
+      'Durante todo abril', // short metadata, skipped
+      'Auditorio', // short metadata, skipped
+      'Lynch definió Terciopelo azul como un sueño de extraños deseos atrapado dentro de una historia de suspenso. En el pasaje del adolescente al adulto, una experiencia perturbadora reordena el mundo del protagonista.',
+    ]);
+    const synopsis = parseFilmSynopsis(html);
+    expect(synopsis).toBeDefined();
+    expect(synopsis!.startsWith('Lynch definió Terciopelo azul')).toBe(true);
+    expect(synopsis).not.toContain('Durante todo abril');
+    expect(synopsis).not.toContain('Auditorio');
+  });
+
+  it('strips a trailing "Texto de NAME" attribution', () => {
+    const html = makeFilmPage([
+      'Lynch reorganiza el suburbio americano como un escenario de pesadilla. Un oído cercenado en el pasto inicia el descenso. Ningún plano es lo que parece. Texto de Diego Trerotola.',
+    ]);
+    const synopsis = parseFilmSynopsis(html);
+    expect(synopsis).toBeDefined();
+    expect(synopsis).not.toContain('Texto de');
+    expect(synopsis).not.toContain('Diego Trerotola');
+    expect(synopsis!.trimEnd().endsWith('Ningún plano es lo que parece.')).toBe(true);
+  });
+
+  it('also strips "Texto: NAME" colon-style attribution', () => {
+    const html = makeFilmPage([
+      'Una historia sencilla cierra la trayectoria de Lynch con una serenidad que sorprende. Una larga ruta cruzando llanuras americanas, encuentros que parecen casuales pero acumulan sentido. Texto: Marcela Gamberini.',
+    ]);
+    const synopsis = parseFilmSynopsis(html);
+    expect(synopsis).toBeDefined();
+    expect(synopsis).not.toContain('Texto:');
+    expect(synopsis).not.toContain('Marcela Gamberini');
+  });
+
+  it('returns undefined when no Elementor block has substantive prose (>=60 chars)', () => {
+    const html = makeFilmPage(['Auditorio', 'Durante abril', '120 min']);
+    expect(parseFilmSynopsis(html)).toBeUndefined();
+  });
+
+  it('returns undefined for a page with no text-editor widgets at all', () => {
+    expect(
+      parseFilmSynopsis('<html><body><h1>No widgets here</h1></body></html>'),
+    ).toBeUndefined();
+  });
+
+  it('extracts the synopsis from real MALBA HTML (olivera-aries cycle fixture)', () => {
+    // The olivera-aries page is a cycle page, not a per-film page, but the
+    // Elementor widget structure is identical site-wide. This pins the
+    // selector against MALBA's real markup so a theme refresh that drops
+    // .elementor-widget-text-editor surfaces here. Replace with a real
+    // per-film fixture (e.g. evento-una-historia-sencilla.html) once we
+    // capture one — the rate limit was active when this code shipped.
+    const realHtml = readFileSync(
+      resolve(__dirname, '../../test/fixtures/malba/evento-olivera-aries.html'),
+      'utf8',
+    );
+    const synopsis = parseFilmSynopsis(realHtml);
+    expect(synopsis).toBeDefined();
+    expect(synopsis!.startsWith('El 5 de abril cumple 95 años')).toBe(true);
+    expect(synopsis!.length).toBeGreaterThan(400);
+  });
+});
+
+describe('enrichFromFilmDetailPages — dedup, write-through, error tolerance', () => {
+  function makeScreening(
+    filmDetailUrl: string | undefined,
+    overrides: Partial<ScrapedScreening> = {},
+  ): ScrapedScreening {
+    return {
+      cinemaId: 'malba',
+      filmTitle: 'Some film',
+      startsAtUtc: new Date('2026-04-25T23:00:00Z'),
+      tags: ['cycle'],
+      sourceUrl: 'https://malba.org.ar/evento/some-cycle/',
+      ...(filmDetailUrl ? { filmDetailUrl } : {}),
+      ...overrides,
+    };
+  }
+
+  // Synopsis-bearing HTML used by the fake fetcher.
+  const filmHtml = (synopsis: string) => `
+    <html><body>
+      <div class="elementor-widget elementor-widget-text-editor">
+        <div class="elementor-widget-container">${synopsis}</div>
+      </div>
+    </body></html>
+  `;
+
+  it('fetches each unique filmDetailUrl exactly once even with multiple showtimes', async () => {
+    const calls: string[] = [];
+    const fetcher = async (url: string) => {
+      calls.push(url);
+      return filmHtml(
+        'Lynch reordena el suburbio. Un oído en el pasto inicia el descenso. Ningún plano es lo que parece, todo se reescribe en el segundo acto.',
+      );
+    };
+    const url = 'https://malba.org.ar/evento/terciopelo-azul/';
+    const screenings = [makeScreening(url), makeScreening(url), makeScreening(url)];
+
+    await enrichFromFilmDetailPages(screenings, [], fetcher, 0);
+
+    expect(calls).toEqual([url]);
+    for (const s of screenings) {
+      expect(s.synopsisEs!.startsWith('Lynch reordena')).toBe(true);
+    }
+  });
+
+  it('skips screenings without filmDetailUrl (S2 prose-style cycles)', async () => {
+    const calls: string[] = [];
+    const fetcher = async (url: string) => {
+      calls.push(url);
+      return filmHtml('should not be reached');
+    };
+    const screenings = [makeScreening(undefined)];
+
+    await enrichFromFilmDetailPages(screenings, [], fetcher, 0);
+
+    expect(calls).toEqual([]);
+    expect(screenings[0].synopsisEs).toBeUndefined();
+  });
+
+  it('records a warning and continues when a single film page fails', async () => {
+    const fetcher = async (url: string) => {
+      if (url.includes('broken')) throw new Error('HTTP 503');
+      return filmHtml(
+        'A working synopsis with enough characters to pass the 60-char threshold imposed by parseFilmSynopsis.',
+      );
+    };
+    const warnings: string[] = [];
+    const screenings = [
+      makeScreening('https://malba.org.ar/evento/working/', { filmTitle: 'Working' }),
+      makeScreening('https://malba.org.ar/evento/broken/', { filmTitle: 'Broken' }),
+    ];
+
+    await enrichFromFilmDetailPages(screenings, warnings, fetcher, 0);
+
+    expect(screenings.find((s) => s.filmTitle === 'Working')!.synopsisEs).toBeDefined();
+    expect(screenings.find((s) => s.filmTitle === 'Broken')!.synopsisEs).toBeUndefined();
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatch(/HTTP 503/);
+    expect(warnings[0]).toContain('https://malba.org.ar/evento/broken/');
+  });
+
+  it('does not overwrite a synopsisEs already set on the screening', async () => {
+    const fetcher = async () =>
+      filmHtml(
+        'Detail-page synopsis that should NOT replace agenda-provided text — provider fields win.',
+      );
+    const url = 'https://malba.org.ar/evento/some-film/';
+    const screenings = [
+      makeScreening(url, { synopsisEs: 'Pre-set synopsis (verbatim).' }),
+    ];
+
+    await enrichFromFilmDetailPages(screenings, [], fetcher, 0);
+
+    expect(screenings[0].synopsisEs).toBe('Pre-set synopsis (verbatim).');
   });
 });

@@ -86,6 +86,34 @@ S3 (recurring-weekly) is still missing. Examples: Hijo mayor, Los dias chinos, P
 
 ---
 
+## 9. Capture a real MALBA per-film fixture and pin parseFilmSynopsis end-to-end
+
+**What:** `parseFilmSynopsis` and `enrichFromFilmDetailPages` shipped 2026-04-24 with synthetic-HTML unit tests + a real-data spot-check against `evento-olivera-aries.html` (a cycle page, same Elementor structure as per-film). MALBA's rate limiter (HTTP 429) was active during the implementation window and blocked capturing a real per-film fixture (e.g. `https://malba.org.ar/evento/una-historia-sencilla/`).
+
+**Why:** The cycle-page spot-check confirms the `.elementor-widget-text-editor` selector picks up the longest body, but a real per-film page may carry an additional cycle-context block, sidebar widgets, or attribution variants ("Texto: NAME" with colon, multi-author). Without a fixture-backed end-to-end test, we won't catch a structural drift on real per-film pages until production warnings flag it.
+
+**Action:** Once MALBA's rate limit resets (try outside peak hours), run:
+
+```bash
+mkdir -p test/fixtures/malba
+curl -sS \
+  -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
+  -H "Accept-Language: es-AR,es;q=0.9" \
+  "https://malba.org.ar/evento/una-historia-sencilla/" \
+  > test/fixtures/malba/evento-una-historia-sencilla.html
+```
+
+Then add an end-to-end test in `src/providers/malba.test.ts`:
+- Asserts `parseFilmSynopsis(realFilmHtml)` starts with the published synopsis text
+- Confirms the `.elementor-widget-text-editor` longest-wins heuristic still picks the right block when cycle-context widgets are present
+- Checks the "Texto de NAME" attribution strip handles whatever variant MALBA actually uses on per-film pages
+
+If the heuristic fails on real-page shape, refine the selector (e.g. scope to a specific Elementor section ID, or filter widgets nested under the article container).
+
+**Depends on / blocked by:** MALBA rate-limit reset.
+
+---
+
 ## 4. Log persistence query UI / admin
 
 **What:** With `scrape_runs` populated after each run, build a minimal `/admin/runs` page (or CLI) that lists recent runs, their match stats, and warnings.

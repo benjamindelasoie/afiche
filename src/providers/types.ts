@@ -26,6 +26,14 @@ export interface ScrapedScreening {
   synopsisEs?: string;
   /** Back-link to the cinema page where this screening is described. */
   sourceUrl: string;
+  /**
+   * Optional per-film URL distinct from sourceUrl. Set when sourceUrl points
+   * at a parent context (e.g. a MALBA cycle page) but the film also has a
+   * dedicated page worth fetching for richer metadata. Used by enrichers
+   * that want a film-level synopsis without disturbing the cycle-anchored
+   * sourceUrl that the UI links to.
+   */
+  filmDetailUrl?: string;
 }
 
 export interface ProviderRunResult {

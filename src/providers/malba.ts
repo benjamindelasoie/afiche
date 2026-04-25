@@ -111,6 +111,11 @@ export const malbaProvider: Provider = {
         await sleep(DETAIL_DELAY_MS);
       }
 
+      // Per-film detail pages — fetch each unique /evento/<film>/ URL once
+      // and attach its editorial synopsis to every showtime that shares it.
+      // The cycle URL stays as sourceUrl so the click target is unchanged.
+      await enrichFromFilmDetailPages(screenings, warnings);
+
       return {
         cinemaId: this.id,
         screenings,
@@ -451,7 +456,14 @@ function parseS2TimeList(raw: string): Array<{ hour: number; minute: number }> {
 interface DayBlock {
   day: number;
   monthName?: string;
-  shows: Array<{ hour: number; minute: number; title: string; director?: string }>;
+  shows: Array<{
+    hour: number;
+    minute: number;
+    title: string;
+    director?: string;
+    /** /evento/<film-slug>/ from the showtime line's <a> when present. */
+    filmHref?: string;
+  }>;
 }
 
 function parseDayParagraph(
@@ -499,9 +511,13 @@ function parseDayParagraph(
   };
 }
 
-function parseShowtimeLine(
-  lineHtml: string,
-): { hour: number; minute: number; title: string; director?: string } | null {
+function parseShowtimeLine(lineHtml: string): {
+  hour: number;
+  minute: number;
+  title: string;
+  director?: string;
+  filmHref?: string;
+} | null {
   // Typical line:  "19:00 <a href="...">Title</a>, de Director"
   // Occasionally:  "19:00 Title, de Director"       (no link)
   // Director-less: "24:00 Terciopelo azul"          (cycle-all-one-director,
@@ -515,11 +531,20 @@ function parseShowtimeLine(
   const minute = parseInt(m[2], 10);
   if (hour < 0 || hour > 24 || minute < 0 || minute > 59) return null;
   const director = m[4]?.replace(/\.$/, '').trim();
+  // Capture the per-film href when the line wraps the title in an <a>.
+  // MALBA's showtime lines link to /evento/<film-slug>/ for individual
+  // films; midnight repeats and a few prose-style lines have no link.
+  const rawHref = $('a').first().attr('href');
+  const filmHref =
+    rawHref && /^https:\/\/malba\.org\.ar\/evento\/[a-z0-9-]+\/?$/.test(rawHref)
+      ? rawHref
+      : undefined;
   return {
     hour,
     minute,
     title: m[3].trim(),
     ...(director ? { director } : {}),
+    ...(filmHref ? { filmHref } : {}),
   };
 }
 
@@ -609,6 +634,9 @@ function emitBlock(
       startsAtUtc: startsAt,
       tags: inferTags(cycle),
       sourceUrl: cycle.detailUrl,
+      // Per-film URL stored separately so the cycle URL stays the click
+      // target. enrichFromFilmDetailPages() reads this for synopsis fetches.
+      ...(show.filmHref ? { filmDetailUrl: show.filmHref } : {}),
     });
   }
 }
@@ -648,6 +676,97 @@ function inferTags(cycle: CycleLink): ScreeningTag[] {
   if (/retrospect/i.test(title)) tags.push('retrospective');
   if (/restaurad|restor/i.test(title)) tags.push('restored');
   return Array.from(new Set(tags));
+}
+
+// ---------------------------------------------------------------------------
+// Per-film synopsis enrichment
+// ---------------------------------------------------------------------------
+//
+// Each MALBA cycle page lists its films with <a href="/evento/<film>/">
+// links inside the showtime lines. Each linked /evento/<film>/ page has a
+// dedicated editorial synopsis (programmer's note, often with a "Texto de
+// NAME" attribution at the tail) that we want on the cards.
+//
+// Architecture: the cycle parse already records each film's URL on
+// ScrapedScreening.filmDetailUrl. After all cycles parse, we collect unique
+// film URLs, fetch each once with the same 500ms politeness window MALBA's
+// cycle scrape uses, parse the synopsis, and merge into every screening
+// sharing that URL. Per-film fetch failures are non-fatal — they surface
+// as warnings and the screening keeps whatever cycle-level data we already
+// have.
+//
+// The MALBA per-film page uses the same Elementor text-editor widget
+// pattern as the cycle pages. The synopsis is the longest
+// .elementor-widget-text-editor body on the page — short widgets ("Durante
+// todo abril", auditorio labels) are decoration; the synopsis dwarfs them.
+// We strip a trailing "Texto de NAME" attribution that MALBA programmers
+// add to credit the writer.
+
+/**
+ * Pure parser for the editorial synopsis on a MALBA per-film /evento/ page.
+ * Returns undefined when no Elementor text-editor block contains substantive
+ * prose (>= 60 chars after the attribution strip).
+ */
+export function parseFilmSynopsis(html: string): string | undefined {
+  const $ = cheerio.load(html);
+
+  let bestText = '';
+  $('.elementor-widget-text-editor .elementor-widget-container').each((_i, el) => {
+    const text = $(el).text().replace(/\s+/g, ' ').trim();
+    if (text.length > bestText.length) bestText = text;
+  });
+
+  // Strip "Texto de NAME" / "Texto de NAME y NAME" / "Texto: NAME" attribution
+  // tails. MALBA programmers credit the writer; we don't render that on cards.
+  const cleaned = bestText.replace(/\s+Texto\s*(?:de|:)\s+[^.]+\.?\s*$/i, '').trim();
+
+  if (cleaned.length < 60) return undefined;
+  return cleaned;
+}
+
+/**
+ * Fetch each unique filmDetailUrl referenced by `screenings` and write its
+ * synopsis into matching screenings. Per-URL dedupe (one cycle film with N
+ * showtimes triggers one fetch). Sequential with the same DETAIL_DELAY_MS
+ * politeness window the cycle scrape uses, since MALBA rate-limits hard.
+ *
+ * Exported so tests can inject a fake fetcher.
+ */
+export async function enrichFromFilmDetailPages(
+  screenings: ScrapedScreening[],
+  warnings: string[],
+  fetcher: (url: string) => Promise<string> = fetchText,
+  delayMs: number = DETAIL_DELAY_MS,
+): Promise<void> {
+  const urls = Array.from(
+    new Set(
+      screenings
+        .map((s) => s.filmDetailUrl)
+        .filter((u): u is string => typeof u === 'string' && u.length > 0),
+    ),
+  );
+  if (urls.length === 0) return;
+
+  const synopsisByUrl = new Map<string, string>();
+
+  for (const url of urls) {
+    try {
+      const html = await fetcher(url);
+      const synopsis = parseFilmSynopsis(html);
+      if (synopsis) synopsisByUrl.set(url, synopsis);
+    } catch (err) {
+      warnings.push(
+        `film detail fetch failed for ${url}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    if (delayMs > 0) await sleep(delayMs);
+  }
+
+  for (const s of screenings) {
+    if (!s.filmDetailUrl || s.synopsisEs) continue;
+    const synopsis = synopsisByUrl.get(s.filmDetailUrl);
+    if (synopsis) s.synopsisEs = synopsis;
+  }
 }
 
 async function fetchText(url: string): Promise<string> {
