@@ -66,23 +66,21 @@ export default async function HomePage() {
         Saltar al contenido
       </a>
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 md:py-16">
-        {/* Masthead — pure brand moment. The edition dateline used to
-            hang under the h1, but that blurred the brand with the
-            "this week" section label. Now the masthead carries only
-            the name + tagline; edition metadata moved into the
-            "Esta semana" section header below so all three section
-            headers (Esta semana / Este mes / Próximamente) are parallel.
-            Mobile padding tightened (py-5 vs py-12 desktop) and the
-            h1 clamp minimum lowered so the first screening card returns
-            to first-fold on a 375×812 viewport. Desktop rhythm unchanged. */}
+        {/* Masthead — full editorial layout. Top kicker carries the
+            location identity; the wordmark sits in the middle; bottom
+            dateline carries the dynamic edition number + week range.
+            Top + bottom split duties: no edition number or year repeats
+            anywhere on the page. The Esta semana section header below
+            drops its edition subtitle since the masthead now owns it.
+            tracking-[-0.02em] matches DESIGN.md's display-xl spec
+            exactly; explicit fontKerning + fontFeatureSettings turn on
+            the Instrument Serif fi ligature next/font ships with but
+            doesn't apply by default. */}
         <header className="border-y-8 border-double border-black py-5 text-center md:py-12">
-          {/* tracking-[-0.02em] matches the DESIGN.md display-xl spec
-              exactly. The earlier `tracking-tight` (-0.025em) was a hair
-              tighter and caused Instrument Serif's `f` terminal to crash
-              into the `i` stem at clamp-max (128px) on desktop. Explicit
-              `fontKerning` + `fontFeatureSettings: liga` also turn on the
-              fi ligature that Next/font-loaded Instrument Serif ships
-              with but doesn't apply by default. */}
+          <div className="bg-carmine/80 mx-auto mb-2 h-[2px] w-[44%] max-w-[260px] md:mb-3" />
+          <p className="text-carmine mb-2 font-mono text-[11px] tracking-[0.2em] uppercase md:mb-3">
+            Buenos Aires · cartelera curada
+          </p>
           <h1
             className="font-serif leading-[0.9] tracking-[-0.02em] text-balance"
             style={{
@@ -93,9 +91,16 @@ export default async function HomePage() {
           >
             Afiche
           </h1>
-          <p className="text-ink-gray mt-2 font-serif text-lg italic md:mt-3 md:text-xl">
-            cartelera curada de Buenos Aires
-          </p>
+          <div className="mx-auto mt-3 flex max-w-[28rem] flex-wrap items-center justify-between gap-x-6 gap-y-1 border-t border-black px-1 pt-2 font-mono text-[10px] tracking-[0.15em] uppercase md:mt-4 md:text-[11px]">
+            <span className="text-carmine font-bold">
+              Edición Nº {edition.editionNumber}
+            </span>
+            <span className="text-ink-gray">{edition.weekRangeShort}</span>
+          </div>
+          {/* Full edition sentence for screen readers — the visible
+              dateline above is abbreviated for mobile-first layout, so
+              the long form lives here for assistive tech. */}
+          <p className="sr-only">{edition.fullSentence}</p>
         </header>
 
         {!hasAny ? (
@@ -113,36 +118,21 @@ export default async function HomePage() {
               <SectionHeader
                 title="Esta semana"
                 subtitle={
-                  <>
-                    <span className="text-carmine font-bold">
-                      Edición Nº {edition.editionNumber}
-                    </span>
-                    <span className="text-ink-gray/60">·</span>
-                    <span>Semana del {edition.weekRangeLabel}</span>
-                    {/* Counts are desktop-only — on mobile 375 the subtitle
-                        wraps to 3 lines when they're shown and adds
-                        density without navigation value. Keeps the
-                        headers parallel across all three tiers at md+. */}
-                    {thisWeekTotal > 0 && (
-                      <>
-                        <span className="text-ink-gray/60 hidden md:inline">·</span>
-                        <span className="hidden md:inline">
-                          {thisWeekTotal} {thisWeekTotal === 1 ? 'función' : 'funciones'}
-                        </span>
-                        <span className="text-ink-gray/60 hidden md:inline">·</span>
-                        <span className="hidden md:inline">
-                          {thisWeekCinemas} {thisWeekCinemas === 1 ? 'sala' : 'salas'}
-                        </span>
-                      </>
-                    )}
-                  </>
+                  thisWeekTotal > 0 ? (
+                    <>
+                      <span>
+                        {thisWeekTotal}{' '}
+                        {thisWeekTotal === 1 ? 'función' : 'funciones'}
+                      </span>
+                      <span className="text-ink-gray/60">·</span>
+                      <span>
+                        {thisWeekCinemas}{' '}
+                        {thisWeekCinemas === 1 ? 'sala' : 'salas'}
+                      </span>
+                    </>
+                  ) : null
                 }
               />
-              {/* Full edition sentence for screen readers. Placed with the
-                  Esta semana header since that's where the span is now
-                  announced visually. Keeps the single-source compute
-                  so visible + sr-only can't drift. */}
-              <p className="sr-only">{edition.fullSentence}</p>
               {thisWeek.length === 0 ? (
                 <EmptyWeekMessage
                   hasFollowup={thisMonth.length > 0 || upcoming.length > 0}
@@ -683,6 +673,10 @@ function isCompleteSynopsis(text: string): boolean {
 interface EditionInfo {
   editionNumber: number;
   weekRangeLabel: string;
+  /** Compact "DD MMM — DD MMM" form used in the masthead dateline. The
+      verbose `weekRangeLabel` ("28 de abril al 4 de mayo") doesn't fit
+      under the wordmark at mobile widths even with mono 10px tracking. */
+  weekRangeShort: string;
   fullSentence: string;
 }
 
@@ -695,6 +689,7 @@ function computeEdition(
   const weekEnd = getIsoWeekEndBA(now);
   const editionNumber = getEditionNumber(weekStart);
   const weekRangeLabel = formatRangeLabel(weekStart, weekEnd);
+  const weekRangeShort = formatRangeShort(weekStart, weekEnd);
   const fullSentence = editionFullSentence({
     editionNumber,
     weekRangeLabel,
@@ -702,7 +697,7 @@ function computeEdition(
     distinctCinemas,
     isWeekSpan: true,
   });
-  return { editionNumber, weekRangeLabel, fullSentence };
+  return { editionNumber, weekRangeLabel, weekRangeShort, fullSentence };
 }
 
 // ---------------------------------------------------------------------------
@@ -730,6 +725,28 @@ function formatRangeLabel(first: Date, last: Date): string {
     return `${firstDay} al ${lastDay} de ${firstMonth}`;
   }
   return `${firstDay} de ${firstMonth} al ${lastDay} de ${lastMonth}`;
+}
+
+/**
+ * Compact "DD MMM — DD MMM" range used by the masthead dateline. Months
+ * are clipped to 3-letter abbreviations so the row fits under the
+ * wordmark at mobile 375 with the chosen tracking. Dropped trailing
+ * period on the month abbreviation — Spanish typography convention is
+ * to keep abbreviated month names without the period in headlines.
+ */
+function formatRangeShort(first: Date, last: Date): string {
+  const fmt = new Intl.DateTimeFormat('es-AR', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    day: 'numeric',
+    month: 'short',
+  });
+  const firstParts = fmt.formatToParts(first);
+  const lastParts = fmt.formatToParts(last);
+  const firstDay = firstParts.find((p) => p.type === 'day')?.value;
+  const firstMonth = firstParts.find((p) => p.type === 'month')?.value?.replace('.', '');
+  const lastDay = lastParts.find((p) => p.type === 'day')?.value;
+  const lastMonth = lastParts.find((p) => p.type === 'month')?.value?.replace('.', '');
+  return `${firstDay} ${firstMonth} — ${lastDay} ${lastMonth}`;
 }
 
 // dateKey "YYYY-MM-DD" → Date at BA noon (safe for formatting without

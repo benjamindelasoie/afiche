@@ -4,6 +4,61 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 10. Add a "now playing" marquee ticker (deferred from the masthead-design pass)
+
+**What:** A slow horizontal scroll of currently-programmed film titles, rendered as a thin row attached to the masthead. Tested in the 2026-04-25 design lab as variant 5A ("EN CARTEL ▸" prefix on the left, mono uppercase titles flowing past on the right with carmine bullet separators). The user loved the effect — "looks amazing" — but we shipped the static editorial-masthead 5C in this round; the marquee is parked for a future cycle when we want a second motion moment.
+
+**Why it's not shipping now:**
+
+- The static 5C masthead already carries everything load-bearing (edition number, week range, location identity), so adding ambient motion in the same view would compete with the wordmark.
+- The 4D/5A iteration had a layout bug where the inline-flex track's `whitespace-nowrap` content (~1800px wide at our title volume) leaked through `overflow-hidden` ancestors and forced the body wider than the mobile viewport. The 5A rewrite contained it with inline `width: 100%; max-width: 100%; overflow: hidden;` plus `width: max-content` on the inner track — that recipe should be the starting point when we revisit.
+- A real ticker should consume real data: pull `thisWeek` titles via the same query the cards use, dedupe by `filmId`, sort however the cinema-marquee mood wants (chronological? alphabetical? carmine-cinema-first?). The prototype hard-coded a sample list.
+
+**When it earns its place:**
+
+- A second masthead motion moment becomes desirable (e.g., when 5C feels too static after a few weeks of use).
+- Or when the masthead needs to telegraph density on weeks with many titles ("look, 47 films are programmed this week, here are some of them streaming past").
+- Or as a sticky bottom bar instead of a masthead attachment — different geometry, same idea.
+
+**Implementation sketch (to seed the next pass):**
+
+```tsx
+function MastheadTicker({ titles }: { titles: string[] }) {
+  const items = [...titles, ...titles]; // duplicate so -50% loops seamlessly
+  return (
+    <div style={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
+      <div className="flex border-y border-carmine/30">
+        <div className="bg-carmine px-3 py-2 font-mono text-[11px] tracking-[0.18em] uppercase text-cream shrink-0">
+          En Cartel ▸
+        </div>
+        <div style={{ flex: '1 1 0', minWidth: 0, overflow: 'hidden' }}>
+          <div
+            className="proto-marquee font-mono text-[11px] uppercase"
+            style={{ display: 'flex', gap: '2rem', width: 'max-content', whiteSpace: 'nowrap' }}
+          >
+            {items.map((t, i) => (
+              <span key={i} className="text-ink-gray inline-flex items-center gap-8">
+                <span className="text-carmine">●</span>
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// CSS: @keyframes proto-marquee-scroll { to { transform: translateX(-50%); } }
+//      .proto-marquee { animation: proto-marquee-scroll 30s linear infinite; }
+```
+
+The user-tested duration (30s for full pass) reads as ambient, not attention-grabbing. Linear timing only — easing on a continuous loop reads as wobble.
+
+**Depends on / blocked by:** Nothing. Pure design / impulse-driven.
+
+---
+
 ## 1. Ship Cinépolis Recoleta scraper
 
 **What:** Build a Cinépolis Recoleta scraper that feeds into the existing ingest pipeline.
@@ -110,7 +165,7 @@ Then add an end-to-end test in `src/providers/malba.test.ts`:
 
 If the heuristic fails on real-page shape, refine the selector (e.g. scope to a specific Elementor section ID, or filter widgets nested under the article container).
 
-**Depends on / blocked by:** MALBA rate-limit reset.
+**Depends on / blocked by:** MALBA rate-limit reset. Retried 2026-04-25 from the residential IP; `https://malba.org.ar/*` (listing + per-film) still returned HTTP 429 across multiple UAs, so the rate limit looks IP-scoped and persistent rather than burst-only. Try again after a multi-day gap, from a different IP, or via the gstack browse stealth path.
 
 ---
 
