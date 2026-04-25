@@ -141,12 +141,7 @@ S3 (recurring-weekly) is still missing. Examples: Hijo mayor, Los dias chinos, P
 
 Deferred findings from the full live audit of afiche.vercel.app. HIGH-severity items (F-001, F-002, F-003, F-004, F-011) shipped this session. The remaining items below are spec-alignment and polish — real but not trust-damaging.
 
-**F-012 — Masthead "Afiche" rendering glitch: f serif overlaps the i.** Observed 2026-04-23 by Benjamin. The "f" letter's serif appears to overlap the adjacent "i" in the Instrument Serif masthead h1. Could be:
-  - Instrument Serif variable-font glyph quirk at clamp scale (`clamp(3.5rem, 12vw, 8rem)`)
-  - Aggressive `tracking-tight` + `-0.02em` letter-spacing crushing letters together
-  - Font swap period (Georgia fallback doesn't have this issue; switch to loaded font might be what's visible)
-  - CSS `text-balance` interaction
-  Start by comparing the same string with / without `tracking-tight`, with / without `text-balance`, at several font-sizes. If it's an Instrument Serif rendering bug at large sizes (known in some variable-font implementations), consider swapping to a different serif for the masthead only. Screenshot when next in front of the issue so we can pin down the viewport + weight.
+~~**F-012 — Masthead "Afiche" rendering glitch: f serif overlaps the i.**~~ Resolved 2026-04-23 (commit `a566ce8`). Two compounding causes: `tracking-tight` (-0.025em) was a hair tighter than DESIGN.md's display-xl spec (-0.02em), and `font-feature-settings` was browser default — so the fi ligature that Instrument Serif ships with never engaged. Fix: `tracking-[-0.02em]` + `fontKerning: 'normal'` + `fontFeatureSettings: '"liga", "kern"'` on the masthead h1. Same commit also corrected card-title tracking from `tracking-tight` to DESIGN.md's display-md spec (`tracking-[-0.01em]`) for legibility at 24-30px. Visual verification next time on the deployed site.
 
 ~~**F-005 — CICLO tag on 80 of 81 cards drains signal value.**~~ Resolved 2026-04-22 (/qa). Filter `'cycle'` out of `s.tags` at render; meaningful tags (retrospective, restored, named festivals) still show. ★ star prefix on cinema names also dropped — same universal-signal reasoning. Commit `aca2dde`.
 
