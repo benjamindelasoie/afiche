@@ -76,7 +76,7 @@ export default async function HomePage() {
             exactly; explicit fontKerning + fontFeatureSettings turn on
             the Instrument Serif fi ligature next/font ships with but
             doesn't apply by default. */}
-        <header className="py-5 text-center md:py-10">
+        <header className="py-8 text-center md:py-10">
           <div className="bg-carmine/80 mx-auto mb-2 h-[2px] w-[44%] max-w-[260px] md:mb-3" />
           <p className="text-carmine mb-2 font-mono text-[11px] tracking-[0.2em] uppercase md:mb-3">
             Buenos Aires · cartelera curada
@@ -91,7 +91,13 @@ export default async function HomePage() {
           >
             Afiche
           </h1>
-          <div className="mx-auto mt-3 flex max-w-[28rem] flex-wrap items-center justify-between gap-x-6 gap-y-1 border-t border-black px-1 pt-2 font-mono text-[10px] tracking-[0.15em] uppercase md:mt-4 md:text-[11px]">
+          {/* Dateline stacks on mobile (Edición number above, week range
+              below — centered) and switches to a justified row on md+
+              where there's room to breathe. Stacking dodges the ~360px
+              minimum width the row needs at mobile font + tracking,
+              which was clipping "28 abr — 4 may" off the right edge on
+              375px viewports. */}
+          <div className="mx-auto mt-4 flex max-w-[28rem] flex-col items-center gap-y-1 border-t border-black px-1 pt-2 font-mono text-[10px] tracking-[0.15em] uppercase md:mt-4 md:flex-row md:justify-between md:gap-x-6 md:text-[11px]">
             <span className="text-carmine font-bold">
               Edición Nº {edition.editionNumber}
             </span>
@@ -114,7 +120,7 @@ export default async function HomePage() {
                 of extra air between them (the earlier mt-10) just read
                 as wasted fold. Desktop keeps the generous breathing
                 room because the breaks aren't competing for fold space. */}
-            <section id="cartelera" className="mt-2 md:mt-8">
+            <section id="cartelera" className="mt-6 md:mt-8">
               <SectionHeader
                 title="Esta semana"
                 subtitle={
