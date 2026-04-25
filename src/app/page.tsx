@@ -416,12 +416,23 @@ function ScreeningCard({
             )}
             {/* Synopsis — FULL variant only. Compact drops it to signal
                 "planning layer, not decision layer." The display guard
-                keeps mid-sentence-truncated legacy DB rows out. */}
+                keeps mid-sentence-truncated legacy DB rows out.
+                line-clamp-3 caps at three lines; the bottom-fade mask
+                signals "there's more" without a leer-más link, which
+                will land when the film-detail page (TODOS.md #6) ships
+                and gives the fade something to point at. */}
             {!isCompact &&
               s.film.synopsisEs &&
               s.cinema.type === 'indie' &&
               isCompleteSynopsis(s.film.synopsisEs) && (
-                <p className="border-carmine mt-3 line-clamp-3 max-w-prose border-l-2 pl-3 text-sm">
+                <p
+                  className="border-carmine mt-3 line-clamp-3 max-w-prose border-l-2 pl-3 text-sm"
+                  style={{
+                    maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)',
+                    WebkitMaskImage:
+                      'linear-gradient(to bottom, black 70%, transparent 100%)',
+                  }}
+                >
                   {s.film.synopsisEs}
                 </p>
               )}
