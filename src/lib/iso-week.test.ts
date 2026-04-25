@@ -1,43 +1,61 @@
 /**
  * Tests for the edition number + dateline composer.
  *
- * ISO-8601 week spec: a week runs Mon–Sun, and the year it belongs to
- * is the year that contains the majority of its days. This means:
- *   - Dec 29–31 can belong to week 1 of the NEXT year (e.g., 2024-12-31 → 2025 W1)
- *   - Jan 1–3 can belong to week 52/53 of the PREVIOUS year (e.g., 2023-01-01 → 2022 W52)
+ * Edition number is launch-anchored: Nº 1 = week of Monday 2026-04-27
+ * (Afiche's launch week). Each subsequent ISO week (Mon→Sun in BA local,
+ * UTC-3, no DST) increments the counter by 1.
  *
- * These edge cases are locked down here so a future refactor or library
- * swap can't silently change the masthead number across year boundaries.
+ * Pre-launch weeks clamp to Nº 1 so the masthead never shows 0 or
+ * negatives if the page is reached before the launch date.
  */
 
 import { describe, it, expect } from 'vitest';
 import { getEditionNumber, editionFullSentence } from './iso-week';
+import { getIsoWeekStartBA } from './date-ranges';
 
-describe('getEditionNumber — ISO 8601 week of year', () => {
-  it('standard mid-year date: 2026-04-26 → week 17', () => {
-    expect(getEditionNumber(new Date('2026-04-26'))).toBe(17);
+describe('getEditionNumber — launch-anchored counter', () => {
+  // Convenience: pass any Date in the target week and let getIsoWeekStartBA
+  // resolve it to the Monday 00:00 BA UTC instant the counter expects.
+  function editionFor(isoString: string): number {
+    return getEditionNumber(getIsoWeekStartBA(new Date(isoString)));
+  }
+
+  it('week of Mon 2026-04-27 (launch week) → Nº 1', () => {
+    expect(editionFor('2026-04-27T15:00:00Z')).toBe(1);
   });
 
-  it('leap year Feb 29: 2024-02-29 → week 9', () => {
-    expect(getEditionNumber(new Date('2024-02-29'))).toBe(9);
+  it('any day inside the launch week resolves to Nº 1', () => {
+    // Sun 2026-05-03 is still in launch week (Mon→Sun ISO).
+    expect(editionFor('2026-05-03T15:00:00Z')).toBe(1);
   });
 
-  it('Dec 31 Sunday belonging to previous-year last week: 2023-12-31 → week 52', () => {
-    // 2023-12-31 is a Sunday. The ISO week containing it (Mon 2023-12-25 →
-    // Sun 2023-12-31) is fully in 2023, so it's week 52 of 2023.
-    expect(getEditionNumber(new Date('2023-12-31'))).toBe(52);
+  it('week of Mon 2026-05-04 (one week after launch) → Nº 2', () => {
+    expect(editionFor('2026-05-04T15:00:00Z')).toBe(2);
   });
 
-  it('Jan 1 belonging to previous-year last week: 2023-01-01 → week 52 (of 2022)', () => {
-    // 2023-01-01 is a Sunday. The ISO week (Mon 2022-12-26 → Sun 2023-01-01)
-    // has 6 days in 2022 and 1 in 2023, so it's week 52 of 2022.
-    expect(getEditionNumber(new Date('2023-01-01'))).toBe(52);
+  it('week of Mon 2026-05-11 → Nº 3', () => {
+    expect(editionFor('2026-05-11T15:00:00Z')).toBe(3);
   });
 
-  it('Dec 31 belonging to next-year first week: 2024-12-31 → week 1 (of 2025)', () => {
-    // 2024-12-31 is a Tuesday. The ISO week (Mon 2024-12-30 → Sun 2025-01-05)
-    // has 2 days in 2024 and 5 in 2025, so it's week 1 of 2025.
-    expect(getEditionNumber(new Date('2024-12-31'))).toBe(1);
+  it('twelve weeks after launch → Nº 13', () => {
+    // 2026-04-27 + 84 days = 2026-07-20 Monday.
+    expect(editionFor('2026-07-20T15:00:00Z')).toBe(13);
+  });
+
+  it('pre-launch dates clamp to Nº 1 (the week before launch)', () => {
+    // Mon 2026-04-20 is one week BEFORE launch. Clamps to 1, not 0.
+    expect(editionFor('2026-04-20T15:00:00Z')).toBe(1);
+  });
+
+  it('far pre-launch dates clamp to Nº 1, not negative numbers', () => {
+    // 2026-01-05: ~16 weeks before launch.
+    expect(editionFor('2026-01-05T15:00:00Z')).toBe(1);
+  });
+
+  it('survives a year-end boundary cleanly (no ISO week-of-year reset)', () => {
+    // 2026-12-28 Monday is 35 weeks past launch. Old ISO-week-of-year
+    // would have returned ~52; the launch-anchored counter keeps counting.
+    expect(editionFor('2026-12-28T15:00:00Z')).toBe(36);
   });
 });
 

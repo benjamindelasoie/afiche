@@ -1,20 +1,37 @@
 /**
  * Edition number + full dateline composition for the Afiche masthead.
  *
- * The visible masthead shows abbreviated dateline ("Edición Nº 17 · Semana
- * del 23 al 30 de abril · 81 funciones · 5 salas"). Screen readers get the
- * full sentence below via an sr-only element. Both must derive from the
- * same computation so they never drift — that's this module's job.
+ * The visible masthead shows abbreviated dateline ("Edición Nº 1 · Semana
+ * del 27 abr al 3 may"). Screen readers get the full sentence via an
+ * sr-only element. Both derive from the same computation so they never
+ * drift — that's this module's job.
  *
- * Edition number = ISO-8601 week of the year via date-fns. Year-resettable
- * (first week of January = Nº 1). Edge cases like Dec 31 and Jan 1 behave
- * per ISO-8601 spec — see iso-week.test.ts for documented behavior.
+ * Edition number is a launch-anchored counter, NOT the ISO week of the
+ * year. Edition Nº 1 = the week of Monday 2026-04-27 (Afiche's launch
+ * week). Nº 2 = the week starting 2026-05-04, and so on. Pre-launch
+ * weeks (the cartelera was visible while Afiche was still in dev) clamp
+ * to Nº 1 so the masthead doesn't display 0 or negatives.
  */
 
-import { getISOWeek } from 'date-fns';
+/**
+ * Launch anchor: Monday 2026-04-27 at 00:00 BA local = 2026-04-27 03:00 UTC.
+ * This is the Date that getIsoWeekStartBA returns for any date in the
+ * week of 2026-04-27, so subtracting it from `weekStart` gives a clean
+ * multiple of 7 * 86_400_000 ms (no DST in BA).
+ */
+const EDITION_EPOCH = new Date(Date.UTC(2026, 3, 27, 3, 0, 0));
+const WEEK_MS = 7 * 86_400_000;
 
-export function getEditionNumber(date: Date): number {
-  return getISOWeek(date);
+/**
+ * Edition number for the week containing `weekStart`. Pass the result of
+ * `getIsoWeekStartBA(now)` so this routine doesn't have to repeat the
+ * Monday-anchor computation. Pre-launch dates clamp to Nº 1.
+ */
+export function getEditionNumber(weekStart: Date): number {
+  const offsetWeeks = Math.round(
+    (weekStart.getTime() - EDITION_EPOCH.getTime()) / WEEK_MS,
+  );
+  return Math.max(1, offsetWeeks + 1);
 }
 
 export interface EditionDatelineParams {

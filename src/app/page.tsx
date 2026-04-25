@@ -77,14 +77,20 @@ export default async function HomePage() {
             the Instrument Serif fi ligature next/font ships with but
             doesn't apply by default. */}
         <header className="py-8 text-center md:py-10">
-          <div className="bg-carmine/80 mx-auto mb-2 h-[2px] w-[44%] max-w-[260px] md:mb-3" />
-          <p className="text-carmine mb-2 font-mono text-[11px] tracking-[0.2em] uppercase md:mb-3">
+          <div className="bg-carmine/80 mx-auto mb-2 h-[2px] w-[36%] max-w-[260px] md:mb-3 md:w-[44%]" />
+          <p className="text-carmine mb-3 font-mono text-[11px] tracking-[0.2em] uppercase md:mb-3">
             Buenos Aires · cartelera curada
           </p>
+          {/* Wordmark scale: now that 'Esta semana' is hidden on mobile,
+              the masthead is the whole top of the page on small screens.
+              Bumping the floor from 3.5rem → 4.5rem (56px → 72px) gives
+              the wordmark the presence the page used to borrow from the
+              section header. clamp's middle (12vw) and cap (8rem) are
+              unchanged — desktop sizing is identical. */}
           <h1
             className="font-serif leading-[0.9] tracking-[-0.02em] text-balance"
             style={{
-              fontSize: 'clamp(3.5rem, 12vw, 8rem)',
+              fontSize: 'clamp(4.5rem, 12vw, 8rem)',
               fontKerning: 'normal',
               fontFeatureSettings: '"liga", "kern"',
             }}
@@ -95,9 +101,10 @@ export default async function HomePage() {
               below — centered) and switches to a justified row on md+
               where there's room to breathe. Stacking dodges the ~360px
               minimum width the row needs at mobile font + tracking,
-              which was clipping "28 abr — 4 may" off the right edge on
-              375px viewports. */}
-          <div className="mx-auto mt-4 flex max-w-[28rem] flex-col items-center gap-y-1 border-t border-black px-1 pt-2 font-mono text-[10px] tracking-[0.15em] uppercase md:mt-4 md:flex-row md:justify-between md:gap-x-6 md:text-[11px]">
+              which was clipping the date range off the right edge on
+              375px viewports. Mobile font bumped to 11px (was 10px) to
+              balance the now-larger wordmark. */}
+          <div className="mx-auto mt-4 flex max-w-[28rem] flex-col items-center gap-y-1 border-t border-black px-1 pt-3 font-mono text-[11px] tracking-[0.15em] uppercase md:mt-4 md:flex-row md:justify-between md:gap-x-6 md:pt-2">
             <span className="text-carmine font-bold">
               Edición Nº {edition.editionNumber}
             </span>
