@@ -1,17 +1,21 @@
 /**
  * Sala Leopoldo Lugones provider.
  *
- * Strategy:
- *   1. Fetch the main Lugones listing page:
- *      https://complejoteatral.gob.ar/sala-leopoldo-lugones
- *   2. For each `list-item-programacion` div tagged with genre 'cine',
- *      extract the program slug and detail URL (format: /ver/{slug}).
- *   3. Fetch each detail page, parse the
- *      `div.details.roboto_condensed > div:first-child` block.
- *   4. Walk through that block as a sequence of <p> tags using a small
- *      state machine and extract day headers, time markers, film titles,
- *      and metadata.
- *   5. Emit one ScrapedScreening per (film, day, time) combination.
+ * Detail pages come in two layouts. We try strategies in order:
+ *
+ *   S1 — MULTI-FILM CYCLE (e.g. Boris Karloff)
+ *     Per-day <p> headers ("Martes 28"), per-time <p> markers
+ *     ("A las 18 horas"), per-film <p><strong>Title</strong></p>, then
+ *     metadata <p>s. State-machine walk over <p> children.
+ *
+ *   S2 — SINGLE-FILM (e.g. Ojos extraños)
+ *     One <h2 class="on_view"> title plus merged "DAY N, HH[.MM] horas"
+ *     showtime lines (multiple days possible: "Viernes 8 y sábado 9").
+ *     Sectioned blocks "SINOPSIS" + "FICHA TÉCNICA Y ARTÍSTICA" carry
+ *     the synopsis and structured metadata.
+ *
+ * The parser tries S1. If S1 returns zero screenings, S2 runs. Both
+ * strategies share the program's date-range anchor for month/year.
  *
  * The source HTML is free-form cinephile prose, so the parser is defensive:
  * when it can't parse a line it logs a warning and moves on rather than
@@ -186,6 +190,33 @@ export function parseDetailPage(
     return [];
   }
 
+  const s1 = parseS1Cycle($, $block, program, rangeInfo);
+  if (s1.length > 0) return s1;
+
+  const s2 = parseS2SingleFilm($, $block, program, rangeInfo);
+  if (s2.length > 0) return s2;
+
+  warnings.push(
+    `program "${program.slug}": 0 screenings parsed from ${$block.children('p').length} <p> tags. ` +
+      'Detail page may use a non-standard layout (e.g. no per-day listings, merged day+time lines, or external schedule link).',
+  );
+  return [];
+}
+
+/**
+ * S1 — multi-film cycle layout. Walks <p> children with a small state
+ * machine: day-header <p>s set the current date, "A las HH horas" markers
+ * set the current showtime, full-strong <p>s name the next film, and
+ * metadata lines (original title, director, runtime, synopsis prose) flow
+ * into the in-flight film context until the next title appears.
+ */
+function parseS1Cycle(
+  $: cheerio.CheerioAPI,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  $block: any,
+  program: ProgramLink,
+  rangeInfo: { startMonth: number; startYear: number },
+): ScrapedScreening[] {
   const screenings: ScrapedScreening[] = [];
 
   let currentDay: Date | null = null;
@@ -214,7 +245,8 @@ export function parseDetailPage(
     }
   };
 
-  $block.children('p').each((_i, p) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  $block.children('p').each((_i: number, p: any) => {
     const $p = $(p);
     const text = $p.text().trim().replace(/\s+/g, ' ');
     if (!text || text === '\u00a0') return;
@@ -333,14 +365,251 @@ export function parseDetailPage(
   // End of block — emit any trailing film.
   emit(state);
 
-  if (screenings.length === 0) {
-    warnings.push(
-      `program "${program.slug}": 0 screenings parsed from ${$block.children('p').length} <p> tags. ` +
-        'Detail page may use a non-standard layout (e.g. no per-day listings, merged day+time lines, or external schedule link).',
-    );
+  return screenings;
+}
+
+// ---------------------------------------------------------------------------
+// S2 — single-film layout
+// ---------------------------------------------------------------------------
+//
+// One film, one cycle of dates listed inline. Distinguishing markup:
+//   - <h2 class="lora bold on_view">FilmTitle (YEAR)</h2>
+//   - Showtime <p>s like "Jueves 7, 20 horas" or
+//     "Viernes 8 y sábado 9, 20.30 horas" (multi-day with " y ", decimal
+//     minute separator, optional .MM).
+//   - Sectioned blocks marked by all-caps <p><strong> headers:
+//       SINOPSIS                       → editorial synopsis prose
+//       FICHA TÉCNICA Y ARTÍSTICA      → original title / country / year /
+//                                        runtime / director / cast
+//       PALABRAS DEL REALIZADOR        → director's note (ignored)
+//
+// We anchor the calendar date via the listing tile's "A partir del DD de
+// MONTH" range. If the in-page day list goes BACKWARD (e.g. 8 → 4), we
+// roll the month forward — Lugones single-film runs that span a month
+// boundary list days in chronological order.
+
+function parseS2SingleFilm(
+  $: cheerio.CheerioAPI,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  $block: any,
+  program: ProgramLink,
+  rangeInfo: { startMonth: number; startYear: number },
+): ScrapedScreening[] {
+  // Title: prefer the in-block <h2 class="on_view">, strip a trailing
+  // "(YEAR)" suffix. Fall back to the listing tile's title.
+  const $h2 = $block.find('h2.on_view').first();
+  const rawTitle = $h2.length > 0 ? $h2.text().trim() : program.title;
+  const filmTitle = rawTitle.replace(/\s*\(\d{4}\)\s*$/, '').trim();
+
+  const film: FilmContext = { title: filmTitle, synopsis: '' };
+
+  // Materialize <p> texts once — every section search reuses this.
+  const lines: string[] = $block
+    .children('p')
+    .toArray()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((p: any) => $(p).text().trim().replace(/\s+/g, ' '));
+
+  // Section headers are pure-uppercase (with Spanish diacritics) lines.
+  // Locate the canonical ones; use indices to slice the document.
+  const sinopsisIdx = lines.findIndex((l) => /^SINOPSIS$/i.test(l));
+  const fichaIdx = lines.findIndex((l) => /^FICHA T[ÉE]CNICA/i.test(l));
+
+  // Showtimes live in the prefix before SINOPSIS (or before FICHA TÉCNICA
+  // if the page omits the synopsis section).
+  const showtimeUpperBound =
+    sinopsisIdx >= 0 ? sinopsisIdx : fichaIdx >= 0 ? fichaIdx : lines.length;
+
+  let currentMonth = rangeInfo.startMonth;
+  let currentYear = rangeInfo.startYear;
+  let lastDay = 0;
+  const showtimes: Array<{
+    year: number;
+    month: number;
+    day: number;
+    hour: number;
+    minute: number;
+  }> = [];
+
+  for (let i = 0; i < showtimeUpperBound; i++) {
+    const line = lines[i];
+    if (!line) continue;
+    const parsed = matchSingleFilmShowtime(line);
+    if (!parsed) continue;
+    for (const day of parsed.days) {
+      if (day < lastDay) {
+        currentMonth = (currentMonth + 1) % 12;
+        if (currentMonth === 0) currentYear += 1;
+      }
+      lastDay = day;
+      showtimes.push({
+        year: currentYear,
+        month: currentMonth,
+        day,
+        hour: parsed.hour,
+        minute: parsed.minute,
+      });
+    }
   }
 
+  // Synopsis: prose between SINOPSIS and the next section header. Empty
+  // <p>s (rendered as &nbsp;) and stray uppercase banners are skipped.
+  if (sinopsisIdx >= 0) {
+    const stop = fichaIdx >= 0 ? fichaIdx : lines.length;
+    const buf: string[] = [];
+    for (let i = sinopsisIdx + 1; i < stop; i++) {
+      const line = lines[i];
+      if (!line) continue;
+      if (isAllCapsBanner(line)) continue;
+      buf.push(line);
+    }
+    const joined = buf.join(' ').trim();
+    if (joined.length >= 40) film.synopsis = joined;
+  }
+
+  // Ficha técnica: walk the section, classify each line, and stop at the
+  // next all-caps header (PALABRAS DEL REALIZADOR or similar).
+  if (fichaIdx >= 0) {
+    const ficha: string[] = [];
+    for (let i = fichaIdx + 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line) continue;
+      // Stop at the next section banner (e.g. "PALABRAS DEL REALIZADOR").
+      // Don't stop on "Color" or "B&N" — those are format lines that look
+      // capitalized but aren't all-caps banners.
+      if (isAllCapsBanner(line)) break;
+      ficha.push(line);
+    }
+    parseFichaLines(ficha, film);
+  }
+
+  // Emit screenings.
+  const screenings: ScrapedScreening[] = [];
+  for (const st of showtimes) {
+    const day = new Date(Date.UTC(st.year, st.month, st.day));
+    screenings.push({
+      cinemaId: 'lugones',
+      filmTitle: film.title,
+      filmTitleOriginal: film.titleOriginal,
+      director: film.director,
+      year: film.year,
+      country: film.country,
+      runtimeMin: film.runtimeMin,
+      startsAtUtc: buildBaLocalToUtc(day, st.hour, st.minute),
+      tags: inferTags(program),
+      synopsisEs: film.synopsis,
+      sourceUrl: program.detailUrl,
+    });
+  }
   return screenings;
+}
+
+/**
+ * Parse a single S2 showtime line like "Jueves 7, 20 horas" or
+ * "Viernes 8 y sábado 9, 20.30 horas". Returns the day numbers (one or
+ * more) sharing a single hour/minute, or null if the shape doesn't match.
+ *
+ * Times accept "HH" or "HH.MM" / "HH:MM" — Lugones uses "20.30 horas"
+ * with a decimal point as minute separator.
+ */
+export function matchSingleFilmShowtime(
+  text: string,
+): { days: number[]; hour: number; minute: number } | null {
+  const cleaned = text.toLowerCase().replace(/[°º]/g, '').trim();
+  // Prefix: one or more "DAYNAME N" joined by " y ", then a comma, then
+  // "HH[.:]MM horas" with optional trailing period.
+  const m = cleaned.match(
+    /^([a-záéíóú\s\d]+?),\s*(\d{1,2})(?:[.:](\d{2}))?\s+horas?\.?$/,
+  );
+  if (!m) return null;
+  const prefix = m[1].trim();
+  const parts = prefix.split(/\s+y\s+/);
+  const days: number[] = [];
+  for (const p of parts) {
+    const pm = p.trim().match(
+      /^(?:lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)\s+(\d{1,2})$/,
+    );
+    if (!pm) return null;
+    days.push(parseInt(pm[1], 10));
+  }
+  if (days.length === 0) return null;
+  const hour = parseInt(m[2], 10);
+  const minute = m[3] ? parseInt(m[3], 10) : 0;
+  if (hour < 0 || hour > 24 || minute < 0 || minute > 59) return null;
+  return { days, hour, minute };
+}
+
+/**
+ * Walk the FICHA TÉCNICA lines and populate {titleOriginal, country, year,
+ * runtimeMin, director} on the film context. Lugones uses a stable line
+ * order on single-film pages — countries (comma-separated) immediately
+ * precede the year — so we identify the year by shape and back-fill
+ * country from the line above. Director carries a "Dirección" or
+ * "Dirección y guion" prefix.
+ */
+function parseFichaLines(lines: string[], film: FilmContext): void {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    if (!film.titleOriginal) {
+      const m = line.match(/^Título original:\s*(.+?)\.?$/i);
+      if (m) {
+        film.titleOriginal = m[1].trim();
+        continue;
+      }
+    }
+
+    if (!film.year) {
+      const m = line.match(/^(\d{4})$/);
+      if (m) {
+        film.year = parseInt(m[1], 10);
+        // Country sits on the line directly preceding the year (Lugones
+        // ficha order: title-internal? → countries → year → language →
+        // format → runtime).
+        if (!film.country && i > 0) {
+          const candidate = lines[i - 1];
+          if (
+            candidate &&
+            !/^Título/i.test(candidate) &&
+            !/:/.test(candidate)
+          ) {
+            film.country = candidate.replace(/\.$/, '').trim();
+          }
+        }
+        continue;
+      }
+    }
+
+    if (!film.runtimeMin) {
+      // "126' – DM" or "99' DM" — apostrophe may be ASCII (U+0027), prime
+      // (U+2032), right single quote (U+2019), or acute (U+00B4).
+      const m = line.match(/^(\d+)\s*['’′´]/);
+      if (m) {
+        film.runtimeMin = parseInt(m[1], 10);
+        continue;
+      }
+    }
+
+    if (!film.director) {
+      const m = line.match(/^Direcci[oó]n(?:\s+y\s+guion)?:\s*(.+?)\.?$/i);
+      if (m) {
+        film.director = m[1].trim();
+        continue;
+      }
+    }
+  }
+}
+
+/**
+ * True if the line is a section banner — pure uppercase letters (with
+ * Spanish accents and ampersands) plus spaces, ≥ 4 chars. Distinguishes
+ * sectioning headers like "FICHA TÉCNICA Y ARTÍSTICA" from short format
+ * lines like "Color" or "B&N" (mixed case / single word).
+ */
+function isAllCapsBanner(line: string): boolean {
+  if (line.length < 4) return false;
+  if (!/^[A-ZÁÉÍÓÚÑ&\s]+$/.test(line)) return false;
+  return line === line.toUpperCase();
 }
 
 function isFilmComplete(f: FilmContext): boolean {
