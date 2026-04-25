@@ -151,17 +151,15 @@ export interface CycleLink {
  * below it, all before the next tile starts.
  */
 export function extractCycles(html: string): CycleLink[] {
-  const $ = cheerio.load(html);
   const out: CycleLink[] = [];
 
-  // Collect h2 elements with their position in source order (cheerio
-  // preserves document order).
   const h2s: { title: string; startIdx: number }[] = [];
   const eventLinks: { slug: string; startIdx: number }[] = [];
 
   // Walk raw HTML offsets instead of the DOM tree — we need distance
-  // between elements, and cheerio doesn't give character offsets. Use
-  // global regex matches against the raw HTML string.
+  // between elements, and cheerio doesn't give character offsets. Inner
+  // h2 markup still gets cheerio-parsed per-match below for clean text.
+  // Use global regex matches against the raw HTML string.
   for (const m of html.matchAll(/<h2[^>]*>([\s\S]*?)<\/h2>/g)) {
     const inner = m[1];
     const plain = cheerio.load(`<root>${inner}</root>`)('root').text().trim();
