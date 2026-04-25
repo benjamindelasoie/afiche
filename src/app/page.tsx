@@ -258,7 +258,7 @@ function DaySection({
           lives on each card's time instead, where it's decisive. */}
       <h2
         aria-current={day.isToday ? 'date' : undefined}
-        className="mb-6 flex flex-wrap items-baseline justify-between gap-3 border-t border-b-[3px] border-double border-black py-3 font-normal"
+        className="mb-4 flex flex-wrap items-baseline justify-between gap-3 border-t border-black py-3 font-normal"
       >
         <span
           className={`tracking-eyebrow font-mono text-[11px] text-balance uppercase ${
