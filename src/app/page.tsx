@@ -24,6 +24,17 @@ import { getIsoWeekStartBA, getIsoWeekEndBA } from '@/lib/date-ranges';
 //
 // The masthead reflects Tier 1 ("Edición Nº N · Semana del X al Y · N
 // funciones · M salas"). Tier 2 + Tier 3 each have their own subheader.
+
+// Render dynamically. The cartelera is anchored to BA "today" via
+// `new Date()` below; without this directive Next.js statically renders the
+// page (no dynamic primitives, no fetch — drizzle/Turso reads don't signal
+// dynamic), bakes `now` into the cached HTML, and only invalidates when
+// `revalidatePath('/')` fires from the scrape webhook. On a day with no
+// fresh scrape, BA midnight rollover then leaves yesterday's edition (and
+// yesterday's screenings) on the page until the next scrape lands. See
+// src/app/api/revalidate/route.ts for the companion comment.
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage() {
   const now = new Date();
 
