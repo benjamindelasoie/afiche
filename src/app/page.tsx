@@ -76,7 +76,7 @@ export default async function HomePage() {
             exactly; explicit fontKerning + fontFeatureSettings turn on
             the Instrument Serif fi ligature next/font ships with but
             doesn't apply by default. */}
-        <header className="border-y-8 border-double border-black py-5 text-center md:py-12">
+        <header className="py-6 text-center md:py-14">
           <div className="bg-carmine/80 mx-auto mb-2 h-[2px] w-[44%] max-w-[260px] md:mb-3" />
           <p className="text-carmine mb-2 font-mono text-[11px] tracking-[0.2em] uppercase md:mb-3">
             Buenos Aires · cartelera curada
