@@ -114,31 +114,34 @@ export default async function HomePage() {
         ) : (
           <>
             {/* Tier 1 — Esta semana. The decision layer. Full cards.
-                mt-4 mobile / mt-16 desktop — on phones the masthead's
-                bottom double-border + the section header's own top
-                double-border already do the "new section" work; 40px
-                of extra air between them (the earlier mt-10) just read
-                as wasted fold. Desktop keeps the generous breathing
-                room because the breaks aren't competing for fold space. */}
+                On mobile the section header is hidden — the masthead
+                already establishes 'this is the current edition's
+                cartelera', and the first day banner is a strong
+                enough first heading without 'Esta semana' adding a
+                third stacked title to a tight viewport. Desktop keeps
+                the section header since wider viewports have room for
+                the explicit tier label. */}
             <section id="cartelera" className="mt-6 md:mt-8">
-              <SectionHeader
-                title="Esta semana"
-                subtitle={
-                  thisWeekTotal > 0 ? (
-                    <>
-                      <span>
-                        {thisWeekTotal}{' '}
-                        {thisWeekTotal === 1 ? 'función' : 'funciones'}
-                      </span>
-                      <span className="text-ink-gray/60">·</span>
-                      <span>
-                        {thisWeekCinemas}{' '}
-                        {thisWeekCinemas === 1 ? 'sala' : 'salas'}
-                      </span>
-                    </>
-                  ) : null
-                }
-              />
+              <div className="hidden md:block">
+                <SectionHeader
+                  title="Esta semana"
+                  subtitle={
+                    thisWeekTotal > 0 ? (
+                      <>
+                        <span>
+                          {thisWeekTotal}{' '}
+                          {thisWeekTotal === 1 ? 'función' : 'funciones'}
+                        </span>
+                        <span className="text-ink-gray/60">·</span>
+                        <span>
+                          {thisWeekCinemas}{' '}
+                          {thisWeekCinemas === 1 ? 'sala' : 'salas'}
+                        </span>
+                      </>
+                    ) : null
+                  }
+                />
+              </div>
               {thisWeek.length === 0 ? (
                 <EmptyWeekMessage
                   hasFollowup={thisMonth.length > 0 || upcoming.length > 0}
