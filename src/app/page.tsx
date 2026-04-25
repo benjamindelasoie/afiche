@@ -213,14 +213,20 @@ function SectionHeader({
   // Próximamente keep using plain strings.
   subtitle: React.ReactNode;
 }) {
+  // Frame removed in favor of typography + whitespace. The masthead
+  // already carries enough rule weight; stacking another double-rule
+  // frame here was rule-on-rule. The big italic serif title commands
+  // the page on its own; subtitle sits with it as a unit.
   return (
-    <div className="border-t-[3px] border-b-[3px] border-double border-black py-4 text-center md:py-6">
+    <div className="py-4 text-center md:py-6">
       <h2 className="font-serif text-4xl leading-none text-balance italic md:text-5xl">
         {title}
       </h2>
-      <p className="tracking-eyebrow text-ink-gray mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-[11px] uppercase md:mt-3">
-        {subtitle}
-      </p>
+      {subtitle ? (
+        <p className="tracking-eyebrow text-ink-gray mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-[11px] uppercase md:mt-3">
+          {subtitle}
+        </p>
+      ) : null}
     </div>
   );
 }
