@@ -96,24 +96,7 @@ S3 (recurring-weekly) is still missing. Examples: Hijo mayor, Los dias chinos, P
 
 ---
 
-## 8. MALBA "24:00" midnight parsing — david-lynch-x5 cycle + future midnight cineclubs
-
-**What:** MALBA publishes a recurring midnight cineclub (Saturday 24:00 → technically Sunday 00:00). On 2026-04-23's scrape the warnings showed 4 unparseable lines in a row from the `david-lynch-x5` cycle:
-
-```
-[malba] cycle "david-lynch-x5" day 4: unparseable line "24:00 Terciopelo azul"
-[malba] cycle "david-lynch-x5" day 11: unparseable line "24:00 Corazón salvaje"
-[malba] cycle "david-lynch-x5" day 18: unparseable line "24:00 Carretera perdida"
-[malba] cycle "david-lynch-x5" day 25: unparseable line "24:00 Una historia sencilla"
-```
-
-The parser rejects "24:00" because standard time regex caps hour at 23. MALBA's editorial convention is to keep the screening under the Saturday column even though it's actually 00:00 Sunday.
-
-**Why it matters:** This cineclub is a real Buenos Aires institution that plays every Saturday at midnight. Missing it silently means users coming to Afiche for the "midnight movie" slot find nothing. Also affects any future Lynch/Kubrick/Hitchcock midnight cycle MALBA does.
-
-**Fix:** In `src/providers/malba.ts` time parser, accept `24:00` → map to `00:00 of (date+1)`. Need to also handle other 24:XX values just in case (24:15, 24:30 are editorial conventions). One regex widening + one date adjustment. Add a test fixture with the david-lynch-x5 markup.
-
-**Depends on / blocked by:** Nothing. ~30min including the test.
+~~**8. MALBA "24:00" midnight parsing — david-lynch-x5 cycle + future midnight cineclubs**~~ Resolved across two commits. Code fix in `7bef51c` (2026-04-23) made the showtime regex tolerate director-less midnight repeats — the actual failure mode was the missing ", de Director" suffix on "24:00 Terciopelo azul", not the hour value (`buildBaLocalToUtc` already mapped 24:00 → next-day 00:00 BA). Fixture-backed regression test in `test/fixtures/malba/evento-david-lynch-x5.html` + 3 new tests in `src/providers/malba.test.ts` lock down the four-Saturday multi-week pattern: parser carries the April month context across subsequent SÁBADO N headers without a month suffix, all eight screenings (4 evenings + 4 director-less midnights) emit cleanly, midnights land at next-day 03:00 UTC.
 
 ---
 

@@ -267,6 +267,57 @@ describe('parseDetailPage — Strategy 2 (single-event, prose schedule)', () => 
 });
 
 // ---------------------------------------------------------------------------
+// Multi-week midnight-repeat regression — david-lynch-x5 cycle.
+// The cycle has four Saturday entries; only the first carries "de abril".
+// Ensures the month inferred on day 1 carries forward across subsequent
+// SÁBADO N headers without a month suffix, AND that all four director-less
+// 24:00 lines parse without warnings (the original bug from TODOS.md #8).
+// ---------------------------------------------------------------------------
+describe('parseDetailPage (David Lynch x5 cycle — midnight repeats)', () => {
+  const html = fixture('evento-david-lynch-x5.html');
+  const cycle = {
+    slug: 'david-lynch-x5',
+    title: 'David Lynch x5',
+    detailUrl: 'https://malba.org.ar/evento/david-lynch-x5/',
+  };
+
+  it('parses all 8 screenings (4 Saturdays × 2 shows) without warnings', () => {
+    const warnings: string[] = [];
+    const screenings = parseDetailPage(html, cycle, warnings);
+    expect(screenings).toHaveLength(8);
+    expect(warnings.filter((w) => w.includes('unparseable'))).toEqual([]);
+  });
+
+  it('rolls each 24:00 line to 03:00 UTC of the following day (BA midnight)', () => {
+    const screenings = parseDetailPage(html, cycle, []);
+    const midnights = screenings
+      .filter((s) => s.startsAtUtc.getUTCHours() === 3)
+      .map((s) => s.startsAtUtc.toISOString())
+      .sort();
+    expect(midnights).toEqual([
+      '2026-04-05T03:00:00.000Z', // SÁBADO 4 + 24:00 → SUN 5 BA 00:00
+      '2026-04-12T03:00:00.000Z',
+      '2026-04-19T03:00:00.000Z',
+      '2026-04-26T03:00:00.000Z',
+    ]);
+  });
+
+  it('emits no director on midnight repeats (cycle-all-one-director convention)', () => {
+    const screenings = parseDetailPage(html, cycle, []);
+    const midnights = screenings.filter((s) => s.startsAtUtc.getUTCHours() === 3);
+    for (const s of midnights) {
+      expect(s.director).toBeUndefined();
+    }
+    // The 20:00 evening shows DO carry "de David Lynch".
+    const evenings = screenings.filter((s) => s.startsAtUtc.getUTCHours() === 23);
+    expect(evenings).toHaveLength(4);
+    for (const s of evenings) {
+      expect(s.director).toBe('David Lynch');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Smaller-scope unit tests for hand-crafted edge cases the real fixture
 // doesn't exercise.
 // ---------------------------------------------------------------------------
