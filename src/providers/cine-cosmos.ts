@@ -255,9 +255,10 @@ interface TimeHit {
   minute: number;
 }
 
-export function parseSchedule(
-  $: cheerio.CheerioAPI,
-): { days: DayHit[]; times: TimeHit[] } {
+export function parseSchedule($: cheerio.CheerioAPI): {
+  days: DayHit[];
+  times: TimeHit[];
+} {
   // Detail page format: "Ju - Vi - Sá - Do - Lu - Ma - Mi | 16:55, 19:10"
   // Homepage card-footer also matches but uses space separators between
   // days and " - " between times. The "|" splits day-list from time-list
@@ -312,11 +313,7 @@ export function mostRecentThursdayBaLocal(now: Date): Date {
   const baDow = ba.getUTCDay(); // 0=Sun … 4=Thu
   const daysSinceThu = (baDow - 4 + 7) % 7;
   return new Date(
-    Date.UTC(
-      ba.getUTCFullYear(),
-      ba.getUTCMonth(),
-      ba.getUTCDate() - daysSinceThu,
-    ),
+    Date.UTC(ba.getUTCFullYear(), ba.getUTCMonth(), ba.getUTCDate() - daysSinceThu),
   );
 }
 

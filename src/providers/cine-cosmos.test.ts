@@ -89,7 +89,9 @@ describe('parseSynopsis', () => {
 
 describe('parseScheduleString', () => {
   it('parses the detail-page format with hyphen-separated days and comma times', () => {
-    const r = cosmos.parseScheduleString('Ju - Vi - Sá - Do - Lu - Ma - Mi | 16:55, 19:10');
+    const r = cosmos.parseScheduleString(
+      'Ju - Vi - Sá - Do - Lu - Ma - Mi | 16:55, 19:10',
+    );
     expect(r.days.map((d) => d.offset)).toEqual([0, 1, 2, 3, 4, 5, 6]);
     expect(r.times).toEqual([
       { hour: 16, minute: 55 },

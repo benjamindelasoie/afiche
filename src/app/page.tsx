@@ -136,13 +136,11 @@ export default async function HomePage() {
                     thisWeekTotal > 0 ? (
                       <>
                         <span>
-                          {thisWeekTotal}{' '}
-                          {thisWeekTotal === 1 ? 'función' : 'funciones'}
+                          {thisWeekTotal} {thisWeekTotal === 1 ? 'función' : 'funciones'}
                         </span>
                         <span className="text-ink-gray/60">·</span>
                         <span>
-                          {thisWeekCinemas}{' '}
-                          {thisWeekCinemas === 1 ? 'sala' : 'salas'}
+                          {thisWeekCinemas} {thisWeekCinemas === 1 ? 'sala' : 'salas'}
                         </span>
                       </>
                     ) : null

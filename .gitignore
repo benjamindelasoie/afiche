@@ -47,3 +47,6 @@ local.db-shm
 *.tsbuildinfo
 next-env.d.ts
 .gstack/
+
+# claude code internal session state (settings, scheduled tasks, etc.)
+.claude/

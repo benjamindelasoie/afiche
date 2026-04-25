@@ -526,9 +526,11 @@ export function matchSingleFilmShowtime(
   const parts = prefix.split(/\s+y\s+/);
   const days: number[] = [];
   for (const p of parts) {
-    const pm = p.trim().match(
-      /^(?:lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)\s+(\d{1,2})$/,
-    );
+    const pm = p
+      .trim()
+      .match(
+        /^(?:lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)\s+(\d{1,2})$/,
+      );
     if (!pm) return null;
     days.push(parseInt(pm[1], 10));
   }
@@ -568,11 +570,7 @@ function parseFichaLines(lines: string[], film: FilmContext): void {
         // format → runtime).
         if (!film.country && i > 0) {
           const candidate = lines[i - 1];
-          if (
-            candidate &&
-            !/^Título/i.test(candidate) &&
-            !/:/.test(candidate)
-          ) {
+          if (candidate && !/^Título/i.test(candidate) && !/:/.test(candidate)) {
             film.country = candidate.replace(/\.$/, '').trim();
           }
         }
