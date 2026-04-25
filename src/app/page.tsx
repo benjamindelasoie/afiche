@@ -76,7 +76,7 @@ export default async function HomePage() {
             exactly; explicit fontKerning + fontFeatureSettings turn on
             the Instrument Serif fi ligature next/font ships with but
             doesn't apply by default. */}
-        <header className="py-6 text-center md:py-14">
+        <header className="py-5 text-center md:py-10">
           <div className="bg-carmine/80 mx-auto mb-2 h-[2px] w-[44%] max-w-[260px] md:mb-3" />
           <p className="text-carmine mb-2 font-mono text-[11px] tracking-[0.2em] uppercase md:mb-3">
             Buenos Aires · cartelera curada
@@ -114,7 +114,7 @@ export default async function HomePage() {
                 of extra air between them (the earlier mt-10) just read
                 as wasted fold. Desktop keeps the generous breathing
                 room because the breaks aren't competing for fold space. */}
-            <section id="cartelera" className="mt-4 md:mt-16">
+            <section id="cartelera" className="mt-2 md:mt-8">
               <SectionHeader
                 title="Esta semana"
                 subtitle={
@@ -218,7 +218,7 @@ function SectionHeader({
   // frame here was rule-on-rule. The big italic serif title commands
   // the page on its own; subtitle sits with it as a unit.
   return (
-    <div className="py-4 text-center md:py-6">
+    <div className="py-3 text-center md:py-4">
       <h2 className="font-serif text-4xl leading-none text-balance italic md:text-5xl">
         {title}
       </h2>
