@@ -14,6 +14,7 @@ import { malbaProvider } from '@/providers/malba';
 import { cineYorkProvider } from '@/providers/cine-york';
 import { centroCulturalMunroProvider } from '@/providers/centro-cultural-munro';
 import { lumitonProvider } from '@/providers/lumiton';
+import { cineCosmosProvider } from '@/providers/cine-cosmos';
 import type { Provider } from '@/providers/types';
 import { ingest, type IngestSummary } from './ingest';
 import { startRun, finishRun, failRun } from './run-log';
@@ -24,6 +25,7 @@ const providers: Provider[] = [
   cineYorkProvider,
   centroCulturalMunroProvider,
   lumitonProvider,
+  cineCosmosProvider,
   // future: lorcaProvider, cinepolisRecoletaProvider, ...
 ];
 

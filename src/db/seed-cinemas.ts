@@ -73,6 +73,14 @@ const CINEMAS: CinemaInsert[] = [
     address: 'Av. del Libertador 800, Vicente López',
     ticketingBaseUrl: 'https://lumiton.ar',
   },
+  {
+    id: 'cine-cosmos',
+    name: 'Cine Cosmos',
+    neighborhood: 'Balvanera',
+    type: 'indie',
+    address: 'Av. Corrientes 2046',
+    ticketingBaseUrl: 'https://www.cinecosmos.uba.ar',
+  },
 ];
 
 async function seedCinemas() {
