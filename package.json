@@ -19,6 +19,7 @@
     "db:seed-cinemas": "dotenv -e .env.local -- tsx src/db/seed-cinemas.ts",
     "db:seed-cinemas:prod": "dotenv -e .env.prod -- tsx src/db/seed-cinemas.ts",
     "db:reset-programming": "dotenv -e .env.local -- tsx src/db/reset-programming.ts",
+    "db:reset-programming:prod": "dotenv -e .env.prod -- tsx src/db/reset-programming.ts",
     "db:scrape": "dotenv -e .env.local -- tsx src/scrapers/run.ts",
     "db:rescrape": "npm run db:reset-programming && npm run db:scrape",
     "db:enrich": "dotenv -e .env.local -- tsx src/db/enrich.ts",
