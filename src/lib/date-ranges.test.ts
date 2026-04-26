@@ -13,7 +13,7 @@ import {
   getNextIsoMondayBA,
   getIsoWeekStartBA,
   getIsoWeekEndBA,
-  getNextMonthStartBA,
+  getStartOfWeekAfterNextBA,
 } from './date-ranges';
 
 // Helper: assert a Date equals a given ISO string (for readability).
@@ -80,53 +80,36 @@ describe('getIsoWeekEndBA — last instant of Sunday BA', () => {
   });
 });
 
-describe('getNextMonthStartBA — upper bound of "este mes"', () => {
-  it('Wed 2026-04-22 → May 1 00:00 BA', () => {
+describe('getStartOfWeekAfterNextBA — exclusive upper bound of "próxima semana"', () => {
+  it('Wed 2026-04-22 → Mon 2026-05-04 00:00 BA (next-next Monday)', () => {
     iso(
-      '2026-05-01T03:00:00.000Z',
-      getNextMonthStartBA(new Date('2026-04-22T15:00:00Z')),
+      '2026-05-04T03:00:00.000Z',
+      getStartOfWeekAfterNextBA(new Date('2026-04-22T15:00:00Z')),
     );
   });
 
-  it('Thu 2026-04-30 (end of April) → May 1 00:00 BA', () => {
+  it('always exactly 7 days after getNextIsoMondayBA, regardless of weekday', () => {
+    const days = [
+      '2026-04-20T15:00:00Z', // Mon
+      '2026-04-23T15:00:00Z', // Thu
+      '2026-04-26T15:00:00Z', // Sun
+    ];
+    for (const d of days) {
+      const now = new Date(d);
+      const span =
+        getStartOfWeekAfterNextBA(now).getTime() - getNextIsoMondayBA(now).getTime();
+      expect(span).toBe(7 * 86_400_000);
+    }
+  });
+
+  it('end-of-month no longer collapses Tier 2: Tue 2026-04-28 → Mon 2026-05-11', () => {
+    // Old design: Tier 2 ended at next month start (May 1), and on Apr 28
+    // weekEnd (May 4) was already past it → Tier 2 collapsed to 0 days.
+    // New design: Tier 2 always ends Monday-after-next, so May 1 lands
+    // squarely in the Tier 2 window for an Apr 28 visitor.
     iso(
-      '2026-05-01T03:00:00.000Z',
-      getNextMonthStartBA(new Date('2026-04-30T15:00:00Z')),
+      '2026-05-11T03:00:00.000Z',
+      getStartOfWeekAfterNextBA(new Date('2026-04-28T15:00:00Z')),
     );
-  });
-
-  it('Dec 2026-12-15 rolls over year: → Jan 1 2027 00:00 BA', () => {
-    iso(
-      '2027-01-01T03:00:00.000Z',
-      getNextMonthStartBA(new Date('2026-12-15T15:00:00Z')),
-    );
-  });
-
-  it('Jan 2026-01-05 → Feb 1 00:00 BA', () => {
-    iso(
-      '2026-02-01T03:00:00.000Z',
-      getNextMonthStartBA(new Date('2026-01-05T15:00:00Z')),
-    );
-  });
-});
-
-describe('edge case: week crosses month boundary makes "este mes" empty', () => {
-  it('Tue 2026-04-28 → weekEnd (May 4) > monthEnd (May 1), este mes empty', () => {
-    const now = new Date('2026-04-28T15:00:00Z');
-    const weekEnd = getNextIsoMondayBA(now);
-    const monthEnd = getNextMonthStartBA(now);
-    // este-mes range is [weekEnd, monthEnd). When weekEnd > monthEnd, the
-    // range is inverted, which means the section has zero screenings by
-    // definition.
-    expect(weekEnd.getTime()).toBeGreaterThan(monthEnd.getTime());
-  });
-
-  it('Wed 2026-04-22 → weekEnd (Apr 27) < monthEnd (May 1), este mes = 4 days', () => {
-    const now = new Date('2026-04-22T15:00:00Z');
-    const weekEnd = getNextIsoMondayBA(now);
-    const monthEnd = getNextMonthStartBA(now);
-    expect(weekEnd.getTime()).toBeLessThan(monthEnd.getTime());
-    const daysInEsteMes = (monthEnd.getTime() - weekEnd.getTime()) / 86_400_000;
-    expect(daysInEsteMes).toBe(4);
   });
 });

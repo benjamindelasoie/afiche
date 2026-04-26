@@ -3,11 +3,11 @@
  *
  * The page splits screenings into three chronological buckets:
  *
- *   - "Esta semana"  = today 00:00 BA .. next ISO Monday 00:00 BA
- *   - "Este mes"     = next ISO Monday 00:00 BA .. start of next month 00:00 BA
- *                      (empty when the week already crosses the month boundary)
- *   - "Próximamente" = start of next month 00:00 BA .. infinity
- *                      (or next ISO Monday, whichever is later)
+ *   - "Esta semana"   = today 00:00 BA .. next ISO Monday 00:00 BA
+ *                       (1-7 days, depending on which day of the week now is)
+ *   - "Próxima semana" = next ISO Monday 00:00 BA .. Monday-after-next 00:00 BA
+ *                       (always 7 days)
+ *   - "Más adelante"   = Monday-after-next 00:00 BA .. infinity
  *
  * All bounds are computed against Buenos Aires local time. Argentina does not
  * observe daylight saving, so BA is fixed at UTC-3 year-round — this lets us
@@ -123,13 +123,17 @@ export function getIsoWeekEndBA(now: Date): Date {
 }
 
 /**
- * Start of next calendar month at 00:00 BA. Upper bound of "este mes".
- * If today is January, returns Feb 1 00:00 BA. If today is December,
- * rolls over to the following year's January 1.
+ * Monday-after-next at 00:00 BA — exclusive upper bound of "próxima
+ * semana" (Tier 2) and inclusive lower bound of "más adelante"
+ * (Tier 3). Always exactly 7 days after `getNextIsoMondayBA(now)`,
+ * regardless of which day of the week `now` falls on.
+ *
+ * This replaces the prior calendar-month-anchored Tier 2/3 boundary
+ * (getNextMonthStartBA), which created an end-of-month edge case
+ * where a screening one day in the future could land in Tier 3
+ * "Próximamente" instead of Tier 2 — counterintuitive for users
+ * (April 30 → May 1 screening shouldn't read as "más adelante").
  */
-export function getNextMonthStartBA(now: Date): Date {
-  const p = baParts(now);
-  const nextMonth = p.month === 12 ? 1 : p.month + 1;
-  const nextYear = p.month === 12 ? p.year + 1 : p.year;
-  return baMidnightToUtc(nextYear, nextMonth, 1);
+export function getStartOfWeekAfterNextBA(now: Date): Date {
+  return new Date(getNextIsoMondayBA(now).getTime() + 7 * 86_400_000);
 }

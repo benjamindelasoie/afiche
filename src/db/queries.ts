@@ -3,10 +3,17 @@
  *
  * The home page splits screenings into three chronological tiers:
  *
- *   1. "Esta semana"  — today 00:00 BA .. next ISO Monday 00:00 BA
- *   2. "Este mes"     — next ISO Monday 00:00 BA .. start of next month 00:00 BA
- *                        (empty when the week already crosses into next month)
- *   3. "Próximamente" — everything after max(weekEnd, monthEnd), open-ended
+ *   1. "Esta semana"    — today 00:00 BA .. next ISO Monday 00:00 BA
+ *                          (1-7 days)
+ *   2. "Próxima semana" — next ISO Monday 00:00 BA .. Monday-after-next
+ *                          00:00 BA (always 7 days)
+ *   3. "Más adelante"   — Monday-after-next 00:00 BA, open-ended
+ *
+ * Tiers 2 and 3 used to be calendar-month anchored ("este mes" upper =
+ * start of next month). That created an end-of-month edge case where a
+ * screening one day out (e.g., April 30 → May 1) would render in Tier
+ * 3 "Próximamente" rather than Tier 2 — counterintuitive. ISO-week
+ * chained tiers fix that.
  *
  * Each tier has its own query; the page composes them. Tier 1 returns
  * grouped-by-day (the dense decision layer); tier 2 returns grouped-by-day
@@ -22,7 +29,7 @@ import type { ScreeningTag } from './schema';
 import {
   getTodayStartBA,
   getNextIsoMondayBA,
-  getNextMonthStartBA,
+  getStartOfWeekAfterNextBA,
 } from '@/lib/date-ranges';
 
 export interface ScreeningRow {
@@ -167,17 +174,13 @@ export async function getThisWeekScreenings(now: Date = new Date()): Promise<Day
 }
 
 /**
- * Tier 2 — "Este mes". Screenings between the end of this ISO week and the
- * start of next calendar month. When today lands late enough that the week
- * already crosses the month boundary (e.g., Tuesday April 28 → week ends
- * May 4 which is after May 1), returns [] and the page hides the section.
+ * Tier 2 — "Próxima semana". Screenings between next ISO Monday and the
+ * Monday after next, i.e. the full 7-day next ISO week. Always 7 days
+ * regardless of when in the current week `now` falls.
  */
-export async function getThisMonthScreenings(
-  now: Date = new Date(),
-): Promise<DayGroup[]> {
+export async function getNextWeekScreenings(now: Date = new Date()): Promise<DayGroup[]> {
   const lower = getNextIsoMondayBA(now);
-  const upper = getNextMonthStartBA(now);
-  if (lower.getTime() >= upper.getTime()) return [];
+  const upper = getStartOfWeekAfterNextBA(now);
   const rows = await fetchRows({ lower, upper });
   return groupByDay(rows, now);
 }
@@ -203,9 +206,9 @@ export async function getLastScrapeTime(): Promise<Date | null> {
 }
 
 /**
- * Tier 3 — "Próximamente". Everything after the end of the current month
- * (or end of this week, whichever is later — we pick the later boundary
- * so the same screening never appears in two tiers).
+ * Tier 3 — "Más adelante". Everything from Monday-after-next onward.
+ * Boundary aligns with Tier 2's upper, so a given screening lands in
+ * exactly one tier.
  *
  * Returns a flat chronological list. The page renders this as a compressed
  * text index; day grouping isn't load-bearing at this horizon because each
@@ -214,9 +217,7 @@ export async function getLastScrapeTime(): Promise<Date | null> {
 export async function getUpcomingScreenings(
   now: Date = new Date(),
 ): Promise<ScreeningRow[]> {
-  const weekEnd = getNextIsoMondayBA(now);
-  const monthEnd = getNextMonthStartBA(now);
-  const lower = weekEnd.getTime() > monthEnd.getTime() ? weekEnd : monthEnd;
+  const lower = getStartOfWeekAfterNextBA(now);
   return fetchRows({ lower });
 }
 

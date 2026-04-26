@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   getThisWeekScreenings,
-  getThisMonthScreenings,
+  getNextWeekScreenings,
   getUpcomingScreenings,
   getLastScrapeTime,
   getLastScreeningPerFilm,
@@ -19,10 +19,13 @@ import { getIsoWeekStartBA, getIsoWeekEndBA } from '@/lib/date-ranges';
 // directly, and ships rendered HTML. Zero client-side JS is shipped for the
 // content below (only whatever Next.js needs for Link prefetching).
 //
-// The view is a three-tier cartelera:
-//   1. "Esta semana"  — full cards with synopsis, the decision layer
-//   2. "Este mes"     — compact cards (smaller poster, no synopsis), planning layer
-//   3. "Próximamente" — text index (no poster, tight rows), awareness layer
+// The view is a three-tier cartelera, all ISO-week chained:
+//   1. "Esta semana"    — full cards with synopsis, the decision layer
+//                          (today → next ISO Monday)
+//   2. "Próxima semana" — compact cards (smaller poster, no synopsis), planning
+//                          layer (next ISO Monday → Monday-after-next)
+//   3. "Más adelante"   — text index (no poster, tight rows), awareness layer
+//                          (everything from Monday-after-next on)
 //
 // The masthead reflects Tier 1 ("Edición Nº N · Semana del X al Y · N
 // funciones · M salas"). Tier 2 + Tier 3 each have their own subheader.
@@ -40,10 +43,10 @@ export const dynamic = 'force-dynamic';
 export default async function HomePage() {
   const now = new Date();
 
-  const [thisWeek, thisMonth, upcoming, lastScrape, lastScreeningPerFilm] =
+  const [thisWeek, nextWeek, upcoming, lastScrape, lastScreeningPerFilm] =
     await Promise.all([
       getThisWeekScreenings(now),
-      getThisMonthScreenings(now),
+      getNextWeekScreenings(now),
       getUpcomingScreenings(now),
       getLastScrapeTime(),
       // Per-film MAX(startsAtUtc) across the FULL screenings table.
@@ -60,7 +63,7 @@ export default async function HomePage() {
   ).size;
 
   const edition = computeEdition(now, thisWeekTotal, thisWeekCinemas);
-  const hasAny = thisWeek.length > 0 || thisMonth.length > 0 || upcoming.length > 0;
+  const hasAny = thisWeek.length > 0 || nextWeek.length > 0 || upcoming.length > 0;
 
   return (
     <>
@@ -157,7 +160,7 @@ export default async function HomePage() {
               </div>
               {thisWeek.length === 0 ? (
                 <EmptyWeekMessage
-                  hasFollowup={thisMonth.length > 0 || upcoming.length > 0}
+                  hasFollowup={nextWeek.length > 0 || upcoming.length > 0}
                 />
               ) : (
                 <div className="mt-10 space-y-12">
@@ -175,15 +178,15 @@ export default async function HomePage() {
               )}
             </section>
 
-            {/* Tier 2 — Este mes. Planning layer. Compact cards. */}
-            {thisMonth.length > 0 && (
-              <section id="este-mes" className="mt-16 md:mt-24">
+            {/* Tier 2 — Próxima semana. Planning layer. Compact cards. */}
+            {nextWeek.length > 0 && (
+              <section id="proxima-semana" className="mt-16 md:mt-24">
                 <SectionHeader
-                  title="Este mes"
-                  subtitle={<SectionSubtitle parts={rangeSubtitleFromDays(thisMonth)} />}
+                  title="Próxima semana"
+                  subtitle={<SectionSubtitle parts={rangeSubtitleFromDays(nextWeek)} />}
                 />
                 <div className="mt-10 space-y-10">
-                  {thisMonth.map((day) => (
+                  {nextWeek.map((day) => (
                     <DaySection
                       key={day.dateKey}
                       day={day}
@@ -196,11 +199,11 @@ export default async function HomePage() {
               </section>
             )}
 
-            {/* Tier 3 — Próximamente. Awareness layer. Text index. */}
+            {/* Tier 3 — Más adelante. Awareness layer. Text index. */}
             {upcoming.length > 0 && (
-              <section id="proximamente" className="mt-16 md:mt-24">
+              <section id="mas-adelante" className="mt-16 md:mt-24">
                 <SectionHeader
-                  title="Próximamente"
+                  title="Más adelante"
                   subtitle={<SectionSubtitle parts={rangeSubtitleFromFlat(upcoming)} />}
                 />
                 <UpcomingIndex

@@ -180,11 +180,7 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
         </h2>
         <ul className="mt-6 divide-y divide-black/15">
           {screenings.map((s) => (
-            <FilmScreeningRow
-              key={s.id}
-              s={s}
-              isPast={s.startsAtUtc.getTime() < nowMs}
-            />
+            <FilmScreeningRow key={s.id} s={s} isPast={s.startsAtUtc.getTime() < nowMs} />
           ))}
         </ul>
       </section>
@@ -228,7 +224,9 @@ function FilmScreeningRow({ s, isPast }: { s: ScreeningRow; isPast: boolean }) {
             Ya empezó
           </span>
         )}
-        <p className={`tracking-card ${cinemaColor} font-mono text-xs font-bold uppercase`}>
+        <p
+          className={`tracking-card ${cinemaColor} font-mono text-xs font-bold uppercase`}
+        >
           {s.cinema.name}
         </p>
         {s.cinema.neighborhood && (
