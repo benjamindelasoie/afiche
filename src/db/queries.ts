@@ -16,7 +16,7 @@
  * All functions run on the server (Server Components) and return plain data.
  */
 
-import { and, eq, gte, lt, asc, desc } from 'drizzle-orm';
+import { and, eq, gt, gte, lt, asc, desc, sql } from 'drizzle-orm';
 import { db, screenings, films, cinemas, scrapeRuns } from './index';
 import type { ScreeningTag } from './schema';
 import {
@@ -30,6 +30,14 @@ export interface ScreeningRow {
   startsAtUtc: Date;
   tags: ScreeningTag[];
   sourceUrl: string | null;
+  /**
+   * Curatorial program / cycle the screening belongs to (e.g.,
+   * "Retrospectiva David Lynch", "Olivera-Aries"). Null when the venue
+   * doesn't organize screenings into curated programs (Cosmos) or when
+   * the program would just echo the film title (filtered at ingest).
+   * Render rule: ProgramPill renders only when non-null.
+   */
+  programName: string | null;
   film: {
     id: number;
     title: string;
@@ -40,6 +48,8 @@ export interface ScreeningRow {
     runtimeMin: number | null;
     synopsisEs: string | null;
     posterUrl: string | null;
+    /** URL slug for /pelicula/<slug> link target. Always populated post-backfill. */
+    slug: string | null;
   };
   cinema: {
     id: string;
@@ -64,12 +74,20 @@ interface BoundedQuery {
   lower: Date;
   /** Exclusive upper bound. Omit for open-ended (próximamente). */
   upper?: Date;
+  /**
+   * Optional film-id filter. When set, the query only returns screenings
+   * for that film (used by /pelicula/<slug> for the cross-venue
+   * upcoming-screenings list). When omitted, all films are included
+   * (cartelera tier queries).
+   */
+  filmId?: number;
 }
 
-async function fetchRows({ lower, upper }: BoundedQuery): Promise<ScreeningRow[]> {
-  const whereClause = upper
-    ? and(gte(screenings.startsAtUtc, lower), lt(screenings.startsAtUtc, upper))
-    : gte(screenings.startsAtUtc, lower);
+async function fetchRows({ lower, upper, filmId }: BoundedQuery): Promise<ScreeningRow[]> {
+  const conditions = [gte(screenings.startsAtUtc, lower)];
+  if (upper) conditions.push(lt(screenings.startsAtUtc, upper));
+  if (filmId !== undefined) conditions.push(eq(screenings.filmId, filmId));
+  const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions);
 
   const rows = await db
     .select({
@@ -88,6 +106,7 @@ async function fetchRows({ lower, upper }: BoundedQuery): Promise<ScreeningRow[]
     startsAtUtc: row.screening.startsAtUtc,
     tags: row.screening.tags,
     sourceUrl: row.screening.sourceUrl,
+    programName: row.screening.programName ?? null,
     film: {
       id: row.film.id,
       title: row.film.title,
@@ -98,6 +117,7 @@ async function fetchRows({ lower, upper }: BoundedQuery): Promise<ScreeningRow[]
       runtimeMin: row.film.runtimeMin,
       synopsisEs: row.film.synopsisEs,
       posterUrl: row.film.posterUrl,
+      slug: row.film.slug ?? null,
     },
     cinema: {
       id: row.cinema.id,
@@ -194,6 +214,98 @@ export async function getUpcomingScreenings(
   const monthEnd = getNextMonthStartBA(now);
   const lower = weekEnd.getTime() > monthEnd.getTime() ? weekEnd : monthEnd;
   return fetchRows({ lower });
+}
+
+/**
+ * Per-film MAX(startsAtUtc) over the FULL screenings table — unbounded
+ * by the cartelera's tier horizons. Returns a Map<filmId, lastUtcMs>.
+ *
+ * Used to compute the ÚLTIMA FUNCIÓN pill on cartelera cards. The
+ * unbounded query is non-negotiable: if we computed against the bounded
+ * tier queries, a film with a screening this Saturday AND another in 8
+ * weeks (outside the cartelera horizon) would get a false ÚLTIMA FUNCIÓN
+ * pill on Saturday — the 8-week screening wouldn't be in the row union
+ * the bounded computation could see. Outside-voice catch on the
+ * programs+/pelicula/ plan, locked into the design as a must-have
+ * regression check.
+ *
+ * Filters to `startsAtUtc > now()`: a "last function" pill flag should
+ * only flip ON for films whose FUTURE last screening is the one being
+ * rendered. Films that have already finished their entire run aren't
+ * candidates (they wouldn't be on the cartelera anyway, since cartelera
+ * tier queries are also `> now()`).
+ *
+ * Returns Unix-millisecond numbers (not Dates) for cheap === comparison
+ * downstream — JavaScript Date equality is reference equality, which
+ * doesn't work for the per-row pill check.
+ */
+export async function getLastScreeningPerFilm(
+  now: Date = new Date(),
+): Promise<Map<number, number>> {
+  const rows = await db
+    .select({
+      filmId: screenings.filmId,
+      maxStarts: sql<number>`MAX(${screenings.startsAtUtc})`,
+    })
+    .from(screenings)
+    .where(gt(screenings.startsAtUtc, now))
+    .groupBy(screenings.filmId);
+
+  // SQLite's `timestamp` mode stores Unix seconds; the `MAX` aggregate
+  // returns the same epoch-seconds integer. Multiply by 1000 to get the
+  // milliseconds shape Date.getTime() returns.
+  const result = new Map<number, number>();
+  for (const r of rows) {
+    if (typeof r.maxStarts === 'number') {
+      result.set(r.filmId, r.maxStarts * 1000);
+    }
+  }
+  return result;
+}
+
+/**
+ * Look up a film by slug, plus all upcoming screenings of that film
+ * across every BA venue. Used by /pelicula/<slug>.
+ *
+ * Returns null when the slug doesn't exist OR when the film has no
+ * upcoming screenings within the grace window. /pelicula/ resolves only
+ * when both conditions are met (per design doc 2026-04-25): the page's
+ * existence depends on the killer feature (cross-venue upcoming list)
+ * being satisfiable. Otherwise notFound() → custom 404.
+ *
+ * Grace window: the lower bound is `now() - 4h` (NOT `now()`) so the
+ * page resolves for in-progress and just-ended screenings. Without the
+ * grace, a user tapping a card at 20:01 for a 20:00 screening would
+ * 404 — terrible UX. Most theatrical runtimes max ~3h, so 4h covers
+ * the click-from-cartelera-to-just-started case.
+ *
+ * Returned rows are ordered by startsAtUtc ASC (chronological). The
+ * page renders próxima función first; the LAST row is the candidate
+ * for the ÚLTIMA FUNCIÓN signal (computed against the unbounded
+ * `getLastScreeningPerFilm` map at render time, NOT this list — this
+ * list is pelicula-page-bounded but última función needs the truth).
+ */
+export async function getUpcomingScreeningsByFilm(
+  slug: string,
+  now: Date = new Date(),
+): Promise<{ film: ScreeningRow['film']; screenings: ScreeningRow[] } | null> {
+  const [filmRow] = await db
+    .select({ id: films.id })
+    .from(films)
+    .where(eq(films.slug, slug))
+    .limit(1);
+  if (!filmRow) return null;
+
+  const lower = new Date(now.getTime() - 4 * 60 * 60 * 1000);
+  const rows = await fetchRows({ lower, filmId: filmRow.id });
+  if (rows.length === 0) return null;
+
+  // Pull the film metadata off the first row — it's identical across all
+  // rows for a given filmId by construction (the JOIN guarantees this).
+  return {
+    film: rows[0].film,
+    screenings: rows,
+  };
 }
 
 // ---------------------------------------------------------------------------

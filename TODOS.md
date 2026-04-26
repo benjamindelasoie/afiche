@@ -85,41 +85,6 @@ Cheerio + plain `fetch()` (the Lugones/MALBA approach) won't work. Options:
 
 ---
 
-## 2. Revisit TMDB match-rate strategy after multi-cinema data lands
-
-**What:** Once Cinépolis is also in production and all three cinemas have ≥2 weeks of data, measure aggregate and per-cinema match rates. Decide whether matching needs more work.
-
-**Why:** The 2026-04-20 /plan-eng-review validated empirically that:
-- es.wikipedia.org does NOT have articles indexed under Argentine-Spanish release titles
-  - Verified `pageid: -1` for: "Mientras la ciudad duerme", "Tempestad de pasiones", "Bajo el poder de la maldad", "Juventud en peligro"
-  - es.wiki uses Spain release titles instead: "La jungla de asfalto" (The Asphalt Jungle) DOES exist, pageid 1017211
-- `opensearch` returns empty for the failing Argentine titles
-- Wikidata `wbsearchentities` by es label is ~50% accurate with confident-wrong failures (returned Crown Vic for "Mientras la ciudad duerme")
-
-Given these findings, the likely right path IF aggregate match rate proves too low is:
-- **Approach C from the superseded design doc** (hand-curated `tmdb-overrides.json`): 100% precision, bounded work (~80 entries per cinema-year), survives every Cinépolis/MALBA quirk that shows up
-- The Wikipedia and Wikidata pivot plans are both dead ends for BA rep programming
-
-**Useful queries once multi-cinema data is in:**
-```sql
--- overall match rate
-SELECT match_source, COUNT(*) FROM films GROUP BY match_source;
-
--- per-cinema miss distribution (join via screenings)
-SELECT c.id, f.match_source, COUNT(*)
-FROM films f
-JOIN screenings s ON s.film_id = f.id
-JOIN cinemas c ON c.id = s.cinema_id
-GROUP BY c.id, f.match_source
-ORDER BY c.id, f.match_source;
-```
-
-**Context:** Captured in the 2026-04-20 eng-review supersession note at `~/.gstack/projects/kino/benjamin.delasoie-main-design-20260420-203414.md`. Empirical validation data is preserved there so we don't re-run the MediaWiki/Wikidata probes when we come back to this.
-
-**Depends on / blocked by:** TODO #1 (need Cinépolis data to see the true distribution).
-
----
-
 ## 3. MALBA recurring-weekly cycles (S3 strategy)
 
 **What:** The MALBA provider now has two strategies (as of e616d33):
@@ -183,7 +148,7 @@ If the heuristic fails on real-page shape, refine the selector (e.g. scope to a 
 
 ---
 
-## 7. Rethink card composition (DESIGN — /design-consultation candidate)
+## 7. Rethink card composition (DESIGN — /design-consultation candidate) [PARTIAL — IN FLIGHT 2026-04-25]
 
 **What:** The current card works, but it was sized for an indie-vs-chain contrast that no longer exists (chain/Cinépolis deferred behind Cloudflare). With CICLO + ★ dropped, the card is cleaner, but the spacing, the content mix, and the information hierarchy could still earn a real pass now that we know what the cartelera actually is (all-indie, Spanish-native, weekly edition).
 
@@ -196,11 +161,13 @@ If the heuristic fails on real-page shape, refine the selector (e.g. scope to a 
 
 **User feedback 2026-04-22 (that triggered this):** *"they are OK now but I feel like we could improve the spacing, what we include in them and how we display it."* Noted after landing CICLO + ★ drop. Bigger rethink deserves its own cycle.
 
+**Status update 2026-04-25:** the programs+/pelicula/ plan (`~/.gstack/projects/kino/benjamin.delasoie-main-design-20260425-200910.md`) ships a `<ProgramPill>` on cards and the mobile-synopsis `hidden md:block` cleanup, which addresses two of the bullets above. The bigger question (what is carmine's job, what is a card's primary job) is still open and remains a /design-consultation candidate after the programs+/pelicula/ cycle lands.
+
 **Depends on / blocked by:** Nothing. Worth doing before the film-detail pages cycle (TODO #6), since the card design will inform what the film-detail page inherits.
 
 ---
 
-## 6. Film-level discovery: same-film repeats + "última función" (NEXT CYCLE)
+## 6. Film-level discovery: same-film repeats + "última función" [IN FLIGHT 2026-04-25 — superseded by programs+/pelicula/ plan]
 
 **What:** Today Afiche answers "what's on at 21:00 Thursday?" but not "I saw film X this week, when else can I catch it?" That's the core decision-tool job a cartelera should serve, and the current card list doesn't answer it.
 
@@ -216,7 +183,110 @@ If the heuristic fails on real-page shape, refine the selector (e.g. scope to a 
 
 **Recommendation:** Invoke `/office-hours` with the framing *"film discovery across repeats — one cycle or two?"* — because it's the same user need as film-detail + cinema pages, and should probably be one cycle. Flagged 2026-04-22 while closing the weekly/próximamente restructure.
 
+**Status update 2026-04-25:** /office-hours ran on this and produced the design doc at `~/.gstack/projects/kino/benjamin.delasoie-main-design-20260425-200910.md` (see also CEO plan `~/.gstack/projects/kino/ceo-plans/2026-04-25-programs-and-pelicula.md`). Both items above ship in the same cycle: ÚLTIMA FUNCIÓN pill in Phase 3 + the `+N funciones` affordance becomes a Link on the card title that navigates to /pelicula/<slug>. Same-film repeats discovery becomes the killer feature on /pelicula/ (cross-venue all-screenings).
+
 **Depends on / blocked by:** Nothing blocks it; should sequence after the weekly/próximamente restructure lands.
+
+---
+
+## 11. Add-to-calendar (.ics) per screening on /pelicula/
+
+**What:** Per-screening add-to-calendar action on /pelicula/<slug>. A small "agendar ⤵" link on each row downloads a `.ics` (VCALENDAR) file the user opens in Google Calendar / Apple Calendar / Outlook. Pure server-rendered: a route at `src/app/api/screening/[id].ics/route.ts` returns a VCALENDAR string with the screening time, film title, cinema, and source URL.
+
+**Why:** The cinephile workflow on /pelicula/ ends with "remind myself of this." Today: screenshot the date, manually add to calendar. With .ics: one tap, all major calendar tools eat it. Distinctive aggregator-shaped feature — no individual cinema's site can offer this for the FULL BA cartelera (they only know about their own screenings).
+
+**Pros:**
+- Genuinely distinctive: aggregator-shaped, no single venue can offer this for the city
+- Small effort: ~40 lines for the route handler + ~10 lines UI element
+- Aligns with the "when can I see it" job that drove /pelicula/ existence
+
+**Cons:**
+- Adds an API route + UI element to the surface area
+- VCALENDAR escape rules for film titles with quotes / colons need test coverage
+
+**Context:** Deferred from /plan-ceo-review 2026-04-25 (cherry-pick D5). The CEO review reasoned: validate /pelicula/ usage first, then ship .ics as a v2 feature once we know users visit the page. Trigger to act = post-launch usage shows /pelicula/ has real visits AND users surface the manual-calendar dance as a friction point (anecdotal in cinephile chats, or feature requests).
+
+**Effort estimate:** S (~2-3 hrs CC). **Priority:** P3.
+
+**Depends on / blocked by:** /pelicula/ MVP shipped (Phase 2 of the programs+/pelicula/ plan).
+
+---
+
+## 12. Expand TMDB enrichment beyond synopsis (cast, prizes, tagline)
+
+**What:** Three TMDB enrichment additions for /pelicula/, deferred from the programs+/pelicula/ cycle:
+
+1. **Cast block**: top 5-10 names per film via TMDB `/movie/{id}/credits`. Schema: new `cast JSON` field on `films` (or normalized `film_cast` table). UI: small block on /pelicula/ between metadata and screenings.
+2. **Prizes/awards block**: TMDB has thin awards data; real coverage requires Wikipedia/Wikidata scraping, IMDB (no public API), or Rotten Tomatoes/Letterboxd (also scraping). UI: small "Galardones" block ("Cannes 2001, Premio del Jurado", etc.).
+3. **TMDB tagline as additional synopsis fallback**: TMDB returns a `tagline` field separate from `overview`. Often present even when `overview` is blank. Add as a fallback step in the synopsis chain after `language=es` blank.
+
+**Why:** Makes the "learn about the film" job richer on /pelicula/ — moves the page from "title + synopsis + screenings" to "title + cast + prizes + synopsis + screenings". Distinctive vs. competitors: Letterboxd shows ratings (we don't), IMDB shows everything (we won't), Afiche shows curatorial relevance ("Cannes-winning, screening at Lugones this Saturday").
+
+**Pros:**
+- Significantly increases editorial weight of /pelicula/
+- Cast is cheap data (TMDB has it on credits endpoint)
+- Tagline is cheaper still (already on the movie response)
+
+**Cons:**
+- Cast: schema change + UI design (top 5? With photos? Just names?) ≈ M effort
+- Prizes: real infra work (Wikipedia/Wikidata scraping or graph queries) ≈ L effort
+- Risk of /pelicula/ becoming "a worse IMDB with showtimes" if we add too much
+
+**Context:** Deferred from /office-hours D5 (synopsis-only enrichment for the cycle that ships /pelicula/ MVP). Trigger to act = /pelicula/ has shipped, baseline usage data exists, decision to invest more in the "learn about the film" job is informed by actual visit patterns.
+
+**Effort estimate:** Tagline = S, Cast = M, Prizes = L. **Priority:** P3.
+
+**Depends on / blocked by:** /pelicula/ MVP shipped (Phase 2 of the programs+/pelicula/ plan).
+
+---
+
+## 13. /pelicula/ post-launch hardening (JSON-LD, slug-history, normalization)
+
+**What:** Three hardening additions for /pelicula/ after the MVP ships:
+
+1. **JSON-LD `Movie` + `ScreeningEvent` schema**: structured data on /pelicula/ via `<script type="application/ld+json">`. Lets Google's local cinema panel / knowledge panel pull from /pelicula/ as a structured source for "what's playing in BA" queries. ~30 lines of schema generation, no new dependencies.
+2. **Slug-history table for 301 redirects**: `films.slug` is set at first-insert and stays. If a TMDB match later changes `films.title` (uncommon but real), the slug stays — but if we ever WANT to migrate a film to a new slug (better Spanish translation, fixed typo), the old URL should 301 to the new one. Schema: new `film_slug_history` table (filmId, oldSlug, archivedAt) + middleware that catches 404 on /pelicula/<slug>, looks up oldSlug, redirects.
+3. **Program name normalization**: the programs-as-string design accepts capitalization/punctuation drift across scrapes ("Olivera-Aries" vs "Olivera–Aries"). Add a `program_name_normalized` derived column at write time (lowercase-trim-collapse). Enables future "all screenings in this program" grouping queries without cleanup migrations later.
+
+**Why:** Each one is post-launch polish that doesn't earn space in the MVP but is real eventual debt:
+- JSON-LD is free SEO that turns BA-cinephile traffic into a structured data source other tools can consume.
+- Slug-history defends against a real edge case (slug mismatch after title correction) before it bites in production.
+- Normalization removes the eventual cleanup migration when /programa/ ships.
+
+**Pros:** Each is bounded scope with a clear payoff.
+**Cons:** Premature for the MVP cycle; each is pure speculation about future need.
+
+**Context:** Surfaced by /plan-ceo-review 2026-04-25 outside-voice subagent (#4 SEO flap, #6 normalization, plus design doc deferred slug-history). Trigger to act:
+- JSON-LD: when non-cinephile traffic (Google search) becomes a meaningful share of /pelicula/ visits.
+- Slug-history: first observed slug-change incident in production (TMDB title update changed canonical), OR before second production migration.
+- Normalization: when /programa/ pages start to be planned (the CICLO universal-noise risk re-emerges if program names drift across scrapes).
+
+**Effort estimate:** Each is S; combined M. **Priority:** P3.
+
+**Depends on / blocked by:** /pelicula/ MVP shipped + ~1-3 months of production observation.
+
+---
+
+## 14. Programs entity expansion (/programa/ pages + entity table)
+
+**What:** Promote `programName` from a denormalized text column on `screenings` to a first-class entity. New `programs` table (id, slug, cinemaId, name, normalized_name, started_at, ended_at, descriptionEs). Migrate existing string values to FK references. Build /programa/<slug> pages with a curatorial argument, the program's films, and the program's dates.
+
+**Why:** /office-hours D2 (2026-04-25) explicitly rejected /programa/ pages as the principal Afiche concept — "the conceptual unit of afiche remains the screening" — because no killer feature surfaced. The CEO review preserved this rejection. But the underlying domain truth is real: programs ARE the curatorial backbone of indie cinema (Lugones cycles, MALBA programs, festival weeks). When a killer feature DOES surface (cross-venue gravity views, editorial program directory, when-cinephile-traffic-warrants-it), the work becomes worth doing.
+
+**Pros:**
+- Programs become a navigable, shareable entity
+- Cross-venue program views become possible ("BA's Lynch moment: 5 at Malba, 2 at Lugones")
+- Editorial directory ("Esta semana en BA, 14 ciclos en curso") becomes a thing to build
+
+**Cons:**
+- Migration touches every screening row (write the FK, drop the text column)
+- Without a killer feature, /programa/ pages mirror the venue's own pages — the failure mode that retired /programa/ in /office-hours
+
+**Context:** /office-hours design doc (2026-04-25) deferred this. Outside voice from /plan-ceo-review (#6) flagged the eventual normalization problem that this work resolves. Trigger to act = a clear killer feature for /programa/ surfaces, OR program-name normalization debt makes per-program queries painful.
+
+**Effort estimate:** L (~1-2 weeks human / ~3-5 hrs CC for the entity migration; UI work depends on chosen direction). **Priority:** P3.
+
+**Depends on / blocked by:** Nothing technical; blocked by the absence of a killer feature for /programa/.
 
 ---
 

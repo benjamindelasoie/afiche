@@ -34,6 +34,18 @@ export interface ScrapedScreening {
    * sourceUrl that the UI links to.
    */
   filmDetailUrl?: string;
+  /**
+   * Curatorial program / cycle title the screening belongs to (e.g.,
+   * "Retrospectiva David Lynch", "Olivera-Aries"). Populated by indie
+   * scrapers (MALBA, Lugones, Lumiton-family, Cine York) when the venue
+   * exposes a program/cycle context. Undefined / null for venues that
+   * don't organize screenings into curated programs (Cosmos) AND for
+   * single-event paths where the program would just echo the film title.
+   *
+   * Persisted as `screenings.program_name`. Render-rule on the cartelera:
+   * pill renders only when non-null. Pill placement: card tag strip.
+   */
+  programName?: string;
 }
 
 export interface ProviderRunResult {

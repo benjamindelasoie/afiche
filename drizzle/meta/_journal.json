@@ -15,6 +15,13 @@
       "when": 1776733983840,
       "tag": "0001_mysterious_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1777164596769,
+      "tag": "0002_classy_gravity",
+      "breakpoints": true
     }
   ]
 }

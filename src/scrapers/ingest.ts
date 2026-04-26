@@ -17,6 +17,32 @@ import { db, films, screenings, providers } from '@/db';
 import type { ProviderRunResult, ScrapedScreening } from '@/providers/types';
 import { enrichFilm, type EnrichResult } from '@/tmdb/enrich';
 import { hasTmdbToken } from '@/tmdb/client';
+import { buildFilmSlug, withIdSuffix } from '@/lib/slug';
+
+/**
+ * Detect a UNIQUE constraint violation on `films.slug` from a Drizzle/libsql/
+ * better-sqlite3 error. Both runtimes surface the same shape:
+ *   "UNIQUE constraint failed: films.slug"
+ * Defensive over `instanceof SqliteError` because libsql wraps errors
+ * differently than better-sqlite3 and we don't want to depend on either.
+ */
+function isSlugUniqueViolation(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  return (
+    err.message.includes('UNIQUE constraint failed') &&
+    err.message.includes('films.slug')
+  );
+}
+
+/**
+ * Normalize a string for the programName-echoes-filmTitle check.
+ * Lowercase + collapse whitespace + strip leading/trailing whitespace.
+ * Catches "El Faro" vs "el faro" and "Pizza, Birra, Faso" vs
+ * "Pizza,  Birra,  Faso" — both editorially the same.
+ */
+function normalizeForEcho(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, ' ').trim();
+}
 
 export async function ingest(result: ProviderRunResult): Promise<IngestSummary> {
   const now = new Date();
@@ -66,20 +92,53 @@ export async function ingest(result: ProviderRunResult): Promise<IngestSummary> 
         const key = filmKey(s.filmTitle, s.year);
         const filmId = filmIdByKey.get(key);
         if (!filmId) return null; // shouldn't happen, but be defensive
+
+        // No-echo filter: when programName equals filmTitle (case-insensitive,
+        // whitespace-collapsed), drop it. A pill that just repeats the film
+        // title adds zero curatorial signal and clutters the card. This rule
+        // applies uniformly across all providers — Lugones S2 single-film
+        // pages, MALBA listings where the cycle wraps one film, etc.
+        const echoes = s.programName != null && normalizeForEcho(s.programName) === normalizeForEcho(s.filmTitle);
+        const programName = echoes ? null : s.programName ?? null;
+
         return {
           filmId,
           cinemaId: s.cinemaId,
           startsAtUtc: s.startsAtUtc,
           tags: s.tags,
           sourceUrl: s.sourceUrl,
+          programName,
         };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null);
 
     if (toInsert.length > 0) {
-      // Use onConflictDoNothing so the unique index on
-      // (film_id, cinema_id, starts_at_utc) silently deduplicates.
-      await db.insert(screenings).values(toInsert).onConflictDoNothing();
+      // onConflictDoUpdate (NOT DoNothing) so re-scrape refreshes
+      // metadata that may have changed: programName, sourceUrl, tags,
+      // scrapedAt. Without DoUpdate, the back half of multi-week Lugones
+      // programs would never get programName populated post-migration —
+      // the (filmId, cinemaId, startsAtUtc) row already exists from a
+      // prior scrape, so DoNothing would skip the update.
+      //
+      // Defensive subset of fields: do NOT include identity columns
+      // (filmId, cinemaId, startsAtUtc — these are the conflict target).
+      // Excluded `screenings.scraped_at` automatic from values, so we
+      // re-stamp via sql`current_timestamp` below — the application
+      // currently uses Date now, but Drizzle's `excluded.scraped_at`
+      // gives us "the value we just tried to insert" which carries the
+      // ingest's `now`.
+      await db
+        .insert(screenings)
+        .values(toInsert)
+        .onConflictDoUpdate({
+          target: [screenings.filmId, screenings.cinemaId, screenings.startsAtUtc],
+          set: {
+            programName: sql`excluded.program_name`,
+            sourceUrl: sql`excluded.source_url`,
+            tags: sql`excluded.tags`,
+            scrapedAt: sql`excluded.scraped_at`,
+          },
+        });
       summary.screeningsInserted = toInsert.length;
     }
   }
@@ -127,6 +186,23 @@ export interface IngestSummary {
 // ---------------------------------------------------------------------------
 // Films upsert — one row per unique (scrapedTitle, year) combination
 // ---------------------------------------------------------------------------
+//
+// Slug handling lives here, not in queries.ts, because every scraper run
+// goes through this single ingest path. Centralized = single helper to
+// audit. The slug derivation flow:
+//
+//   1. Insert (or upsert by scraped_title+year) WITHOUT setting slug
+//      — the slug column is nullable at the DB level for this reason.
+//   2. Read back films.id + films.slug.
+//   3. If slug is non-null: row already had one (existing row, idempotent
+//      re-scrape, or earlier backfill). Done.
+//   4. If slug is null: compute base = buildFilmSlug(title, { year, id }).
+//      Try UPDATE films SET slug = base. On UNIQUE collision (different
+//      film already owns this slug — re-releases, festival cuts), retry
+//      with `${base}-${id}` tiebreaker. The id-suffixed slug is
+//      guaranteed unique by construction (films.id is unique).
+//
+// The slug never updates after first set. URLs are the contract.
 async function upsertFilms(scraped: ScrapedScreening[]): Promise<Map<string, number>> {
   const byKey = new Map<string, ScrapedScreening>();
   for (const s of scraped) {
@@ -136,71 +212,106 @@ async function upsertFilms(scraped: ScrapedScreening[]): Promise<Map<string, num
 
   const idByKey = new Map<string, number>();
 
+  for (const [key, s] of byKey) {
+    const filmId = await upsertOneFilm(s);
+    if (filmId !== undefined) idByKey.set(key, filmId);
+  }
+
+  return idByKey;
+}
+
+/**
+ * Upsert one film row and ensure its slug is populated.
+ *
+ * Returns the films.id, or undefined if the row could not be located after
+ * an upsert no-op (defensive — should never happen in practice).
+ */
+async function upsertOneFilm(s: ScrapedScreening): Promise<number | undefined> {
   // SQLite supports upsert via ON CONFLICT; drizzle exposes .onConflictDoUpdate.
   // Some providers (MALBA S2 single-event pages) only know the film title —
   // every metadata field is undefined. Drizzle's mapUpdateSet strips undefined
   // keys at SQL-build time and throws "No values to set" on an empty set clause,
   // which would blow up the whole ingest. So we branch: update only when there
   // is something worth refreshing.
-  for (const [key, s] of byKey) {
-    const insertValues = {
-      title: s.filmTitle,
-      scrapedTitle: s.filmTitle,
-      titleOriginal: s.filmTitleOriginal,
-      director: s.director,
-      year: s.year,
-      country: s.country,
-      runtimeMin: s.runtimeMin,
-      synopsisEs: s.synopsisEs,
-      matchSource: 'none' as const,
-    };
+  const insertValues = {
+    title: s.filmTitle,
+    scrapedTitle: s.filmTitle,
+    titleOriginal: s.filmTitleOriginal,
+    director: s.director,
+    year: s.year,
+    country: s.country,
+    runtimeMin: s.runtimeMin,
+    synopsisEs: s.synopsisEs,
+    matchSource: 'none' as const,
+    slug: null,
+  };
 
-    const updateSet: Record<string, unknown> = {};
-    if (s.filmTitleOriginal !== undefined) updateSet.titleOriginal = s.filmTitleOriginal;
-    if (s.director !== undefined) updateSet.director = s.director;
-    if (s.country !== undefined) updateSet.country = s.country;
-    if (s.runtimeMin !== undefined) updateSet.runtimeMin = s.runtimeMin;
-    if (s.synopsisEs !== undefined) updateSet.synopsisEs = s.synopsisEs;
+  const updateSet: Record<string, unknown> = {};
+  if (s.filmTitleOriginal !== undefined) updateSet.titleOriginal = s.filmTitleOriginal;
+  if (s.director !== undefined) updateSet.director = s.director;
+  if (s.country !== undefined) updateSet.country = s.country;
+  if (s.runtimeMin !== undefined) updateSet.runtimeMin = s.runtimeMin;
+  if (s.synopsisEs !== undefined) updateSet.synopsisEs = s.synopsisEs;
 
-    let filmId: number | undefined;
+  let filmId: number | undefined;
+  let existingSlug: string | null = null;
 
-    if (Object.keys(updateSet).length > 0) {
-      const [row] = await db
-        .insert(films)
-        .values(insertValues)
-        .onConflictDoUpdate({
-          target: [films.scrapedTitle, films.year],
-          set: updateSet,
-        })
-        .returning({ id: films.id });
-      filmId = row?.id;
+  if (Object.keys(updateSet).length > 0) {
+    const [row] = await db
+      .insert(films)
+      .values(insertValues)
+      .onConflictDoUpdate({
+        target: [films.scrapedTitle, films.year],
+        set: updateSet,
+      })
+      .returning({ id: films.id, slug: films.slug });
+    filmId = row?.id;
+    existingSlug = row?.slug ?? null;
+  } else {
+    // Nothing to refresh. Insert if new, otherwise leave existing row alone
+    // and look its id up. onConflictDoNothing + .returning() omits the row
+    // when the insert was a no-op, so we fall back to a SELECT in that case.
+    const [inserted] = await db
+      .insert(films)
+      .values(insertValues)
+      .onConflictDoNothing()
+      .returning({ id: films.id, slug: films.slug });
+    if (inserted) {
+      filmId = inserted.id;
+      existingSlug = inserted.slug ?? null;
     } else {
-      // Nothing to refresh. Insert if new, otherwise leave existing row alone
-      // and look its id up. onConflictDoNothing + .returning() omits the row
-      // when the insert was a no-op, so we fall back to a SELECT in that case.
-      const [inserted] = await db
-        .insert(films)
-        .values(insertValues)
-        .onConflictDoNothing()
-        .returning({ id: films.id });
-      if (inserted) {
-        filmId = inserted.id;
-      } else {
-        const yearCond =
-          s.year === undefined ? isNull(films.year) : eq(films.year, s.year);
-        const [existing] = await db
-          .select({ id: films.id })
-          .from(films)
-          .where(and(eq(films.scrapedTitle, s.filmTitle), yearCond))
-          .limit(1);
-        filmId = existing?.id;
-      }
+      const yearCond =
+        s.year === undefined ? isNull(films.year) : eq(films.year, s.year);
+      const [existing] = await db
+        .select({ id: films.id, slug: films.slug })
+        .from(films)
+        .where(and(eq(films.scrapedTitle, s.filmTitle), yearCond))
+        .limit(1);
+      filmId = existing?.id;
+      existingSlug = existing?.slug ?? null;
     }
-
-    if (filmId !== undefined) idByKey.set(key, filmId);
   }
 
-  return idByKey;
+  if (filmId === undefined) return undefined;
+
+  // Slug ensure: only sets when the row currently has no slug. On UNIQUE
+  // collision, retry with -<id> suffix. The id-suffixed slug is guaranteed
+  // unique because films.id is unique.
+  if (!existingSlug) {
+    const base = buildFilmSlug(s.filmTitle, { year: s.year ?? null, id: filmId });
+    try {
+      await db.update(films).set({ slug: base }).where(eq(films.id, filmId));
+    } catch (err) {
+      if (isSlugUniqueViolation(err)) {
+        const tieslug = withIdSuffix(base, filmId);
+        await db.update(films).set({ slug: tieslug }).where(eq(films.id, filmId));
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  return filmId;
 }
 
 function filmKey(title: string, year: number | undefined): string {

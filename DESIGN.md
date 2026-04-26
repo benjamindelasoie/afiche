@@ -75,7 +75,6 @@ Time uses `font-variant-numeric: tabular-nums` everywhere.
 - **Carmine offset shadow** on indie cinema posters: `4px 4px 0 var(--color-carmine)`. Non-negotiable — the site's visual fingerprint.
 - **Carmine left-bar on indie cards** (`border-l-4 border-carmine`). Curation signal visible at a glance.
 - **Carmine left-rule on synopsis** (`border-l-2 border-carmine pl-3`). Subtle echo of the card's left-bar.
-- **★ star prefix on indie cinema name**. "This is a curated venue" signal without adding chrome.
 - **Tap feedback** `active:translate-y-[1px]` on cards. 1px downward press emulates a newsprint card flip.
 - **`text-balance`** on masthead, day labels, and film titles. Eliminates awkward single-word line endings.
 - **`line-clamp-3`** on synopsis. Consistent truncation across variable-length descriptions.
@@ -174,12 +173,12 @@ The step-down is intentional: the eye should slow down as the horizon gets furth
 The curation stance is made visible through typography and density, not through a hidden/visible toggle. Both appear on the site; indie wins visual weight.
 
 **Indie cinemas** (Lugones, MALBA, Lumiton, Cine York, Centro Cultural Munro):
-- Full card: `border-l-4 border-carmine`, poster thumb + carmine offset shadow, ★-prefixed cinema name, Instrument Serif title, italic original title, Geist synopsis w/ carmine left-rule, full metadata
+- Full card: `border-l-4 border-carmine`, poster thumb + carmine offset shadow, Instrument Serif title, italic original title, Geist synopsis w/ carmine left-rule, full metadata
 - Card background: `bg-carmine/5`, hover: `bg-carmine/10`
 - Vertical rhythm: `space-y-5` between cards
 
 **Chain cinemas** (Cinépolis, Hoyts, Showcase, etc.):
-- Compact card: no poster, no left-bar, no star prefix, body sans-serif, metadata only, full AA contrast kept
+- Compact card: no poster, no left-bar, body sans-serif, metadata only, full AA contrast kept
 - Card styling: `border-neutral-300 bg-black/[0.02] text-neutral-500`, hover: `bg-black/[0.04]`
 - Vertical rhythm: same `space-y-5` (rhythm is consistent, distinction is typographic)
 
@@ -203,3 +202,6 @@ The curation stance is made visible through typography and density, not through 
 | 2026-04-22 | Edition dateline anchors on ISO-week bounds regardless of data | Previously derived from min/max of returned screenings; broke coherence when data spanned multiple weeks. Now `Semana del 20 al 26 de abril` holds even on Wednesday when the first scheduled screening is Thursday — we're inside edition 17 independent of what's in the DB. |
 | 2026-04-22 | Tier 3 (Próximamente) drops day grouping | At that horizon each row carries its own date chip — day banners would just add visual chatter. The index format echoes a zine's back-page program guide. |
 | 2026-04-22 | Esta mes section hides when week crosses month boundary | Late-April users (Tue Apr 28 → week ends May 4) have an empty "rest of April" — surfacing an empty section would add noise without value. |
+| 2026-04-22 | ★ star prefix on indie cinema names dropped (commit `aca2dde`, F-005 fix) | Universal-noise signal in an all-indie cartelera; the curation contrast that justified ★ disappeared when chain content was deferred behind Cloudflare. Carmine left-bar + carmine cinema-name color carry the curation signal alone. |
+| 2026-04-25 | ProgramPill on cards via `screenings.program_name` text column | New curatorial signal surfaces the program/cycle name (e.g., "Retrospectiva David Lynch") on cards from venues that organize screenings into curated programs. Cosmos and similar single-film venues stay program-less. Pill placed in the existing tag strip, font-mono carmine bg. |
+| 2026-04-25 | Mobile synopsis hidden via `hidden md:block` | The `line-clamp-3` synopsis with bottom fade renders as ~2.5 trailing-off lines on 375px mobile — text doing the work of decoration. Hiding on mobile reclaims ~80px of card real estate per indie card without losing the signal on desktop. |

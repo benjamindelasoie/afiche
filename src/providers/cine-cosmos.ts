@@ -188,6 +188,12 @@ export function parseDetailPage(
         tags: ['cycle'],
         synopsisEs: film.synopsis,
         sourceUrl: program.detailUrl,
+        // programName intentionally NOT set: Cine Cosmos doesn't organize
+        // its programming under curatorial programs/cycles. Each weekly
+        // slot is a single film with its own showtimes — no wrapping
+        // editorial argument like "Retrospectiva David Lynch" exists for
+        // Cosmos. Per design doc 2026-04-25 ARCH-2, this is an explicit
+        // opt-out, not an oversight.
       });
     }
   }

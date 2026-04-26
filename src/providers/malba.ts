@@ -422,6 +422,10 @@ export function parseS2SingleEvent(
         startsAtUtc: startsAt,
         tags: inferTags(cycle),
         sourceUrl: cycle.detailUrl,
+        // programName intentionally omitted in S2: in single-event mode,
+        // cycle.title === eventTitle === filmTitle, so a pill would just
+        // echo the film title. Per design doc 2026-04-25 ARCH-2: redundant
+        // pill is worse than no pill.
       });
     }
   }
@@ -632,6 +636,10 @@ function emitBlock(
       startsAtUtc: startsAt,
       tags: inferTags(cycle),
       sourceUrl: cycle.detailUrl,
+      // S1 dense-cycle layout: cycle.title is the curatorial program
+      // (e.g. "Retrospectiva David Lynch"), distinct from each
+      // show.title. Persists as the ProgramPill's text on the cartelera.
+      programName: cycle.title,
       // Per-film URL stored separately so the cycle URL stays the click
       // target. enrichFromFilmDetailPages() reads this for synopsis fetches.
       ...(show.filmHref ? { filmDetailUrl: show.filmHref } : {}),

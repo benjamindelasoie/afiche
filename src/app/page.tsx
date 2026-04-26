@@ -1,9 +1,11 @@
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   getThisWeekScreenings,
   getThisMonthScreenings,
   getUpcomingScreenings,
   getLastScrapeTime,
+  getLastScreeningPerFilm,
   formatTimeBA,
   formatDayShortBA,
   type DayGroup,
@@ -38,12 +40,18 @@ export const dynamic = 'force-dynamic';
 export default async function HomePage() {
   const now = new Date();
 
-  const [thisWeek, thisMonth, upcoming, lastScrape] = await Promise.all([
-    getThisWeekScreenings(now),
-    getThisMonthScreenings(now),
-    getUpcomingScreenings(now),
-    getLastScrapeTime(),
-  ]);
+  const [thisWeek, thisMonth, upcoming, lastScrape, lastScreeningPerFilm] =
+    await Promise.all([
+      getThisWeekScreenings(now),
+      getThisMonthScreenings(now),
+      getUpcomingScreenings(now),
+      getLastScrapeTime(),
+      // Per-film MAX(startsAtUtc) across the FULL screenings table.
+      // Used by ÚLTIMA FUNCIÓN pill — unbounded by cartelera tier
+      // horizons so a film with a screening this week AND another 8
+      // weeks out doesn't get falsely flagged on this week's row.
+      getLastScreeningPerFilm(now),
+    ]);
 
   // Masthead counts reflect THIS WEEK only — it's the edition.
   const thisWeekTotal = thisWeek.reduce((n, d) => n + d.screenings.length, 0);
@@ -159,6 +167,7 @@ export default async function HomePage() {
                       day={day}
                       variant="full"
                       isFirstDay={dayIdx === 0}
+                      lastScreeningPerFilm={lastScreeningPerFilm}
                     />
                   ))}
                 </div>
@@ -174,7 +183,12 @@ export default async function HomePage() {
                 />
                 <div className="mt-10 space-y-10">
                   {thisMonth.map((day) => (
-                    <DaySection key={day.dateKey} day={day} variant="compact" />
+                    <DaySection
+                      key={day.dateKey}
+                      day={day}
+                      variant="compact"
+                      lastScreeningPerFilm={lastScreeningPerFilm}
+                    />
                   ))}
                 </div>
               </section>
@@ -187,7 +201,10 @@ export default async function HomePage() {
                   title="Próximamente"
                   subtitle={<SectionSubtitle parts={rangeSubtitleFromFlat(upcoming)} />}
                 />
-                <UpcomingIndex screenings={upcoming} />
+                <UpcomingIndex
+                  screenings={upcoming}
+                  lastScreeningPerFilm={lastScreeningPerFilm}
+                />
               </section>
             )}
           </>
@@ -253,6 +270,7 @@ function DaySection({
   day,
   variant,
   isFirstDay = false,
+  lastScreeningPerFilm,
 }: {
   day: DayGroup;
   variant: 'full' | 'compact';
@@ -261,6 +279,10 @@ function DaySection({
   // (otherwise day.isToday is never true and no card gets priority —
   // that was the prod console warning on afiche.vercel.app after deploy).
   isFirstDay?: boolean;
+  // Per-film MAX(startsAtUtc) over all upcoming screenings — used by
+  // ScreeningCard to flag the ÚLTIMA FUNCIÓN pill on rows where this
+  // screening's startsAtUtc equals the film's max.
+  lastScreeningPerFilm: Map<number, number>;
 }) {
   return (
     <div>
@@ -297,6 +319,9 @@ function DaySection({
             s={s}
             variant={variant}
             isAboveFold={variant === 'full' && (day.isToday || isFirstDay) && idx < 3}
+            isLastFunction={
+              lastScreeningPerFilm.get(s.film.id) === s.startsAtUtc.getTime()
+            }
           />
         ))}
       </div>
@@ -314,10 +339,17 @@ function ScreeningCard({
   s,
   variant,
   isAboveFold,
+  isLastFunction,
 }: {
   s: ScreeningRow;
   variant: 'full' | 'compact';
   isAboveFold: boolean;
+  // True when this screening is the LAST upcoming screening of its
+  // film across the entire BA cartelera (computed unbounded, NOT
+  // limited to cartelera tier horizons). Renders a carmine ÚLTIMA
+  // FUNCIÓN pill in the tag strip — visual urgency signal for "catch
+  // it now or wait years."
+  isLastFunction: boolean;
 }) {
   const isCompact = variant === 'compact';
   const posterSize = isCompact ? 'w-14 h-20' : 'w-20 h-28';
@@ -342,13 +374,24 @@ function ScreeningCard({
   // 'retrospective' / 'restored' / actual festival names render. When the
   // only tag was the bare cycle, the tag row disappears entirely.
   const visibleTags = s.tags.filter((t) => t !== 'cycle');
+  const showTagStrip =
+    !isCompact && (visibleTags.length > 0 || s.programName || isLastFunction);
 
   const cardBody = (
     <>
-      {/* Tags — only in full variant. Compact / próximamente drop them
-          to reduce visual chatter when the card is already smaller. */}
-      {!isCompact && visibleTags.length > 0 && (
+      {/* Tag strip — full variant only. Renders when there are visible
+          tags (RESTAURADA, RETROSPECTIVA, etc.) OR a program name. The
+          ProgramPill sits in this strip per design-review D2: it slots
+          where CICLO used to live, restoring the strip's curatorial
+          purpose without inventing a new card region. Compact +
+          Próximamente skip the strip entirely to reduce visual chatter. */}
+      {showTagStrip && (
         <div className="mb-2 flex flex-wrap gap-2">
+          {isLastFunction && (
+            <span className="tracking-card bg-carmine text-cream px-2 py-0.5 font-mono text-[11px] uppercase">
+              Última función
+            </span>
+          )}
           {visibleTags.map((t) => (
             <span
               key={t}
@@ -357,6 +400,7 @@ function ScreeningCard({
               {TAG_LABELS_ES[t]}
             </span>
           ))}
+          {s.programName && <ProgramPill name={s.programName} />}
         </div>
       )}
 
@@ -436,7 +480,7 @@ function ScreeningCard({
               s.cinema.type === 'indie' &&
               isCompleteSynopsis(s.film.synopsisEs) && (
                 <p
-                  className="border-carmine mt-3 line-clamp-3 max-w-prose border-l-2 pl-3 text-sm"
+                  className="border-carmine mt-3 hidden line-clamp-3 max-w-prose border-l-2 pl-3 text-sm md:block"
                   style={{
                     maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)',
                     WebkitMaskImage:
@@ -486,19 +530,61 @@ function ScreeningCard({
       : 'border-neutral-300 bg-black/[0.02] hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black'
   }`;
 
-  return s.sourceUrl ? (
-    <a
-      href={s.sourceUrl}
-      target="_blank"
-      rel="noopener noreferrer"
+  // Outer card link target: /pelicula/<slug>. Tap-anywhere takes the user
+  // to the film-detail page where they see ALL upcoming screenings across
+  // BA + film context. The cinema's own ticketing page is reachable from
+  // each row on /pelicula/, so the source URL hasn't disappeared — it's
+  // moved to the destination that gives the user the cross-venue picture
+  // FIRST. Per design doc 2026-04-25 + design-review 2026-04-26.
+  //
+  // When slug is null (defensive — shouldn't happen post-backfill), fall
+  // back to a non-interactive <article> so the card still renders.
+  const ariaLabel = `${s.film.title} — ${s.cinema.name} — ${formatTimeBA(s.startsAtUtc)}`;
+  return s.film.slug ? (
+    <Link
+      href={`/pelicula/${s.film.slug}`}
       data-screening-card
       className={cardClasses}
-      aria-label={`${s.film.title} — ${s.cinema.name} — ${formatTimeBA(s.startsAtUtc)}`}
+      aria-label={ariaLabel}
     >
       {cardBody}
-    </a>
+    </Link>
   ) : (
     <article className={cardClasses}>{cardBody}</article>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ProgramPill — curatorial-context badge in the card tag strip
+// ---------------------------------------------------------------------------
+//
+// Renders the program/cycle title (e.g., "Retrospectiva David Lynch",
+// "Olivera-Aries") on screening cards from venues that organize their
+// programming into curated programs. Per design-review 2026-04-25 D2 +
+// design doc:
+//
+//   - Placement: card tag strip (where CICLO used to live), alongside
+//     other tags like RESTAURADA / RETROSPECTIVA / ESTRENO. Same visual
+//     weight, same scan position.
+//   - Tokens: same as existing tag pill (`bg-carmine text-cream` +
+//     mono caps + sharp corners) — pattern consistency over differentiation.
+//   - Truncation: max-w-[40ch] truncate, `title` attr carries the full
+//     program name for screen readers + tooltip. Long Lugones cycle
+//     names ("Cine y Filosofía: la lógica de la imagen") truncate
+//     gracefully without breaking card layout.
+//   - Render rule: parent `<ScreeningCard>` only renders this when
+//     `s.programName` is non-null. Cosmos screenings (no curatorial
+//     program) skip it entirely; MALBA S2 single-event paths and the
+//     ingest no-echo filter ensure the pill never just repeats the film
+//     title.
+function ProgramPill({ name }: { name: string }) {
+  return (
+    <span
+      title={name}
+      className="tracking-card bg-carmine text-cream max-w-[40ch] truncate px-2 py-0.5 font-mono text-[11px] uppercase"
+    >
+      {name}
+    </span>
   );
 }
 
@@ -508,11 +594,19 @@ function ScreeningCard({
 // Feels like the back-of-zine program guide: just enough to say "this
 // film exists in your calendar eventually; tap for detail."
 // ---------------------------------------------------------------------------
-function UpcomingIndex({ screenings }: { screenings: ScreeningRow[] }) {
+function UpcomingIndex({
+  screenings,
+  lastScreeningPerFilm,
+}: {
+  screenings: ScreeningRow[];
+  lastScreeningPerFilm: Map<number, number>;
+}) {
   return (
     <ul className="mt-8 divide-y divide-black/15">
       {screenings.map((s) => {
         const isIndie = s.cinema.type === 'indie';
+        const isLastFunction =
+          lastScreeningPerFilm.get(s.film.id) === s.startsAtUtc.getTime();
         const rowBody = (
           <div className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1 px-1 py-3 md:grid-cols-[auto_1fr_auto]">
             {/* Date + time column (left) */}
@@ -524,12 +618,14 @@ function UpcomingIndex({ screenings }: { screenings: ScreeningRow[] }) {
               </span>
             </div>
 
-            {/* Title only (center). The original title is deliberately
-                omitted here — on mobile 375, titles like "Los caballeros
-                las prefieren rubias «Gentlemen Prefer Blondes»" overflow
-                the row. Tier 3 is the awareness layer; the full canonical
-                title is what users scan for. Original titles live in the
-                full / compact cards where there's room. */}
+            {/* Title + última función pill (center). The original title is
+                deliberately omitted here — on mobile 375, titles like "Los
+                caballeros las prefieren rubias «Gentlemen Prefer Blondes»"
+                overflow the row. Tier 3 is the awareness layer; the full
+                canonical title is what users scan for. Original titles live
+                in the full / compact cards where there's room. The pill, when
+                applicable, lives in-line after the title — Tier 3 has no tag
+                strip so this is the only available slot. */}
             <div className="min-w-0">
               <span
                 className={
@@ -540,10 +636,14 @@ function UpcomingIndex({ screenings }: { screenings: ScreeningRow[] }) {
               >
                 {s.film.title}
               </span>
+              {isLastFunction && (
+                <span className="tracking-card bg-carmine text-cream ml-2 px-1.5 py-0.5 align-middle font-mono text-[10px] uppercase">
+                  Última
+                </span>
+              )}
             </div>
 
-            {/* Cinema (right — its own row on mobile). Star prefix
-                dropped alongside the card-level one. */}
+            {/* Cinema (right — its own row on mobile). */}
             <div
               className={`tracking-card col-span-2 font-mono text-[11px] whitespace-nowrap uppercase md:col-span-1 ${
                 isIndie ? 'text-carmine font-bold' : 'text-ink-gray'
@@ -556,17 +656,15 @@ function UpcomingIndex({ screenings }: { screenings: ScreeningRow[] }) {
 
         return (
           <li key={s.id}>
-            {s.sourceUrl ? (
-              <a
-                href={s.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+            {s.film.slug ? (
+              <Link
+                href={`/pelicula/${s.film.slug}`}
                 data-screening-card
                 className="hover:bg-carmine/5 focus-visible:outline-carmine block transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
                 aria-label={`${s.film.title} — ${s.cinema.name} — ${formatTimeBA(s.startsAtUtc)}`}
               >
                 {rowBody}
-              </a>
+              </Link>
             ) : (
               rowBody
             )}

@@ -241,6 +241,11 @@ function parseS1Cycle(
         tags: inferTags(program),
         synopsisEs: s.film.synopsis,
         sourceUrl: program.detailUrl,
+        // S1 multi-film cycle: program.title is the curatorial wrapper
+        // (e.g., "Olivera-Aries", "Cine y Filosofía"), distinct from each
+        // s.film.title. The ingest's no-echo filter drops it when it
+        // happens to equal filmTitle (rare for S1 by definition).
+        programName: program.title,
       });
     }
   };
@@ -499,6 +504,11 @@ function parseS2SingleFilm(
       tags: inferTags(program),
       synopsisEs: film.synopsis,
       sourceUrl: program.detailUrl,
+      // S2 single-film: program.title may equal film.title (the listing
+      // wraps a single-film page), in which case the ingest no-echo filter
+      // drops it. When the listing wraps a real cycle context (e.g.,
+      // "Especial cine argentino"), the pill renders.
+      programName: program.title,
     });
   }
   return screenings;
