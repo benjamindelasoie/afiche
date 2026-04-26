@@ -156,7 +156,8 @@ async function reportUnenrichedFilms(): Promise<void> {
   );
   for (const f of stuck) {
     const yearStr = f.year !== null ? `(${f.year})` : '(no year)';
-    const patched = f.tmdbId !== null ? `  [tmdb_id=${f.tmdbId}, awaiting next pass]` : '';
+    const patched =
+      f.tmdbId !== null ? `  [tmdb_id=${f.tmdbId}, awaiting next pass]` : '';
     console.log(`  [${f.id}]  ${f.scrapedTitle}  ${yearStr}${patched}`);
   }
 }
