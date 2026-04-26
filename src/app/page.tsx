@@ -210,21 +210,18 @@ export default async function HomePage() {
           </>
         )}
 
-        {/* Footer — editorial signature. Kept cream-on-cream so it closes
-            the page softly, matching the masthead's editorial weight.
-            "Actualizado el DD de MMMM a las HH:MM" only renders when a
-            successful scrape run exists — silence rather than lie when
-            there's no timestamp to show. */}
-        <footer className="mt-20 border-t-8 border-double border-black pt-8 text-center">
-          <p className="font-serif text-lg italic">
-            Afiche — hecho por cinéfilos, para cinéfilos
-          </p>
-          {lastScrape && (
-            <p className="tracking-eyebrow text-ink-gray mt-2 font-mono text-[11px] uppercase">
+        {/* Footer — only the freshness stamp. The italic "hecho por
+            cinéfilos" sign-off was dropped per user feedback (read as
+            pretentious). Footer renders only when there's a successful
+            scrape to point at; otherwise we omit the whole bordered
+            block rather than show an empty signature. */}
+        {lastScrape && (
+          <footer className="mt-20 border-t-8 border-double border-black pt-8 text-center">
+            <p className="tracking-eyebrow text-ink-gray font-mono text-[11px] uppercase">
               Actualizado el {formatLastScrape(lastScrape)}
             </p>
-          )}
-        </footer>
+          </footer>
+        )}
       </main>
     </>
   );
@@ -480,7 +477,7 @@ function ScreeningCard({
               s.cinema.type === 'indie' &&
               isCompleteSynopsis(s.film.synopsisEs) && (
                 <p
-                  className="border-carmine mt-3 hidden line-clamp-3 max-w-prose border-l-2 pl-3 text-sm md:block"
+                  className="border-carmine mt-3 line-clamp-3 hidden max-w-prose border-l-2 pl-3 text-sm md:block"
                   style={{
                     maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)',
                     WebkitMaskImage:

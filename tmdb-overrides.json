@@ -6,5 +6,11 @@
     "tmdbId": 12345,
     "note": "TMDB has it under a different title; see tmdb.org/movie/12345"
   },
-  "overrides": []
+  "overrides": [
+    {
+      "scrapedTitle": "Una historia sencilla",
+      "tmdbId": 404,
+      "note": "David Lynch, 1999. TMDB has it as 'Una historia verdadera' (es-AR), the Lugones retro listed it as 'Una historia sencilla' — search returns 0 results for that title. tmdb.org/movie/404"
+    }
+  ]
 }

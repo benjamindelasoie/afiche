@@ -11,11 +11,17 @@
  *   - films.match_source tracks the outcome of TMDB enrichment. Possible values:
  *       'auto'            — fuzzy match succeeded, confidence >= threshold
  *       'override'        — matched via tmdb-overrides.json
+ *       'manual'          — operator set tmdb_id directly in Drizzle Studio;
+ *                           the next enrichment pass fetches details for that
+ *                           id and fills in poster/director/year/synopsis. The
+ *                           'manual' sentinel locks the row from re-search.
  *       'none'            — never attempted (new row, or explicitly reset)
  *       'none-attempted'  — attempted and failed (no candidates / low confidence);
  *                           the scraper will NOT re-query TMDB for this row on
- *                           subsequent runs. Transient errors (network, TMDB 5xx,
- *                           missing token) leave the row at 'none' so it retries.
+ *                           subsequent runs UNLESS tmdb_id is also set (in which
+ *                           case the manual-patch path takes over). Transient
+ *                           errors (network, TMDB 5xx, missing token) leave the
+ *                           row at 'none' so it retries.
  *                           To force a re-attempt after improving the matcher:
  *                             UPDATE films SET match_source='none'
  *                             WHERE match_source='none-attempted';
@@ -97,7 +103,7 @@ export const films = sqliteTable(
     matchConfidence: real('match_confidence'),
     // Provenance of the TMDB link. See schema-level doc comment above.
     matchSource: text('match_source', {
-      enum: ['auto', 'override', 'none', 'none-attempted'],
+      enum: ['auto', 'override', 'manual', 'none', 'none-attempted'],
     })
       .notNull()
       .default('none'),

@@ -34,8 +34,10 @@ vi.mock('@/db', async () => {
 });
 
 const enrichFilmMock = vi.fn();
+const enrichByTmdbIdMock = vi.fn();
 vi.mock('@/tmdb/enrich', () => ({
   enrichFilm: (...args: unknown[]) => enrichFilmMock(...args),
+  enrichByTmdbId: (...args: unknown[]) => enrichByTmdbIdMock(...args),
 }));
 
 vi.mock('@/tmdb/client', () => ({
@@ -57,9 +59,10 @@ async function seedCinema(): Promise<void> {
 async function seedFilm(args: {
   scrapedTitle: string;
   year: number | null;
-  matchSource: 'auto' | 'override' | 'none' | 'none-attempted';
+  matchSource: 'auto' | 'override' | 'manual' | 'none' | 'none-attempted';
   titleOriginal?: string | null;
   director?: string | null;
+  tmdbId?: number | null;
 }): Promise<number> {
   const [row] = await testDb
     .insert(films)
@@ -70,6 +73,7 @@ async function seedFilm(args: {
       titleOriginal: args.titleOriginal ?? null,
       director: args.director ?? null,
       matchSource: args.matchSource,
+      tmdbId: args.tmdbId ?? null,
     })
     .returning({ id: films.id });
   return row.id;
@@ -90,6 +94,7 @@ describe('enrichPendingFilms — retry semantics (regression)', () => {
   beforeEach(async () => {
     testDb = await makeInMemoryDb();
     enrichFilmMock.mockReset();
+    enrichByTmdbIdMock.mockReset();
     await seedCinema();
   });
 
@@ -247,6 +252,130 @@ describe('enrichPendingFilms — retry semantics (regression)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Manual-patch path: operator sets films.tmdb_id directly in Drizzle Studio
+// for a row whose auto match failed. Next enrichment pass picks it up and
+// fetches metadata via enrichByTmdbId (no search).
+// ---------------------------------------------------------------------------
+describe('enrichPendingFilms — manual tmdb_id patch path', () => {
+  beforeEach(async () => {
+    testDb = await makeInMemoryDb();
+    enrichFilmMock.mockReset();
+    enrichByTmdbIdMock.mockReset();
+    await seedCinema();
+  });
+
+  it('picks up a row with match_source="none-attempted" + tmdb_id set, calls enrichByTmdbId, flips to "manual"', async () => {
+    const patchedId = await seedFilm({
+      scrapedTitle: 'Una historia sencilla',
+      year: null,
+      matchSource: 'none-attempted',
+      tmdbId: 404, // operator set this in Studio
+    });
+
+    enrichByTmdbIdMock.mockResolvedValue({
+      delta: {
+        tmdbId: 404,
+        imdbId: 'tt0166896',
+        title: 'Una historia verdadera',
+        titleOriginal: 'The Straight Story',
+        director: 'David Lynch',
+        country: 'US',
+        year: 1999,
+        runtimeMin: 112,
+        posterUrl: 'https://image.tmdb.org/t/p/w342/straight.jpg',
+        synopsisEs: 'Un anciano viaja en cortacésped a ver a su hermano.',
+        matchConfidence: null,
+        matchSource: 'manual' as const,
+      },
+      reason: 'ok',
+    });
+
+    const result = await enrichPendingFilms([]);
+
+    expect(result.enriched).toBe(1);
+    expect(enrichByTmdbIdMock).toHaveBeenCalledWith(404);
+    expect(enrichFilmMock).not.toHaveBeenCalled(); // no search on the manual path
+    expect(await getMatchSource(patchedId)).toBe('manual');
+  });
+
+  it('does NOT touch a row with match_source="none-attempted" but tmdb_id null', async () => {
+    const stuckId = await seedFilm({
+      scrapedTitle: 'Some Stuck Title',
+      year: null,
+      matchSource: 'none-attempted',
+      tmdbId: null, // operator hasn't patched yet
+    });
+
+    await enrichPendingFilms([]);
+
+    expect(enrichByTmdbIdMock).not.toHaveBeenCalled();
+    expect(enrichFilmMock).not.toHaveBeenCalled();
+    expect(await getMatchSource(stuckId)).toBe('none-attempted');
+  });
+
+  it('on TMDB error during manual patch, leaves row at "none-attempted" with tmdb_id still set so next pass retries', async () => {
+    const patchedId = await seedFilm({
+      scrapedTitle: 'Network Glitched Title',
+      year: null,
+      matchSource: 'none-attempted',
+      tmdbId: 12345,
+    });
+
+    enrichByTmdbIdMock.mockResolvedValue({
+      delta: null,
+      reason: 'error',
+      error: 'TMDB 503',
+    });
+
+    const warnings: string[] = [];
+    const result = await enrichPendingFilms(warnings);
+
+    expect(result.skipped).toBe(1);
+    // Row keeps its 'none-attempted' state; tmdb_id stays set; next pass retries.
+    expect(await getMatchSource(patchedId)).toBe('none-attempted');
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('Network Glitched Title');
+    expect(warnings[0]).toContain('TMDB 503');
+  });
+
+  it('routes a fresh row (match_source="none") with tmdb_id pre-set through the manual path too', async () => {
+    // Operator patched a row before any scrape ran (e.g., reset matchSource
+    // to 'none' AND set tmdb_id). The branch decides on tmdbId presence,
+    // so this should still hit enrichByTmdbId, not search.
+    const id = await seedFilm({
+      scrapedTitle: 'Pre-patched',
+      year: null,
+      matchSource: 'none',
+      tmdbId: 999,
+    });
+
+    enrichByTmdbIdMock.mockResolvedValue({
+      delta: {
+        tmdbId: 999,
+        imdbId: null,
+        title: 'Pre-patched (TMDB)',
+        titleOriginal: null,
+        director: null,
+        country: null,
+        year: 2020,
+        runtimeMin: null,
+        posterUrl: null,
+        synopsisEs: null,
+        matchConfidence: null,
+        matchSource: 'manual' as const,
+      },
+      reason: 'ok',
+    });
+
+    await enrichPendingFilms([]);
+
+    expect(enrichByTmdbIdMock).toHaveBeenCalledWith(999);
+    expect(enrichFilmMock).not.toHaveBeenCalled();
+    expect(await getMatchSource(id)).toBe('manual');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Merge-on-collision (regression for 2026-04-20 Lumiton bug)
 //
 // Year-less providers create rows with year=NULL. SQLite's UNIQUE on
@@ -260,6 +389,7 @@ describe('enrichPendingFilms — merge on (scrapedTitle, year) collision', () =>
   beforeEach(async () => {
     testDb = await makeInMemoryDb();
     enrichFilmMock.mockReset();
+    enrichByTmdbIdMock.mockReset();
     await seedCinema();
   });
 

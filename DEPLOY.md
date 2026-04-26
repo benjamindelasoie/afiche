@@ -152,6 +152,29 @@ Go to **Actions → Scrape cinemas → Run workflow → main → Run**. 4 of 5
 providers will currently return 403; use this path only if you've put a proxy
 (CF Worker, Vercel Edge, paid residential) in front of the scraper first.
 
+### Manual TMDB patching
+
+Some films don't auto-match against TMDB — usually because TMDB indexes them under a different Spanish title (e.g., "The Straight Story" is "Una historia verdadera" in TMDB, not "Una historia sencilla" as Lugones lists it). For these, the scraper sets `match_source = 'none-attempted'` and won't keep re-querying.
+
+The scraper's tail prints all currently-stuck films:
+
+```
+Unenriched films (3) — set films.tmdb_id in Drizzle Studio to link manually, then re-run enrichment:
+  [42]  Una historia sencilla  (no year)
+  [73]  La ciudad y los perros  (1985)
+  ...
+```
+
+To patch one:
+
+1. Look up the film on tmdb.org, copy the numeric id from the URL (`tmdb.org/movie/<id>`).
+2. `npm run db:studio:prod`. Find the row in `films` (the bracket-id from the report is `films.id`). Set `tmdb_id` to the TMDB id. Save.
+3. `npm run db:enrich:prod`. The enrichment pass picks up rows with `tmdb_id` set + `match_source='none-attempted'` via the manual-patch path, fetches the full TMDB record, and flips them to `match_source='manual'` (locked from re-search).
+
+Faster than re-running the whole `scrape:prod` because it skips every provider's slow fetch.
+
+Alternative for one-off cases: add an entry to `tmdb-overrides.json` (mapped on `scraped_title`, applied to every future row that matches). Use the override file when the same title will recur across scrapes; use Studio patching for one-shot rescues of an existing row.
+
 ---
 
 ## 5. What to monitor

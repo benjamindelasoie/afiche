@@ -9,6 +9,7 @@
  */
 
 import 'dotenv/config';
+import { eq } from 'drizzle-orm';
 import { lugonesProvider } from '@/providers/lugones';
 import { malbaProvider } from '@/providers/malba';
 import { cineYorkProvider } from '@/providers/cine-york';
@@ -16,6 +17,7 @@ import { centroCulturalMunroProvider } from '@/providers/centro-cultural-munro';
 import { lumitonProvider } from '@/providers/lumiton';
 import { cineCosmosProvider } from '@/providers/cine-cosmos';
 import type { Provider } from '@/providers/types';
+import { db, films } from '@/db';
 import { ingest, type IngestSummary } from './ingest';
 import { startRun, finishRun, failRun } from './run-log';
 
@@ -111,9 +113,51 @@ async function main() {
   console.log(
     `Done. ${summaries.filter((s) => s.success).length}/${summaries.length} providers ok.`,
   );
+
+  await reportUnenrichedFilms();
+
   if (anyFailed) {
     console.log('At least one provider failed.');
     process.exit(1);
+  }
+}
+
+/**
+ * After every provider has run, print films whose TMDB enrichment ended in
+ * 'none-attempted' — the deterministic-miss state that won't retry on its
+ * own. These are the candidates for manual patching: look up the film on
+ * tmdb.org, set `films.tmdb_id` in Drizzle Studio, then re-run enrichment
+ * (the next scrape, or `npm run db:enrich:prod`) to fill in poster, director,
+ * year, synopsis. Rows whose tmdb_id is already set are flagged "patched"
+ * so the operator knows they've been addressed but the patch hasn't been
+ * applied yet (possibly because of a TMDB error during the just-finished
+ * pass; another run will retry).
+ */
+async function reportUnenrichedFilms(): Promise<void> {
+  const stuck = await db
+    .select({
+      id: films.id,
+      scrapedTitle: films.scrapedTitle,
+      year: films.year,
+      tmdbId: films.tmdbId,
+    })
+    .from(films)
+    .where(eq(films.matchSource, 'none-attempted'))
+    .orderBy(films.scrapedTitle);
+
+  if (stuck.length === 0) {
+    console.log('No unenriched films. ✨');
+    return;
+  }
+
+  console.log(
+    `\nUnenriched films (${stuck.length}) — set films.tmdb_id in Drizzle Studio` +
+      ' to link manually, then re-run enrichment:',
+  );
+  for (const f of stuck) {
+    const yearStr = f.year !== null ? `(${f.year})` : '(no year)';
+    const patched = f.tmdbId !== null ? `  [tmdb_id=${f.tmdbId}, awaiting next pass]` : '';
+    console.log(`  [${f.id}]  ${f.scrapedTitle}  ${yearStr}${patched}`);
   }
 }
 

@@ -12,10 +12,10 @@
  *     last_success_at, last_error, screening_count.
  */
 
-import { and, eq, gt, isNull, ne, sql } from 'drizzle-orm';
+import { and, eq, gt, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 import { db, films, screenings, providers } from '@/db';
 import type { ProviderRunResult, ScrapedScreening } from '@/providers/types';
-import { enrichFilm, type EnrichResult } from '@/tmdb/enrich';
+import { enrichFilm, enrichByTmdbId, type EnrichResult } from '@/tmdb/enrich';
 import { hasTmdbToken } from '@/tmdb/client';
 import { buildFilmSlug, withIdSuffix } from '@/lib/slug';
 
@@ -113,8 +113,10 @@ export async function ingest(result: ProviderRunResult): Promise<IngestSummary> 
         // title adds zero curatorial signal and clutters the card. This rule
         // applies uniformly across all providers — Lugones S2 single-film
         // pages, MALBA listings where the cycle wraps one film, etc.
-        const echoes = s.programName != null && normalizeForEcho(s.programName) === normalizeForEcho(s.filmTitle);
-        const programName = echoes ? null : s.programName ?? null;
+        const echoes =
+          s.programName != null &&
+          normalizeForEcho(s.programName) === normalizeForEcho(s.filmTitle);
+        const programName = echoes ? null : (s.programName ?? null);
 
         return {
           filmId,
@@ -271,7 +273,34 @@ async function upsertOneFilm(s: ScrapedScreening): Promise<number | undefined> {
   let filmId: number | undefined;
   let existingSlug: string | null = null;
 
-  if (Object.keys(updateSet).length > 0) {
+  if (s.year === undefined) {
+    // SQLite treats NULL as distinct in unique indexes: NULL == NULL is NULL,
+    // not TRUE, so the (scraped_title, year) unique constraint never fires for
+    // two NULL-year rows with the same title. Without an application-level
+    // dedup, every scrape that emits a year-less screening (e.g., Lugones
+    // detail pages where the year couldn't be parsed) creates a new orphan
+    // film row, and downstream the cartelera renders one card per row.
+    // Find-or-create on (scrapedTitle, year IS NULL) closes that hole.
+    const [existing] = await db
+      .select({ id: films.id, slug: films.slug })
+      .from(films)
+      .where(and(eq(films.scrapedTitle, s.filmTitle), isNull(films.year)))
+      .limit(1);
+    if (existing) {
+      filmId = existing.id;
+      existingSlug = existing.slug ?? null;
+      if (Object.keys(updateSet).length > 0) {
+        await db.update(films).set(updateSet).where(eq(films.id, existing.id));
+      }
+    } else {
+      const [inserted] = await db
+        .insert(films)
+        .values(insertValues)
+        .returning({ id: films.id, slug: films.slug });
+      filmId = inserted?.id;
+      existingSlug = inserted?.slug ?? null;
+    }
+  } else if (Object.keys(updateSet).length > 0) {
     const [row] = await db
       .insert(films)
       .values(insertValues)
@@ -283,9 +312,10 @@ async function upsertOneFilm(s: ScrapedScreening): Promise<number | undefined> {
     filmId = row?.id;
     existingSlug = row?.slug ?? null;
   } else {
-    // Nothing to refresh. Insert if new, otherwise leave existing row alone
-    // and look its id up. onConflictDoNothing + .returning() omits the row
-    // when the insert was a no-op, so we fall back to a SELECT in that case.
+    // Nothing to refresh, year is known. Insert if new, otherwise leave
+    // existing row alone and look its id up. onConflictDoNothing +
+    // .returning() omits the row when the insert was a no-op, so we fall
+    // back to a SELECT in that case.
     const [inserted] = await db
       .insert(films)
       .values(insertValues)
@@ -295,12 +325,10 @@ async function upsertOneFilm(s: ScrapedScreening): Promise<number | undefined> {
       filmId = inserted.id;
       existingSlug = inserted.slug ?? null;
     } else {
-      const yearCond =
-        s.year === undefined ? isNull(films.year) : eq(films.year, s.year);
       const [existing] = await db
         .select({ id: films.id, slug: films.slug })
         .from(films)
-        .where(and(eq(films.scrapedTitle, s.filmTitle), yearCond))
+        .where(and(eq(films.scrapedTitle, s.filmTitle), eq(films.year, s.year)))
         .limit(1);
       filmId = existing?.id;
       existingSlug = existing?.slug ?? null;
@@ -348,6 +376,14 @@ function filmKey(title: string, year: number | undefined): string {
  *   - A transient miss (error / no-token) leaves match_source='none'
  *     so the next run retries once the token is configured or TMDB recovers.
  *
+ * Manual-patch path: when an operator sets `films.tmdb_id` directly in
+ * Drizzle Studio for a row whose auto match failed, the next pass picks
+ * it up — the WHERE clause includes `matchSource='none-attempted' AND
+ * tmdbId IS NOT NULL`, and the loop branches to `enrichByTmdbId` which
+ * skips search and fetches details for the supplied id. The row ends up
+ * matchSource='manual', which locks it from further re-search.
+ * Workflow: see DEPLOY.md "Manual TMDB patching" section.
+ *
  * Merge-on-collision: the films unique index is on (scrapedTitle, year).
  * SQLite treats NULL as distinct, so a year-less provider (e.g. Lumiton)
  * can create a row with year=NULL that coexists with an older row that
@@ -369,6 +405,11 @@ export async function enrichPendingFilms(
     return { enriched: 0, merged: 0, skipped: 0 };
   }
 
+  // Two paths feed into this pass:
+  //   1. Fresh rows (matchSource='none') — full search via enrichFilm.
+  //   2. Manually-patched rows (matchSource='none-attempted' with a non-null
+  //      tmdb_id, set by an operator in Drizzle Studio after the auto match
+  //      failed) — direct fetch via enrichByTmdbId, no search.
   const pending = await db
     .select({
       id: films.id,
@@ -380,23 +421,38 @@ export async function enrichPendingFilms(
       // never overwrite a scraped venue synopsis (Lumiton/MALBA/Lugones
       // detail-page enrichment) with a TMDB-sourced one.
       synopsisEs: films.synopsisEs,
+      tmdbId: films.tmdbId,
     })
     .from(films)
-    .where(eq(films.matchSource, 'none'));
+    .where(
+      or(
+        eq(films.matchSource, 'none'),
+        and(eq(films.matchSource, 'none-attempted'), isNotNull(films.tmdbId)),
+      ),
+    );
 
   let enriched = 0;
   let merged = 0;
   let skipped = 0;
 
   for (const f of pending) {
-    // Pass every signal the scraper gave us. Providers like Lugones and the
-    // Lumiton-family pull titleOriginal + director from detail pages; TMDB
-    // search on the Spanish localized title alone misses ~20% of films
-    // that a search on the original title + director match finds instantly.
-    const result: EnrichResult = await enrichFilm(f.scrapedTitle, f.year ?? undefined, {
-      titleOriginal: f.titleOriginal ?? undefined,
-      director: f.director ?? undefined,
-    });
+    // Manual-patch branch: operator set tmdb_id by hand, skip search.
+    // Bypassing the search costs nothing and means a wrong match the
+    // operator just corrected won't be re-confused by another fuzzy hit.
+    let result: EnrichResult;
+    if (f.tmdbId !== null) {
+      result = await enrichByTmdbId(f.tmdbId);
+    } else {
+      // Pass every signal the scraper gave us. Providers like Lugones and
+      // the Lumiton-family pull titleOriginal + director from detail
+      // pages; TMDB search on the Spanish localized title alone misses
+      // ~20% of films that a search on the original title + director
+      // match finds instantly.
+      result = await enrichFilm(f.scrapedTitle, f.year ?? undefined, {
+        titleOriginal: f.titleOriginal ?? undefined,
+        director: f.director ?? undefined,
+      });
+    }
     if (result.delta) {
       // Merge check: TMDB just resolved a year that might collide with
       // another row having the same (scraped_title, year). Two cases:

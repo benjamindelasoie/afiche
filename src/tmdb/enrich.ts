@@ -54,7 +54,7 @@ export interface EnrichmentDelta {
    */
   synopsisEs: string | null;
   matchConfidence: number | null;
-  matchSource: 'auto' | 'override';
+  matchSource: 'auto' | 'override' | 'manual';
 }
 
 export interface EnrichResult {
@@ -183,7 +183,7 @@ function directorsMatch(scraped: string, tmdbDirectors: string[]): boolean {
 
 async function buildDelta(
   details: TmdbMovieDetails,
-  matchSource: 'auto' | 'override',
+  matchSource: 'auto' | 'override' | 'manual',
   confidence: number | null,
 ): Promise<EnrichmentDelta> {
   const directors = extractDirectors(details);
@@ -229,9 +229,7 @@ async function buildDelta(
  * Returns the trimmed overview text, or null when neither language has
  * coverage. Errors propagate to the caller (enrichFilm wraps them).
  */
-async function resolveSpanishSynopsis(
-  details: TmdbMovieDetails,
-): Promise<string | null> {
+async function resolveSpanishSynopsis(details: TmdbMovieDetails): Promise<string | null> {
   const esArOverview = details.overview?.trim() ?? '';
   if (esArOverview.length > 0) return esArOverview;
 
@@ -239,6 +237,34 @@ async function resolveSpanishSynopsis(
   const esDetails = await getMovie(details.id, 'es');
   const esOverview = esDetails.overview?.trim() ?? '';
   return esOverview.length > 0 ? esOverview : null;
+}
+
+/**
+ * Enrich by an explicitly-provided TMDB id. Used by the manual-patch path:
+ * an operator sets `films.tmdb_id` in Drizzle Studio for a row whose auto
+ * match failed, and the next enrichment pass calls this to skip search and
+ * fetch the full delta directly. Returns matchSource='manual' so the row
+ * is locked from re-search on subsequent runs.
+ *
+ * Errors propagate as { reason: 'error' } the same way enrichFilm does, so
+ * callers can keep the row at the existing matchSource on transient failure
+ * and retry on the next pass.
+ */
+export async function enrichByTmdbId(tmdbId: number): Promise<EnrichResult> {
+  if (!hasTmdbToken()) {
+    return { delta: null, reason: 'no-token' };
+  }
+  try {
+    const details = await getMovie(tmdbId);
+    const delta = await buildDelta(details, 'manual', null);
+    return { delta, reason: 'ok' };
+  } catch (err) {
+    return {
+      delta: null,
+      reason: 'error',
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
 }
 
 export { MATCH_CONFIDENCE_THRESHOLD };
