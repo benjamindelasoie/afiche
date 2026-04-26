@@ -23,6 +23,8 @@
     "db:rescrape": "npm run db:reset-programming && npm run db:scrape",
     "db:enrich": "dotenv -e .env.local -- tsx src/db/enrich.ts",
     "db:enrich:prod": "dotenv -e .env.prod -- tsx src/db/enrich.ts",
+    "db:refresh-enrichment": "dotenv -e .env.local -- tsx src/db/refresh-enrichment.ts",
+    "db:refresh-enrichment:prod": "dotenv -e .env.prod -- tsx src/db/refresh-enrichment.ts",
     "scrape:prod": "./scripts/scrape-prod.sh",
     "test": "vitest",
     "test:ui": "vitest --ui",
