@@ -9,27 +9,24 @@
 # that. Until we set up a proper proxy (CF Worker, etc.), this is the reliable
 # way to refresh prod data.
 #
-# Reads DATABASE_AUTH_TOKEN, TMDB_API_TOKEN, REVALIDATE_SECRET from .env.local
-# (gitignored). DATABASE_URL is overridden to the Turso URL because
-# .env.local's DATABASE_URL points at the local SQLite file for dev.
+# Reads DATABASE_URL, DATABASE_AUTH_TOKEN, TMDB_API_TOKEN, REVALIDATE_SECRET
+# from .env.prod (gitignored). All prod-only secrets live there; .env.local
+# is dev-only.
 #
 # Invoke via `npm run scrape:prod` (preferred) so Node version + PATH match
 # what the rest of the repo expects.
 
 set -euo pipefail
 
-# ---------------------------------------------------------------------------
-# Prod endpoints — public, safe to hardcode
-# ---------------------------------------------------------------------------
-TURSO_URL='libsql://afiche-benjamindelasoie.aws-us-east-1.turso.io'
 SITE_URL='https://afiche.vercel.app'
 
 # ---------------------------------------------------------------------------
-# Load secrets from .env.local (same file the dev workflow uses)
+# Load prod environment from .env.prod
 # ---------------------------------------------------------------------------
-ENV_FILE="$(dirname "$0")/../.env.local"
+ENV_FILE="$(dirname "$0")/../.env.prod"
 if [ ! -f "$ENV_FILE" ]; then
-  echo "error: .env.local not found at $ENV_FILE" >&2
+  echo "error: .env.prod not found at $ENV_FILE" >&2
+  echo "  See DEPLOY.md section 3 for the values to put there." >&2
   exit 1
 fi
 
@@ -40,16 +37,13 @@ set -a
 source "$ENV_FILE"
 set +a
 
-# Point at prod Turso, not the local SQLite file from .env.local.
-export DATABASE_URL="$TURSO_URL"
-
 # ---------------------------------------------------------------------------
 # Sanity check — fail loudly if any secret is missing rather than running with
 # a broken auth token and getting a cryptic error 45 seconds in.
 # ---------------------------------------------------------------------------
-for var in DATABASE_AUTH_TOKEN TMDB_API_TOKEN REVALIDATE_SECRET; do
+for var in DATABASE_URL DATABASE_AUTH_TOKEN TMDB_API_TOKEN REVALIDATE_SECRET; do
   if [ -z "${!var:-}" ]; then
-    echo "error: $var is empty or unset in .env.local" >&2
+    echo "error: $var is empty or unset in .env.prod" >&2
     exit 1
   fi
 done

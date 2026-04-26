@@ -34,19 +34,11 @@ turso db tokens create afiche
 # → eyJhbGciOi...
 ```
 
-Apply the schema to the fresh DB:
+Set up `.env.prod` first (see Section 3 for the full schema), then apply the schema and seed:
 
 ```bash
-# Temporarily point .env.local at Turso to run migrations
-# (Keep the file local. Don't commit this change.)
-DATABASE_URL='libsql://afiche-benjamindelasoie.aws-us-east-1.turso.io' \
-DATABASE_AUTH_TOKEN='<token>' \
-  npx drizzle-kit migrate
-
-# Seed the cinemas table (prod-safe: ON CONFLICT DO NOTHING, no films/screenings).
-DATABASE_URL='libsql://afiche-benjamindelasoie.aws-us-east-1.turso.io' \
-DATABASE_AUTH_TOKEN='<token>' \
-  npx tsx src/db/seed-cinemas.ts
+npm run db:migrate:prod
+npm run db:seed-cinemas:prod
 ```
 
 Verify:
@@ -56,6 +48,8 @@ turso db shell afiche "SELECT id, name FROM cinemas;"
 # → you should see 7 rows
 ```
 
+> Note: schema migrations also run automatically on every Vercel deploy (`drizzle-kit migrate && next build` is the build command — see `package.json`). The manual `db:migrate:prod` is for first-time setup or running migrations out-of-band.
+
 ### Re-scrape prod from scratch (recovery)
 
 If a scraper bug has poisoned prod with wrong data, wipe the programming
@@ -63,13 +57,8 @@ tables (screenings + films + scrape_runs — cinemas/providers stay) and
 re-run the scrapers:
 
 ```bash
-DATABASE_URL='libsql://afiche-benjamindelasoie.aws-us-east-1.turso.io' \
-DATABASE_AUTH_TOKEN='<token>' \
-  npx tsx src/db/reset-programming.ts
-
-DATABASE_URL='libsql://afiche-benjamindelasoie.aws-us-east-1.turso.io' \
-DATABASE_AUTH_TOKEN='<token>' \
-  npx tsx src/scrapers/run.ts
+dotenv -e .env.prod -- tsx src/db/reset-programming.ts
+npm run scrape:prod
 ```
 
 For local dev, the shortcut is `npm run db:rescrape` — chains
@@ -98,25 +87,29 @@ Copy the production URL — `scrape-prod.sh` hardcodes it as the revalidate targ
 
 ---
 
-## 3. Dev-machine .env.local (the prod scrape path)
+## 3. Dev-machine env files: `.env.local` (dev) + `.env.prod` (prod)
 
-Daily scraping runs from your dev machine via `npm run scrape:prod`. That wraps
-`scripts/scrape-prod.sh`, which sources `.env.local` and overrides `DATABASE_URL`
-to the Turso prod endpoint for just that run.
+Two files, strictly separated. Both are gitignored.
 
-Add these to `.env.local` alongside the dev values you already have:
+**`.env.local`** — local dev only. Used by `npm run dev`, `npm run db:migrate`, `npm run db:studio`, `npm run db:scrape`, etc. Never touches Turso.
 
-| Name                   | Value                                                 |
-|------------------------|-------------------------------------------------------|
-| `DATABASE_URL`         | `file:./local.db` — leave pointing at local SQLite for dev |
-| `DATABASE_AUTH_TOKEN`  | Turso token from step 1 (used only by scrape-prod.sh) |
-| `TMDB_API_TOKEN`       | your v4 Read Access Token                             |
-| `REVALIDATE_SECRET`    | same 32-byte hex as Vercel (must match)               |
+| Name              | Value                              |
+|-------------------|------------------------------------|
+| `DATABASE_URL`    | `file:./local.db` (local SQLite)   |
+| `TMDB_API_TOKEN`  | your v4 Read Access Token          |
 
-`scrape-prod.sh` hardcodes the production Turso URL and the Vercel site URL
-(both public), then pulls `DATABASE_AUTH_TOKEN`, `TMDB_API_TOKEN`, and
-`REVALIDATE_SECRET` from `.env.local`. It fails loudly if any secret is missing
-rather than running with a broken token.
+**`.env.prod`** — Turso + the Vercel deployment. Used by every `:prod`-suffixed npm script (`db:migrate:prod`, `db:studio:prod`, `db:seed-cinemas:prod`) and by `scripts/scrape-prod.sh`.
+
+| Name                   | Value                                                |
+|------------------------|------------------------------------------------------|
+| `DATABASE_URL`         | `libsql://afiche-<org>.turso.io`                     |
+| `DATABASE_AUTH_TOKEN`  | the Turso token from Section 1                       |
+| `TMDB_API_TOKEN`       | your v4 Read Access Token                            |
+| `REVALIDATE_SECRET`    | same 32-byte hex as Vercel (must match)              |
+
+The split exists so you cannot accidentally point `db:studio` or `db:scrape` at prod, and so prod operations (`:prod` suffix) are explicit and self-documenting in `package.json`.
+
+`scrape-prod.sh` reads everything from `.env.prod`. The Vercel site URL is the only thing still hardcoded in the script (it's public, so no harm).
 
 ### GitHub Actions secrets (optional, for the manual-trigger fallback)
 
@@ -137,8 +130,7 @@ scraper), set the same secrets at
 
 ## 4. First scrape (and ongoing refresh)
 
-From the dev machine, once Vercel is deployed and `.env.local` has the Turso
-token:
+From the dev machine, once Vercel is deployed and `.env.prod` is in place:
 
 ```bash
 npm run scrape:prod
