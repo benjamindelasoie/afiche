@@ -168,8 +168,10 @@ Unenriched films (3) — set films.tmdb_id in Drizzle Studio to link manually, t
 To patch one:
 
 1. Look up the film on tmdb.org, copy the numeric id from the URL (`tmdb.org/movie/<id>`).
-2. `npm run db:studio:prod`. Find the row in `films` (the bracket-id from the report is `films.id`). Set `tmdb_id` to the TMDB id. Save.
-3. `npm run db:enrich:prod`. The enrichment pass picks up rows with `tmdb_id` set + `match_source='none-attempted'` via the manual-patch path, fetches the full TMDB record, and flips them to `match_source='manual'` (locked from re-search).
+2. `npm run db:studio:prod`. Find the row in `films` (the bracket-id from the report is `films.id`). **Set only `tmdb_id`. Don't change `match_source`.** Save.
+3. `npm run db:enrich:prod`. The enrichment pass picks up the row, fetches the TMDB record, and flips `match_source` to `'manual'` (locked from re-search).
+
+> If you also set `match_source='manual'` yourself, the system still picks the row up (as long as `poster_url` is null — the heuristic for "not yet enriched"). Either flow works; the simplest is to leave `match_source` alone.
 
 Faster than re-running the whole `scrape:prod` because it skips every provider's slow fetch.
 

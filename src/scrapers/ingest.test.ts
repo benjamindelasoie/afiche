@@ -63,6 +63,7 @@ async function seedFilm(args: {
   titleOriginal?: string | null;
   director?: string | null;
   tmdbId?: number | null;
+  posterUrl?: string | null;
 }): Promise<number> {
   const [row] = await testDb
     .insert(films)
@@ -74,6 +75,7 @@ async function seedFilm(args: {
       director: args.director ?? null,
       matchSource: args.matchSource,
       tmdbId: args.tmdbId ?? null,
+      posterUrl: args.posterUrl ?? null,
     })
     .returning({ id: films.id });
   return row.id;
@@ -336,6 +338,60 @@ describe('enrichPendingFilms — manual tmdb_id patch path', () => {
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain('Network Glitched Title');
     expect(warnings[0]).toContain('TMDB 503');
+  });
+
+  // Regression: the operator's intuitive flow is to set BOTH tmdb_id AND
+  // match_source='manual' in Studio (because they're "manually linking" the
+  // film). The original WHERE clause excluded match_source='manual', so
+  // those patches were silently ignored. Fix: also pick up rows where
+  // match_source='manual' AND tmdb_id IS NOT NULL AND poster_url IS NULL —
+  // the absence of poster_url is the proxy for "enrichment hasn't run yet".
+  it('picks up a row with operator-set match_source="manual" + tmdb_id when poster_url is unset', async () => {
+    const id = await seedFilm({
+      scrapedTitle: 'Una historia sencilla',
+      year: null,
+      matchSource: 'manual',
+      tmdbId: 404,
+      posterUrl: null, // never enriched yet, despite the 'manual' label
+    });
+
+    enrichByTmdbIdMock.mockResolvedValue({
+      delta: {
+        tmdbId: 404,
+        imdbId: 'tt0166896',
+        title: 'Una historia verdadera',
+        titleOriginal: 'The Straight Story',
+        director: 'David Lynch',
+        country: 'US',
+        year: 1999,
+        runtimeMin: 112,
+        posterUrl: 'https://image.tmdb.org/t/p/w342/straight.jpg',
+        synopsisEs: 'Un anciano cruza Iowa en un cortacésped.',
+        matchConfidence: null,
+        matchSource: 'manual' as const,
+      },
+      reason: 'ok',
+    });
+
+    await enrichPendingFilms([]);
+
+    expect(enrichByTmdbIdMock).toHaveBeenCalledWith(404);
+    expect(await getMatchSource(id)).toBe('manual');
+  });
+
+  it('does NOT re-enrich a match_source="manual" row that already has poster_url set', async () => {
+    await seedFilm({
+      scrapedTitle: 'Already Enriched Manual',
+      year: 1999,
+      matchSource: 'manual',
+      tmdbId: 404,
+      posterUrl: 'https://image.tmdb.org/t/p/w342/already.jpg',
+    });
+
+    await enrichPendingFilms([]);
+
+    expect(enrichByTmdbIdMock).not.toHaveBeenCalled();
+    expect(enrichFilmMock).not.toHaveBeenCalled();
   });
 
   it('routes a fresh row (match_source="none") with tmdb_id pre-set through the manual path too', async () => {

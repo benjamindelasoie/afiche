@@ -405,11 +405,21 @@ export async function enrichPendingFilms(
     return { enriched: 0, merged: 0, skipped: 0 };
   }
 
-  // Two paths feed into this pass:
+  // Three paths feed into this pass:
   //   1. Fresh rows (matchSource='none') — full search via enrichFilm.
-  //   2. Manually-patched rows (matchSource='none-attempted' with a non-null
+  //   2. Failed-then-patched rows (matchSource='none-attempted' with a non-null
   //      tmdb_id, set by an operator in Drizzle Studio after the auto match
   //      failed) — direct fetch via enrichByTmdbId, no search.
+  //   3. Pre-emptively patched rows (matchSource='manual' with a non-null
+  //      tmdb_id BUT poster_url still null). 'manual' is normally the END
+  //      state of path #2, but operators intuitively pick it when patching
+  //      ("this is a manual link"). The poster_url null guard means the
+  //      row hasn't been enriched yet — pick it up. Once enrichByTmdbId
+  //      runs and writes poster_url, the row stops matching this clause
+  //      so we don't keep re-fetching on every scrape.
+  //      Edge case: films TMDB has but with no poster will keep re-matching
+  //      this clause every scrape. Acceptable cost; the operator can break
+  //      the loop by manually setting poster_url to '' in Studio.
   const pending = await db
     .select({
       id: films.id,
@@ -428,6 +438,11 @@ export async function enrichPendingFilms(
       or(
         eq(films.matchSource, 'none'),
         and(eq(films.matchSource, 'none-attempted'), isNotNull(films.tmdbId)),
+        and(
+          eq(films.matchSource, 'manual'),
+          isNotNull(films.tmdbId),
+          isNull(films.posterUrl),
+        ),
       ),
     );
 
