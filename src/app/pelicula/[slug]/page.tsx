@@ -57,7 +57,13 @@ export async function generateMetadata({
   const yearLabel = film.year ? ` (${film.year})` : '';
   const directorLabel = film.director ? ` — ${film.director}` : '';
   const title = `${film.title}${yearLabel}${directorLabel}`;
-  const next = screenings[0];
+  // Pick the first FUTURE screening for the og:description "próxima función"
+  // line; with the today_start lower bound on getUpcomingScreeningsByFilm
+  // (Issue 1 deemphasis fix), screenings[0] could be a past-today row that
+  // would mislabel here. Fall back to screenings[0] only when every row is
+  // past — a rare end-of-day edge case where nothing future remains.
+  const nowMs = Date.now();
+  const next = screenings.find((s) => s.startsAtUtc.getTime() >= nowMs) ?? screenings[0];
   const total = screenings.length;
   const next4hLabel = `próxima función ${formatDayShortBA(next.startsAtUtc)} ${formatTimeBA(
     next.startsAtUtc,
@@ -95,6 +101,9 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
   if (!result) notFound();
 
   const { film, screenings } = result;
+  // "Now" anchor for the past-screening visual treatment. Computed once
+  // here so every row's isPast comparison agrees.
+  const nowMs = Date.now();
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 md:py-16">
@@ -171,36 +180,40 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
         </h2>
         <ul className="mt-6 divide-y divide-black/15">
           {screenings.map((s) => (
-            <FilmScreeningRow key={s.id} s={s} />
+            <FilmScreeningRow
+              key={s.id}
+              s={s}
+              isPast={s.startsAtUtc.getTime() < nowMs}
+            />
           ))}
         </ul>
       </section>
-
-      <footer className="mt-20 border-t-8 border-double border-black pt-8 text-center">
-        <p className="font-serif text-lg italic">
-          Afiche — hecho por cinéfilos, para cinéfilos
-        </p>
-      </footer>
     </main>
   );
 }
 
-function FilmScreeningRow({ s }: { s: ScreeningRow }) {
+function FilmScreeningRow({ s, isPast }: { s: ScreeningRow; isPast: boolean }) {
   const visibleTags = s.tags.filter((t) => t !== 'cycle');
   const dayLabel = formatDayShortBA(s.startsAtUtc);
   const timeLabel = formatTimeBA(s.startsAtUtc);
+  // Past-screening visual: the carmine time accent and carmine cinema
+  // name mute to ink-gray, and a "Ya empezó" pill leads the meta column.
+  // Mirrors the home cartelera card so users moving between the two see
+  // a consistent demotion treatment.
+  const timeColor = isPast ? 'text-ink-gray' : 'text-carmine';
+  const cinemaColor = isPast ? 'text-ink-gray' : 'text-carmine';
 
   const rowBody = (
     <div className="grid grid-cols-[auto_1fr_auto] items-baseline gap-x-4 gap-y-1 px-1 py-4 md:gap-x-6">
       {/* Date + time — left column. Date in mono caps, time in italic
-          carmine serif (matches the cartelera card's time treatment). */}
+          serif (carmine for attendable, ink-gray for past). */}
       <div className="flex items-baseline gap-3">
         <span className="tracking-eyebrow text-ink-gray font-mono text-[11px] whitespace-nowrap uppercase">
           {dayLabel}
         </span>
         <time
           dateTime={s.startsAtUtc.toISOString()}
-          className="text-carmine font-serif text-2xl leading-none italic tabular-nums md:text-3xl"
+          className={`${timeColor} font-serif text-2xl leading-none italic tabular-nums md:text-3xl`}
         >
           {timeLabel}
         </time>
@@ -210,7 +223,12 @@ function FilmScreeningRow({ s }: { s: ScreeningRow }) {
           when the screening has a programName (different visual scale than
           the cartelera tag strip; this column is wider). */}
       <div className="min-w-0">
-        <p className="tracking-card text-carmine font-mono text-xs font-bold uppercase">
+        {isPast && (
+          <span className="tracking-card bg-ink-gray text-cream mb-1 inline-block px-1.5 py-0.5 font-mono text-[10px] uppercase">
+            Ya empezó
+          </span>
+        )}
+        <p className={`tracking-card ${cinemaColor} font-mono text-xs font-bold uppercase`}>
           {s.cinema.name}
         </p>
         {s.cinema.neighborhood && (
@@ -248,7 +266,7 @@ function FilmScreeningRow({ s }: { s: ScreeningRow }) {
           rel="noopener noreferrer"
           data-screening-card
           className="hover:bg-carmine/5 focus-visible:outline-carmine block transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
-          aria-label={`${s.cinema.name} — ${dayLabel} ${timeLabel}`}
+          aria-label={`${s.cinema.name} — ${dayLabel} ${timeLabel}${isPast ? ' (ya empezó)' : ''}`}
         >
           {rowBody}
         </a>

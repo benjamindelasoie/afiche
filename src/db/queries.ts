@@ -268,20 +268,21 @@ export async function getLastScreeningPerFilm(
 }
 
 /**
- * Look up a film by slug, plus all upcoming screenings of that film
- * across every BA venue. Used by /pelicula/<slug>.
+ * Look up a film by slug, plus all of today's + upcoming screenings of
+ * that film across every BA venue. Used by /pelicula/<slug>.
  *
  * Returns null when the slug doesn't exist OR when the film has no
- * upcoming screenings within the grace window. /pelicula/ resolves only
- * when both conditions are met (per design doc 2026-04-25): the page's
- * existence depends on the killer feature (cross-venue upcoming list)
- * being satisfiable. Otherwise notFound() → custom 404.
+ * screenings from today onwards. /pelicula/ resolves only when both
+ * conditions are met (per design doc 2026-04-25): the page's existence
+ * depends on the killer feature (cross-venue upcoming list) being
+ * satisfiable. Otherwise notFound() → custom 404.
  *
- * Grace window: the lower bound is `now() - 4h` (NOT `now()`) so the
- * page resolves for in-progress and just-ended screenings. Without the
- * grace, a user tapping a card at 20:01 for a 20:00 screening would
- * 404 — terrible UX. Most theatrical runtimes max ~3h, so 4h covers
- * the click-from-cartelera-to-just-started case.
+ * Lower bound is `getTodayStartBA(now)` — the start of today in BA.
+ * That includes screenings that already started today; the page marks
+ * them as past in the UI (B&W poster, "Ya empezó" pill) so users see
+ * them but don't tap them. Symmetry with the home cartelera, which
+ * also shows today's full programming: tapping a card on the home
+ * page must lead somewhere consistent, never to a 404.
  *
  * Returned rows are ordered by startsAtUtc ASC (chronological). The
  * page renders próxima función first; the LAST row is the candidate
@@ -300,7 +301,7 @@ export async function getUpcomingScreeningsByFilm(
     .limit(1);
   if (!filmRow) return null;
 
-  const lower = new Date(now.getTime() - 4 * 60 * 60 * 1000);
+  const lower = getTodayStartBA(now);
   const rows = await fetchRows({ lower, filmId: filmRow.id });
   if (rows.length === 0) return null;
 

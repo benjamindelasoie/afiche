@@ -168,6 +168,7 @@ export default async function HomePage() {
                       variant="full"
                       isFirstDay={dayIdx === 0}
                       lastScreeningPerFilm={lastScreeningPerFilm}
+                      now={now}
                     />
                   ))}
                 </div>
@@ -188,6 +189,7 @@ export default async function HomePage() {
                       day={day}
                       variant="compact"
                       lastScreeningPerFilm={lastScreeningPerFilm}
+                      now={now}
                     />
                   ))}
                 </div>
@@ -268,6 +270,7 @@ function DaySection({
   variant,
   isFirstDay = false,
   lastScreeningPerFilm,
+  now,
 }: {
   day: DayGroup;
   variant: 'full' | 'compact';
@@ -280,7 +283,12 @@ function DaySection({
   // ScreeningCard to flag the ÚLTIMA FUNCIÓN pill on rows where this
   // screening's startsAtUtc equals the film's max.
   lastScreeningPerFilm: Map<number, number>;
+  // "Now" anchor used to flag past-but-today screenings (startsAtUtc < now).
+  // Only matters for Tier 1 (today is in range); Tier 2 starts at next
+  // Monday so isPast there is always false.
+  now: Date;
 }) {
+  const nowMs = now.getTime();
   return (
     <div>
       {/* Day banner — rendered as <h2> for screen-reader outline.
@@ -319,6 +327,7 @@ function DaySection({
             isLastFunction={
               lastScreeningPerFilm.get(s.film.id) === s.startsAtUtc.getTime()
             }
+            isPast={s.startsAtUtc.getTime() < nowMs}
           />
         ))}
       </div>
@@ -337,6 +346,7 @@ function ScreeningCard({
   variant,
   isAboveFold,
   isLastFunction,
+  isPast,
 }: {
   s: ScreeningRow;
   variant: 'full' | 'compact';
@@ -347,6 +357,13 @@ function ScreeningCard({
   // FUNCIÓN pill in the tag strip — visual urgency signal for "catch
   // it now or wait years."
   isLastFunction: boolean;
+  // True when this screening's startsAtUtc is in the past relative to
+  // "now". Only happens for today's earlier screenings in Tier 1. We
+  // keep them visible (the day's full programming is meaningful context)
+  // but desaturate the poster, dim the body, and add a "Ya empezó" pill
+  // so they don't compete with attendable showings. The card link still
+  // works — /pelicula/<slug> shows the same screenings consistently.
+  isPast: boolean;
 }) {
   const isCompact = variant === 'compact';
   const posterSize = isCompact ? 'w-14 h-20' : 'w-20 h-28';
@@ -358,9 +375,14 @@ function ScreeningCard({
   const titleClass = isCompact
     ? 'font-serif text-xl sm:text-2xl leading-tight tracking-[-0.01em] text-balance'
     : 'font-serif text-2xl sm:text-3xl leading-tight tracking-[-0.01em] text-balance';
+  // Time accent: carmine for attendable screenings (visual call-to-action),
+  // muted ink-gray for already-started ones. Dropping the carmine on past
+  // screenings is the strongest signal — it's the loudest pixel on the
+  // attendable card, so removing it on a past card visibly demotes the row.
+  const timeColor = isPast ? 'text-ink-gray' : 'text-carmine';
   const timeClass = isCompact
-    ? 'font-serif italic text-3xl leading-none text-carmine tabular-nums md:mt-2'
-    : 'font-serif italic text-4xl leading-none text-carmine tabular-nums md:mt-2';
+    ? `font-serif italic text-3xl leading-none ${timeColor} tabular-nums md:mt-2`
+    : `font-serif italic text-4xl leading-none ${timeColor} tabular-nums md:mt-2`;
   const cardPadding = isCompact ? 'p-3 sm:p-4' : 'p-4 sm:p-5';
   // Compact keeps the left-bar but thinner so the whole section reads
   // as "related to this week but less important."
@@ -372,7 +394,7 @@ function ScreeningCard({
   // only tag was the bare cycle, the tag row disappears entirely.
   const visibleTags = s.tags.filter((t) => t !== 'cycle');
   const showTagStrip =
-    !isCompact && (visibleTags.length > 0 || s.programName || isLastFunction);
+    !isCompact && (visibleTags.length > 0 || s.programName || isLastFunction || isPast);
 
   const cardBody = (
     <>
@@ -384,6 +406,15 @@ function ScreeningCard({
           Próximamente skip the strip entirely to reduce visual chatter. */}
       {showTagStrip && (
         <div className="mb-2 flex flex-wrap gap-2">
+          {/* Past-screening pill leads the strip when present — informational,
+              ink-gray (NOT carmine) so it reads as a status, not a call-to-
+              action. Putting it first frames the rest of the strip ("yes
+              this had a retrospective tag, but it already passed today"). */}
+          {isPast && (
+            <span className="tracking-card bg-ink-gray text-cream px-2 py-0.5 font-mono text-[11px] uppercase">
+              Ya empezó
+            </span>
+          )}
           {isLastFunction && (
             <span className="tracking-card bg-carmine text-cream px-2 py-0.5 font-mono text-[11px] uppercase">
               Última función
@@ -428,10 +459,12 @@ function ScreeningCard({
                   sizes={isCompact ? '56px' : '80px'}
                   loading={isAboveFold ? 'eager' : 'lazy'}
                   fetchPriority={isAboveFold ? 'high' : 'auto'}
-                  className="h-full w-full object-cover"
+                  className={`h-full w-full object-cover ${isPast ? 'grayscale' : ''}`}
                 />
               ) : (
-                <span className="text-cream flex h-full w-full items-center justify-center bg-black px-1 text-center font-serif text-sm leading-tight italic">
+                <span
+                  className={`text-cream flex h-full w-full items-center justify-center bg-black px-1 text-center font-serif text-sm leading-tight italic ${isPast ? 'opacity-60' : ''}`}
+                >
                   {s.film.title}
                 </span>
               )}
