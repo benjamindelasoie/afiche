@@ -62,7 +62,7 @@ export async function generateMetadata({
   // (Issue 1 deemphasis fix), screenings[0] could be a past-today row that
   // would mislabel here. Fall back to screenings[0] only when every row is
   // past — a rare end-of-day edge case where nothing future remains.
-  const nowMs = Date.now();
+  const nowMs = new Date().getTime();
   const next = screenings.find((s) => s.startsAtUtc.getTime() >= nowMs) ?? screenings[0];
   const total = screenings.length;
   const next4hLabel = `próxima función ${formatDayShortBA(next.startsAtUtc)} ${formatTimeBA(
@@ -103,7 +103,7 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
   const { film, screenings } = result;
   // "Now" anchor for the past-screening visual treatment. Computed once
   // here so every row's isPast comparison agrees.
-  const nowMs = Date.now();
+  const nowMs = new Date().getTime();
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 md:py-16">
