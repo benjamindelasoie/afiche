@@ -216,10 +216,11 @@ function FilmScreeningRow({ s, isPast }: { s: ScreeningRow; isPast: boolean }) {
   const visibleTags = s.tags.filter((t) => t !== 'cycle');
   const dayLabel = formatDayShortBA(s.startsAtUtc);
   const timeLabel = formatTimeBA(s.startsAtUtc);
-  // Past-screening visual: the carmine time accent and carmine cinema
-  // name mute to ink-gray, and a "Ya empezó" pill leads the meta column.
-  // Mirrors the home cartelera card so users moving between the two see
-  // a consistent demotion treatment.
+  // Past-screening visual: the carmine time + cinema accents mute to
+  // ink-gray. No text label — "Ya empezó" overstates an in-progress
+  // state for screenings that ended hours ago, and "Ya terminó" would
+  // be wrong for one that just started. Color demotion alone is the
+  // signal: "you're not making this one."
   const timeColor = isPast ? 'text-ink-gray' : 'text-carmine';
   const cinemaColor = isPast ? 'text-ink-gray' : 'text-carmine';
 
@@ -239,15 +240,11 @@ function FilmScreeningRow({ s, isPast }: { s: ScreeningRow; isPast: boolean }) {
         </time>
       </div>
 
-      {/* Cinema + program context — middle column. The pill renders here
-          when the screening has a programName (different visual scale than
-          the cartelera tag strip; this column is wider). */}
+      {/* Cinema + program context — middle column. The program name pill
+          renders here when the screening has a programName (different
+          visual scale than the cartelera tag strip; this column is
+          wider). */}
       <div className="min-w-0">
-        {isPast && (
-          <span className="tracking-card bg-ink-gray text-cream mb-1 inline-block px-1.5 py-0.5 font-mono text-[10px] uppercase">
-            Ya empezó
-          </span>
-        )}
         <p
           className={`tracking-card ${cinemaColor} font-mono text-xs font-bold uppercase`}
         >
@@ -288,7 +285,7 @@ function FilmScreeningRow({ s, isPast }: { s: ScreeningRow; isPast: boolean }) {
           rel="noopener noreferrer"
           data-screening-card
           className="hover:bg-carmine/5 focus-visible:outline-carmine block transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
-          aria-label={`${s.cinema.name} — ${dayLabel} ${timeLabel}${isPast ? ' (ya empezó)' : ''}`}
+          aria-label={`${s.cinema.name} — ${dayLabel} ${timeLabel}`}
         >
           {rowBody}
         </a>

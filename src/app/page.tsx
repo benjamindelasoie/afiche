@@ -363,9 +363,12 @@ function ScreeningCard({
   // True when this screening's startsAtUtc is in the past relative to
   // "now". Only happens for today's earlier screenings in Tier 1. We
   // keep them visible (the day's full programming is meaningful context)
-  // but desaturate the poster, dim the body, and add a "Ya empezó" pill
-  // so they don't compete with attendable showings. The card link still
-  // works — /pelicula/<slug> shows the same screenings consistently.
+  // but desaturate the poster (grayscale) and mute the carmine time
+  // accent to ink-gray. No text label — "Ya empezó" / "Ya terminó"
+  // are both wrong some of the time (in-progress vs hours-past), and
+  // the visual signal alone is enough: "you're not making this one."
+  // The card link still works — /pelicula/<slug> shows the same
+  // screenings consistently.
   isPast: boolean;
 }) {
   const isCompact = variant === 'compact';
@@ -397,7 +400,7 @@ function ScreeningCard({
   // only tag was the bare cycle, the tag row disappears entirely.
   const visibleTags = s.tags.filter((t) => t !== 'cycle');
   const showTagStrip =
-    !isCompact && (visibleTags.length > 0 || s.programName || isLastFunction || isPast);
+    !isCompact && (visibleTags.length > 0 || s.programName || isLastFunction);
 
   const cardBody = (
     <>
@@ -409,15 +412,6 @@ function ScreeningCard({
           Próximamente skip the strip entirely to reduce visual chatter. */}
       {showTagStrip && (
         <div className="mb-2 flex flex-wrap gap-2">
-          {/* Past-screening pill leads the strip when present — informational,
-              ink-gray (NOT carmine) so it reads as a status, not a call-to-
-              action. Putting it first frames the rest of the strip ("yes
-              this had a retrospective tag, but it already passed today"). */}
-          {isPast && (
-            <span className="tracking-card bg-ink-gray text-cream px-2 py-0.5 font-mono text-[11px] uppercase">
-              Ya empezó
-            </span>
-          )}
           {isLastFunction && (
             <span className="tracking-card bg-carmine text-cream px-2 py-0.5 font-mono text-[11px] uppercase">
               Última función
