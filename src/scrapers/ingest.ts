@@ -250,6 +250,10 @@ export async function enrichPendingFilms(
       titleOriginal: films.titleOriginal,
       director: films.director,
       year: films.year,
+      // Read existing synopsisEs so we can apply provider-fields-win:
+      // never overwrite a scraped venue synopsis (Lumiton/MALBA/Lugones
+      // detail-page enrichment) with a TMDB-sourced one.
+      synopsisEs: films.synopsisEs,
     })
     .from(films)
     .where(eq(films.matchSource, 'none'));
@@ -321,6 +325,15 @@ export async function enrichPendingFilms(
         }
       }
 
+      // Provider-fields-win: only fill synopsisEs from TMDB when the row
+      // currently has no scraped venue synopsis. Lumiton/MALBA/Lugones
+      // detail-page synopses are editorially better than TMDB's
+      // peninsular-Spanish fallback.
+      const synopsisToWrite =
+        f.synopsisEs && f.synopsisEs.trim().length > 0
+          ? f.synopsisEs
+          : result.delta.synopsisEs;
+
       await db
         .update(films)
         .set({
@@ -333,6 +346,7 @@ export async function enrichPendingFilms(
           year: result.delta.year ?? f.year,
           runtimeMin: result.delta.runtimeMin,
           posterUrl: result.delta.posterUrl,
+          synopsisEs: synopsisToWrite,
           matchConfidence: result.delta.matchConfidence,
           matchSource: result.delta.matchSource,
         })

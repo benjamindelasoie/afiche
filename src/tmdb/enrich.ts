@@ -42,6 +42,17 @@ export interface EnrichmentDelta {
   year: number | null;
   runtimeMin: number | null;
   posterUrl: string | null;
+  /**
+   * Spanish synopsis sourced from TMDB. Resolved via es-AR → es fallback
+   * chain (see `buildDelta` for details). null when both languages return
+   * empty `overview` — TMDB has no Spanish coverage for that film.
+   *
+   * Precedence at ingest time: scraped-venue synopsis (Lumiton, MALBA,
+   * Lugones detail-page enrichment) wins over the TMDB fallback. The
+   * TMDB synopsis only writes through to films.synopsis_es when the row
+   * currently has null. See `enrichPendingFilms` for the precedence guard.
+   */
+  synopsisEs: string | null;
   matchConfidence: number | null;
   matchSource: 'auto' | 'override';
 }
@@ -184,6 +195,16 @@ async function buildDelta(
     ? parseInt(details.release_date.slice(0, 4), 10)
     : null;
 
+  // Synopsis fallback chain: es-AR (already in `details.overview`) → es →
+  // null. The first `details` came from getMovie(id) which defaults to
+  // language=es-AR. If that overview is empty, retry with language=es to
+  // pick up peninsular-Spanish coverage that TMDB may have for films
+  // without an Argentina-localized translation. Errors propagate (per
+  // /plan-ceo-review D7: simple chain semantics — blank means "TMDB has
+  // no Spanish overview", a fetch error means "we failed to talk to
+  // TMDB", and we don't conflate the two).
+  const synopsisEs = await resolveSpanishSynopsis(details);
+
   return {
     tmdbId: details.id,
     imdbId: details.imdb_id ?? null,
@@ -196,9 +217,28 @@ async function buildDelta(
     // Hotlinked TMDB CDN URL. next/image handles optimization via the
     // image.tmdb.org remotePattern in next.config.ts.
     posterUrl: posterImageUrl(details.poster_path, 'w342'),
+    synopsisEs,
     matchConfidence: confidence,
     matchSource,
   };
+}
+
+/**
+ * Resolve a Spanish synopsis with es-AR → es fallback.
+ *
+ * Returns the trimmed overview text, or null when neither language has
+ * coverage. Errors propagate to the caller (enrichFilm wraps them).
+ */
+async function resolveSpanishSynopsis(
+  details: TmdbMovieDetails,
+): Promise<string | null> {
+  const esArOverview = details.overview?.trim() ?? '';
+  if (esArOverview.length > 0) return esArOverview;
+
+  // es-AR returned blank — try the regional-stripped 'es' as a second pass.
+  const esDetails = await getMovie(details.id, 'es');
+  const esOverview = esDetails.overview?.trim() ?? '';
+  return esOverview.length > 0 ? esOverview : null;
 }
 
 export { MATCH_CONFIDENCE_THRESHOLD };

@@ -84,10 +84,19 @@ export async function searchMovies(
 /**
  * Fetch full movie details + credits by TMDB ID. Used after a match to
  * enrich with runtime, imdb_id, director, and (if desired) cast.
+ *
+ * `language` defaults to es-AR (regional Spanish, BA-aligned), but can be
+ * overridden to 'es' for fallback synopsis fetches when es-AR returns an
+ * empty `overview`. TMDB has Argentine localization for popular titles
+ * but falls back to English on long-tail; the es retry catches the cases
+ * where peninsular Spanish is available even when es-AR isn't.
  */
-export async function getMovie(id: number): Promise<TmdbMovieDetails> {
+export async function getMovie(
+  id: number,
+  language: 'es-AR' | 'es' = 'es-AR',
+): Promise<TmdbMovieDetails> {
   const params = new URLSearchParams({
-    language: 'es-AR',
+    language,
     append_to_response: 'credits',
   });
   const res = await fetch(`${BASE}/movie/${id}?${params.toString()}`, {
