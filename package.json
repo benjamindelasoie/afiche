@@ -25,6 +25,8 @@
     "db:enrich:prod": "dotenv -e .env.prod -- tsx src/db/enrich.ts",
     "db:refresh-enrichment": "dotenv -e .env.local -- tsx src/db/refresh-enrichment.ts",
     "db:refresh-enrichment:prod": "dotenv -e .env.prod -- tsx src/db/refresh-enrichment.ts",
+    "db:inspect": "dotenv -e .env.local -- tsx src/db/inspect-catalog.ts",
+    "db:inspect:prod": "dotenv -e .env.prod -- tsx src/db/inspect-catalog.ts",
     "scrape:prod": "./scripts/scrape-prod.sh",
     "test": "vitest",
     "test:ui": "vitest --ui",
