@@ -250,13 +250,20 @@ async function upsertOneFilm(s: ScrapedScreening): Promise<number | undefined> {
   // keys at SQL-build time and throws "No values to set" on an empty set clause,
   // which would blow up the whole ingest. So we branch: update only when there
   // is something worth refreshing.
+  // country intentionally NOT taken from the scraper. Venue FICHA TÉCNICA
+  // text is locale-dirty ("EE.UU", "República Checa, Eslovaquia y Hungría"
+  // for co-productions, full-name "Argentina" instead of ISO "AR") which
+  // poisons the column for filtering. TMDB's `iso_3166_1` is the canonical
+  // 2-letter ISO source. Trade-off: films that never match TMDB will have
+  // country=NULL forever (or until manually patched). At ~5-10 unmatched
+  // films out of ~110 in the catalog, that's an acceptable price for a
+  // clean, filterable column.
   const insertValues = {
     title: s.filmTitle,
     scrapedTitle: s.filmTitle,
     titleOriginal: s.filmTitleOriginal,
     director: s.director,
     year: s.year,
-    country: s.country,
     runtimeMin: s.runtimeMin,
     synopsisEs: s.synopsisEs,
     matchSource: 'none' as const,
@@ -266,7 +273,6 @@ async function upsertOneFilm(s: ScrapedScreening): Promise<number | undefined> {
   const updateSet: Record<string, unknown> = {};
   if (s.filmTitleOriginal !== undefined) updateSet.titleOriginal = s.filmTitleOriginal;
   if (s.director !== undefined) updateSet.director = s.director;
-  if (s.country !== undefined) updateSet.country = s.country;
   if (s.runtimeMin !== undefined) updateSet.runtimeMin = s.runtimeMin;
   if (s.synopsisEs !== undefined) updateSet.synopsisEs = s.synopsisEs;
 
