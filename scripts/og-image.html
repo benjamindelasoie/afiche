@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;700&family=Instrument+Serif:ital@0;1&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+      }
+      body {
+        background: #f6efe2;
+        color: #1a1a1a;
+        font-family: 'Instrument Serif', Georgia, serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 56px 80px;
+      }
+      .bar {
+        width: 280px;
+        height: 3px;
+        background: rgba(193, 39, 45, 0.8);
+        margin-bottom: 28px;
+      }
+      .eyebrow {
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 18px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #c1272d;
+        margin-bottom: 28px;
+      }
+      .wordmark {
+        font-family: 'Instrument Serif', Georgia, serif;
+        font-weight: 400;
+        font-size: 280px;
+        line-height: 0.9;
+        letter-spacing: -0.02em;
+        font-feature-settings: 'liga', 'kern';
+      }
+      .signature {
+        margin-top: 36px;
+        padding-top: 22px;
+        border-top: 1.5px solid #1a1a1a;
+        width: 580px;
+        text-align: center;
+        font-style: italic;
+        font-size: 28px;
+        color: #1a1a1a;
+      }
+      .venues {
+        margin-top: 14px;
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-style: normal;
+        font-size: 13px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #7a6e5a;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bar"></div>
+    <p class="eyebrow">Buenos Aires · cartelera curada</p>
+    <h1 class="wordmark">Afiche</h1>
+    <div class="signature">
+      hecho por cinéfilos, para cinéfilos
+      <p class="venues">Malba · Lugones · Lorca · Cosmos · Gaumont</p>
+    </div>
+  </body>
+</html>

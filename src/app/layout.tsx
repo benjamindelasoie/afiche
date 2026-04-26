@@ -26,7 +26,13 @@ const instrumentSerif = Instrument_Serif({
   fallback: ['Georgia', 'serif'],
 });
 
+// metadataBase lets Next.js resolve the file-convention OG image
+// (src/app/opengraph-image.png) to an absolute URL for og:image and
+// twitter:image meta tags. Without it the OG image URL is relative,
+// which Instagram/Slack/etc. won't resolve correctly when a link is
+// shared from a third-party context.
 export const metadata: Metadata = {
+  metadataBase: new URL('https://afiche.vercel.app'),
   title: 'Afiche — cartelera curada de Buenos Aires',
   description:
     'Cartelera curada de cine en Buenos Aires. MALBA, Cine Lorca, Sala Lugones, Cosmos, Gaumont, y más.',
