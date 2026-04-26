@@ -83,11 +83,15 @@ describe('slugify', () => {
 
 describe('buildFilmSlug', () => {
   it('appends year suffix when year is provided', () => {
-    expect(buildFilmSlug('Mulholland Drive', { year: 2001 })).toBe('mulholland-drive-2001');
+    expect(buildFilmSlug('Mulholland Drive', { year: 2001 })).toBe(
+      'mulholland-drive-2001',
+    );
   });
 
   it('falls back to id suffix when year is null', () => {
-    expect(buildFilmSlug('Untitled Doc', { year: null, id: 1234 })).toBe('untitled-doc-1234');
+    expect(buildFilmSlug('Untitled Doc', { year: null, id: 1234 })).toBe(
+      'untitled-doc-1234',
+    );
   });
 
   it('prefers year over id when both are provided', () => {

@@ -20,7 +20,7 @@ export default function NotFound() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-16 sm:px-6 md:py-24">
       <section className="space-y-6 py-12 text-center">
-        <h1 className="font-serif text-2xl leading-tight text-balance text-ink italic md:text-3xl">
+        <h1 className="text-ink font-serif text-2xl leading-tight text-balance italic md:text-3xl">
           Esta película no está programada en este momento.
         </h1>
         <p className="text-ink-gray font-serif text-lg italic">
@@ -28,7 +28,7 @@ export default function NotFound() {
         </p>
         <Link
           href="/"
-          className="tracking-eyebrow text-carmine border-carmine inline-block border-b font-mono text-[11px] uppercase mt-2"
+          className="tracking-eyebrow text-carmine border-carmine mt-2 inline-block border-b font-mono text-[11px] uppercase"
         >
           ← Cartelera actual
         </Link>

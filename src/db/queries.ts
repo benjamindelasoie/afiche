@@ -83,7 +83,11 @@ interface BoundedQuery {
   filmId?: number;
 }
 
-async function fetchRows({ lower, upper, filmId }: BoundedQuery): Promise<ScreeningRow[]> {
+async function fetchRows({
+  lower,
+  upper,
+  filmId,
+}: BoundedQuery): Promise<ScreeningRow[]> {
   const conditions = [gte(screenings.startsAtUtc, lower)];
   if (upper) conditions.push(lt(screenings.startsAtUtc, upper));
   if (filmId !== undefined) conditions.push(eq(screenings.filmId, filmId));

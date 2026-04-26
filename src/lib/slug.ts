@@ -33,19 +33,21 @@ const MAX_SLUG_LENGTH = 80;
 export function slugify(input: string): string {
   if (!input) return '';
 
-  return input
-    .normalize('NFKD')
-    // Strip combining diacritics (á → a, ñ → n, ü → u, etc.).
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    // Collapse anything that isn't ASCII letter/digit into a single hyphen.
-    .replace(/[^a-z0-9]+/g, '-')
-    // Trim leading/trailing hyphens that the previous step may have introduced.
-    .replace(/^-+|-+$/g, '')
-    // Cap length so URLs don't get unwieldy on long Spanish titles.
-    .slice(0, MAX_SLUG_LENGTH)
-    // Re-trim in case the slice landed on a trailing hyphen.
-    .replace(/-+$/, '');
+  return (
+    input
+      .normalize('NFKD')
+      // Strip combining diacritics (á → a, ñ → n, ü → u, etc.).
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      // Collapse anything that isn't ASCII letter/digit into a single hyphen.
+      .replace(/[^a-z0-9]+/g, '-')
+      // Trim leading/trailing hyphens that the previous step may have introduced.
+      .replace(/^-+|-+$/g, '')
+      // Cap length so URLs don't get unwieldy on long Spanish titles.
+      .slice(0, MAX_SLUG_LENGTH)
+      // Re-trim in case the slice landed on a trailing hyphen.
+      .replace(/-+$/, '')
+  );
 }
 
 /**
@@ -68,7 +70,12 @@ export function buildFilmSlug(
   options: { year: number | null; id?: number },
 ): string {
   const base = slugify(title);
-  const suffix = options.year != null ? String(options.year) : options.id != null ? String(options.id) : '';
+  const suffix =
+    options.year != null
+      ? String(options.year)
+      : options.id != null
+        ? String(options.id)
+        : '';
 
   if (!base && !suffix) {
     // Pathological case: empty title AND no year/id. Caller must supply id.

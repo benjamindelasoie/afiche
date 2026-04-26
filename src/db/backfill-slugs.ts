@@ -53,9 +53,7 @@ async function main() {
   // Also pre-load any slugs that already exist in the DB (post-migration,
   // some films might already have slugs from a partial backfill or new
   // scrape runs while this script wasn't run yet).
-  const existing = await db
-    .select({ slug: films.slug })
-    .from(films);
+  const existing = await db.select({ slug: films.slug }).from(films);
   for (const row of existing) {
     if (row.slug) used.add(row.slug);
   }

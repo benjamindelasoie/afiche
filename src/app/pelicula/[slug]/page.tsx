@@ -166,8 +166,7 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
         <h2 className="border-t border-black pt-4 font-serif text-2xl leading-none italic md:text-3xl">
           Próximas funciones
           <span className="text-ink-gray ml-3 font-mono text-[11px] tracking-[0.2em] uppercase not-italic">
-            {screenings.length}{' '}
-            {screenings.length === 1 ? 'función' : 'funciones'}
+            {screenings.length} {screenings.length === 1 ? 'función' : 'funciones'}
           </span>
         </h2>
         <ul className="mt-6 divide-y divide-black/15">
