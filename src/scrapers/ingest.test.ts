@@ -602,3 +602,124 @@ describe('ingest — bare-metadata films (regression for MALBA S2 crash)', () =>
     expect(row.director).toBe('Mariano Luque');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression: ingest crashed on Cine Cosmos with
+//   "DrizzleQueryError: ... UNIQUE constraint failed: films.slug"
+// (params: nuestra-tierra-2025, 919). Two scrapes with subtly different
+// scraped_titles that slugify to the same value collide on films.slug.
+// upsertOneFilm has a try/catch that retries with a -<id> tiebreaker, but
+// the original isSlugUniqueViolation only inspected err.message — Drizzle
+// wraps the libsql error, so the constraint string lives one level deeper.
+// Detection missed → catch re-threw → ingest aborted mid-run.
+// ---------------------------------------------------------------------------
+
+const { isSlugUniqueViolation } = await import('./ingest');
+
+describe('isSlugUniqueViolation — walks the cause chain (Cine Cosmos crash)', () => {
+  beforeEach(async () => {
+    testDb = await makeInMemoryDb();
+    await testDb
+      .insert(cinemas)
+      .values({ id: 'cine-cosmos', name: 'Cine Cosmos', type: 'indie' });
+  });
+
+  it('detects the wrapped DrizzleQueryError shape produced by libsql', async () => {
+    // Trigger a real UNIQUE violation on films.slug — the error shape we
+    // see from production. Two films, both want the same slug.
+    await testDb.insert(films).values({
+      title: 'Nuestra Tierra',
+      scrapedTitle: 'Nuestra Tierra',
+      slug: 'nuestra-tierra-2025',
+      matchSource: 'none',
+    });
+    const [{ id: secondId }] = await testDb
+      .insert(films)
+      .values({
+        title: 'Nuestra tierra',
+        scrapedTitle: 'Nuestra tierra',
+        slug: null,
+        matchSource: 'none',
+      })
+      .returning({ id: films.id });
+
+    let caught: unknown;
+    try {
+      await testDb
+        .update(films)
+        .set({ slug: 'nuestra-tierra-2025' })
+        .where(eq(films.id, secondId));
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeDefined();
+    // Pre-fix: this was false because err.message at the top is just
+    // "Failed query: update ...". Post-fix: walks .cause to find the
+    // SqliteError with the constraint string.
+    expect(isSlugUniqueViolation(caught)).toBe(true);
+  });
+
+  it('returns false for unrelated errors and non-Error values', () => {
+    expect(isSlugUniqueViolation(new Error('something else'))).toBe(false);
+    expect(isSlugUniqueViolation('not an error')).toBe(false);
+    expect(isSlugUniqueViolation(null)).toBe(false);
+    expect(isSlugUniqueViolation(undefined)).toBe(false);
+    // Different table — must not match (films.id is a different unique).
+    const wrapped = new Error('Failed query');
+    (wrapped as { cause?: unknown }).cause = new Error(
+      'UNIQUE constraint failed: films.id',
+    );
+    expect(isSlugUniqueViolation(wrapped)).toBe(false);
+  });
+});
+
+describe('ingest — slug collision retry (Cine Cosmos crash regression)', () => {
+  beforeEach(async () => {
+    testDb = await makeInMemoryDb();
+    enrichFilmMock.mockReset();
+    enrichFilmMock.mockResolvedValue({ delta: null, reason: 'no-candidates' });
+    await testDb
+      .insert(cinemas)
+      .values({ id: 'cine-cosmos', name: 'Cine Cosmos', type: 'indie' });
+  });
+
+  it('does not throw when a film slugifies to a value already taken — applies -<id> tiebreaker', async () => {
+    // Pre-existing film owns the natural slug. Simulates the prior-run row.
+    await testDb.insert(films).values({
+      title: 'Nuestra Tierra',
+      scrapedTitle: 'Nuestra Tierra (preview)',
+      year: 2025,
+      slug: 'nuestra-tierra-2025',
+      matchSource: 'none',
+    });
+
+    // New scrape: same title+year, different scraped_title (so it's a
+    // distinct films row), generating the same base slug.
+    const result = await ingest({
+      cinemaId: 'cine-cosmos',
+      success: true,
+      warnings: [],
+      screenings: [
+        {
+          cinemaId: 'cine-cosmos',
+          filmTitle: 'Nuestra tierra',
+          year: 2025,
+          startsAtUtc: new Date('2026-05-10T20:00:00Z'),
+          tags: [],
+          sourceUrl: 'https://cinecosmos.gob.ar/peliculas/nuestra-tierra/',
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.filmsUpserted).toBe(1);
+    expect(result.screeningsInserted).toBe(1);
+
+    const [collided] = await testDb
+      .select({ id: films.id, slug: films.slug })
+      .from(films)
+      .where(eq(films.scrapedTitle, 'Nuestra tierra'));
+    expect(collided.slug).toBe(`nuestra-tierra-2025-${collided.id}`);
+  });
+});
