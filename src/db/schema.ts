@@ -93,6 +93,18 @@ export const films = sqliteTable(
     country: text('country'),
     runtimeMin: integer('runtime_min'),
     synopsisEs: text('synopsis_es'),
+    // Top-billed cast from TMDB credits. JSON array of { name, character }
+    // sorted by TMDB's `order` (billing position, 0 = top). Capped at 8
+    // entries — anything beyond top 8 is below-the-fold for the editorial
+    // detail page and bloats row size for filtering. Null when the film
+    // has no TMDB match yet, or when TMDB's credits response was empty.
+    cast: text('cast', { mode: 'json' }).$type<CastMember[] | null>(),
+    // TMDB genre IDs (the numeric ones from /genre/movie/list). JSON array.
+    // We store IDs not localized names because TMDB occasionally tweaks
+    // translations and IDs are stable; render layer resolves to display
+    // strings via GENRE_LABELS_ES below. Same pattern as ScreeningTag +
+    // TAG_LABELS_ES. Null until enriched, [] when TMDB returns no genres.
+    genres: text('genres', { mode: 'json' }).$type<number[] | null>(),
     // TMDB's canonical ID. Populated when fuzzy match >= 0.8 OR via overrides.
     tmdbId: integer('tmdb_id'),
     // Cross-reference from TMDB response.
@@ -241,6 +253,51 @@ export type ScreeningTag =
   | 'cycle' // CICLO
   | 'vos' // versión original subtitulada
   | 'dubbed'; // doblada
+
+/**
+ * Top-billed cast entry from TMDB credits. Stored as JSON in films.cast.
+ * `character` is sometimes empty in TMDB's response (uncredited / unknown
+ * roles); render layer should treat empty character as "no role label".
+ */
+export interface CastMember {
+  name: string;
+  character: string;
+}
+
+/**
+ * TMDB movie genre IDs → es-AR display names. The full vocabulary from
+ * TMDB's /genre/movie/list endpoint. IDs are stable; names follow TMDB's
+ * es-AR localization (which can drift over time, hence the map lives in
+ * code rather than the DB).
+ *
+ * Used by:
+ *   - Render layer: resolves stored genre IDs to display labels
+ *   - Future filter UI: enumerates the vocabulary as filter chips
+ *
+ * If TMDB ever adds a genre, add it here. Unknown IDs in DB rows render
+ * as falsy via the lookup → caller can choose to skip or fall back.
+ */
+export const GENRE_LABELS_ES: Record<number, string> = {
+  28: 'Acción',
+  12: 'Aventura',
+  16: 'Animación',
+  35: 'Comedia',
+  80: 'Crimen',
+  99: 'Documental',
+  18: 'Drama',
+  10751: 'Familia',
+  14: 'Fantasía',
+  36: 'Historia',
+  27: 'Terror',
+  10402: 'Música',
+  9648: 'Misterio',
+  10749: 'Romance',
+  878: 'Ciencia ficción',
+  10770: 'Película de TV',
+  53: 'Suspense',
+  10752: 'Bélica',
+  37: 'Western',
+};
 
 export const TAG_LABELS_ES: Record<ScreeningTag, string> = {
   unique: 'ÚNICA FUNCIÓN',

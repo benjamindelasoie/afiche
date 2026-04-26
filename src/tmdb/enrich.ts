@@ -26,9 +26,12 @@ import {
   getMovie,
   posterImageUrl,
   extractDirectors,
+  extractTopCast,
+  extractGenreIds,
   type TmdbMovieDetails,
   type TmdbMovieSummary,
 } from './client';
+import type { CastMember } from '@/db/schema';
 import { pickBestMatch, scoreCandidates, MATCH_CONFIDENCE_THRESHOLD } from './match';
 import { findOverride } from './overrides';
 
@@ -53,6 +56,18 @@ export interface EnrichmentDelta {
    * currently has null. See `enrichPendingFilms` for the precedence guard.
    */
   synopsisEs: string | null;
+  /**
+   * Top-billed cast (up to 8) from TMDB credits, in billing order.
+   * Empty array when TMDB has no credits for the film. Render layer treats
+   * empty-character entries as name-only.
+   */
+  cast: CastMember[];
+  /**
+   * TMDB genre IDs (stable integers from /genre/movie/list). Empty array
+   * when TMDB returns no genres. Render layer resolves to es-AR labels via
+   * GENRE_LABELS_ES in @/db/schema.
+   */
+  genres: number[];
   matchConfidence: number | null;
   matchSource: 'auto' | 'override' | 'manual';
 }
@@ -218,6 +233,8 @@ async function buildDelta(
     // image.tmdb.org remotePattern in next.config.ts.
     posterUrl: posterImageUrl(details.poster_path, 'w342'),
     synopsisEs,
+    cast: extractTopCast(details),
+    genres: extractGenreIds(details),
     matchConfidence: confidence,
     matchSource,
   };

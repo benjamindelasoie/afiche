@@ -34,7 +34,12 @@ export interface TmdbMovieDetails extends TmdbMovieSummary {
   production_countries: Array<{ iso_3166_1: string; name: string }>;
   tagline: string;
   credits?: {
-    cast: Array<{ id: number; name: string; order: number }>;
+    cast: Array<{
+      id: number;
+      name: string;
+      character: string;
+      order: number;
+    }>;
     crew: Array<{ id: number; name: string; job: string; department: string }>;
   };
 }
@@ -144,4 +149,37 @@ export async function downloadPoster(
 export function extractDirectors(details: TmdbMovieDetails): string[] {
   if (!details.credits?.crew) return [];
   return details.credits.crew.filter((c) => c.job === 'Director').map((c) => c.name);
+}
+
+/**
+ * Top-billed cast for the editorial detail page. Returns up to `limit`
+ * entries sorted by TMDB's `order` (billing position, lowest first =
+ * marquee names). Returns an empty array when credits are missing rather
+ * than null so callers can write the column unconditionally — null vs []
+ * doesn't carry meaningful state for cast.
+ *
+ * Cap rationale: the detail page renders cast as a tight prose row, not
+ * a list. Beyond ~8 names it's noise; it doesn't affect filtering since
+ * we filter by genre, not by actor (yet).
+ */
+export function extractTopCast(
+  details: TmdbMovieDetails,
+  limit = 8,
+): Array<{ name: string; character: string }> {
+  if (!details.credits?.cast) return [];
+  return [...details.credits.cast]
+    .sort((a, b) => a.order - b.order)
+    .slice(0, limit)
+    .map((c) => ({ name: c.name, character: c.character ?? '' }));
+}
+
+/**
+ * TMDB genre IDs from a details response. Stable integers (the same set
+ * returned by /genre/movie/list); we resolve to display names via the
+ * GENRE_LABELS_ES map at render time. Empty array when no genres — same
+ * null-vs-empty rationale as extractTopCast.
+ */
+export function extractGenreIds(details: TmdbMovieDetails): number[] {
+  if (!details.genres) return [];
+  return details.genres.map((g) => g.id);
 }

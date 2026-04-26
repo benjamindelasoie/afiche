@@ -544,6 +544,8 @@ export async function enrichPendingFilms(
           runtimeMin: result.delta.runtimeMin,
           posterUrl: result.delta.posterUrl,
           synopsisEs: synopsisToWrite,
+          cast: result.delta.cast,
+          genres: result.delta.genres,
           matchConfidence: result.delta.matchConfidence,
           matchSource: result.delta.matchSource,
         })

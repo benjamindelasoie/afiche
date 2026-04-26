@@ -25,7 +25,7 @@
 
 import { and, eq, gt, gte, lt, asc, desc, sql } from 'drizzle-orm';
 import { db, screenings, films, cinemas, scrapeRuns } from './index';
-import type { ScreeningTag } from './schema';
+import type { CastMember, ScreeningTag } from './schema';
 import {
   getTodayStartBA,
   getNextIsoMondayBA,
@@ -57,6 +57,10 @@ export interface ScreeningRow {
     posterUrl: string | null;
     /** URL slug for /pelicula/<slug> link target. Always populated post-backfill. */
     slug: string | null;
+    /** Top-billed TMDB cast (up to 8). Null pre-enrichment, [] when TMDB had no credits. */
+    cast: CastMember[] | null;
+    /** TMDB genre IDs. Null pre-enrichment, [] when TMDB had no genres. Resolve to labels via GENRE_LABELS_ES. */
+    genres: number[] | null;
   };
   cinema: {
     id: string;
@@ -129,6 +133,8 @@ async function fetchRows({
       synopsisEs: row.film.synopsisEs,
       posterUrl: row.film.posterUrl,
       slug: row.film.slug ?? null,
+      cast: row.film.cast ?? null,
+      genres: row.film.genres ?? null,
     },
     cinema: {
       id: row.cinema.id,

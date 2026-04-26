@@ -165,6 +165,30 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
         )}
       </div>
 
+      {/* Reparto — top-billed cast from TMDB (capped at 8 by the
+          enricher, see extractTopCast in src/tmdb/client.ts). Renders
+          as a two-column list on sm+, single column on mobile. Each
+          entry: name in normal weight, character in ink-gray italic
+          after an em-dash. Skips entirely when cast is null
+          (pre-enrichment) or empty (TMDB had no credits). */}
+      {film.cast && film.cast.length > 0 && (
+        <section className="mb-12">
+          <h2 className="border-t border-black pt-4 font-serif text-2xl leading-none italic md:text-3xl">
+            Reparto
+          </h2>
+          <ul className="mt-6 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+            {film.cast.map((c, i) => (
+              <li key={`${c.name}-${i}`} className="text-sm md:text-base">
+                <span className="font-medium">{c.name}</span>
+                {c.character && (
+                  <span className="text-ink-gray italic"> — {c.character}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {/* Cross-venue screenings list — the killer feature. Reuses
           editorial registers (mono-tracked date+time chip, italic
           serif time accent, carmine cinema name). Renders as a list
