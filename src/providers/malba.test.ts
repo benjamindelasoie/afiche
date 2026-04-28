@@ -14,6 +14,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
   extractCycles,
+  extractContinuaScreenings,
   parseDetailPage,
   parseFilmSynopsis,
   enrichFromFilmDetailPages,
@@ -50,6 +51,68 @@ describe('extractCycles (listing page)', () => {
   it('returns all 10 current cine cycles from the April-2026 snapshot', () => {
     const cycles = extractCycles(html);
     expect(cycles).toHaveLength(10);
+  });
+});
+
+describe('extractContinuaScreenings (listing-page "Continúa" tiles)', () => {
+  const html = fixture('cine-listing.html');
+  // Anchor "now" at a fixed Tuesday 2026-04-28 12:00 BA so the
+  // next-weekday math is deterministic across the assertions.
+  const NOW = new Date('2026-04-28T15:00:00.000Z'); // Tue 12:00 BA
+
+  it('extracts all 5 Continúa tiles from the April-2026 snapshot', () => {
+    const warnings: string[] = [];
+    const out = extractContinuaScreenings(html, NOW, warnings);
+    expect(out).toHaveLength(5);
+    expect(warnings).toEqual([]);
+  });
+
+  it('captures title, director, sourceUrl, and a forward-dated UTC instant per tile', () => {
+    const out = extractContinuaScreenings(html, NOW, []);
+    const byTitle = Object.fromEntries(out.map((s) => [s.filmTitle, s]));
+    const souffleur = byTitle['The Souffleur'];
+    expect(souffleur).toBeDefined();
+    expect(souffleur.director).toBe('Gastón Solnicki');
+    expect(souffleur.sourceUrl).toBe('https://malba.org.ar/evento/the-souffleur/');
+    expect(souffleur.cinemaId).toBe('malba');
+    // Tue 2026-04-28 → next Saturday is 2026-05-02. 22:00 BA = 2026-05-03T01:00Z.
+    expect(souffleur.startsAtUtc.toISOString()).toBe('2026-05-03T01:00:00.000Z');
+  });
+
+  it('maps each Spanish weekday name to the correct next BA-local instance', () => {
+    const out = extractContinuaScreenings(html, NOW, []);
+    const byTitle = Object.fromEntries(out.map((s) => [s.filmTitle, s]));
+    // Anchor: Tue 2026-04-28 12:00 BA
+    // Viernes 2026-05-01 18:40 BA = 21:40 UTC
+    expect(byTitle['Los dias chinos'].startsAtUtc.toISOString()).toBe('2026-05-01T21:40:00.000Z');
+    // Viernes 2026-05-01 20:00 BA = 23:00 UTC
+    expect(byTitle['Pin de fartie'].startsAtUtc.toISOString()).toBe('2026-05-01T23:00:00.000Z');
+    // Domingo 2026-05-03 18:00 BA = 21:00 UTC
+    expect(byTitle['LS83'].startsAtUtc.toISOString()).toBe('2026-05-03T21:00:00.000Z');
+    // Domingo 2026-05-03 20:00 BA = 23:00 UTC
+    expect(byTitle['El príncipe de Nanawa'].startsAtUtc.toISOString()).toBe(
+      '2026-05-03T23:00:00.000Z',
+    );
+  });
+
+  it('advances by a full week when today matches the weekday but the time has passed', () => {
+    // Saturday 2026-05-02 23:00 BA = 2026-05-03T02:00Z. The Souffleur is
+    // "Sábados 22:00" — 22:00 BA on Saturday is 2026-05-03T01:00Z, which
+    // is BEFORE now. So next instance should be 2026-05-09 22:00 BA.
+    const lateSaturday = new Date('2026-05-03T02:00:00.000Z');
+    const out = extractContinuaScreenings(html, lateSaturday, []);
+    const souffleur = out.find((s) => s.filmTitle === 'The Souffleur');
+    expect(souffleur?.startsAtUtc.toISOString()).toBe('2026-05-10T01:00:00.000Z');
+  });
+
+  it('emits a warning + skips the tile when day-time prose cannot be parsed', () => {
+    const broken =
+      '<p>Continúa</p><h2><a href="https://malba.org.ar/evento/x/">X</a></h2>' +
+      '<div class="elementor-widget-container">prose without the expected schema</div>';
+    const warnings: string[] = [];
+    const out = extractContinuaScreenings(broken, NOW, warnings);
+    expect(out).toHaveLength(0);
+    expect(warnings.some((w) => /could not parse/.test(w))).toBe(true);
   });
 });
 

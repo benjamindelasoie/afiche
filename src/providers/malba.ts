@@ -98,7 +98,29 @@ export const malbaProvider: Provider = {
 
       const screenings: ScrapedScreening[] = [];
 
+      // Continúa tiles (e.g. "Continúa The Souffleur" + "Sábados a las
+      // 22:00") on the listing page describe single films held over from a
+      // prior week, with a recurring weekday + time and no explicit date
+      // list. We emit ONE screening per film on the next upcoming announced
+      // weekday — better than nothing, and cheap enough that a fresh scrape
+      // each week refreshes the date naturally. The detail pages for these
+      // are skipped in the schedule loop below (they'd hit S3 / no-schedule
+      // and produce only warnings); the synopsis-enrichment pass downstream
+      // still walks them when reachable.
+      const continuaScreenings = extractContinuaScreenings(
+        listingHtml,
+        new Date(),
+        warnings,
+      );
+      const continuaSlugs = new Set(
+        continuaScreenings
+          .map((s) => slugFromMalbaUrl(s.sourceUrl))
+          .filter((s): s is string => s !== null),
+      );
+      screenings.push(...continuaScreenings);
+
       for (const cycle of cycles) {
+        if (continuaSlugs.has(cycle.slug)) continue;
         try {
           const detailHtml = await fetchText(cycle.detailUrl);
           const parsed = parseDetailPage(detailHtml, cycle, warnings);
@@ -190,6 +212,160 @@ export function extractCycles(html: string): CycleLink[] {
   }
 
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// "Continúa" listing-side parser (a film held over from a prior week,
+// announced as recurring weekday + time, e.g. "Sábados a las 22:00").
+// We emit ONE screening on the next upcoming announced weekday — cheap,
+// useful, and refreshes naturally on the next weekly scrape.
+// ---------------------------------------------------------------------------
+
+/** JS-style weekday: 0=Sun..6=Sat. */
+const WEEKDAY_INDEX: Record<string, number> = {
+  domingo: 0,
+  domingos: 0,
+  lunes: 1,
+  martes: 2,
+  miércoles: 3,
+  miercoles: 3,
+  jueves: 4,
+  viernes: 5,
+  sábado: 6,
+  sábados: 6,
+  sabado: 6,
+  sabados: 6,
+};
+
+/** Extract the slug from a malba.org.ar/evento/<slug>/ URL, or null. */
+export function slugFromMalbaUrl(url: string): string | null {
+  const m = url.match(/malba\.org\.ar\/evento\/([a-z0-9-]+)\/?$/i);
+  return m ? m[1] : null;
+}
+
+/**
+ * Walk the listing HTML for "Continúa" tiles and emit one screening per
+ * film, dated on the next upcoming weekday at the announced time.
+ *
+ * Tile shape (Elementor markup):
+ *   ... Continúa</p>
+ *   <h2><a href=".../evento/<slug>/">Title</a></h2>
+ *   <div class="elementor-widget-text-editor">
+ *     De <Director> <br><DayName(s)> a las HH:MM
+ *   </div>
+ *
+ * `now` is injected for testability (deterministic next-weekday math).
+ */
+export function extractContinuaScreenings(
+  html: string,
+  now: Date,
+  warnings: string[],
+): ScrapedScreening[] {
+  const out: ScrapedScreening[] = [];
+  const continuaMarkers = [...html.matchAll(/[Cc]ontin[uú]a\s*<\/p>/g)];
+
+  for (const marker of continuaMarkers) {
+    const startIdx = marker.index ?? 0;
+    // Search forward for the title h2 + /evento/<slug>/ link, then the
+    // text-editor with director + day + time. Bound the search window to
+    // ~4KB to avoid spilling into the next tile if markup drifts.
+    const window = html.slice(startIdx, startIdx + 4000);
+
+    const h2Match = window.match(
+      /<h2[^>]*>\s*<a[^>]*href="https:\/\/malba\.org\.ar\/evento\/([a-z0-9-]+)\/?"[^>]*>([\s\S]*?)<\/a>\s*<\/h2>/i,
+    );
+    if (!h2Match) {
+      warnings.push('continúa tile: could not find <h2> with /evento/ link');
+      continue;
+    }
+    const slug = h2Match[1];
+    const title = cheerio.load(`<root>${h2Match[2]}</root>`)('root').text().trim();
+
+    const editorMatch = window.match(
+      /<div class="elementor-widget-container">\s*De\s+([^<]+?)\s*<br[^>]*>\s*([A-Za-zÁÉÍÓÚáéíóú]+)\s+a\s+las\s+(\d{1,2}):(\d{2})/,
+    );
+    if (!editorMatch) {
+      warnings.push(
+        `continúa tile "${slug}": could not parse "De <Director> <br><Day> a las HH:MM"`,
+      );
+      continue;
+    }
+    const director = editorMatch[1].trim();
+    const dayWord = editorMatch[2].toLowerCase();
+    const hour = parseInt(editorMatch[3], 10);
+    const minute = parseInt(editorMatch[4], 10);
+    const weekday = WEEKDAY_INDEX[dayWord];
+
+    if (weekday === undefined) {
+      warnings.push(`continúa tile "${slug}": unknown day name "${dayWord}"`);
+      continue;
+    }
+    if (hour < 0 || hour > 24 || minute < 0 || minute >= 60) {
+      warnings.push(`continúa tile "${slug}": out-of-range time ${hour}:${minute}`);
+      continue;
+    }
+
+    const startsAtUtc = nextWeekdayBaToUtc(weekday, hour, minute, now);
+    const detailUrl = `${DETAIL_BASE}${slug}/`;
+    out.push({
+      cinemaId: 'malba',
+      filmTitle: title,
+      director,
+      startsAtUtc,
+      tags: [],
+      sourceUrl: detailUrl,
+      // filmDetailUrl mirrors sourceUrl so the synopsis-enrichment pass
+      // still walks the detail page when MALBA's rate limit lets us.
+      filmDetailUrl: detailUrl,
+    });
+  }
+
+  return out;
+}
+
+/**
+ * Find the next BA-local datetime matching the given weekday + HH:MM that
+ * is strictly in the future relative to `now`. If today matches the
+ * weekday but the time has already passed, advance one week.
+ */
+function nextWeekdayBaToUtc(
+  weekday: number, // 0=Sun..6=Sat
+  hour: number,
+  minute: number,
+  now: Date,
+): Date {
+  // Compute today's BA-local date by reading the parts via Intl.
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Argentina/Buenos_Aires',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'short',
+  });
+  const parts = fmt.formatToParts(now);
+  const y = parseInt(parts.find((p) => p.type === 'year')!.value, 10);
+  const m = parseInt(parts.find((p) => p.type === 'month')!.value, 10) - 1;
+  const d = parseInt(parts.find((p) => p.type === 'day')!.value, 10);
+  // Sun=0..Sat=6 from short weekday name
+  const wkShort = parts.find((p) => p.type === 'weekday')!.value.toLowerCase();
+  const wkMap: Record<string, number> = {
+    sun: 0,
+    mon: 1,
+    tue: 2,
+    wed: 3,
+    thu: 4,
+    fri: 5,
+    sat: 6,
+  };
+  const todayWeekday = wkMap[wkShort.slice(0, 3)] ?? 0;
+
+  const daysAhead = (weekday - todayWeekday + 7) % 7;
+  // Build candidate at (y,m,d) + daysAhead, hour:minute BA local.
+  const candidateBa = new Date(Date.UTC(y, m, d + daysAhead, hour + 3, minute));
+  if (candidateBa.getTime() <= now.getTime()) {
+    candidateBa.setUTCDate(candidateBa.getUTCDate() + 7);
+  }
+  return candidateBa;
 }
 
 // ---------------------------------------------------------------------------
