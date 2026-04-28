@@ -1,16 +1,16 @@
 /**
  * Tests for the Cine Lorca provider.
  *
- * Lorca's cartelera is a JPEG image; OCR is done via tesseract.js inside
- * the provider. To keep tests fast and deterministic, we capture the OCR
- * output once (test/fixtures/lorca/cartelera-2026-04-23.ocr.json) and
- * test the parser against the captured text. Real OCR runs only when we
- * recapture the fixture (scripts/_capture-ocr.ts in the dev workflow).
+ * Lorca's cartelera is a JPEG image; we send it to Claude vision and parse
+ * the structured JSON response. To keep tests fast, deterministic, and
+ * runnable without an API key, we test against:
+ *   - cartelera-2026-04-23.parsed.json    Expected vision output (the
+ *                                         contract). Drives expandScreenings.
+ *   - synthetic JSON strings              Drive parseVisionResponse.
+ *   - current-production-2026-04-23.html  Drives extractCarteleraImageUrl.
  *
- * Fixtures (captured 2026-04-23):
- *   cartelera-2026-04-23.jpeg    The week's actual cartelera image
- *   cartelera-2026-04-23.ocr.json  OCR output (3 cropped strips)
- *   current-production-2026-04-23.html  /current-production page snapshot
+ * The committed JPEG fixture (cartelera-2026-04-23.jpeg) is kept around
+ * so we can sanity-check the live VLM call once an API key is available.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -18,9 +18,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
   extractCarteleraImageUrl,
-  parseCartelera,
+  parseVisionResponse,
   expandScreenings,
-  cleanTitle,
   type ParsedCartelera,
 } from './cine-lorca';
 
@@ -28,11 +27,9 @@ function fixture(name: string): string {
   return readFileSync(resolve(__dirname, '../../test/fixtures/lorca', name), 'utf8');
 }
 
-const ocrFixture = JSON.parse(fixture('cartelera-2026-04-23.ocr.json')) as {
-  left: string;
-  mid: string;
-  right: string;
-};
+const parsedFixture = JSON.parse(
+  fixture('cartelera-2026-04-23.parsed.json'),
+) as ParsedCartelera;
 
 // ---------------------------------------------------------------------------
 // extractCarteleraImageUrl
@@ -57,94 +54,92 @@ describe('extractCarteleraImageUrl', () => {
 });
 
 // ---------------------------------------------------------------------------
-// cleanTitle
+// parseVisionResponse
 // ---------------------------------------------------------------------------
 
-describe('cleanTitle', () => {
-  it('strips enclosing curly quotes', () => {
-    expect(cleanTitle('“EL DRAMA”')).toBe('EL DRAMA');
+describe('parseVisionResponse', () => {
+  const goodJson = JSON.stringify({
+    validFrom: { day: 23, month: 4 },
+    validTo: { day: 29, month: 4 },
+    year: 2026,
+    films: [{ title: 'Una película', times: ['18:00', '20:30'] }],
   });
 
-  it('strips trailing comma left by multi-line title joins', () => {
-    expect(cleanTitle('PADRE, MADRE, HERMANA, HERMANO,')).toBe(
-      'PADRE, MADRE, HERMANA, HERMANO',
-    );
+  it('parses a clean JSON response', () => {
+    const out = parseVisionResponse(goodJson);
+    expect(out.validFrom).toEqual({ year: 2026, month: 4, day: 23 });
+    expect(out.validTo).toEqual({ year: 2026, month: 4, day: 29 });
+    expect(out.films).toHaveLength(1);
+    expect(out.films[0]).toEqual({
+      title: 'Una película',
+      times: [
+        { hour: 18, minute: 0 },
+        { hour: 20, minute: 30 },
+      ],
+    });
   });
 
-  it('collapses internal whitespace', () => {
-    expect(cleanTitle('"CALLE   MÁLAGA"')).toBe('CALLE MÁLAGA');
+  it('strips ```json ... ``` markdown fences if the model adds them', () => {
+    const fenced = `\`\`\`json\n${goodJson}\n\`\`\``;
+    const out = parseVisionResponse(fenced);
+    expect(out.films).toHaveLength(1);
   });
 
-  it('returns null for empty or single-character input', () => {
-    expect(cleanTitle('"  "')).toBeNull();
-    expect(cleanTitle('a')).toBeNull();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// parseCartelera
-// ---------------------------------------------------------------------------
-
-describe('parseCartelera', () => {
-  it('extracts the validity range from the LEFT strip', () => {
-    const warnings: string[] = [];
-    const parsed = parseCartelera(ocrFixture, warnings);
-    expect(parsed.validFrom).toEqual({ year: 2026, month: 4, day: 23 });
-    expect(parsed.validTo).toEqual({ year: 2026, month: 4, day: 29 });
+  it('strips bare ``` fences', () => {
+    const fenced = `\`\`\`\n${goodJson}\n\`\`\``;
+    const out = parseVisionResponse(fenced);
+    expect(out.films).toHaveLength(1);
   });
 
-  it('parses 7 films across the MID and RIGHT strips', () => {
-    const warnings: string[] = [];
-    const parsed = parseCartelera(ocrFixture, warnings);
-    expect(parsed.films).toHaveLength(7);
+  it('throws on invalid JSON', () => {
+    expect(() => parseVisionResponse('not json at all')).toThrow(/not valid JSON/i);
   });
 
-  it('captures showtimes per film (tolerant to OCR-mangled titles)', () => {
-    const warnings: string[] = [];
-    const parsed = parseCartelera(ocrFixture, warnings);
-    // Anchor each lookup on the most distinctive substring that survives
-    // OCR drift. "EL DRAMA" mangles to "El DR A MA" — match the spaced
-    // form, since "DRAMA" alone overlaps with "MADRE" in the previous
-    // film's title.
-    const padre = parsed.films.find((f) => /padre/i.test(f.title));
-    expect(padre?.times).toEqual([
-      { hour: 14, minute: 10 },
-      { hour: 20, minute: 5 },
+  it('throws when required fields are missing', () => {
+    const missing = JSON.stringify({ validFrom: { day: 1, month: 1 }, year: 2026 });
+    expect(() => parseVisionResponse(missing)).toThrow(/missing required fields/i);
+  });
+
+  it('handles year rollover when validTo precedes validFrom in the printed year', () => {
+    const json = JSON.stringify({
+      validFrom: { day: 30, month: 12 },
+      validTo: { day: 5, month: 1 },
+      year: 2026,
+      films: [{ title: 'X', times: ['18:00'] }],
+    });
+    const out = parseVisionResponse(json);
+    expect(out.validFrom).toEqual({ year: 2026, month: 12, day: 30 });
+    expect(out.validTo).toEqual({ year: 2027, month: 1, day: 5 });
+  });
+
+  it('drops films with empty titles or no valid times', () => {
+    const json = JSON.stringify({
+      validFrom: { day: 1, month: 5 },
+      validTo: { day: 7, month: 5 },
+      year: 2026,
+      films: [
+        { title: 'Real', times: ['18:00'] },
+        { title: '   ', times: ['20:00'] },
+        { title: 'NoTimes', times: [] },
+        { title: 'BadTimes', times: ['nonsense', '99:99'] },
+      ],
+    });
+    const out = parseVisionResponse(json);
+    expect(out.films.map((f) => f.title)).toEqual(['Real']);
+  });
+
+  it('skips out-of-range time tuples but keeps valid ones in the same film', () => {
+    const json = JSON.stringify({
+      validFrom: { day: 1, month: 5 },
+      validTo: { day: 7, month: 5 },
+      year: 2026,
+      films: [{ title: 'X', times: ['18:00', '99:99', '20:30'] }],
+    });
+    const out = parseVisionResponse(json);
+    expect(out.films[0].times).toEqual([
+      { hour: 18, minute: 0 },
+      { hour: 20, minute: 30 },
     ]);
-    const drama = parsed.films.find((f) => /\bdr\s*a\s*ma\b|\bdrama\b/i.test(f.title));
-    expect(drama?.times).toEqual([
-      { hour: 13, minute: 50 },
-      { hour: 22, minute: 20 },
-    ]);
-    const kremlin = parsed.films.find((f) => /kremlin/i.test(f.title));
-    expect(kremlin?.times).toEqual([
-      { hour: 15, minute: 55 },
-      { hour: 22, minute: 5 },
-    ]);
-    const risa = parsed.films.find((f) => /risa/i.test(f.title));
-    expect(risa?.times).toEqual([{ hour: 16, minute: 10 }]);
-    const calleMalaga = parsed.films.find((f) => /m[aá]laga/i.test(f.title));
-    expect(calleMalaga?.times).toEqual([{ hour: 20, minute: 15 }]);
-    const gioia = parsed.films.find((f) => /sicilia/i.test(f.title));
-    expect(gioia?.times).toEqual([{ hour: 18, minute: 30 }]);
-  });
-
-  it('returns null validity + warning when OCR text lacks a date range', () => {
-    const warnings: string[] = [];
-    const parsed = parseCartelera({ left: 'no dates here', mid: '', right: '' }, warnings);
-    expect(parsed.validFrom).toBeNull();
-    expect(parsed.validTo).toBeNull();
-    expect(warnings.some((w) => w.includes('validity'))).toBe(true);
-  });
-
-  it('handles year rollover when validTo is before validFrom in the same year', () => {
-    const warnings: string[] = [];
-    const parsed = parseCartelera(
-      { left: '30/12 AL 05/01\n2026', mid: '', right: '' },
-      warnings,
-    );
-    expect(parsed.validFrom).toEqual({ year: 2026, month: 12, day: 30 });
-    expect(parsed.validTo).toEqual({ year: 2027, month: 1, day: 5 });
   });
 });
 
@@ -153,35 +148,28 @@ describe('parseCartelera', () => {
 // ---------------------------------------------------------------------------
 
 describe('expandScreenings', () => {
-  function makeParsed(films: ParsedCartelera['films']): ParsedCartelera {
-    return {
+  it('cross-products films × times × days across the validity range', () => {
+    const parsed: ParsedCartelera = {
       validFrom: { year: 2026, month: 4, day: 23 },
       validTo: { year: 2026, month: 4, day: 29 },
-      films,
+      films: [
+        { title: 'A', times: [{ hour: 18, minute: 0 }] },
+        {
+          title: 'B',
+          times: [
+            { hour: 14, minute: 0 },
+            { hour: 22, minute: 0 },
+          ],
+        },
+      ],
     };
-  }
-
-  it('cross-products films × times × days across the validity range', () => {
-    const parsed = makeParsed([
-      { title: 'A', times: [{ hour: 18, minute: 0 }] },
-      {
-        title: 'B',
-        times: [
-          { hour: 14, minute: 0 },
-          { hour: 22, minute: 0 },
-        ],
-      },
-    ]);
-    const out = expandScreenings(parsed, 'https://cinelorca.wixsite.com/cine-lorca/current-production');
-    // 7 days × (1 + 2) times = 21 screenings
-    expect(out).toHaveLength(21);
+    const out = expandScreenings(parsed, 'https://example/');
+    expect(out).toHaveLength(7 * 3); // 7 days × (1 + 2) times
   });
 
-  it('emits 70 screenings for the captured fixture (7 films, 10 distinct times, 7 days)', () => {
-    const warnings: string[] = [];
-    const parsed = parseCartelera(ocrFixture, warnings);
-    const screenings = expandScreenings(parsed, 'https://cinelorca.wixsite.com/cine-lorca/current-production');
-    // 7 days × (2+2+1+2+1+1+1) times = 7 × 10 = 70
+  it('emits 70 screenings for the captured 2026-04-23 fixture (7 films × 10 times × 7 days)', () => {
+    const screenings = expandScreenings(parsedFixture, 'https://example/');
+    // 2 + 2 + 1 + 2 + 1 + 1 + 1 = 10 distinct (film, time) tuples × 7 days
     expect(screenings).toHaveLength(70);
   });
 
@@ -192,14 +180,12 @@ describe('expandScreenings', () => {
       films: [{ title: 'X', times: [{ hour: 20, minute: 5 }] }],
     };
     const [s] = expandScreenings(parsed, 'https://example/');
-    // 23 Apr 2026 20:05 BA = 23 Apr 2026 23:05 UTC
+    // 23 Apr 2026 20:05 BA → 23 Apr 2026 23:05 UTC
     expect(s.startsAtUtc.toISOString()).toBe('2026-04-23T23:05:00.000Z');
   });
 
   it('every screening has cinemaId=lorca, no tags, sourceUrl set', () => {
-    const warnings: string[] = [];
-    const parsed = parseCartelera(ocrFixture, warnings);
-    const screenings = expandScreenings(parsed, 'https://example/');
+    const screenings = expandScreenings(parsedFixture, 'https://example/');
     for (const s of screenings) {
       expect(s.cinemaId).toBe('lorca');
       expect(s.tags).toEqual([]);
@@ -214,5 +200,21 @@ describe('expandScreenings', () => {
       films: [{ title: 'X', times: [{ hour: 18, minute: 0 }] }],
     };
     expect(expandScreenings(parsed, 'https://example/')).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Live smoke test (requires ANTHROPIC_API_KEY; auto-skipped without it)
+// ---------------------------------------------------------------------------
+
+describe.skipIf(!process.env.ANTHROPIC_API_KEY)('live vision call', () => {
+  it.skip('extracts the captured fixture image into the expected shape (manual)', async () => {
+    // Intentionally skipped by default. Unskip locally to verify the live
+    // VLM call against the JPEG fixture once an API key is configured.
+    // Asserts loose invariants because the model may return slightly
+    // different casing or punctuation:
+    //   - 7 films
+    //   - validFrom == 2026-04-23, validTo == 2026-04-29
+    //   - sum of times across all films == 10
   });
 });

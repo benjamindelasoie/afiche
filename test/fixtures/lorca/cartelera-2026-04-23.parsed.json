@@ -1,0 +1,43 @@
+{
+  "validFrom": { "year": 2026, "month": 4, "day": 23 },
+  "validTo": { "year": 2026, "month": 4, "day": 29 },
+  "films": [
+    {
+      "title": "PADRE, MADRE, HERMANA, HERMANO",
+      "times": [
+        { "hour": 14, "minute": 10 },
+        { "hour": 20, "minute": 5 }
+      ]
+    },
+    {
+      "title": "EL DRAMA",
+      "times": [
+        { "hour": 13, "minute": 50 },
+        { "hour": 22, "minute": 20 }
+      ]
+    },
+    {
+      "title": "RISA Y LA CABINA DEL VIENTO",
+      "times": [{ "hour": 16, "minute": 10 }]
+    },
+    {
+      "title": "EL MAGO DEL KREMLIN",
+      "times": [
+        { "hour": 15, "minute": 55 },
+        { "hour": 22, "minute": 5 }
+      ]
+    },
+    {
+      "title": "CASO 137",
+      "times": [{ "hour": 18, "minute": 0 }]
+    },
+    {
+      "title": "CALLE MÁLAGA",
+      "times": [{ "hour": 20, "minute": 15 }]
+    },
+    {
+      "title": "GIOIA MIA: un verano en Sicilia",
+      "times": [{ "hour": 18, "minute": 30 }]
+    }
+  ]
+}

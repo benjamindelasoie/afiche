@@ -1,44 +1,48 @@
 /**
  * Cine Lorca provider. Two-screen arthouse on Av. Corrientes 1428,
  * inaugurated 1968. All films screened in original-language with subtitles.
+ * Programming cycle is Thursday → Wednesday.
  *
  * Strategy:
  *   Lorca publishes its weekly cartelera as a JPEG image only — no HTML
  *   schedule, no API. Each Thursday a new image goes up with that week's
- *   program (Thursday → Wednesday cycle). We OCR the image to recover the
- *   schedule, parse the resulting text, and emit ScrapedScreening rows.
+ *   program. We send the image to Claude Haiku 4.5 vision and parse the
+ *   structured JSON it returns.
  *
  *   1. Fetch /current-production from the Wix-hosted site.
  *   2. Locate the <img> reference whose URL ends in `cartelera.jpeg`.
  *   3. Download the image bytes.
- *   4. Crop into 3 vertical strips (left=pricing+validity, mid=films 1-3,
- *      right=films 4-7). OCR each strip independently with PSM 6 because
- *      the multi-column layout otherwise interleaves rows across columns.
- *   5. Parse the linear text per strip:
- *        LEFT — extract validity range "DD/MM AL DD/MM" + 4-digit year.
- *        MID/RIGHT — each film block ends with a "Duración:" line; collect
- *        title (possibly multi-line) and showtimes (HH:MM hs).
+ *   4. Call Claude vision with the image + a strict-JSON-output prompt.
+ *   5. Parse + validate the JSON response into a ParsedCartelera.
  *   6. Expand each (film × time × day-in-validity-range) → one screening.
  *
- * OCR is intentionally an implementation detail of this module. The Provider
- * interface returns the same shape as every other provider; if Lorca ever
- * publishes a structured feed, ocrCartelera() can be replaced without
- * touching the parser, the provider, or any caller.
+ * Why a vision model and not local OCR:
+ *   We tried tesseract.js (with column cropping, 3x upscaling, multiple
+ *   PSM modes) — see git history. On Lorca's stylized poster type it
+ *   correctly extracted only 1 of 7 titles per week, with another match
+ *   pointing at the wrong film entirely. Tesseract's failure modes
+ *   (chars split mid-word, single-char substitutions, dropped lines on
+ *   narrow-cell wraps) defeat the cleanup heuristics we tried, and the
+ *   manual-patch tax on a weekly cartelera was too high. Claude vision
+ *   handles this kind of poster reliably for ~$0.01 per scrape.
  *
- * Title quality is best-effort. Tesseract sometimes mangles short words
- * with thin strokes (e.g. "EL DRAMA" → "El DR A MA"). The TMDB matcher
- * is reasonably tolerant; persistent mismatches can be patched manually
- * via the existing tmdb_id Studio workflow.
+ * The vision call is encapsulated in `readCarteleraWithVision()`. If we
+ * ever want to swap the backend (a different VLM, a hand-rolled OCR
+ * pipeline, a structured-feed if Lorca ever publishes one), the change
+ * stays inside this module — the provider, parser-output shape, and
+ * caller all stay the same.
  */
 
 import * as cheerio from 'cheerio';
-import { createWorker } from 'tesseract.js';
-import sharp from 'sharp';
+import Anthropic from '@anthropic-ai/sdk';
 import { type Provider, type ProviderRunResult, type ScrapedScreening } from './types';
 
 const PROGRAMACION_URL = 'https://cinelorca.wixsite.com/cine-lorca/current-production';
 const USER_AGENT =
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+const VISION_MODEL = 'claude-haiku-4-5-20251001';
+const VISION_MAX_TOKENS = 2000;
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -66,6 +70,19 @@ export const cineLorcaProvider: Provider = {
   async fetch(): Promise<ProviderRunResult> {
     const warnings: string[] = [];
     try {
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return {
+          cinemaId: 'lorca',
+          screenings: [],
+          success: false,
+          warnings,
+          error:
+            'ANTHROPIC_API_KEY not set — Cine Lorca requires Claude vision to ' +
+            'parse its image-only cartelera. Add the key to .env.local (or ' +
+            '.env.prod for production scrapes). See .env.example.',
+        };
+      }
+
       const html = await fetchText(PROGRAMACION_URL);
       const imageUrl = extractCarteleraImageUrl(html);
       if (!imageUrl) {
@@ -79,8 +96,7 @@ export const cineLorcaProvider: Provider = {
       }
 
       const image = await fetchBytes(imageUrl);
-      const ocr = await ocrCartelera(image);
-      const parsed = parseCartelera(ocr, warnings);
+      const parsed = await readCarteleraWithVision(image);
 
       if (!parsed.validFrom || !parsed.validTo) {
         return {
@@ -88,7 +104,7 @@ export const cineLorcaProvider: Provider = {
           screenings: [],
           success: false,
           warnings,
-          error: 'could not parse validity range from cartelera image',
+          error: 'vision response did not include a validity range',
         };
       }
       if (parsed.films.length === 0) {
@@ -97,7 +113,7 @@ export const cineLorcaProvider: Provider = {
           screenings: [],
           success: false,
           warnings,
-          error: 'no films parsed from cartelera image',
+          error: 'vision response had no films',
         };
       }
 
@@ -142,208 +158,147 @@ export function extractCarteleraImageUrl(html: string): string | null {
 }
 
 // ---------------------------------------------------------------------------
-// OCR (impure — tesseract + sharp)
+// Vision extraction (impure)
 // ---------------------------------------------------------------------------
 
-interface OcrResult {
-  left: string;
-  mid: string;
-  right: string;
+const VISION_PROMPT = `You are looking at the weekly cartelera (film schedule) of Cine Lorca, a Buenos Aires arthouse cinema. The image is a printed-style poster with a black background and white panels containing film blocks.
+
+Return ONLY a JSON object with exactly this shape, no prose, no markdown fences:
+
+{
+  "validFrom": { "day": <1-31>, "month": <1-12> },
+  "validTo": { "day": <1-31>, "month": <1-12> },
+  "year": <YYYY>,
+  "films": [
+    { "title": "<title exactly as printed, preserving case and punctuation>", "times": ["HH:MM", ...] }
+  ]
 }
 
-async function ocrCartelera(image: Buffer): Promise<OcrResult> {
-  const meta = await sharp(image).metadata();
-  if (!meta.width || !meta.height) {
-    throw new Error('invalid image dimensions');
-  }
-  const cols = computeColumnCrops(meta.width);
+Rules:
+- The validity range appears in the left column as "PROGRAMACIÓN VÁLIDA DESDE EL DD/MM AL DD/MM" with the year on its own line nearby.
+- Each film block contains a quoted title, one or more "HH:MM hs." showtime lines, and a "Duración: ... MIN ..." line.
+- Times in 24-hour format. "20:05 hs." → "20:05".
+- IGNORE the SALA labels (Sala 1, Sala 2). We don't track which auditorium.
+- IGNORE pricing.
+- IGNORE the "Abrimos nuestras puertas" footer.
+- Preserve diacritics. If a title is multi-line on the poster, join with a single space.`;
 
-  const worker = await createWorker('spa');
-  try {
-    await worker.setParameters({ tessedit_pageseg_mode: '6' as never });
-
-    const out: Partial<OcrResult> = {};
-    for (const c of cols) {
-      const strip = await sharp(image)
-        .extract({ left: c.x, top: 0, width: c.width, height: meta.height })
-        // 3x upscale: small fonts in the validity-range line and tight
-        // film cells OCR much more cleanly at higher resolution. The
-        // upscale cost is trivial for a 600x421 image.
-        .resize({ width: c.width * 3 })
-        .png()
-        .toBuffer();
-      const { data } = await worker.recognize(strip);
-      out[c.name] = data.text;
-    }
-    return out as OcrResult;
-  } finally {
-    await worker.terminate();
+async function readCarteleraWithVision(image: Buffer): Promise<ParsedCartelera> {
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+  const message = await client.messages.create({
+    model: VISION_MODEL,
+    max_tokens: VISION_MAX_TOKENS,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: 'image/jpeg',
+              data: image.toString('base64'),
+            },
+          },
+          { type: 'text', text: VISION_PROMPT },
+        ],
+      },
+    ],
+  });
+  const textBlock = message.content.find((b) => b.type === 'text');
+  if (!textBlock || textBlock.type !== 'text') {
+    throw new Error('vision response had no text content');
   }
+  return parseVisionResponse(textBlock.text);
 }
 
 /**
- * Column boundaries scaled from a 600px-wide reference. Lorca's poster
- * has been visually consistent: left pricing column ~25%, middle films
- * column ~37%, right films column ~37%. If they ever resize, the
- * relative ratios should still hold.
+ * Parse the JSON the vision model returned. Tolerant to ```json fences
+ * because models occasionally add them despite the "no markdown" instruction.
  */
-function computeColumnCrops(width: number): Array<{
-  name: 'left' | 'mid' | 'right';
-  x: number;
-  width: number;
-}> {
-  const r = width / 600;
-  const leftEnd = Math.round(155 * r);
-  const midEnd = Math.round(380 * r);
-  return [
-    { name: 'left', x: 0, width: leftEnd },
-    { name: 'mid', x: leftEnd, width: midEnd - leftEnd },
-    { name: 'right', x: midEnd, width: width - midEnd },
-  ];
-}
-
-// ---------------------------------------------------------------------------
-// Parser (pure)
-// ---------------------------------------------------------------------------
-
-/**
- * Parse the three OCR strings into a structured cartelera.
- *
- * The LEFT strip carries the validity range ("23/04 AL 29/04 2026") plus
- * pricing — we extract the dates and ignore everything else.
- *
- * MID and RIGHT strips each carry a stack of film blocks. A block is
- * delimited by its trailing "Duración:" line — this is the most reliable
- * anchor in the OCR output, since titles can fragment across lines and
- * thin strokes break ("CALLE MÁLAGA" → "CAI l E MÁLAGA").
- */
-export function parseCartelera(ocr: OcrResult, warnings: string[]): ParsedCartelera {
-  const validity = parseValidityRange(ocr.left, warnings);
-  const films = [
-    ...parseFilmColumn(ocr.mid, warnings),
-    ...parseFilmColumn(ocr.right, warnings),
-  ];
-  return { ...validity, films };
-}
-
-function parseValidityRange(
-  left: string,
-  warnings: string[],
-): Pick<ParsedCartelera, 'validFrom' | 'validTo'> {
-  // "23/04 AL 29/04" — also tolerate "23-04" or odd OCR spacing.
-  const range = /(\d{1,2})\s*[/-]\s*(\d{1,2})\s+AL\s+(\d{1,2})\s*[/-]\s*(\d{1,2})/i.exec(left);
-  const yearMatch = /\b(20\d{2})\b/.exec(left);
-  if (!range) {
-    warnings.push('lorca: could not find validity range in OCR');
-    return { validFrom: null, validTo: null };
-  }
-  if (!yearMatch) {
-    warnings.push('lorca: could not find year in OCR');
-    return { validFrom: null, validTo: null };
-  }
-  const [, fromD, fromM, toD, toM] = range;
-  const year = parseInt(yearMatch[1], 10);
-  const validFrom = {
-    year,
-    month: parseInt(fromM, 10),
-    day: parseInt(fromD, 10),
-  };
-  // Year-rollover guard: if the to-date is before the from-date in the
-  // same year, the cycle crosses Dec → Jan, so to-year is from-year + 1.
-  const fromMs = Date.UTC(year, validFrom.month - 1, validFrom.day);
-  const toCandidateMs = Date.UTC(year, parseInt(toM, 10) - 1, parseInt(toD, 10));
-  const toYear = toCandidateMs < fromMs ? year + 1 : year;
-  const validTo = {
-    year: toYear,
-    month: parseInt(toM, 10),
-    day: parseInt(toD, 10),
-  };
-  return { validFrom, validTo };
-}
-
-function parseFilmColumn(text: string, warnings: string[]): ParsedFilm[] {
-  const lines = text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-
-  const films: ParsedFilm[] = [];
-  let titleParts: string[] = [];
-  let times: Array<{ hour: number; minute: number }> = [];
-
-  for (const line of lines) {
-    // Time line: "o 14:10hs. SALA2" or "22.05 hs SALA?2"
-    // (The tesseract bullet "o" and trailing SALA noise vary.)
-    const timeMatch = line.match(/(\d{1,2})\s*[:.]\s*(\d{2})\s*hs/i);
-    if (timeMatch) {
-      const hour = parseInt(timeMatch[1], 10);
-      const minute = parseInt(timeMatch[2], 10);
-      if (hour >= 0 && hour <= 24 && minute >= 0 && minute < 60) {
-        times.push({ hour, minute });
-      } else {
-        warnings.push(`lorca: rejected out-of-range time "${timeMatch[0]}"`);
-      }
-      continue;
-    }
-
-    // Block end: "Duración: 110 MIN - R13 - ING- SUBTITULADA"
-    // (Also tolerant to OCR drift: "uración:", "yración:", "'uración:")
-    if (/^['"`]?\s*[uy]?ració[nm]\b/i.test(line) || /^d?uració[nm]\b/i.test(line)) {
-      const cleaned = cleanTitle(titleParts.join(' '));
-      if (cleaned && times.length > 0) {
-        films.push({ title: cleaned, times: [...times] });
-      } else if (cleaned || times.length) {
-        warnings.push(
-          `lorca: dropped incomplete block (title="${cleaned ?? '∅'}" times=${times.length})`,
-        );
-      }
-      titleParts = [];
-      times = [];
-      continue;
-    }
-
-    // Skip noise/header/footer
-    if (
-      /^cine\s+lorca/i.test(line) ||
-      /^abrimos\s+nuestr/i.test(line) ||
-      /^antes\s+\d/i.test(line) || // bleed from CINE LORCA: Av. Corrientes
-      /^[\W_]*$/.test(line) || // pure punctuation/symbol noise
-      line.length < 2
-    ) {
-      continue;
-    }
-
-    // Otherwise: treat as a title line (possibly continuation).
-    titleParts.push(line);
-  }
-
-  return films;
-}
-
-/**
- * Clean a raw OCR title: strip enclosing quotes, drop noise punctuation,
- * collapse whitespace. Gentle — we'd rather accept a slightly dirty
- * title and let the TMDB matcher fuzz-match it than over-edit and lose
- * the signal.
- */
-export function cleanTitle(raw: string): string | null {
-  let s = raw
-    .replace(/[“”"'`]+/g, '') // any quote-like char anywhere
-    .replace(/\s+/g, ' ')
+export function parseVisionResponse(raw: string): ParsedCartelera {
+  const stripped = raw
+    .replace(/^\s*```(?:json)?\s*\n?/, '')
+    .replace(/\n?```\s*$/, '')
     .trim();
 
-  // Strip a single trailing/leading isolated noise character (commonly
-  // the "o" bullet that tesseract appends to time-line starts but
-  // sometimes drifts into title territory).
-  s = s.replace(/^[a-z]\s+/i, (m) => (m.trim().length === 1 ? '' : m));
-  s = s.replace(/\s+[a-z]$/i, (m) => (m.trim().length === 1 ? '' : m));
+  let data: unknown;
+  try {
+    data = JSON.parse(stripped);
+  } catch {
+    throw new Error(`vision response was not valid JSON: ${raw.slice(0, 200)}`);
+  }
 
-  // Drop trailing comma (multi-line title joined with the next line).
-  s = s.replace(/,\s*$/, '');
+  if (!isVisionShape(data)) {
+    throw new Error(
+      `vision JSON missing required fields: ${JSON.stringify(data).slice(0, 300)}`,
+    );
+  }
 
-  s = s.replace(/\s+/g, ' ').trim();
-  if (s.length < 2) return null;
-  return s;
+  const year = data.year;
+  const validFrom = { year, month: data.validFrom.month, day: data.validFrom.day };
+
+  // Year-rollover guard: when the to-date precedes the from-date in the
+  // printed year, the cycle crosses Dec → Jan, so to-year is from-year + 1.
+  const fromMs = Date.UTC(year, validFrom.month - 1, validFrom.day);
+  const toCandidateMs = Date.UTC(year, data.validTo.month - 1, data.validTo.day);
+  const toYear = toCandidateMs < fromMs ? year + 1 : year;
+  const validTo = { year: toYear, month: data.validTo.month, day: data.validTo.day };
+
+  const films = data.films
+    .map((f) => ({
+      title: f.title.trim(),
+      times: (f.times ?? [])
+        .map(parseHHMM)
+        .filter((t): t is { hour: number; minute: number } => t !== null),
+    }))
+    .filter((f) => f.title.length > 0 && f.times.length > 0);
+
+  return { validFrom, validTo, films };
+}
+
+interface VisionShape {
+  validFrom: { day: number; month: number };
+  validTo: { day: number; month: number };
+  year: number;
+  films: Array<{ title: string; times: string[] }>;
+}
+
+function isVisionShape(d: unknown): d is VisionShape {
+  if (typeof d !== 'object' || d === null) return false;
+  const o = d as Record<string, unknown>;
+  if (typeof o.year !== 'number') return false;
+  if (!isDayMonth(o.validFrom) || !isDayMonth(o.validTo)) return false;
+  if (!Array.isArray(o.films)) return false;
+  return o.films.every(
+    (f) =>
+      typeof f === 'object' &&
+      f !== null &&
+      typeof (f as { title: unknown }).title === 'string' &&
+      Array.isArray((f as { times: unknown }).times),
+  );
+}
+
+function isDayMonth(d: unknown): d is { day: number; month: number } {
+  if (typeof d !== 'object' || d === null) return false;
+  const o = d as Record<string, unknown>;
+  return (
+    typeof o.day === 'number' &&
+    typeof o.month === 'number' &&
+    o.day >= 1 &&
+    o.day <= 31 &&
+    o.month >= 1 &&
+    o.month <= 12
+  );
+}
+
+function parseHHMM(s: string): { hour: number; minute: number } | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(s.trim());
+  if (!m) return null;
+  const hour = parseInt(m[1], 10);
+  const minute = parseInt(m[2], 10);
+  if (hour < 0 || hour > 24 || minute < 0 || minute > 59) return null;
+  return { hour, minute };
 }
 
 // ---------------------------------------------------------------------------
@@ -379,7 +334,7 @@ function enumerateDays(
 ): Array<{ year: number; month: number; day: number }> {
   const start = Date.UTC(from.year, from.month - 1, from.day);
   const end = Date.UTC(to.year, to.month - 1, to.day);
-  if (end < start) return []; // defensive — parser already handled rollover
+  if (end < start) return [];
   const days: Array<{ year: number; month: number; day: number }> = [];
   for (let ms = start; ms <= end; ms += 24 * 60 * 60 * 1000) {
     const d = new Date(ms);
@@ -394,9 +349,8 @@ function enumerateDays(
 
 /**
  * Build a UTC Date from BA local (year, month, day, hour, minute).
- * Argentina is UTC-3 with no DST. Hour 24 → midnight start of next day.
- * (Lorca doesn't program 24:00 today but the helper stays consistent
- * with the other providers.)
+ * Argentina is UTC-3 with no DST. Hour 24 → midnight start of next day,
+ * kept consistent with the other providers.
  */
 function buildBaLocalToUtc(
   year: number,

@@ -34,15 +34,14 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.91.1",
     "@libsql/client": "^0.17.2",
     "cheerio": "^1.2.0",
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.2",
     "next": "16.2.4",
     "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "sharp": "^0.34.5",
-    "tesseract.js": "^7.0.0"
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
