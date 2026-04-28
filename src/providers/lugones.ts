@@ -156,7 +156,11 @@ function extractPrograms(html: string): ProgramLink[] {
  */
 type ParseState =
   | { kind: 'idle' }
-  | { kind: 'with-time'; times: number[]; film: FilmContext }
+  | {
+      kind: 'with-time';
+      times: Array<{ hour: number; minute: number }>;
+      film: FilmContext;
+    }
   | { kind: 'without-time'; film: FilmContext };
 
 interface FilmContext {
@@ -228,7 +232,7 @@ function parseS1Cycle(
   const emit = (s: ParseState) => {
     if (s.kind !== 'with-time') return;
     if (!s.film.title || !currentDay) return;
-    for (const hour of s.times) {
+    for (const { hour, minute } of s.times) {
       screenings.push({
         cinemaId: 'lugones',
         filmTitle: s.film.title,
@@ -237,7 +241,7 @@ function parseS1Cycle(
         year: s.film.year,
         country: s.film.country,
         runtimeMin: s.film.runtimeMin,
-        startsAtUtc: buildBaLocalToUtc(currentDay, hour, 0),
+        startsAtUtc: buildBaLocalToUtc(currentDay, hour, minute),
         tags: inferTags(program),
         synopsisEs: s.film.synopsis,
         sourceUrl: program.detailUrl,
@@ -354,7 +358,12 @@ function parseS1Cycle(
     }
 
     // Synopsis — grab the first prose paragraph that's not a critic quote,
-    // not the cast line, not parenthesized metadata.
+    // not the cast line, not parenthesized metadata. We keep the source
+    // text in full; the cartelera card line-clamps with CSS, /pelicula
+    // shows it whole. Lugones cycle pages list a film once with the
+    // synopsis and again on later days without — the in-memory dedup in
+    // upsertFilms keeps the first (full) occurrence, so repeat blocks
+    // don't overwrite it with their stripped-down director+cast+runtime.
     const looksLikeQuote = /^["“]/.test(text) || text.startsWith('(');
     if (
       !looksLikeQuote &&
@@ -363,7 +372,7 @@ function parseS1Cycle(
       !/^Dirección:/i.test(text) &&
       text.length > 40
     ) {
-      film.synopsis = text.length > 280 ? text.slice(0, 277) + '…' : text;
+      film.synopsis = text;
     }
   });
 
@@ -663,12 +672,25 @@ function matchDayHeader(text: string): { day: number; monthName?: string } | nul
   return null;
 }
 
-function matchTimeMarker(text: string): number[] | null {
-  const m = text.match(/^A las (\d{1,2})(?:\s+y\s+(\d{1,2}))?\s+horas?/i);
+/**
+ * Parse "A las HH horas", "A las HH y HH horas", "A las HH.MM horas",
+ * "A las HH y HH.MM horas". Lugones writes minutes with a dot (14.30 hs)
+ * — when missed, the cascade is brutal: the next valid time marker
+ * attaches to the previous film, shifting times AND dropping the last
+ * film of each day silently (since emit() bails on without-time state).
+ */
+function matchTimeMarker(text: string): Array<{ hour: number; minute: number }> | null {
+  const m = text.match(
+    /^A las (\d{1,2})(?:[.,](\d{2}))?(?:\s+y\s+(\d{1,2})(?:[.,](\d{2}))?)?\s+horas?/i,
+  );
   if (!m) return null;
-  const out: number[] = [parseInt(m[1], 10)];
-  if (m[2]) out.push(parseInt(m[2], 10));
-  return out.filter((h) => h >= 0 && h <= 23);
+  const out: Array<{ hour: number; minute: number }> = [
+    { hour: parseInt(m[1], 10), minute: m[2] ? parseInt(m[2], 10) : 0 },
+  ];
+  if (m[3]) {
+    out.push({ hour: parseInt(m[3], 10), minute: m[4] ? parseInt(m[4], 10) : 0 });
+  }
+  return out.filter((t) => t.hour >= 0 && t.hour <= 23 && t.minute >= 0 && t.minute < 60);
 }
 
 /**
