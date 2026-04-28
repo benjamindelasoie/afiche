@@ -41,8 +41,7 @@ async function main() {
     GROUP BY decade ORDER BY decade DESC
   `);
   console.log('\n— Decades:');
-  for (const r of byDecade)
-    console.log(`  ${r.c.toString().padStart(4)}  ${r.decade}s`);
+  for (const r of byDecade) console.log(`  ${r.c.toString().padStart(4)}  ${r.decade}s`);
 
   // Genre distribution (JSON arrays of TMDB ids)
   const allGenres = await db.all<{ genres: string }>(sql`
