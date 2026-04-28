@@ -39,7 +39,7 @@ const CINEMAS: CinemaInsert[] = [
     neighborhood: 'San Nicolás',
     type: 'indie',
     address: 'Av. Corrientes 1428',
-    ticketingBaseUrl: 'https://cinelorca.com.ar',
+    ticketingBaseUrl: 'https://cinelorca.wixsite.com/cine-lorca',
   },
   {
     id: 'cinepolis-recoleta',
