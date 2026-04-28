@@ -55,6 +55,8 @@ export interface ScreeningRow {
     runtimeMin: number | null;
     synopsisEs: string | null;
     posterUrl: string | null;
+    /** 16:9 cinematic still from TMDB. Null until enriched, or when TMDB has no backdrop. */
+    backdropUrl: string | null;
     /** URL slug for /pelicula/<slug> link target. Always populated post-backfill. */
     slug: string | null;
     /** Top-billed TMDB cast (up to 8). Null pre-enrichment, [] when TMDB had no credits. */
@@ -132,6 +134,7 @@ async function fetchRows({
       runtimeMin: row.film.runtimeMin,
       synopsisEs: row.film.synopsisEs,
       posterUrl: row.film.posterUrl,
+      backdropUrl: row.film.backdropUrl,
       slug: row.film.slug ?? null,
       cast: row.film.cast ?? null,
       genres: row.film.genres ?? null,

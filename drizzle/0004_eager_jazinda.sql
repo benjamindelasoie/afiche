@@ -1,0 +1,1 @@
+ALTER TABLE `films` ADD `backdrop_url` text;

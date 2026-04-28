@@ -24,6 +24,7 @@ function candidate(overrides: Partial<TmdbMovieSummary>): TmdbMovieSummary {
     release_date: '',
     overview: '',
     poster_path: null,
+    backdrop_path: null,
     popularity: 0,
     vote_count: 0,
     ...overrides,

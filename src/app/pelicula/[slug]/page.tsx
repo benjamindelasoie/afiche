@@ -149,6 +149,25 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
         )}
       </header>
 
+      {/* Editorial still — TMDB backdrop_path at 16:9. Sits between the
+          title block and the poster+synopsis row, reading as a magazine
+          photograph that opens the article. Skipped silently when TMDB
+          has no backdrop on file (common for shorts and long-tail
+          festival titles); the page degrades to its no-image rhythm. */}
+      {film.backdropUrl && (
+        <figure className="mb-12 -mx-4 sm:-mx-6 md:mx-0">
+          <div className="relative aspect-[16/9] w-full overflow-hidden border-y border-black md:border">
+            <Image
+              src={film.backdropUrl}
+              alt=""
+              fill
+              sizes="(min-width: 1024px) 1024px, 100vw"
+              className="object-cover"
+            />
+          </div>
+        </figure>
+      )}
+
       {/* Two-column on desktop: poster + synopsis. On mobile they stack
           (poster above synopsis). The carmine offset shadow is the
           DESIGN.md-non-negotiable visual fingerprint and lands here

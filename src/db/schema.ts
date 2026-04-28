@@ -111,6 +111,13 @@ export const films = sqliteTable(
     imdbId: text('imdb_id'),
     // Own-CDN URL (Vercel Blob / R2), never a tmdb.org hotlink.
     posterUrl: text('poster_url'),
+    // 16:9 cinematic still from TMDB (`backdrop_path`). Stored at w1280 — the
+    // sweet spot for /pelicula's editorial-still slot at 2x DPR. Null when
+    // the film has no TMDB match yet, or when TMDB has no backdrop on file
+    // (common for shorts and long-tail festival titles). Render layer skips
+    // the backdrop section entirely when null — the page degrades cleanly to
+    // its no-image rhythm.
+    backdropUrl: text('backdrop_url'),
     // Similarity score at match time; null if override or no match.
     matchConfidence: real('match_confidence'),
     // Provenance of the TMDB link. See schema-level doc comment above.

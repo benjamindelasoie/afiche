@@ -23,6 +23,8 @@ export interface TmdbMovieSummary {
   release_date: string; // 'YYYY-MM-DD' or ''
   overview: string;
   poster_path: string | null;
+  /** 16:9 cinematic still. Often null for shorts and long-tail titles. */
+  backdrop_path: string | null;
   popularity: number;
   vote_count: number;
 }
@@ -124,6 +126,20 @@ export function posterImageUrl(
 ): string | null {
   if (!posterPath) return null;
   return `https://image.tmdb.org/t/p/${width}${posterPath}`;
+}
+
+/**
+ * Backdrop image URL for a given backdrop_path and width.
+ * Available widths: w300, w780, w1280, original.
+ * For /pelicula's editorial still (rendered at ~max-w-5xl on desktop),
+ * w1280 covers 2x DPR cleanly without overpaying on mobile.
+ */
+export function backdropImageUrl(
+  backdropPath: string | null,
+  width: 'w300' | 'w780' | 'w1280' | 'original' = 'w1280',
+): string | null {
+  if (!backdropPath) return null;
+  return `https://image.tmdb.org/t/p/${width}${backdropPath}`;
 }
 
 /**

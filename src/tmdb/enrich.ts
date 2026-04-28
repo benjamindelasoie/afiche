@@ -25,6 +25,7 @@ import {
   searchMovies,
   getMovie,
   posterImageUrl,
+  backdropImageUrl,
   extractDirectors,
   extractTopCast,
   extractGenreIds,
@@ -45,6 +46,12 @@ export interface EnrichmentDelta {
   year: number | null;
   runtimeMin: number | null;
   posterUrl: string | null;
+  /**
+   * 16:9 cinematic still from TMDB. Stored at w1280 — sized for the
+   * /pelicula editorial-still slot at 2x DPR. Null when TMDB has no
+   * backdrop on file (common for shorts and long-tail festival titles).
+   */
+  backdropUrl: string | null;
   /**
    * Spanish synopsis sourced from TMDB. Resolved via es-AR → es fallback
    * chain (see `buildDelta` for details). null when both languages return
@@ -232,6 +239,7 @@ async function buildDelta(
     // Hotlinked TMDB CDN URL. next/image handles optimization via the
     // image.tmdb.org remotePattern in next.config.ts.
     posterUrl: posterImageUrl(details.poster_path, 'w342'),
+    backdropUrl: backdropImageUrl(details.backdrop_path, 'w1280'),
     synopsisEs,
     cast: extractTopCast(details),
     genres: extractGenreIds(details),
