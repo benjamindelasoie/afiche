@@ -13,6 +13,7 @@ export {
   providers,
   scrapeRuns,
   TAG_LABELS_ES,
+  GENRE_LABELS_ES,
 } from './schema';
 export type {
   Cinema,

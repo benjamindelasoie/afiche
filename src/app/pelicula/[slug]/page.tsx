@@ -9,7 +9,7 @@ import {
   formatDayShortBA,
   type ScreeningRow,
 } from '@/db/queries';
-import { TAG_LABELS_ES } from '@/db';
+import { TAG_LABELS_ES, GENRE_LABELS_ES } from '@/db';
 
 // Server Component, dynamic per request. The cartelera anchors to BA
 // "today" via `new Date()`, and the screenings horizon shifts every
@@ -104,6 +104,11 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
   // "Now" anchor for the past-screening visual treatment. Computed once
   // here so every row's isPast comparison agrees.
   const nowMs = new Date().getTime();
+  // Resolve TMDB genre IDs to es-AR labels, dropping any unknown IDs
+  // (forward-compat: TMDB may add a genre before we update the map).
+  const genreLabels = (film.genres ?? [])
+    .map((id) => GENRE_LABELS_ES[id])
+    .filter((label): label is string => Boolean(label));
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 md:py-16">
@@ -135,6 +140,11 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
             {film.year && ` · ${film.year}`}
             {film.country && ` · ${film.country}`}
             {film.runtimeMin && ` · ${film.runtimeMin} min`}
+          </p>
+        )}
+        {genreLabels.length > 0 && (
+          <p className="tracking-eyebrow text-ink-gray mt-2 font-mono text-[11px] uppercase">
+            {genreLabels.join(' · ')}
           </p>
         )}
       </header>
