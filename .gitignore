@@ -51,6 +51,9 @@ next-env.d.ts
 # claude code internal session state (settings, scheduled tasks, etc.)
 .claude/
 
+# gstack /retro JSON snapshots — local trend tracking only
+.context/
+
 # tesseract.js cached language data (downloaded on first OCR run)
 *.traineddata
 *.traineddata.gz
