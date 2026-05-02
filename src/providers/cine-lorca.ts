@@ -117,6 +117,23 @@ export const cineLorcaProvider: Provider = {
         };
       }
 
+      // Sanity check: Lorca's cycle is always 6-8 days (Thursday → Wednesday).
+      // A wider range almost always means vision misread a DD/MM date as MM/DD
+      // and produced a multi-week phantom run (observed 2026-05-02: vision
+      // parsed "06/05" as June 5 instead of May 6, exploding a 7-day window
+      // into 37 days). Refuse to ingest rather than poison Turso with bogus
+      // future screenings.
+      const days = countValidityDays(parsed.validFrom, parsed.validTo);
+      if (days < 4 || days > 14) {
+        return {
+          cinemaId: 'lorca',
+          screenings: [],
+          success: false,
+          warnings,
+          error: `vision returned implausible validity range of ${days} days (expected 6-8 for Thu→Wed). Likely a DD/MM vs MM/DD misread on one of the bounds.`,
+        };
+      }
+
       const screenings = expandScreenings(parsed, PROGRAMACION_URL);
       return { cinemaId: 'lorca', screenings, success: true, warnings };
     } catch (err) {
@@ -136,12 +153,52 @@ export const cineLorcaProvider: Provider = {
 // ---------------------------------------------------------------------------
 
 /**
- * Find the cartelera JPEG URL on a /current-production HTML page. Wix's
- * SEO filename ("cartelera.jpeg") is the stable anchor — the surrounding
- * media-CDN hash rotates with each upload.
+ * Find the cartelera JPEG URL on a /current-production HTML page.
+ *
+ * Two strategies, in order:
+ *
+ *   1. User-uploaded JPEG with Wix's `~mv2` marker. Wix injects the `~mv2`
+ *      infix into the filename of any image uploaded through the site
+ *      editor's media manager. UI icons (PNGs without ~mv2) and Wix-set
+ *      "page hero" images (which feed `og:image`, sometimes a venue lobby
+ *      shot rather than the cartelera) lack this marker. Among matching
+ *      JPEGs we pick the one with the largest rendered area (parsed from
+ *      `/fill/w_NNN,h_NNN/` or `/fit/w_NNN,h_NNN/` in the URL). Verified
+ *      2026-05-02 against the live page after the regex-only strategy
+ *      below started missing.
+ *
+ *   2. Fallback: scan <img> tags for the SEO-friendly `cartelera.jpeg`
+ *      filename. Older uploads got the rename; if Lorca returns to that
+ *      habit (or the `~mv2` marker disappears in a Wix redesign), this
+ *      still works.
+ *
+ * Note on og:image: it's NOT a reliable anchor for the cartelera. On the
+ * 2026-05-02 capture og:image pointed at the lobby/venue photo, while the
+ * actual cartelera lived in a separate ~mv2 <img>. Don't add og:image as
+ * a fallback without re-validating.
  */
 export function extractCarteleraImageUrl(html: string): string | null {
   const $ = cheerio.load(html);
+
+  let bestMv2: { url: string; area: number } | null = null;
+  $('img').each((_, el) => {
+    const candidates = [$(el).attr('src') ?? '', $(el).attr('srcset') ?? ''];
+    for (const c of candidates) {
+      // Match a Wix media URL whose filename carries the ~mv2 marker and
+      // ends in .jpg/.jpeg. URLs with the marker AFTER the /media/ segment
+      // and BEFORE the transform path (`/v1/...`) are user-uploaded.
+      const matches = c.matchAll(
+        /https?:\/\/static\.wixstatic\.com\/media\/[^\s"']*~mv2\.jpe?g[^\s"']*/gi,
+      );
+      for (const m of matches) {
+        const url = m[0];
+        const area = parseRenderedArea(url);
+        if (!bestMv2 || area > bestMv2.area) bestMv2 = { url, area };
+      }
+    }
+  });
+  if (bestMv2) return (bestMv2 as { url: string }).url;
+
   let found: string | null = null;
   $('img').each((_, el) => {
     if (found) return;
@@ -155,6 +212,18 @@ export function extractCarteleraImageUrl(html: string): string | null {
     }
   });
   return found;
+}
+
+/**
+ * Parse the rendered area (width × height) from a Wix CDN transform URL.
+ * Looks for `/fit/w_NNN,h_NNN/` or `/fill/w_NNN,h_NNN/` in the path.
+ * Returns 0 when no transform parameters are present (the URL likely
+ * serves the original at unknown dimensions).
+ */
+function parseRenderedArea(url: string): number {
+  const m = url.match(/\/(?:fit|fill|crop)\/[^/]*w_(\d+)[^/]*h_(\d+)/);
+  if (!m) return 0;
+  return parseInt(m[1], 10) * parseInt(m[2], 10);
 }
 
 // ---------------------------------------------------------------------------
@@ -176,6 +245,10 @@ Return ONLY a JSON object with exactly this shape, no prose, no markdown fences:
 
 Rules:
 - The validity range appears in the left column as "PROGRAMACIÓN VÁLIDA DESDE EL DD/MM AL DD/MM" with the year on its own line nearby.
+- This is ARGENTINE DATE FORMAT: the first number in each slash-pair is the DAY, the second is the MONTH. Always.
+  Example: "30/04 AL 06/05" means starts April 30 (day=30, month=4), ends May 6 (day=6, month=5).
+  NEVER interpret "06/05" as June 5 — it's always May 6 here. If a number is greater than 12, it's the day.
+- The cycle is always 6 to 8 days long (Thursday through Wednesday). If your parsed dates produce a longer range, you misread one of them. Re-check.
 - Each film block contains a quoted title, one or more "HH:MM hs." showtime lines, and a "Duración: ... MIN ..." line.
 - Times in 24-hour format. "20:05 hs." → "20:05".
 - IGNORE the SALA labels (Sala 1, Sala 2). We don't track which auditorium.
@@ -326,6 +399,20 @@ export function expandScreenings(
     }
   }
   return out;
+}
+
+/**
+ * Count the inclusive day span between validFrom and validTo. A normal
+ * Lorca cycle returns 7 (Thursday through Wednesday).
+ */
+function countValidityDays(
+  from: { year: number; month: number; day: number },
+  to: { year: number; month: number; day: number },
+): number {
+  const fromMs = Date.UTC(from.year, from.month - 1, from.day);
+  const toMs = Date.UTC(to.year, to.month - 1, to.day);
+  if (toMs < fromMs) return 0;
+  return Math.round((toMs - fromMs) / (24 * 60 * 60 * 1000)) + 1;
 }
 
 function enumerateDays(

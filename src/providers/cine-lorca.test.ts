@@ -36,20 +36,39 @@ const parsedFixture = JSON.parse(
 // ---------------------------------------------------------------------------
 
 describe('extractCarteleraImageUrl', () => {
-  it('finds the cartelera.jpeg URL in the /current-production page', () => {
+  it('finds the ~mv2 user-uploaded JPEG on the live /current-production fixture', () => {
     const html = fixture('current-production-2026-04-23.html');
     const url = extractCarteleraImageUrl(html);
     expect(url).not.toBeNull();
-    expect(url).toMatch(/static\.wixstatic\.com\/.*cartelera\.jpe?g/i);
+    expect(url).toMatch(/~mv2\.jpe?g/i);
+  });
+
+  it('prefers the largest ~mv2 JPEG when multiple are present', () => {
+    // Real pages serve a small thumb (w_600) and a full-size (w_745) crop.
+    // Pick the larger to give vision the best signal.
+    const html = `
+      <img srcset="https://static.wixstatic.com/media/abc~mv2.jpg/v1/fill/w_600,h_421,al_c,q_80/abc.jpg 1x" />
+      <img src="https://static.wixstatic.com/media/abc~mv2.jpg/v1/fill/w_745,h_523,al_c,q_85/abc.jpg" />
+    `;
+    const url = extractCarteleraImageUrl(html);
+    expect(url).toMatch(/w_745,h_523/);
+  });
+
+  it('falls back to the cartelera.jpeg filename when no ~mv2 URL is present', () => {
+    // Hypothetical older format: SEO rename, no ~mv2 marker. Fallback path.
+    const html = `<img src="https://static.wixstatic.com/media/abc/v1/fill/w_600/cartelera.jpeg" />`;
+    expect(extractCarteleraImageUrl(html)).toMatch(/cartelera\.jpeg/);
+  });
+
+  it('ignores small ~mv2 PNGs (UI icons would be PNG, but defensive)', () => {
+    // The provider only cares about JPEGs — Wix UI icons are PNG. A page
+    // with only PNGs (no cartelera) should return null.
+    const html = `<img src="https://static.wixstatic.com/media/icon~mv2.png/v1/fill/w_33,h_33/icon.png" />`;
+    expect(extractCarteleraImageUrl(html)).toBeNull();
   });
 
   it('returns null when no cartelera image is on the page', () => {
     expect(extractCarteleraImageUrl('<html><body>nothing</body></html>')).toBeNull();
-  });
-
-  it('finds the URL when only a srcset attribute carries it', () => {
-    const html = `<img srcset="https://static.wixstatic.com/media/abc~mv2.jpeg/v1/fill/w_600/cartelera.jpeg 1x"/>`;
-    expect(extractCarteleraImageUrl(html)).toMatch(/cartelera\.jpeg/);
   });
 });
 
