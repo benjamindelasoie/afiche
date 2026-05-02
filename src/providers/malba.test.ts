@@ -84,9 +84,13 @@ describe('extractContinuaScreenings (listing-page "Continúa" tiles)', () => {
     const byTitle = Object.fromEntries(out.map((s) => [s.filmTitle, s]));
     // Anchor: Tue 2026-04-28 12:00 BA
     // Viernes 2026-05-01 18:40 BA = 21:40 UTC
-    expect(byTitle['Los dias chinos'].startsAtUtc.toISOString()).toBe('2026-05-01T21:40:00.000Z');
+    expect(byTitle['Los dias chinos'].startsAtUtc.toISOString()).toBe(
+      '2026-05-01T21:40:00.000Z',
+    );
     // Viernes 2026-05-01 20:00 BA = 23:00 UTC
-    expect(byTitle['Pin de fartie'].startsAtUtc.toISOString()).toBe('2026-05-01T23:00:00.000Z');
+    expect(byTitle['Pin de fartie'].startsAtUtc.toISOString()).toBe(
+      '2026-05-01T23:00:00.000Z',
+    );
     // Domingo 2026-05-03 18:00 BA = 21:00 UTC
     expect(byTitle['LS83'].startsAtUtc.toISOString()).toBe('2026-05-03T21:00:00.000Z');
     // Domingo 2026-05-03 20:00 BA = 23:00 UTC
