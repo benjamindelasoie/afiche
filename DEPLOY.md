@@ -93,21 +93,25 @@ Two files, strictly separated. Both are gitignored.
 
 **`.env.local`** — local dev only. Used by `npm run dev`, `npm run db:migrate`, `npm run db:studio`, `npm run db:scrape`, etc. Never touches Turso.
 
-| Name              | Value                              |
-|-------------------|------------------------------------|
-| `DATABASE_URL`    | `file:./local.db` (local SQLite)   |
-| `TMDB_API_TOKEN`  | your v4 Read Access Token          |
+| Name                | Value                                                          |
+|---------------------|----------------------------------------------------------------|
+| `DATABASE_URL`      | `file:./local.db` (local SQLite)                               |
+| `TMDB_API_TOKEN`    | your v4 Read Access Token                                      |
+| `ANTHROPIC_API_KEY` | optional — required only for the Cine Lorca provider. Empty = Lorca stays dormant; rest of the scrape continues normally. Get one at https://console.anthropic.com/. Cost is ~$0.01/scrape. |
 
 **`.env.prod`** — Turso + the Vercel deployment. Used by every `:prod`-suffixed npm script (`db:migrate:prod`, `db:studio:prod`, `db:seed-cinemas:prod`) and by `scripts/scrape-prod.sh`.
 
-| Name                   | Value                                                |
-|------------------------|------------------------------------------------------|
-| `DATABASE_URL`         | `libsql://afiche-<org>.turso.io`                     |
-| `DATABASE_AUTH_TOKEN`  | the Turso token from Section 1                       |
-| `TMDB_API_TOKEN`       | your v4 Read Access Token                            |
-| `REVALIDATE_SECRET`    | same 32-byte hex as Vercel (must match)              |
+| Name                   | Value                                                          |
+|------------------------|----------------------------------------------------------------|
+| `DATABASE_URL`         | `libsql://afiche-<org>.turso.io`                               |
+| `DATABASE_AUTH_TOKEN`  | the Turso token from Section 1                                 |
+| `TMDB_API_TOKEN`       | your v4 Read Access Token                                      |
+| `REVALIDATE_SECRET`    | same 32-byte hex as Vercel (must match)                        |
+| `ANTHROPIC_API_KEY`    | optional — see `.env.local` row above. Same value is fine in both files. |
 
 The split exists so you cannot accidentally point `db:studio` or `db:scrape` at prod, and so prod operations (`:prod` suffix) are explicit and self-documenting in `package.json`.
+
+> **Note on the Anthropic key.** Vercel does NOT need this — vision is called from the dev-machine scrape script (`npm run scrape:prod`), not from any runtime route. Add to `.env.local` for local dev scrapes, `.env.prod` for the prod scrape. Vercel env vars stay at the original four.
 
 `scrape-prod.sh` reads everything from `.env.prod`. The Vercel site URL is the only thing still hardcoded in the script (it's public, so no harm).
 
