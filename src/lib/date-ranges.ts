@@ -1,13 +1,19 @@
 /**
- * BA-timezone date range helpers for the three-tier cartelera view.
+ * BA-timezone date range helpers for the cartelera view.
  *
- * The page splits screenings into three chronological buckets:
+ * The page splits screenings into two chronological buckets:
  *
- *   - "Esta semana"   = today 00:00 BA .. next ISO Monday 00:00 BA
- *                       (1-7 days, depending on which day of the week now is)
- *   - "Próxima semana" = next ISO Monday 00:00 BA .. Monday-after-next 00:00 BA
- *                       (always 7 days)
- *   - "Más adelante"   = Monday-after-next 00:00 BA .. infinity
+ *   - 14-day rolling window = today 00:00 BA .. today+14 00:00 BA
+ *                             (always 14 days, independent of weekday;
+ *                              navigated by the date strip)
+ *   - "Próximamente"        = today+14 00:00 BA .. infinity
+ *                             (week-grouped text index)
+ *
+ * The `getNextIsoMondayBA` / `getStartOfWeekAfterNextBA` helpers below
+ * predate the consolidation and are no longer used by the cartelera page;
+ * they remain because `getIsoWeekStartBA` / `getIsoWeekEndBA` are still
+ * used by the masthead's "Edición Nº · Semana del X al Y" tagline (which
+ * is *flavor*, anchored to ISO week, decoupled from cartelera content).
  *
  * All bounds are computed against Buenos Aires local time. Argentina does not
  * observe daylight saving, so BA is fixed at UTC-3 year-round — this lets us
@@ -123,17 +129,31 @@ export function getIsoWeekEndBA(now: Date): Date {
 }
 
 /**
- * Monday-after-next at 00:00 BA — exclusive upper bound of "próxima
- * semana" (Tier 2) and inclusive lower bound of "más adelante"
- * (Tier 3). Always exactly 7 days after `getNextIsoMondayBA(now)`,
- * regardless of which day of the week `now` falls on.
- *
- * This replaces the prior calendar-month-anchored Tier 2/3 boundary
- * (getNextMonthStartBA), which created an end-of-month edge case
- * where a screening one day in the future could land in Tier 3
- * "Próximamente" instead of Tier 2 — counterintuitive for users
- * (April 30 → May 1 screening shouldn't read as "más adelante").
+ * Monday-after-next at 00:00 BA. Used by the legacy 3-tier "próxima
+ * semana" / "más adelante" boundary; no longer referenced by the
+ * cartelera page after the 2026-05 nav refactor (consolidated to a
+ * 14-day rolling window). Kept because external callers may still
+ * use it; safe to delete once `git grep getStartOfWeekAfterNextBA`
+ * comes up empty.
  */
 export function getStartOfWeekAfterNextBA(now: Date): Date {
   return new Date(getNextIsoMondayBA(now).getTime() + 7 * 86_400_000);
+}
+
+/**
+ * 14 days from today at 00:00 BA — exclusive upper bound of the
+ * 14-day rolling cartelera window (the date-strip horizon) and
+ * inclusive lower bound of "Próximamente" (the awareness layer).
+ *
+ * Always exactly 14 days regardless of which day `now` falls on:
+ * a Wednesday user sees Wed → Wed+13, a Saturday user sees Sat → Sat+13.
+ * The window is "today-rolling," not "edition-bounded," because the
+ * dominant cartelera intent is exploratory ("what's on next-Wednesday?")
+ * and a 14-day strip always answers that with one tap. The Edición
+ * label in the masthead (anchored to ISO week) is editorial flavor,
+ * decoupled from this content bound — see DESIGN.md Decisions Log
+ * 2026-05-02.
+ */
+export function getEndOfTwoWeeksBA(now: Date): Date {
+  return new Date(getTodayStartBA(now).getTime() + 14 * 86_400_000);
 }

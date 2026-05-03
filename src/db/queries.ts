@@ -1,24 +1,25 @@
 /**
  * Query helpers for the Afiche cartelera view.
  *
- * The home page splits screenings into three chronological tiers:
+ * The home page splits screenings into two chronological tiers:
  *
- *   1. "Esta semana"    — today 00:00 BA .. next ISO Monday 00:00 BA
- *                          (1-7 days)
- *   2. "Próxima semana" — next ISO Monday 00:00 BA .. Monday-after-next
- *                          00:00 BA (always 7 days)
- *   3. "Más adelante"   — Monday-after-next 00:00 BA, open-ended
+ *   1. 14-day rolling window — today 00:00 BA .. today+14 00:00 BA
+ *                              (always 14 days, full cards, navigated
+ *                               by the sticky date strip below the masthead)
+ *   2. "Próximamente"        — today+14 00:00 BA, open-ended (week-grouped
+ *                              text index — the awareness layer)
  *
- * Tiers 2 and 3 used to be calendar-month anchored ("este mes" upper =
- * start of next month). That created an end-of-month edge case where a
- * screening one day out (e.g., April 30 → May 1) would render in Tier
- * 3 "Próximamente" rather than Tier 2 — counterintuitive. ISO-week
- * chained tiers fix that.
+ * History: this used to be a 3-tier model (Esta semana / Próxima semana /
+ * Más adelante) anchored to ISO-week boundaries. The 2026-05 nav refactor
+ * consolidated to 2 tiers and replaced the editorial-week boundary with a
+ * 14-day rolling window for user-first navigation (one-tap jump to any of
+ * the next 14 days from any starting weekday). See DESIGN.md Decisions
+ * Log 2026-05-02 for the full rationale.
  *
  * Each tier has its own query; the page composes them. Tier 1 returns
- * grouped-by-day (the dense decision layer); tier 2 returns grouped-by-day
- * (still useful for planning); tier 3 returns a flat chronological list
- * (rendered as a compressed text index — days aren't load-bearing here).
+ * grouped-by-day; Tier 2 returns grouped-by-week (the editorial weekly-
+ * preview voice for the further horizon — denser than per-day banners
+ * once you're 4-8 weeks out).
  *
  * All functions run on the server (Server Components) and return plain data.
  */
@@ -28,8 +29,8 @@ import { db, screenings, films, cinemas, scrapeRuns } from './index';
 import type { CastMember, ScreeningTag } from './schema';
 import {
   getTodayStartBA,
-  getNextIsoMondayBA,
-  getStartOfWeekAfterNextBA,
+  getEndOfTwoWeeksBA,
+  getIsoWeekStartBA,
 } from '@/lib/date-ranges';
 
 export interface ScreeningRow {
@@ -76,6 +77,14 @@ export interface DayGroup {
   dateKey: string; // 'YYYY-MM-DD' in BA time — stable grouping key
   label: string; // e.g. 'martes 19 de abril'
   isToday: boolean;
+  screenings: ScreeningRow[];
+}
+
+export interface WeekGroup {
+  /** YYYY-MM-DD of the Monday of this ISO week, in BA — stable grouping key. */
+  weekKey: string;
+  /** "Semana del 19 al 25 de mayo" or "Semana del 28 de abril al 4 de mayo". */
+  label: string;
   screenings: ScreeningRow[];
 }
 
@@ -166,32 +175,94 @@ function groupByDay(rows: ScreeningRow[], now: Date): DayGroup[] {
   return Array.from(groups.values());
 }
 
+/**
+ * Group a flat ScreeningRow list by ISO week. Each group's `weekKey` is
+ * the Monday-of-the-week as YYYY-MM-DD (BA), used as a stable React key.
+ * The label is "Semana del DD al DD de Month" or, when the week crosses
+ * a month boundary, "Semana del DD de Month al DD de Month2".
+ *
+ * Multi-week cycles (e.g., MALBA Continúa films): each individual screening
+ * lands in the week it falls in, so a film with screenings on May 19 + May
+ * 26 appears once under each week. That's correct — the user is asking
+ * "what's on this week" per week, not "what films appear at all."
+ *
+ * Note: a screening on, say, May 17 (Saturday) belongs to the ISO week
+ * starting Monday May 12. We compute that via getIsoWeekStartBA which
+ * handles the BA-tz weekday lookup correctly across DST-free Argentina.
+ */
+function groupByWeek(rows: ScreeningRow[]): WeekGroup[] {
+  const groups = new Map<string, WeekGroup>();
+  for (const s of rows) {
+    const monday = getIsoWeekStartBA(s.startsAtUtc);
+    const sunday = new Date(monday.getTime() + 6 * 86_400_000);
+    const weekKey = formatDateKeyBA(monday);
+    if (!groups.has(weekKey)) {
+      groups.set(weekKey, {
+        weekKey,
+        label: formatWeekLabel(monday, sunday),
+        screenings: [],
+      });
+    }
+    groups.get(weekKey)!.screenings.push(s);
+  }
+  return Array.from(groups.values());
+}
+
 // ---------------------------------------------------------------------------
 // Tier queries
 // ---------------------------------------------------------------------------
 
 /**
- * Tier 1 — "Esta semana". All screenings from today 00:00 BA through the
- * end of the current ISO week (exclusive upper bound = next Monday 00:00 BA).
- * Grouped by day.
+ * Tier 1 — 14-day rolling cartelera. All screenings from today 00:00 BA
+ * through today+14 00:00 BA (exclusive upper). Grouped by day. Today is
+ * always the first day group; the 14th day is always the last.
+ *
+ * Replaces the previous `getThisWeekScreenings` (1-7 days, ISO-week-bounded)
+ * and `getNextWeekScreenings` (8-14 days, ISO-week-bounded) — consolidated
+ * 2026-05-02 because the date strip on the page lets users one-tap-jump to
+ * any day in the window, so the editorial-week boundary stopped earning its
+ * UX cost. BA-midnight lower bound preserved (Sunday-late edge intact).
  */
-export async function getThisWeekScreenings(now: Date = new Date()): Promise<DayGroup[]> {
+export async function getTwoWeeksScreenings(
+  now: Date = new Date(),
+): Promise<DayGroup[]> {
   const lower = getTodayStartBA(now);
-  const upper = getNextIsoMondayBA(now);
+  const upper = getEndOfTwoWeeksBA(now);
   const rows = await fetchRows({ lower, upper });
-  return groupByDay(rows, now);
+  // Always return exactly 14 day groups, including days with zero
+  // screenings — the date strip needs every day in the rolling window
+  // (so chips for quiet Tuesdays still render and anchor-jump correctly,
+  // landing on an editorial empty-day banner per design-review D3).
+  return fillTwoWeeks(groupByDay(rows, now), lower, now);
 }
 
 /**
- * Tier 2 — "Próxima semana". Screenings between next ISO Monday and the
- * Monday after next, i.e. the full 7-day next ISO week. Always 7 days
- * regardless of when in the current week `now` falls.
+ * Pad a partial day-group list out to all 14 days of the rolling window.
+ * Days that the underlying query returned no rows for get an empty
+ * DayGroup ({ dateKey, label, isToday, screenings: [] }). The rendering
+ * layer surfaces the empty state with an editorial "Hoy las salas
+ * descansan" banner.
  */
-export async function getNextWeekScreenings(now: Date = new Date()): Promise<DayGroup[]> {
-  const lower = getNextIsoMondayBA(now);
-  const upper = getStartOfWeekAfterNextBA(now);
-  const rows = await fetchRows({ lower, upper });
-  return groupByDay(rows, now);
+function fillTwoWeeks(groups: DayGroup[], lower: Date, now: Date): DayGroup[] {
+  const today = formatDateKeyBA(now);
+  const groupsByKey = new Map(groups.map((g) => [g.dateKey, g]));
+  const result: DayGroup[] = [];
+  for (let i = 0; i < 14; i++) {
+    const dayInstant = new Date(lower.getTime() + i * 86_400_000);
+    const dateKey = formatDateKeyBA(dayInstant);
+    const existing = groupsByKey.get(dateKey);
+    if (existing) {
+      result.push(existing);
+    } else {
+      result.push({
+        dateKey,
+        label: formatDayLabel(dayInstant),
+        isToday: dateKey === today,
+        screenings: [],
+      });
+    }
+  }
+  return result;
 }
 
 /**
@@ -215,19 +286,21 @@ export async function getLastScrapeTime(): Promise<Date | null> {
 }
 
 /**
- * Tier 3 — "Más adelante". Everything from Monday-after-next onward.
- * Boundary aligns with Tier 2's upper, so a given screening lands in
- * exactly one tier.
+ * Tier 2 — "Próximamente". Everything from today+14 00:00 BA onward.
+ * Boundary aligns with `getTwoWeeksScreenings` upper, so a screening lands
+ * in exactly one tier.
  *
- * Returns a flat chronological list. The page renders this as a compressed
- * text index; day grouping isn't load-bearing at this horizon because each
- * row carries its own date.
+ * Returns week-grouped (Monday-of-ISO-week as the bucket key). The page
+ * renders this as a text index with one banner per week ("Semana del 19
+ * al 25 de mayo") + chronological rows beneath. Week-grouping is denser
+ * and more skimmable than per-day banners at this 4-8-week horizon.
  */
 export async function getUpcomingScreenings(
   now: Date = new Date(),
-): Promise<ScreeningRow[]> {
-  const lower = getStartOfWeekAfterNextBA(now);
-  return fetchRows({ lower });
+): Promise<WeekGroup[]> {
+  const lower = getEndOfTwoWeeksBA(now);
+  const rows = await fetchRows({ lower });
+  return groupByWeek(rows);
 }
 
 /**
@@ -372,8 +445,8 @@ export function formatTimeBA(d: Date): string {
 }
 
 /**
- * "23 Abr" short day label for the Tier 3 text index where each row
- * carries its own date chip.
+ * "23 Abr" short day label for the Próximamente text index where each
+ * row carries its own date chip.
  */
 export function formatDayShortBA(d: Date): string {
   const fmt = new Intl.DateTimeFormat('es-AR', {
@@ -387,4 +460,27 @@ export function formatDayShortBA(d: Date): string {
   month = month.replace(/\.$/, '');
   month = month.charAt(0).toUpperCase() + month.slice(1);
   return `${day} ${month}`;
+}
+
+/**
+ * Week-banner label for the Próximamente text index. Renders as
+ * "Semana del 19 al 25 de mayo" when the week sits entirely within one
+ * month, or "Semana del 28 de abril al 4 de mayo" when it crosses a
+ * month boundary. Echoes the masthead's "Edición Nº · Semana del…"
+ * voice for the future-week-preview frame.
+ */
+function formatWeekLabel(monday: Date, sunday: Date): string {
+  const fmt = new Intl.DateTimeFormat('es-AR', {
+    timeZone: BA_TZ,
+    day: 'numeric',
+    month: 'long',
+  });
+  const mp = fmt.formatToParts(monday);
+  const sp = fmt.formatToParts(sunday);
+  const md = mp.find((p) => p.type === 'day')?.value ?? '';
+  const mm = mp.find((p) => p.type === 'month')?.value ?? '';
+  const sd = sp.find((p) => p.type === 'day')?.value ?? '';
+  const sm = sp.find((p) => p.type === 'month')?.value ?? '';
+  if (mm === sm) return `Semana del ${md} al ${sd} de ${mm}`;
+  return `Semana del ${md} de ${mm} al ${sd} de ${sm}`;
 }
