@@ -50,17 +50,16 @@ export const dynamic = 'force-dynamic';
 export default async function HomePage() {
   const now = new Date();
 
-  const [twoWeeks, upcoming, lastScrape, lastScreeningPerFilm] =
-    await Promise.all([
-      getTwoWeeksScreenings(now),
-      getUpcomingScreenings(now),
-      getLastScrapeTime(),
-      // Per-film MAX(startsAtUtc) across the FULL screenings table.
-      // Used by ÚLTIMA FUNCIÓN pill — unbounded by cartelera tier
-      // horizons so a film with a screening this week AND another 8
-      // weeks out doesn't get falsely flagged on this week's row.
-      getLastScreeningPerFilm(now),
-    ]);
+  const [twoWeeks, upcoming, lastScrape, lastScreeningPerFilm] = await Promise.all([
+    getTwoWeeksScreenings(now),
+    getUpcomingScreenings(now),
+    getLastScrapeTime(),
+    // Per-film MAX(startsAtUtc) across the FULL screenings table.
+    // Used by ÚLTIMA FUNCIÓN pill — unbounded by cartelera tier
+    // horizons so a film with a screening this week AND another 8
+    // weeks out doesn't get falsely flagged on this week's row.
+    getLastScreeningPerFilm(now),
+  ]);
 
   // Masthead counts reflect the 14-day window (the visible cartelera).
   // The "Edición Nº · Semana del X al Y" text is anchored to the ISO week
@@ -72,8 +71,7 @@ export default async function HomePage() {
   ).size;
 
   const edition = computeEdition(now, twoWeeksTotal, twoWeeksCinemas);
-  const hasAny =
-    twoWeeks.some((d) => d.screenings.length > 0) || upcoming.length > 0;
+  const hasAny = twoWeeks.some((d) => d.screenings.length > 0) || upcoming.length > 0;
   const hasUpcoming = upcoming.length > 0;
 
   return (
@@ -176,12 +174,10 @@ export default async function HomePage() {
                 week-grouped. One banner per ISO week starting from
                 day 15. Reachable via the strip's trailing "→" chip. */}
             {hasUpcoming && (
-              <section id="proximamente" className="mt-16 md:mt-24 scroll-mt-[60px]">
+              <section id="proximamente" className="mt-16 scroll-mt-[60px] md:mt-24">
                 <SectionHeader
                   title="Próximamente"
-                  subtitle={
-                    <SectionSubtitle parts={proximamenteSubtitle(upcoming)} />
-                  }
+                  subtitle={<SectionSubtitle parts={proximamenteSubtitle(upcoming)} />}
                 />
                 <UpcomingIndex
                   weeks={upcoming}
@@ -281,7 +277,7 @@ function DaySection({
       <h2
         id={`dia-${day.dateKey}`}
         aria-current={day.isToday ? 'date' : undefined}
-        className="mb-4 flex flex-wrap items-baseline justify-between gap-3 border-t border-black py-3 font-normal scroll-mt-[60px]"
+        className="mb-4 flex scroll-mt-[60px] flex-wrap items-baseline justify-between gap-3 border-t border-black py-3 font-normal"
       >
         <span
           className={`tracking-eyebrow font-mono text-[11px] text-balance uppercase ${
@@ -300,9 +296,7 @@ function DaySection({
         </span>
       </h2>
       {isEmpty ? (
-        <p className="text-ink-gray font-serif text-base italic">
-          Las salas descansan.
-        </p>
+        <p className="text-ink-gray font-serif text-base italic">Las salas descansan.</p>
       ) : (
         <div className="space-y-5">
           {day.screenings.map((s, idx) => (
@@ -370,8 +364,7 @@ function ScreeningCard({
   // 'retrospective' / 'restored' / actual festival names render. When the
   // only tag was the bare cycle, the tag row disappears entirely.
   const visibleTags = s.tags.filter((t) => t !== 'cycle');
-  const showTagStrip =
-    visibleTags.length > 0 || s.programName !== null || isLastFunction;
+  const showTagStrip = visibleTags.length > 0 || s.programName !== null || isLastFunction;
 
   const cardBody = (
     <>
@@ -410,7 +403,7 @@ function ScreeningCard({
               rather than flashing solid black; the black bg is scoped to
               the true no-poster fallback span per DESIGN.md. */}
           {s.cinema.type === 'indie' && (
-            <div className="shrink-0 w-20 h-28 bg-cream flex items-center justify-center overflow-hidden border border-black shadow-[4px_4px_0_var(--color-carmine)]">
+            <div className="bg-cream flex h-28 w-20 shrink-0 items-center justify-center overflow-hidden border border-black shadow-[4px_4px_0_var(--color-carmine)]">
               {s.film.posterUrl ? (
                 // Next 16: `priority` is deprecated. Use explicit
                 // loading + fetchPriority so the LCP poster is announced
@@ -446,12 +439,12 @@ function ScreeningCard({
             )}
             {s.film.titleOriginal &&
               s.film.titleOriginal.toLowerCase() !== s.film.title.toLowerCase() && (
-                <p className="text-ink-gray mt-0.5 font-serif italic text-base sm:text-lg">
+                <p className="text-ink-gray mt-0.5 font-serif text-base italic sm:text-lg">
                   «{s.film.titleOriginal}»
                 </p>
               )}
             {s.film.director && (
-              <p className="text-sm text-ink-gray mt-1">
+              <p className="text-ink-gray mt-1 text-sm">
                 {s.film.director}
                 {s.film.year && ` · ${s.film.year}`}
                 {s.film.country && (

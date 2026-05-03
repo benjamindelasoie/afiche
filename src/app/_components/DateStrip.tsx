@@ -103,9 +103,7 @@ export function DateStrip({ days, hasUpcoming }: DateStripProps) {
     const dayTargets = days
       .map((d) => document.getElementById(`dia-${d.dateKey}`))
       .filter((el): el is HTMLElement => el !== null);
-    const upcomingTarget = hasUpcoming
-      ? document.getElementById('proximamente')
-      : null;
+    const upcomingTarget = hasUpcoming ? document.getElementById('proximamente') : null;
     const targets = upcomingTarget ? [...dayTargets, upcomingTarget] : dayTargets;
 
     if (targets.length === 0) return;
@@ -212,8 +210,7 @@ export function DateStrip({ days, hasUpcoming }: DateStripProps) {
     // bounds. Math.max(0, ...) prevents negative scroll on left edge;
     // the browser handles the right edge naturally.
     const targetScroll =
-      activeChip.offsetLeft -
-      (stripEl.clientWidth - activeChip.offsetWidth) / 2;
+      activeChip.offsetLeft - (stripEl.clientWidth - activeChip.offsetWidth) / 2;
     stripEl.scrollTo({
       left: Math.max(0, targetScroll),
       behavior: 'smooth',
@@ -234,7 +231,7 @@ export function DateStrip({ days, hasUpcoming }: DateStripProps) {
       // The data-scroll-* attrs drive conditional edge-fades in
       // globals.css — fades show only when scroll is possible in that
       // direction (no phantom affordances at scroll boundaries).
-      className="date-strip-wrapper sticky top-0 z-10 border-b border-black bg-cream"
+      className="date-strip-wrapper bg-cream sticky top-0 z-10 border-b border-black"
     >
       <div className="date-strip flex gap-1 overflow-x-auto py-2">
         {days.map((day) => {
@@ -250,18 +247,22 @@ export function DateStrip({ days, hasUpcoming }: DateStripProps) {
               className={[
                 'date-chip flex shrink-0 snap-start flex-col items-center justify-center px-3 py-2 font-mono no-underline',
                 'min-w-[64px] transition-[background-color,border-color] duration-[50ms] ease-out',
-                'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-carmine',
+                'focus-visible:outline-carmine focus-visible:outline-2 focus-visible:outline-offset-2',
                 c.isToday ? 'bg-carmine text-cream' : 'text-ink hover:bg-carmine/10',
                 c.isEmpty && !c.isToday ? 'opacity-50' : '',
                 !c.isToday && c.dateKey === activeKey
-                  ? 'border-b-2 border-carmine'
+                  ? 'border-carmine border-b-2'
                   : 'border-b-2 border-transparent',
               ].join(' ')}
             >
               <span
                 className={[
-                  'text-[10px] uppercase tracking-card',
-                  c.isToday ? 'text-cream' : c.isWeekend ? 'text-carmine' : 'text-ink-gray',
+                  'tracking-card text-[10px] uppercase',
+                  c.isToday
+                    ? 'text-cream'
+                    : c.isWeekend
+                      ? 'text-carmine'
+                      : 'text-ink-gray',
                 ].join(' ')}
               >
                 {c.dow}
@@ -271,11 +272,11 @@ export function DateStrip({ days, hasUpcoming }: DateStripProps) {
                 // numeric day. Echoes DESIGN.md's day-banner HOY pill —
                 // tapping the today chip lands on a banner that also
                 // reads "HOY". Visual + verbal symmetry.
-                <span className="font-mono text-[15px] font-bold uppercase tracking-card text-cream">
+                <span className="tracking-card text-cream font-mono text-[15px] font-bold uppercase">
                   HOY
                 </span>
               ) : (
-                <span className="font-serif text-[22px] leading-none tabular-nums text-ink">
+                <span className="text-ink font-serif text-[22px] leading-none tabular-nums">
                   {c.dayNum}
                 </span>
               )}
@@ -291,14 +292,14 @@ export function DateStrip({ days, hasUpcoming }: DateStripProps) {
             onClick={onChipClick('upcoming')}
             className={[
               'date-chip flex shrink-0 snap-start flex-col items-center justify-center px-3 py-2 font-mono no-underline',
-              'min-w-[64px] text-ink transition-colors duration-[50ms] ease-out hover:bg-carmine/10',
-              'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-carmine',
+              'text-ink hover:bg-carmine/10 min-w-[64px] transition-colors duration-[50ms] ease-out',
+              'focus-visible:outline-carmine focus-visible:outline-2 focus-visible:outline-offset-2',
               activeKey === 'upcoming'
-                ? 'border-b-2 border-carmine'
+                ? 'border-carmine border-b-2'
                 : 'border-b-2 border-transparent',
             ].join(' ')}
           >
-            <span className="text-[10px] uppercase tracking-card text-ink-gray">
+            <span className="tracking-card text-ink-gray text-[10px] uppercase">
               próx.
             </span>
             <span className="font-serif text-[22px] leading-none">→</span>

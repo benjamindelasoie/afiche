@@ -45,10 +45,7 @@ describe('layout invariant: <main> elements need w-full + min-w-0', () => {
       // template literal or a `cn(...)` helper, update the regex or this
       // assertion strategy. For now, all our mains use the simple form.
       const mainMatch = src.match(/<main\s+className=(["'`])([^"'`]+)\1/);
-      expect(
-        mainMatch,
-        `Expected <main className="..."> in ${relPath}`,
-      ).not.toBeNull();
+      expect(mainMatch, `Expected <main className="..."> in ${relPath}`).not.toBeNull();
       const classes = mainMatch![2];
 
       expect(
@@ -70,10 +67,7 @@ describe('layout invariant: <main> elements need w-full + min-w-0', () => {
     // be moot — but it's still good defensive practice. This test pins
     // the assumption so a future restructure surfaces a deliberate
     // decision rather than silently breaking the invariant logic.
-    const src = await readFile(
-      resolve(projectRoot, 'src/app/layout.tsx'),
-      'utf8',
-    );
+    const src = await readFile(resolve(projectRoot, 'src/app/layout.tsx'), 'utf8');
     const bodyMatch = src.match(/<body\s+className=(["'`])([^"'`]+)\1/);
     expect(bodyMatch).not.toBeNull();
     const classes = bodyMatch![2];

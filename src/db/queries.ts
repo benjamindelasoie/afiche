@@ -223,9 +223,7 @@ function groupByWeek(rows: ScreeningRow[]): WeekGroup[] {
  * any day in the window, so the editorial-week boundary stopped earning its
  * UX cost. BA-midnight lower bound preserved (Sunday-late edge intact).
  */
-export async function getTwoWeeksScreenings(
-  now: Date = new Date(),
-): Promise<DayGroup[]> {
+export async function getTwoWeeksScreenings(now: Date = new Date()): Promise<DayGroup[]> {
   const lower = getTodayStartBA(now);
   const upper = getEndOfTwoWeeksBA(now);
   const rows = await fetchRows({ lower, upper });
