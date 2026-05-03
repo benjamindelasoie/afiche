@@ -57,11 +57,40 @@ Time uses `font-variant-numeric: tabular-nums` everywhere.
 - **Scale:** 2xs(2) xs(4) sm(8) md(16) lg(24) xl(32) 2xl(48) 3xl(64)
 
 ## Layout
-- **Approach:** Grid-disciplined list for cards, asymmetric editorial chrome for masthead + dateline + footer.
+- **Approach:** Grid-disciplined list for cards, asymmetric editorial chrome for masthead + dateline + footer. Sticky date-strip nav between masthead and content.
 - **Grid:** Single column on mobile, content max-width 64rem (1024px) on desktop.
-- **Border radius:** None on cards + day banners (sharp corners = editorial). 0.5rem optional on image media.
+- **Border radius:** None on cards + day banners + date-strip chips (sharp corners = editorial). 0.5rem optional on image media.
 - **Card composition (indie):** time | poster | body (title/subtitle/meta/synopsis) | venue-right
 - **Card composition (chain):** time | body (title, compact meta) | venue-right. No poster. Typography de-emphasized (`text-neutral-500` + `border-neutral-300`). Full AA contrast preserved.
+
+### Date Strip
+
+Sticky horizontal day-chip nav above the cartelera. Single primitive, 15 cells (14 dated + 1 trailing "Próximamente →"). Lives below the masthead, pins to top via `position: sticky` after the masthead scrolls out — so first-fold real estate isn't taxed by the sticky behavior, only by the strip's intrinsic height (~60px).
+
+**Token table** (the strip's own design tokens — not in `globals.css` `@theme` since they're component-scoped):
+
+| Element | Value |
+|---|---|
+| Chip min-width | `64px` (DESIGN.md 44px touch-target rule × 1.5) |
+| Chip vertical padding | `8px` |
+| Chip horizontal gap | `4px` |
+| Strip vertical padding | `8px 0` |
+| Strip horizontal padding | `0 16px` (chips align with container content edges) |
+| Strip background | `var(--color-cream)` — solid, no blur |
+| Strip border-bottom | `1px solid var(--color-ink)` |
+| Strip negative-margin trick | `margin: 0 -16px` — extends edges to viewport on mobile so chips can horizontal-scroll |
+| Today chip bg | `var(--color-carmine)` |
+| Today chip text | `var(--color-cream)` |
+| Active scroll chip indicator | `border-bottom: 2px solid var(--color-carmine)` (when not today; coincides with today fill when scrolled to today) |
+| Day-of-week label | Geist Mono, `10px`, `letter-spacing: 0.2em` (tracking-card), uppercase, `var(--color-ink-gray)` (carmine on weekend chips) |
+| Day number | Instrument Serif, `22px`, `line-height: 1`, `tabular-nums` |
+| Próximamente chip | Same shape as date chips. Geist Mono `10px` "PRÓX." caps + serif `→` (Unicode U+2192, NOT a Lucide chevron icon — DESIGN.md is icon-library-free) |
+| Edge fade gradient | **Conditional**, 24px cream-to-transparent on each strip edge. Shows ONLY when scroll in that direction is possible: left fade hides at scroll-start, right fade hides at scroll-end. Avoids phantom "more this way" affordances pointing at nothing. Driven by `data-scroll-left` / `data-scroll-right` data-attributes on the wrapper, toggled by a scroll listener + ResizeObserver in DateStrip.tsx. |
+| Active-state transition | `transition: background-color 50ms ease-out, border-color 50ms ease-out` — no transform, no scale, no shadow |
+| Touch target min | 44px (chip is 64×~50, well above) |
+| Empty-day chip | `opacity: 0.5`, still tappable, anchor-jumps to a banner with editorial empty copy |
+| `IntersectionObserver` config | `threshold: 0`, `rootMargin: '-30% 0px -50% 0px'` — "active band" is the 30%-50% upper-middle viewport region |
+| Auto-scroll-today on mount | NOT implemented (today is always position 0 in 14-day rolling) |
 
 ## Motion
 - **Approach:** Minimal-functional.
@@ -114,31 +143,31 @@ Scan order within a card (eye tracking):
 6. **Synopsis** (Geist, carmine left-rule) — why this film, not the others today.
 7. **Cinema name** (right-aligned tracked Mono, carmine on indie) — the "where."
 
-Page-level flow — **three tiers**:
-1. **Masthead** — edition dateline (`Edición Nº N · Semana del X al Y · N funciones · M salas`). Orients: "this is Afiche, this is week N, and these counts are THIS WEEK." Dateline bounds derive from ISO-week bounds of today (`getIsoWeekStartBA(now)` / `getIsoWeekEndBA(now)`) — NOT from data. On Wed when the first screening is Thu, the dateline still says "Semana del 20 al 26 de abril" because we are inside edition 17.
-2. **Tier 1 — Esta semana** (decision layer): full cards grouped by day, today's banner anchored with `aria-current="date"`. Query: today 00:00 BA → next ISO Monday 00:00 BA. Lower bound is TODAY'S midnight, not now, so a user on Sunday at 23:00 still sees Sunday's earlier screenings — the cartelera anchors in *today*, not *right now*.
-3. **Tier 2 — Este mes** (planning layer): compact cards grouped by day, between next ISO Monday and start of next month. Hidden when the week already crosses the month boundary (late-April case). Section header is `<h2 class="font-serif italic text-4xl md:text-5xl">` inside a double-border frame, with a mono subtitle carrying range + counts.
-4. **Tier 3 — Próximamente** (awareness layer): flat chronological text index, one screening per row, no day grouping (each row carries its own date chip). After max(weekEnd, monthEnd), open-ended. Reads like the back-of-zine program guide.
+Page-level flow — **2 tiers + sticky date-strip nav** (consolidated 2026-05-02; see Decisions Log):
+
+1. **Masthead** — edition dateline (`Edición Nº N · Semana del X al Y`). Orients: "this is Afiche, this is week N." Dateline bounds derive from ISO-week bounds of today (`getIsoWeekStartBA(now)` / `getIsoWeekEndBA(now)`) — NOT from data, NOT from the cartelera content shown below. The masthead is *flavor* (publication-cadence, editorial voice); the cartelera below is the *information surface*. The two are decoupled by design — the masthead can carry the editorial weekly conceit while the cartelera shows whatever is most useful to navigate.
+2. **Date strip** (wayfinding layer, sticky below masthead): horizontal row of 14 day chips (today + 13) plus 1 trailing "Próximamente →" chip when there's content beyond day 14. Today is always position 0 and permanently carmine-filled. Anchor-jumps (`#dia-${dateKey}`) take the user to the day's `<h2>` banner with `scroll-margin-top: 60px` to clear the sticky strip. As the user scrolls, IntersectionObserver toggles a carmine bottom underline on the chip whose section is in the upper-middle viewport band. Implementation: `src/app/_components/DateStrip.tsx`.
+3. **Tier 1 — 14-day rolling window** (decision/planning combined): full cards grouped by day, today's banner anchored with `aria-current="date"` and `id="dia-${dateKey}"` for chip-jump targets. Query: today 00:00 BA → today+14 00:00 BA (always 14 days, regardless of weekday). Lower bound is TODAY'S midnight, not now, so a user on Sunday at 23:00 still sees Sunday's earlier screenings — the cartelera anchors in *today*, not *right now*. Empty single days (zero screenings) render the banner anyway with editorial copy *"Las salas descansan."*
+4. **Tier 2 — Próximamente** (awareness layer): text index, **week-grouped**. One banner per ISO week (`Semana del 19 al 25 de mayo`) + chronological rows. Open-ended upper bound starting at today+14. Reachable via the strip's trailing chip. Reads like the back-of-zine weekly-edition preview.
 5. **Footer** — editorial signature, close.
 
-Each later tier steps down in density:
+Density gradient between tiers:
 - Tier 1 = full card with synopsis + poster at `w-20 h-28` + `border-l-4`
-- Tier 2 = compact card, no synopsis, poster at `w-14 h-20`, `border-l-[3px]`, lighter offset shadow (3px)
-- Tier 3 = text row, no poster, no card background, hairline separator
+- Tier 2 = text row, no poster, no card background, hairline separator + per-week banner
 
-The step-down is intentional: the eye should slow down as the horizon gets further. Decisions live in Tier 1.
+The step-down is intentional: the 14-day Tier 1 is decision territory (where users tap chips and pick films); Próximamente is awareness territory (where users glance at "what's coming weeks out"). The retired Tier-2 compact-card density that used to sit between them was a metaphor argument ("planning layer") that no longer earned its UX cost once the strip turned scroll-skim into one-tap jump.
 
 **First-fold expectations** (intentional):
-- Mobile (375×667): masthead + first day banner + first Tier 1 card. Editorial grandeur is worth the scroll; scan order remains legible.
-- Desktop (1440×900): masthead + first day banner + 1–2 Tier 1 cards above fold. Full hierarchy visible immediately. Tier 2 + Tier 3 progressively revealed by scroll.
+- Mobile (375×667): masthead + sticky date strip + first day banner + first Tier 1 card. The strip lives in normal flow on first paint (under the masthead) and only pins to the top once the user scrolls past the masthead; this preserves real estate for content above the fold.
+- Desktop (1440×900): masthead + strip + first day banner + 1–2 Tier 1 cards above fold. Full hierarchy visible immediately. Próximamente progressively revealed by scroll.
 
 **Sunday-late edge** (explicit product call):
-- On Sunday at 23:00 BA, Tier 1 still shows all of Sunday's screenings — including the 18:00 one that's already over. The job is "what's playing today," not "what's still startable."
+- On Sunday at 23:00 BA, today's chip + Tier 1 still show all of Sunday's screenings — including the 18:00 one that's already over. The chip count includes past-today screenings too. The job is "what's playing today," not "what's still startable."
 
 **Empty states** (in priority order):
-- Everything empty (rare — fresh DB): existing `EmptyStateAll` message + dev-only hint.
-- Esta semana empty but later tiers have content: editorial copy *"Esta semana las salas descansan."* + pointer `Lo que viene ↓`, with Tier 2/3 rendering below as usual.
-- Later tiers empty: just hide those sections. No messaging needed.
+- Everything empty (rare — fresh DB): existing `EmptyStateAll` message + dev-only hint. Strip hides.
+- 14-day window empty but Próximamente has content: editorial copy *"Esta quincena las salas descansan."* + pointer `Lo que viene ↓`. Strip renders all 14 chips muted (50% opacity) but the trailing Próximamente chip stays active.
+- Single day in the window empty: banner renders with `0 funciones` + italic *"Las salas descansan."* The chip on the strip is muted to 50% opacity but still tappable.
 
 ## Interaction States
 
@@ -205,3 +234,5 @@ The curation stance is made visible through typography and density, not through 
 | 2026-04-22 | ★ star prefix on indie cinema names dropped (commit `aca2dde`, F-005 fix) | Universal-noise signal in an all-indie cartelera; the curation contrast that justified ★ disappeared when chain content was deferred behind Cloudflare. Carmine left-bar + carmine cinema-name color carry the curation signal alone. |
 | 2026-04-25 | ProgramPill on cards via `screenings.program_name` text column | New curatorial signal surfaces the program/cycle name (e.g., "Retrospectiva David Lynch") on cards from venues that organize screenings into curated programs. Cosmos and similar single-film venues stay program-less. Pill placed in the existing tag strip, font-mono carmine bg. |
 | 2026-04-25 | Mobile synopsis hidden via `hidden md:block` | The `line-clamp-3` synopsis with bottom fade renders as ~2.5 trailing-off lines on 375px mobile — text doing the work of decoration. Hiding on mobile reclaims ~80px of card real estate per indie card without losing the signal on desktop. |
+| 2026-05-02 | Homepage navigation: 14-day rolling date strip + 2-tier consolidation | Replaces the 3-tier model (Esta semana / Próxima semana / Más adelante) with 2 tiers (1-14 days as full cards reachable via a sticky horizontal date strip + Próximamente as week-grouped text index). Strip has 14 day chips + 1 "Próximamente →" chip; today permanently carmine; active chip on scroll via IntersectionObserver. Justification: the dominant cartelera intent is exploratory ("what's on next-Wednesday?") not targeted; the strip turns a 50-card scroll into one-tap navigation. Compact-card variant for week 2 retired (no longer earned its keep once strip-jump replaced scroll-skim). |
+| 2026-05-02 | Editorial conceit demoted from veto to flavor | Earlier draft justified `strip horizon = this ISO week only` with "preserves the Edición metaphor" — a metaphor argument vetoing a UX choice. User flagged the category mistake explicitly. New posture: the editorial / zine / Edición concept is FLAVOR (drives type, palette, voice, masthead) and does NOT veto user-friendly behavioral decisions. Concrete outcomes: strip is 14-day rolling not ISO-week-bounded; masthead retains "Edición Nº · Semana del X al Y" anchored to ISO week (decorative, decoupled from cartelera content); week-2 compact-card density retired; dark mode planned for near future (no longer "deferred forever"). |
