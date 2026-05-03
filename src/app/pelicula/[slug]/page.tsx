@@ -111,7 +111,7 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
     .filter((label): label is string => Boolean(label));
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 md:py-16">
+    <main className="mx-auto w-full max-w-5xl min-w-0 px-4 py-8 sm:px-6 md:py-16">
       {/* Back link to cartelera. Editorial breadcrumb-style: small mono
           caps, carmine, sits above the headline. Lets the user ground
           themselves before the page-shaped content lands. */}

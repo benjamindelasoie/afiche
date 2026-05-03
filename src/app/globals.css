@@ -84,3 +84,46 @@ a[data-screening-card]:visited {
  * would silently defeat the Geist load and ship Arial italic to users
  * under the guise of "editorial typography".
  */
+
+/*
+ * Date strip — conditional edge fades. Only show the left fade when
+ * the strip can scroll left (i.e., chips are off-screen to the left),
+ * and the right fade when chips are off-screen to the right. At scroll-
+ * start there's no left-side content to hint at, so no left fade —
+ * otherwise it's a phantom "more this way" pointing at nothing.
+ *
+ * `data-scroll-left` / `data-scroll-right` are toggled by DateStrip.tsx
+ * via a scroll listener + ResizeObserver. Pseudo-elements are
+ * pointer-events: none so taps still pass through to chips beneath.
+ */
+.date-strip-wrapper[data-scroll-left='yes']::before,
+.date-strip-wrapper[data-scroll-right='yes']::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 24px;
+  pointer-events: none;
+  z-index: 1;
+}
+.date-strip-wrapper[data-scroll-left='yes']::before {
+  left: 0;
+  background: linear-gradient(to right, var(--color-cream) 30%, transparent);
+}
+.date-strip-wrapper[data-scroll-right='yes']::after {
+  right: 0;
+  background: linear-gradient(to left, var(--color-cream) 30%, transparent);
+}
+
+/*
+ * Hide horizontal scrollbar on the strip but keep scroll behavior. On
+ * mobile the chips horizontally scroll naturally; the visible scrollbar
+ * adds ~10-15px of vertical chrome that doubles the strip's footprint
+ * for no UX gain.
+ */
+.date-strip {
+  scrollbar-width: none;
+}
+.date-strip::-webkit-scrollbar {
+  display: none;
+}

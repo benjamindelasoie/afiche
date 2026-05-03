@@ -18,7 +18,7 @@ import Link from 'next/link';
  */
 export default function NotFound() {
   return (
-    <main className="mx-auto max-w-5xl px-4 py-16 sm:px-6 md:py-24">
+    <main className="mx-auto w-full max-w-5xl min-w-0 px-4 py-16 sm:px-6 md:py-24">
       <section className="space-y-6 py-12 text-center">
         <h1 className="text-ink font-serif text-2xl leading-tight text-balance italic md:text-3xl">
           Esta película no está programada en este momento.

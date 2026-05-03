@@ -1,34 +1,41 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import {
-  getThisWeekScreenings,
-  getNextWeekScreenings,
+  getTwoWeeksScreenings,
   getUpcomingScreenings,
   getLastScrapeTime,
   getLastScreeningPerFilm,
   formatTimeBA,
   formatDayShortBA,
   type DayGroup,
+  type WeekGroup,
   type ScreeningRow,
 } from '@/db/queries';
 import { TAG_LABELS_ES } from '@/db';
 import { getEditionNumber, editionFullSentence } from '@/lib/iso-week';
 import { getIsoWeekStartBA, getIsoWeekEndBA } from '@/lib/date-ranges';
+import { DateStrip } from '@/app/_components/DateStrip';
 
 // This page is a Server Component — it runs on the server, awaits the DB
-// directly, and ships rendered HTML. Zero client-side JS is shipped for the
-// content below (only whatever Next.js needs for Link prefetching).
+// directly, and ships rendered HTML. The only client-side JS is the
+// DateStrip Client Component below the masthead, which uses
+// IntersectionObserver to highlight the chip whose day section is in view
+// while the user scrolls.
 //
-// The view is a three-tier cartelera, all ISO-week chained:
-//   1. "Esta semana"    — full cards with synopsis, the decision layer
-//                          (today → next ISO Monday)
-//   2. "Próxima semana" — compact cards (smaller poster, no synopsis), planning
-//                          layer (next ISO Monday → Monday-after-next)
-//   3. "Más adelante"   — text index (no poster, tight rows), awareness layer
-//                          (everything from Monday-after-next on)
+// The view is a 2-tier cartelera (consolidated 2026-05 from 3 tiers; see
+// DESIGN.md Decisions Log):
 //
-// The masthead reflects Tier 1 ("Edición Nº N · Semana del X al Y · N
-// funciones · M salas"). Tier 2 + Tier 3 each have their own subheader.
+//   1. 14-day rolling window — full cards grouped by day, navigated by
+//      the sticky DateStrip below the masthead. Today is always chip 0;
+//      the strip extends 13 more days forward, regardless of weekday.
+//   2. "Próximamente" — text index, week-grouped. One banner per ISO
+//      week ("Semana del 19 al 25 de mayo") + chronological rows. Open-
+//      ended upper bound. Reachable via the strip's trailing chip.
+//
+// The masthead carries decorative editorial framing ("Edición Nº N ·
+// Semana del X al Y") anchored to the current ISO week — flavor only,
+// decoupled from cartelera content boundaries. The cartelera shows 14
+// days regardless of where in the week the user lands.
 
 // Render dynamically. The cartelera is anchored to BA "today" via
 // `new Date()` below; without this directive Next.js statically renders the
@@ -43,10 +50,9 @@ export const dynamic = 'force-dynamic';
 export default async function HomePage() {
   const now = new Date();
 
-  const [thisWeek, nextWeek, upcoming, lastScrape, lastScreeningPerFilm] =
+  const [twoWeeks, upcoming, lastScrape, lastScreeningPerFilm] =
     await Promise.all([
-      getThisWeekScreenings(now),
-      getNextWeekScreenings(now),
+      getTwoWeeksScreenings(now),
       getUpcomingScreenings(now),
       getLastScrapeTime(),
       // Per-film MAX(startsAtUtc) across the FULL screenings table.
@@ -56,14 +62,19 @@ export default async function HomePage() {
       getLastScreeningPerFilm(now),
     ]);
 
-  // Masthead counts reflect THIS WEEK only — it's the edition.
-  const thisWeekTotal = thisWeek.reduce((n, d) => n + d.screenings.length, 0);
-  const thisWeekCinemas = new Set(
-    thisWeek.flatMap((d) => d.screenings.map((s) => s.cinema.id)),
+  // Masthead counts reflect the 14-day window (the visible cartelera).
+  // The "Edición Nº · Semana del X al Y" text is anchored to the ISO week
+  // (decorative), while the SR-only fullSentence reports what's actually
+  // shown — the page below is what these numbers describe.
+  const twoWeeksTotal = twoWeeks.reduce((n, d) => n + d.screenings.length, 0);
+  const twoWeeksCinemas = new Set(
+    twoWeeks.flatMap((d) => d.screenings.map((s) => s.cinema.id)),
   ).size;
 
-  const edition = computeEdition(now, thisWeekTotal, thisWeekCinemas);
-  const hasAny = thisWeek.length > 0 || nextWeek.length > 0 || upcoming.length > 0;
+  const edition = computeEdition(now, twoWeeksTotal, twoWeeksCinemas);
+  const hasAny =
+    twoWeeks.some((d) => d.screenings.length > 0) || upcoming.length > 0;
+  const hasUpcoming = upcoming.length > 0;
 
   return (
     <>
@@ -76,7 +87,7 @@ export default async function HomePage() {
       >
         Saltar al contenido
       </a>
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 md:py-16">
+      <main className="mx-auto w-full max-w-5xl min-w-0 px-4 py-8 sm:px-6 md:py-16">
         {/* Masthead — full editorial layout. Top kicker carries the
             location identity; the wordmark sits in the middle; bottom
             dateline carries the dynamic edition number + week range.
@@ -131,44 +142,27 @@ export default async function HomePage() {
           <EmptyStateAll />
         ) : (
           <>
-            {/* Tier 1 — Esta semana. The decision layer. Full cards.
-                On mobile the section header is hidden — the masthead
-                already establishes 'this is the current edition's
-                cartelera', and the first day banner is a strong
-                enough first heading without 'Esta semana' adding a
-                third stacked title to a tight viewport. Desktop keeps
-                the section header since wider viewports have room for
-                the explicit tier label. */}
+            {/* Sticky date-strip nav. Lives in normal flow on first
+                paint (under the masthead); pins to top once the user
+                scrolls past the masthead. Today is always position 0. */}
+            <DateStrip days={twoWeeks} hasUpcoming={hasUpcoming} />
+
+            {/* Tier 1 — 14-day rolling window. Full cards grouped by day.
+                Every day in the rolling window renders, including days
+                with zero screenings (banner + editorial empty copy).
+                The strip's chips anchor-jump to each day's <h2>.
+                Section header is suppressed — the strip is the wayfinding
+                layer; an extra "Esta semana" stacked title would be redundant
+                editorial chrome. */}
             <section id="cartelera" className="mt-6 md:mt-8">
-              <div className="hidden md:block">
-                <SectionHeader
-                  title="Esta semana"
-                  subtitle={
-                    thisWeekTotal > 0 ? (
-                      <>
-                        <span>
-                          {thisWeekTotal} {thisWeekTotal === 1 ? 'función' : 'funciones'}
-                        </span>
-                        <span className="text-ink-gray/60">·</span>
-                        <span>
-                          {thisWeekCinemas} {thisWeekCinemas === 1 ? 'sala' : 'salas'}
-                        </span>
-                      </>
-                    ) : null
-                  }
-                />
-              </div>
-              {thisWeek.length === 0 ? (
-                <EmptyWeekMessage
-                  hasFollowup={nextWeek.length > 0 || upcoming.length > 0}
-                />
+              {twoWeeks.every((d) => d.screenings.length === 0) ? (
+                <EmptyWeekMessage hasFollowup={hasUpcoming} />
               ) : (
                 <div className="mt-10 space-y-12">
-                  {thisWeek.map((day, dayIdx) => (
+                  {twoWeeks.map((day, dayIdx) => (
                     <DaySection
                       key={day.dateKey}
                       day={day}
-                      variant="full"
                       isFirstDay={dayIdx === 0}
                       lastScreeningPerFilm={lastScreeningPerFilm}
                       now={now}
@@ -178,36 +172,19 @@ export default async function HomePage() {
               )}
             </section>
 
-            {/* Tier 2 — Próxima semana. Planning layer. Compact cards. */}
-            {nextWeek.length > 0 && (
-              <section id="proxima-semana" className="mt-16 md:mt-24">
+            {/* Tier 2 — Próximamente. Awareness layer. Text index,
+                week-grouped. One banner per ISO week starting from
+                day 15. Reachable via the strip's trailing "→" chip. */}
+            {hasUpcoming && (
+              <section id="proximamente" className="mt-16 md:mt-24 scroll-mt-[60px]">
                 <SectionHeader
-                  title="Próxima semana"
-                  subtitle={<SectionSubtitle parts={rangeSubtitleFromDays(nextWeek)} />}
-                />
-                <div className="mt-10 space-y-10">
-                  {nextWeek.map((day) => (
-                    <DaySection
-                      key={day.dateKey}
-                      day={day}
-                      variant="compact"
-                      lastScreeningPerFilm={lastScreeningPerFilm}
-                      now={now}
-                    />
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Tier 3 — Más adelante. Awareness layer. Text index. */}
-            {upcoming.length > 0 && (
-              <section id="mas-adelante" className="mt-16 md:mt-24">
-                <SectionHeader
-                  title="Más adelante"
-                  subtitle={<SectionSubtitle parts={rangeSubtitleFromFlat(upcoming)} />}
+                  title="Próximamente"
+                  subtitle={
+                    <SectionSubtitle parts={proximamenteSubtitle(upcoming)} />
+                  }
                 />
                 <UpcomingIndex
-                  screenings={upcoming}
+                  weeks={upcoming}
                   lastScreeningPerFilm={lastScreeningPerFilm}
                 />
               </section>
@@ -265,44 +242,46 @@ function SectionHeader({
 }
 
 // ---------------------------------------------------------------------------
-// Day section — banner + screening rows. Shared by Tier 1 (full) and
-// Tier 2 (compact). The `variant` flag flows through to ScreeningCard.
+// Day section — banner (anchored as #dia-${dateKey} for the date strip's
+// chip-jumps) + screening rows. Renders for every day in the 14-day
+// rolling window, including empty days (which surface an editorial
+// "Las salas descansan" line in place of the card list).
 // ---------------------------------------------------------------------------
 function DaySection({
   day,
-  variant,
   isFirstDay = false,
   lastScreeningPerFilm,
   now,
 }: {
   day: DayGroup;
-  variant: 'full' | 'compact';
-  // First day of Tier 1. Drives Next/Image priority on the top cards so
-  // the LCP poster loads eagerly even when today has no screenings
-  // (otherwise day.isToday is never true and no card gets priority —
-  // that was the prod console warning on afiche.vercel.app after deploy).
+  // First day of the rolling window (always today). Drives Next/Image
+  // priority on the top cards so the LCP poster loads eagerly even when
+  // today has no screenings. Without this, day.isToday is never true and
+  // no card gets priority — that was the prod console warning on
+  // afiche.vercel.app after deploy.
   isFirstDay?: boolean;
   // Per-film MAX(startsAtUtc) over all upcoming screenings — used by
   // ScreeningCard to flag the ÚLTIMA FUNCIÓN pill on rows where this
   // screening's startsAtUtc equals the film's max.
   lastScreeningPerFilm: Map<number, number>;
   // "Now" anchor used to flag past-but-today screenings (startsAtUtc < now).
-  // Only matters for Tier 1 (today is in range); Tier 2 starts at next
-  // Monday so isPast there is always false.
+  // Only matters for today's section; later days in the rolling window
+  // are entirely future so isPast there is always false.
   now: Date;
 }) {
   const nowMs = now.getTime();
+  const isEmpty = day.screenings.length === 0;
   return (
     <div>
-      {/* Day banner — rendered as <h2> for screen-reader outline.
-          aria-current='date' flags today for assistive tech.
-          Two columns (no serif center date): the full mono label on the
-          left already carries the date. Showing "23 Abr" in a second
-          font was editorial repetition, not rhythm — the serif flourish
-          lives on each card's time instead, where it's decisive. */}
+      {/* Day banner — rendered as <h2> for screen-reader outline. The
+          id="dia-${dateKey}" is the anchor target for the date strip's
+          chip-tap jumps. aria-current='date' flags today for assistive
+          tech. Existing flex+wrap layout fits cleanly on 375 (per F-010
+          fix, commit 48dd7f6); do NOT add a vertical-stack mobile rule. */}
       <h2
+        id={`dia-${day.dateKey}`}
         aria-current={day.isToday ? 'date' : undefined}
-        className="mb-4 flex flex-wrap items-baseline justify-between gap-3 border-t border-black py-3 font-normal"
+        className="mb-4 flex flex-wrap items-baseline justify-between gap-3 border-t border-black py-3 font-normal scroll-mt-[60px]"
       >
         <span
           className={`tracking-eyebrow font-mono text-[11px] text-balance uppercase ${
@@ -320,39 +299,44 @@ function DaySection({
           {day.screenings.length} {day.screenings.length === 1 ? 'función' : 'funciones'}
         </span>
       </h2>
-      <div className={variant === 'compact' ? 'space-y-3' : 'space-y-5'}>
-        {day.screenings.map((s, idx) => (
-          <ScreeningCard
-            key={s.id}
-            s={s}
-            variant={variant}
-            isAboveFold={variant === 'full' && (day.isToday || isFirstDay) && idx < 3}
-            isLastFunction={
-              lastScreeningPerFilm.get(s.film.id) === s.startsAtUtc.getTime()
-            }
-            isPast={s.startsAtUtc.getTime() < nowMs}
-          />
-        ))}
-      </div>
+      {isEmpty ? (
+        <p className="text-ink-gray font-serif text-base italic">
+          Las salas descansan.
+        </p>
+      ) : (
+        <div className="space-y-5">
+          {day.screenings.map((s, idx) => (
+            <ScreeningCard
+              key={s.id}
+              s={s}
+              isAboveFold={(day.isToday || isFirstDay) && idx < 3}
+              isLastFunction={
+                lastScreeningPerFilm.get(s.film.id) === s.startsAtUtc.getTime()
+              }
+              isPast={s.startsAtUtc.getTime() < nowMs}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Screening card — Tier 1 (full) and Tier 2 (compact) share this component.
-// Compact drops the synopsis and scales down poster + title. Chain cards
-// stay visually de-emphasized via the card shell (border-neutral + muted
-// text) regardless of variant.
+// Screening card — full-density layout used for every day in the 14-day
+// rolling window. Chain cards stay visually de-emphasized via the card
+// shell (border-neutral + muted text). The compact variant for week 2
+// was retired 2026-05 when the date strip replaced scroll-skim with
+// tap-jump (no UX justification remaining for visual demotion of
+// not-this-week days).
 // ---------------------------------------------------------------------------
 function ScreeningCard({
   s,
-  variant,
   isAboveFold,
   isLastFunction,
   isPast,
 }: {
   s: ScreeningRow;
-  variant: 'full' | 'compact';
   isAboveFold: boolean;
   // True when this screening is the LAST upcoming screening of its
   // film across the entire BA cartelera (computed unbounded, NOT
@@ -361,38 +345,25 @@ function ScreeningCard({
   // it now or wait years."
   isLastFunction: boolean;
   // True when this screening's startsAtUtc is in the past relative to
-  // "now". Only happens for today's earlier screenings in Tier 1. We
-  // keep them visible (the day's full programming is meaningful context)
-  // but desaturate the poster (grayscale) and mute the carmine time
-  // accent to ink-gray. No text label — "Ya empezó" / "Ya terminó"
-  // are both wrong some of the time (in-progress vs hours-past), and
-  // the visual signal alone is enough: "you're not making this one."
-  // The card link still works — /pelicula/<slug> shows the same
-  // screenings consistently.
+  // "now". Only happens for today's earlier screenings. We keep them
+  // visible (the day's full programming is meaningful context) but
+  // desaturate the poster (grayscale) and mute the carmine time accent
+  // to ink-gray. No text label — "Ya empezó" / "Ya terminó" are both
+  // wrong some of the time (in-progress vs hours-past), and the visual
+  // signal alone is enough: "you're not making this one." The card link
+  // still works — /pelicula/<slug> shows the same screenings consistently.
   isPast: boolean;
 }) {
-  const isCompact = variant === 'compact';
-  const posterSize = isCompact ? 'w-14 h-20' : 'w-20 h-28';
-  const posterShadow = isCompact
-    ? 'shadow-[3px_3px_0_var(--color-carmine)]'
-    : 'shadow-[4px_4px_0_var(--color-carmine)]';
   // DESIGN.md display-md spec: tracking -0.01em (not Tailwind's tracking-tight
   // = -0.025em). Looser tracking is more legible at 24–30px card-title sizes.
-  const titleClass = isCompact
-    ? 'font-serif text-xl sm:text-2xl leading-tight tracking-[-0.01em] text-balance'
-    : 'font-serif text-2xl sm:text-3xl leading-tight tracking-[-0.01em] text-balance';
+  const titleClass =
+    'font-serif text-2xl sm:text-3xl leading-tight tracking-[-0.01em] text-balance';
   // Time accent: carmine for attendable screenings (visual call-to-action),
   // muted ink-gray for already-started ones. Dropping the carmine on past
   // screenings is the strongest signal — it's the loudest pixel on the
   // attendable card, so removing it on a past card visibly demotes the row.
   const timeColor = isPast ? 'text-ink-gray' : 'text-carmine';
-  const timeClass = isCompact
-    ? `font-serif italic text-3xl leading-none ${timeColor} tabular-nums md:mt-2`
-    : `font-serif italic text-4xl leading-none ${timeColor} tabular-nums md:mt-2`;
-  const cardPadding = isCompact ? 'p-3 sm:p-4' : 'p-4 sm:p-5';
-  // Compact keeps the left-bar but thinner so the whole section reads
-  // as "related to this week but less important."
-  const leftBar = isCompact ? 'border-l-[3px]' : 'border-l-4';
+  const timeClass = `font-serif italic text-4xl leading-none ${timeColor} tabular-nums md:mt-2`;
 
   // Filter out 'cycle' — it's on every Lugones card (inferTags pushes it
   // unconditionally), so universal ≠ signal. Only meaningful tags like
@@ -400,7 +371,7 @@ function ScreeningCard({
   // only tag was the bare cycle, the tag row disappears entirely.
   const visibleTags = s.tags.filter((t) => t !== 'cycle');
   const showTagStrip =
-    !isCompact && (visibleTags.length > 0 || s.programName || isLastFunction);
+    visibleTags.length > 0 || s.programName !== null || isLastFunction;
 
   const cardBody = (
     <>
@@ -439,9 +410,7 @@ function ScreeningCard({
               rather than flashing solid black; the black bg is scoped to
               the true no-poster fallback span per DESIGN.md. */}
           {s.cinema.type === 'indie' && (
-            <div
-              className={`shrink-0 ${posterSize} bg-cream flex items-center justify-center overflow-hidden border border-black ${posterShadow}`}
-            >
+            <div className="shrink-0 w-20 h-28 bg-cream flex items-center justify-center overflow-hidden border border-black shadow-[4px_4px_0_var(--color-carmine)]">
               {s.film.posterUrl ? (
                 // Next 16: `priority` is deprecated. Use explicit
                 // loading + fetchPriority so the LCP poster is announced
@@ -451,9 +420,9 @@ function ScreeningCard({
                 <Image
                   src={s.film.posterUrl}
                   alt={s.film.title}
-                  width={isCompact ? 56 : 80}
-                  height={isCompact ? 80 : 112}
-                  sizes={isCompact ? '56px' : '80px'}
+                  width={80}
+                  height={112}
+                  sizes="80px"
                   loading={isAboveFold ? 'eager' : 'lazy'}
                   fetchPriority={isAboveFold ? 'high' : 'auto'}
                   className={`h-full w-full object-cover ${isPast ? 'grayscale' : ''}`}
@@ -477,16 +446,12 @@ function ScreeningCard({
             )}
             {s.film.titleOriginal &&
               s.film.titleOriginal.toLowerCase() !== s.film.title.toLowerCase() && (
-                <p
-                  className={`text-ink-gray mt-0.5 font-serif italic ${
-                    isCompact ? 'text-sm' : 'text-base sm:text-lg'
-                  }`}
-                >
+                <p className="text-ink-gray mt-0.5 font-serif italic text-base sm:text-lg">
                   «{s.film.titleOriginal}»
                 </p>
               )}
             {s.film.director && (
-              <p className={`${isCompact ? 'text-xs' : 'text-sm'} text-ink-gray mt-1`}>
+              <p className="text-sm text-ink-gray mt-1">
                 {s.film.director}
                 {s.film.year && ` · ${s.film.year}`}
                 {s.film.country && (
@@ -495,15 +460,11 @@ function ScreeningCard({
                 {s.film.runtimeMin && ` · ${s.film.runtimeMin} min`}
               </p>
             )}
-            {/* Synopsis — FULL variant only. Compact drops it to signal
-                "planning layer, not decision layer." The display guard
-                keeps mid-sentence-truncated legacy DB rows out.
-                line-clamp-3 caps at three lines; the bottom-fade mask
-                signals "there's more" without a leer-más link, which
-                will land when the film-detail page (TODOS.md #6) ships
-                and gives the fade something to point at. */}
-            {!isCompact &&
-              s.film.synopsisEs &&
+            {/* Synopsis — display guard keeps mid-sentence-truncated legacy
+                DB rows out. line-clamp-3 caps at three lines; the bottom-fade
+                mask signals "there's more" without a "leer más" link, which
+                will land when the film-detail page integration deepens. */}
+            {s.film.synopsisEs &&
               s.cinema.type === 'indie' &&
               isCompleteSynopsis(s.film.synopsisEs) && (
                 <p
@@ -551,9 +512,9 @@ function ScreeningCard({
     </>
   );
 
-  const cardClasses = `block ${cardPadding} border transition-[background-color,box-shadow] active:translate-y-[1px] ${
+  const cardClasses = `block p-4 sm:p-5 border transition-[background-color,box-shadow] active:translate-y-[1px] ${
     s.cinema.type === 'indie'
-      ? `border-carmine bg-carmine/5 ${leftBar} hover:bg-carmine/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-carmine`
+      ? 'border-carmine bg-carmine/5 border-l-4 hover:bg-carmine/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-carmine'
       : 'border-neutral-300 bg-black/[0.02] hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black'
   }`;
 
@@ -616,89 +577,96 @@ function ProgramPill({ name }: { name: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Próximamente index — Tier 3. Flat chronological list rendered as a
-// compressed text table. No posters, no card backgrounds, tight rows.
-// Feels like the back-of-zine program guide: just enough to say "this
-// film exists in your calendar eventually; tap for detail."
+// Próximamente index — Tier 2. Week-grouped text index. One banner per
+// ISO week ("Semana del 19 al 25 de mayo") + chronological rows beneath.
+// Feels like the back-of-zine program guide. The week-grouping echoes the
+// masthead's editorial weekly cadence, applied to the future-week-preview
+// horizon — denser than per-day banners at the 4-8-week scale.
 // ---------------------------------------------------------------------------
 function UpcomingIndex({
-  screenings,
+  weeks,
   lastScreeningPerFilm,
 }: {
-  screenings: ScreeningRow[];
+  weeks: WeekGroup[];
   lastScreeningPerFilm: Map<number, number>;
 }) {
   return (
-    <ul className="mt-8 divide-y divide-black/15">
-      {screenings.map((s) => {
-        const isIndie = s.cinema.type === 'indie';
-        const isLastFunction =
-          lastScreeningPerFilm.get(s.film.id) === s.startsAtUtc.getTime();
-        const rowBody = (
-          <div className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1 px-1 py-3 md:grid-cols-[auto_1fr_auto]">
-            {/* Date + time column (left) */}
-            <div className="tracking-eyebrow font-mono text-[11px] whitespace-nowrap uppercase">
-              <span className="text-ink-gray">{formatDayShortBA(s.startsAtUtc)}</span>
-              <span className="text-ink-gray/60 mx-1">·</span>
-              <span className={isIndie ? 'text-carmine font-bold' : 'text-ink'}>
-                {formatTimeBA(s.startsAtUtc)}
-              </span>
-            </div>
+    <div className="mt-8 space-y-10">
+      {weeks.map((week) => (
+        <div key={week.weekKey}>
+          <h3 className="tracking-eyebrow text-ink mb-3 border-t border-black/40 py-2 font-mono text-[11px] uppercase">
+            {week.label}
+          </h3>
+          <ul className="divide-y divide-black/15">
+            {week.screenings.map((s) => {
+              const isIndie = s.cinema.type === 'indie';
+              const isLastFunction =
+                lastScreeningPerFilm.get(s.film.id) === s.startsAtUtc.getTime();
+              const rowBody = (
+                <div className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1 px-1 py-3 md:grid-cols-[auto_1fr_auto]">
+                  {/* Date + time column (left). */}
+                  <div className="tracking-eyebrow font-mono text-[11px] whitespace-nowrap uppercase">
+                    <span className="text-ink-gray">
+                      {formatDayShortBA(s.startsAtUtc)}
+                    </span>
+                    <span className="text-ink-gray/60 mx-1">·</span>
+                    <span className={isIndie ? 'text-carmine font-bold' : 'text-ink'}>
+                      {formatTimeBA(s.startsAtUtc)}
+                    </span>
+                  </div>
 
-            {/* Title + última función pill (center). The original title is
-                deliberately omitted here — on mobile 375, titles like "Los
-                caballeros las prefieren rubias «Gentlemen Prefer Blondes»"
-                overflow the row. Tier 3 is the awareness layer; the full
-                canonical title is what users scan for. Original titles live
-                in the full / compact cards where there's room. The pill, when
-                applicable, lives in-line after the title — Tier 3 has no tag
-                strip so this is the only available slot. */}
-            <div className="min-w-0">
-              <span
-                className={
-                  isIndie
-                    ? 'font-serif text-lg leading-tight'
-                    : 'font-sans text-base font-medium'
-                }
-              >
-                {s.film.title}
-              </span>
-              {isLastFunction && (
-                <span className="tracking-card bg-carmine text-cream ml-2 px-1.5 py-0.5 align-middle font-mono text-[10px] uppercase">
-                  Última
-                </span>
-              )}
-            </div>
+                  {/* Title + última función pill (center). Original title is
+                      deliberately omitted — on mobile 375, long bilingual
+                      titles overflow the row. Próximamente is the awareness
+                      layer; the canonical title is what users scan. */}
+                  <div className="min-w-0">
+                    <span
+                      className={
+                        isIndie
+                          ? 'font-serif text-lg leading-tight'
+                          : 'font-sans text-base font-medium'
+                      }
+                    >
+                      {s.film.title}
+                    </span>
+                    {isLastFunction && (
+                      <span className="tracking-card bg-carmine text-cream ml-2 px-1.5 py-0.5 align-middle font-mono text-[10px] uppercase">
+                        Última
+                      </span>
+                    )}
+                  </div>
 
-            {/* Cinema (right — its own row on mobile). */}
-            <div
-              className={`tracking-card col-span-2 font-mono text-[11px] whitespace-nowrap uppercase md:col-span-1 ${
-                isIndie ? 'text-carmine font-bold' : 'text-ink-gray'
-              }`}
-            >
-              {s.cinema.name}
-            </div>
-          </div>
-        );
-
-        return (
-          <li key={s.id}>
-            {s.film.slug ? (
-              <Link
-                href={`/pelicula/${s.film.slug}`}
-                data-screening-card
-                className="hover:bg-carmine/5 focus-visible:outline-carmine block transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
-                aria-label={`${s.film.title} — ${s.cinema.name} — ${formatTimeBA(s.startsAtUtc)}`}
-              >
-                {rowBody}
-              </Link>
-            ) : (
-              rowBody
-            )}
-          </li>
-        );
-      })}
-    </ul>
+                  {/* Cinema (right — its own row on mobile). */}
+                  <div
+                    className={`tracking-card col-span-2 font-mono text-[11px] whitespace-nowrap uppercase md:col-span-1 ${
+                      isIndie ? 'text-carmine font-bold' : 'text-ink-gray'
+                    }`}
+                  >
+                    {s.cinema.name}
+                  </div>
+                </div>
+              );
+              return (
+                <li key={s.id}>
+                  {s.film.slug ? (
+                    <Link
+                      href={`/pelicula/${s.film.slug}`}
+                      data-screening-card
+                      className="hover:bg-carmine/5 focus-visible:outline-carmine block transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+                      aria-label={`${s.film.title} — ${s.cinema.name} — ${formatTimeBA(s.startsAtUtc)}`}
+                    >
+                      {rowBody}
+                    </Link>
+                  ) : (
+                    rowBody
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -765,24 +733,14 @@ function countsLabel(total: number, cinemas: number): string {
   return `${total} ${total === 1 ? 'función' : 'funciones'} en ${cinemas} ${cinemas === 1 ? 'sala' : 'salas'}`;
 }
 
-function rangeSubtitleFromDays(days: DayGroup[]): SectionSubtitleParts {
-  const totalScreenings = days.reduce((n, d) => n + d.screenings.length, 0);
-  const cinemas = new Set(days.flatMap((d) => d.screenings.map((s) => s.cinema.id))).size;
-  const first = dateKeyToDate(days[0].dateKey);
-  const last = dateKeyToDate(days[days.length - 1].dateKey);
+function proximamenteSubtitle(weeks: WeekGroup[]): SectionSubtitleParts {
+  const flat = weeks.flatMap((w) => w.screenings);
+  const first = flat[0].startsAtUtc;
+  const last = flat[flat.length - 1].startsAtUtc;
+  const cinemas = new Set(flat.map((r) => r.cinema.id)).size;
   return {
     range: formatRangeLabel(first, last),
-    counts: countsLabel(totalScreenings, cinemas),
-  };
-}
-
-function rangeSubtitleFromFlat(rows: ScreeningRow[]): SectionSubtitleParts {
-  const first = rows[0].startsAtUtc;
-  const last = rows[rows.length - 1].startsAtUtc;
-  const cinemas = new Set(rows.map((r) => r.cinema.id)).size;
-  return {
-    range: formatRangeLabel(first, last),
-    counts: countsLabel(rows.length, cinemas),
+    counts: countsLabel(flat.length, cinemas),
   };
 }
 
@@ -892,13 +850,6 @@ function formatRangeShort(first: Date, last: Date): string {
   const lastDay = lastParts.find((p) => p.type === 'day')?.value;
   const lastMonth = lastParts.find((p) => p.type === 'month')?.value?.replace('.', '');
   return `${firstDay} ${firstMonth} — ${lastDay} ${lastMonth}`;
-}
-
-// dateKey "YYYY-MM-DD" → Date at BA noon (safe for formatting without
-// timezone drift).
-function dateKeyToDate(dateKey: string): Date {
-  const [y, m, d] = dateKey.split('-').map((s) => parseInt(s, 10));
-  return new Date(Date.UTC(y, m - 1, d, 15)); // 12:00 BA = 15:00 UTC
 }
 
 /**
