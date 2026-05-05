@@ -72,6 +72,20 @@ export async function generateMetadata({
     total === 1 ? 'función' : 'funciones'
   } en cartelera · ${next4hLabel}.`;
 
+  // Social-preview image. Backdrop is 16:9 at TMDB w1280 — what
+  // summary_large_image cards on Twitter/Slack/Telegram want. Poster
+  // is 2:3 vertical (TMDB w500); WhatsApp/Signal crop it cleanly to
+  // a square thumb, so it still beats the site favicon fallback.
+  // Without this block, Next.js would emit no og:image at all on
+  // /pelicula/<slug>: the root segment's file-convention
+  // opengraph-image.png doesn't cascade into nested routes, and
+  // returning a child openGraph object shallowly replaces the parent's.
+  const ogImage = film.backdropUrl
+    ? { url: film.backdropUrl, width: 1280, height: 720, alt: film.title }
+    : film.posterUrl
+      ? { url: film.posterUrl, width: 500, height: 750, alt: film.title }
+      : undefined;
+
   return {
     title,
     description,
@@ -86,11 +100,13 @@ export async function generateMetadata({
       description,
       url: `/pelicula/${slug}`,
       type: 'article',
+      ...(ogImage && { images: [ogImage] }),
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
+      ...(ogImage && { images: [ogImage] }),
     },
   };
 }

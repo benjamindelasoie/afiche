@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.2.1.1] - 2026-05-05
+
+### Fixed
+
+- **`/pelicula/<slug>` URLs now render a film-specific preview when shared on WhatsApp/Slack/Twitter/Telegram**, instead of falling through to the Vercel favicon. Root cause: the file-convention `opengraph-image.png` at `src/app/` only attaches to its own route segment (`/`), not nested routes — and the page's `generateMetadata` was returning a child `openGraph` object without `images`, which shallowly replaces the parent's metadata, so `/pelicula/<slug>` emitted no `og:image` at all. Fix: explicitly populate `openGraph.images` and `twitter.images` in the page's `generateMetadata` using the film's TMDB backdrop (16:9 at w1280, ideal for `summary_large_image` cards on Twitter/Slack/Telegram) with the vertical poster (TMDB w500) as fallback for films without a backdrop.
+
 ## [0.2.1.0] - 2026-05-05
 
 ### Fixed
