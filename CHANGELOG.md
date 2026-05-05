@@ -2,6 +2,13 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.2.0.1] - 2026-05-05
+
+### Fixed
+
+- **Smooth scroll when tapping date chips on iPhone Safari.** Chip taps used to produce a hard, instantaneous snap on real iOS devices because the page-level smooth-scroll behavior wasn't set; iPhone's larger per-day scroll delta made the jump painfully visible. Desktop emulation hid the bug because adjacent sections often shared a viewport. The whole page now glides between days. Reduced-motion preference is respected — users who opt out of motion still get instant jumps.
+- **Day heading lands with breathing room below the sticky date strip.** The previous offset (60 px) was ~9 px short of the strip's actual rendered height and gave zero air between the strip's bottom border and the heading's top border. Replaced two per-element `scroll-mt-[60px]` magic numbers with a single `scroll-padding-top: 88px` on `<html>`, which covers every anchor target on the page and leaves ~20 px of breathing room.
+
 ## [0.2.0.0] - 2026-05-03
 
 ### Added

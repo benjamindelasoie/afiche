@@ -174,7 +174,7 @@ export default async function HomePage() {
                 week-grouped. One banner per ISO week starting from
                 day 15. Reachable via the strip's trailing "→" chip. */}
             {hasUpcoming && (
-              <section id="proximamente" className="mt-16 scroll-mt-[60px] md:mt-24">
+              <section id="proximamente" className="mt-16 md:mt-24">
                 <SectionHeader
                   title="Próximamente"
                   subtitle={<SectionSubtitle parts={proximamenteSubtitle(upcoming)} />}
@@ -277,7 +277,7 @@ function DaySection({
       <h2
         id={`dia-${day.dateKey}`}
         aria-current={day.isToday ? 'date' : undefined}
-        className="mb-4 flex scroll-mt-[60px] flex-wrap items-baseline justify-between gap-3 border-t border-black py-3 font-normal"
+        className="mb-4 flex flex-wrap items-baseline justify-between gap-3 border-t border-black py-3 font-normal"
       >
         <span
           className={`tracking-eyebrow font-mono text-[11px] text-balance uppercase ${

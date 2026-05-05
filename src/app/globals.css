@@ -53,6 +53,32 @@
 }
 
 /*
+ * Anchor-scroll behavior. Two rules working together:
+ *
+ *   scroll-behavior: smooth — animate hash-link jumps (e.g. tapping a
+ *   date chip in the sticky strip) instead of instant-snapping. iOS
+ *   Safari's default is an instant jump, which on a tall mobile layout
+ *   produces a visible hard snap because each day section fills most of
+ *   the viewport. Smooth absorbs the jump. Desktop didn't surface this
+ *   because adjacent sections often share viewport space (small delta).
+ *
+ *   scroll-padding-top — reserve space at the top of the scrollport for
+ *   the sticky DateStrip so anchored targets (#dia-YYYY-MM-DD,
+ *   #proximamente) don't land underneath the strip. Replaces the old
+ *   per-element `scroll-mt-[60px]` (which was 9px short of the strip's
+ *   ~69px height and gave zero visual breathing room). 88px = strip
+ *   height + ~20px of air between strip's border-b and the heading's
+ *   border-t. One rule on <html> covers every anchor target on the page.
+ *
+ * `scroll-behavior: smooth` is overridden to `auto` inside the
+ * prefers-reduced-motion block below for accessibility.
+ */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 88px;
+}
+
+/*
  * Motion accessibility — when the user has requested reduced motion,
  * kill transitions and animations across the board. Catches anywhere
  * a future change adds a transition without remembering this guard.
