@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.2.0.2] - 2026-05-05
+
+### Changed
+
+- **Day heading collapses flush against the sticky date strip on chip jumps.** Tightened `scroll-padding-top` from 88 px to 70 px so the strip's bottom border and the day banner's top border sit on the same pixel edge — the two 1 px rules read as a single editorial double-rule line. The earlier 88 px left a small gap, which read as two competing parallel lines. The new comment in `globals.css` flags this as a deliberate rule-collapsing choice so future edits don't reintroduce breathing room.
+
 ## [0.2.0.1] - 2026-05-05
 
 ### Fixed

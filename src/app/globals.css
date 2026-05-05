@@ -64,18 +64,22 @@
  *
  *   scroll-padding-top — reserve space at the top of the scrollport for
  *   the sticky DateStrip so anchored targets (#dia-YYYY-MM-DD,
- *   #proximamente) don't land underneath the strip. Replaces the old
- *   per-element `scroll-mt-[60px]` (which was 9px short of the strip's
- *   ~69px height and gave zero visual breathing room). 88px = strip
- *   height + ~20px of air between strip's border-b and the heading's
- *   border-t. One rule on <html> covers every anchor target on the page.
+ *   #proximamente) don't land underneath the strip. 70px is the strip's
+ *   exact rendered height (16px wrapper py-2 + 8px chip py-2 top + 36px
+ *   chip content + 8px chip py-2 bottom + 1px border-b ≈ 69px, rounded
+ *   up by 1 for sub-pixel safety). This makes the strip's bottom border
+ *   and the day banner's top border sit on the same pixel edge — the
+ *   two 1px rules collapse into a single editorial double-rule line.
+ *   Do NOT add breathing room here without coordinating with DESIGN.md's
+ *   rule-collapsing aesthetic; a small gap reads as two competing lines,
+ *   which is exactly the look this layout is trying to avoid.
  *
  * `scroll-behavior: smooth` is overridden to `auto` inside the
  * prefers-reduced-motion block below for accessibility.
  */
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 88px;
+  scroll-padding-top: 70px;
 }
 
 /*
