@@ -45,6 +45,33 @@ describe('parseDateRange', () => {
   it('returns null for unparseable text', () => {
     expect(parseDateRange('próximamente')).toBeNull();
   });
+
+  // Regression: Lugones uses a single-day form for one-off "bis" encore
+  // screenings, special events, and festival add-ons. The dateRangeText
+  // looks nothing like the cycle "Del X al Y" syntax, so before this
+  // form was added, parseDateRange returned null and the entire program
+  // was dropped (warning: 'could not parse date range "Jueves 28 de
+  // mayo, 15 y 18 horas"'). Source: Claude Chabrol-bis program, 2026-05.
+  it('anchors on day + month for single-day shape with inline times', () => {
+    expect(parseDateRange('Jueves 28 de mayo, 15 y 18 horas')).toMatchObject({
+      startMonth: 4, // May (0-indexed)
+    });
+  });
+
+  it('anchors on day + month for single-day shape without inline times', () => {
+    expect(parseDateRange('Sábado 14 de junio')).toMatchObject({
+      startMonth: 5,
+    });
+  });
+
+  it('does not let the single-day form steal cycle matches', () => {
+    // Cycle strings never start with a weekday, but pin the precedence
+    // so a future contributor doesn't reorder the forms array and break
+    // the multi-month anchor (the canonical Karloff regression).
+    expect(parseDateRange('Del 28 de abril al 5 de mayo')).toMatchObject({
+      startMonth: 3, // April, not May
+    });
+  });
 });
 
 describe('parseDetailPage (Boris Karloff Parte 2 fixture)', () => {
@@ -246,5 +273,49 @@ describe('parseDetailPage S2 fallback (Ojos extraños fixture)', () => {
   it('uses the on_view <h2> title (stripping the "(YEAR)" suffix)', () => {
     const s = parseDetailPage(html, program, [])[0];
     expect(s.filmTitle).toBe('Ojos extraños');
+  });
+});
+
+describe('parseDetailPage single-day one-off (Chabrol bis fixture)', () => {
+  // Captured 2026-05-05 from /ver/Claude-%20Chabrol-bis. The index page
+  // exposes this program with dateRangeText "Jueves 28 de mayo, 15 y 18
+  // horas" — a single-day form (no "del...al..." range syntax). Before
+  // the parseDateRange single-day form was added, the entire program was
+  // dropped at the warning at lugones.ts:191. With the fix, the existing
+  // S1 layout walker handles the detail page since matchDayHeader already
+  // accepts the month-less "Jueves 28" header (lugones.ts:666).
+  //
+  // Known source-quality limitation: the source page only labels the
+  // 15h film ("Bodas sangrientas") with a <strong> title. The 18h film
+  // ("Al anochecer") appears only in the prose intro, NOT as a structured
+  // <strong> title in its screening block — so emit() skips it (no title).
+  // This is a Lugones CMS data-entry gap, not a scraper bug. The test
+  // asserts what is structurally extractable; the 18h screening is
+  // intentionally not asserted.
+  const html = fixture('chabrol-bis.html');
+  const program: ProgramLink = {
+    slug: 'Claude- Chabrol-bis',
+    title: 'Claude Chabrol bis',
+    dateRangeText: 'Jueves 28 de mayo, 15 y 18 horas',
+    detailUrl: 'https://complejoteatral.gob.ar/ver/Claude-%20Chabrol-bis',
+  };
+
+  it('extracts the 15h Bodas sangrientas screening on May 28', () => {
+    const warnings: string[] = [];
+    const screenings = parseDetailPage(html, program, warnings);
+
+    // No "could not parse date range" warning — the regression itself.
+    expect(warnings.find((w) => /could not parse date range/i.test(w))).toBeUndefined();
+
+    const bodas = screenings.filter((s) => s.filmTitle === 'Bodas sangrientas');
+    expect(bodas).toHaveLength(1);
+
+    const s = bodas[0];
+    // 15h BA → 18:00 UTC on May 28.
+    expect(s.startsAtUtc.getUTCMonth()).toBe(4); // May
+    expect(s.startsAtUtc.getUTCDate()).toBe(28);
+    expect(s.startsAtUtc.getUTCHours()).toBe(18);
+    expect(s.director).toBe('Claude Chabrol');
+    expect(s.runtimeMin).toBe(95);
   });
 });

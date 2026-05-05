@@ -695,10 +695,15 @@ function matchTimeMarker(text: string): Array<{ hour: number; minute: number }> 
 
 /**
  * Parse the program's date range string to determine the starting month + year.
- * Handles three forms seen in Lugones programming:
+ * Handles four forms seen in Lugones programming:
  *   1. "Del 28 de abril al 5 de mayo"     → different months
  *   2. "Del 15 al 26 de abril"            → same month
  *   3. "A partir del 7 de mayo"           → open-ended
+ *   4. "Jueves 28 de mayo, 15 y 18 horas" → single-day one-off ("bis"
+ *                                            encore screenings, special
+ *                                            events, festival add-ons —
+ *                                            day + month + inline times,
+ *                                            not a true range)
  */
 export function parseDateRange(
   text: string,
@@ -709,6 +714,12 @@ export function parseDateRange(
   // start month — the month name that goes with the START day, which is the
   // one we anchor the parser on. Form 1 has a trailing end-month group that
   // we intentionally discard.
+  //
+  // Order matters: forms 1-3 (true ranges) are tried first; form 4
+  // (single-day) is anchored at start-of-string with a leading weekday so
+  // it can't accidentally match the inner "lunes 5 de junio" of a longer
+  // string. Cycle date strings never lead with a weekday name, so there's
+  // no risk of form 4 stealing matches from forms 1-3.
   const forms = [
     // "del D1 de MONTH1 al D2 de MONTH2" → m[1]=D1, m[2]=MONTH1, m[3]=MONTH2
     /del\s+(\d{1,2})\s+de\s+([a-záéíóú]+)\s+al\s+\d{1,2}\s+de\s+([a-záéíóú]+)/i,
@@ -716,6 +727,8 @@ export function parseDateRange(
     /del\s+(\d{1,2})\s+al\s+\d{1,2}\s+de\s+([a-záéíóú]+)/i,
     // "a partir del D1 de MONTH" → m[1]=D1, m[2]=MONTH
     /a\s+partir\s+del\s+(\d{1,2})\s+de\s+([a-záéíóú]+)/i,
+    // "WEEKDAY D1 de MONTH" → m[1]=D1, m[2]=MONTH (single-day one-off)
+    /^(?:lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)\s+(\d{1,2})\s+de\s+([a-záéíóú]+)/i,
   ];
 
   let startDay: number | null = null;

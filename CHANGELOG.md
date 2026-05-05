@@ -2,6 +2,16 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.2.0.3] - 2026-05-05
+
+### Fixed
+
+- **Sala Lugones "bis" / single-day programs are no longer silently dropped.** The Lugones index page exposes one-off encore screenings (e.g. "Claude Chabrol bis") with a date string like `"Jueves 28 de mayo, 15 y 18 horas"` — a single-day shape that doesn't fit the cycle-style `"Del X al Y"` range syntax the parser handled. Pre-fix, the scraper logged `could not parse date range "..."` and dropped the entire program. Now `parseDateRange` recognizes a fourth syntactic form (`<weekday> <day> de <month>`) and the existing S1 detail-page walker handles the rest, since `matchDayHeader` already accepts month-less day headers (`"Jueves 28"`). Captured the live Chabrol bis detail page as a fixture and added unit + integration regression tests.
+
+### Maintenance
+
+- Documented as a known source-quality limitation: the second film on the Chabrol bis page ("Al anochecer") will still be silently skipped because the source page omits its `<strong>title</strong>` element — the title appears only in the prose intro paragraph. That's a Lugones CMS data-entry gap, not a scraper bug. Recovering it would require regex-on-prose, which is the most fragile possible parser strategy.
+
 ## [0.2.0.2] - 2026-05-05
 
 ### Changed
