@@ -148,10 +148,7 @@ export const films = sqliteTable(
     // otherwise a re-scrape can't find the existing row by its original
     // (scraped_title, year=null) key once year has been mutated, and ends
     // up inserting an unenriched duplicate.
-    uniqueIndex('films_scraped_title_scraped_year_idx').on(
-      t.scrapedTitle,
-      t.scrapedYear,
-    ),
+    uniqueIndex('films_scraped_title_scraped_year_idx').on(t.scrapedTitle, t.scrapedYear),
     // Slug is the URL key for /pelicula/<slug> — must be unique.
     uniqueIndex('films_slug_idx').on(t.slug),
   ],
