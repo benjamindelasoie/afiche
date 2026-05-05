@@ -2,6 +2,21 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.2.1.0] - 2026-05-05
+
+### Fixed
+
+- **Manually-patched `tmdb_id` values now persist across scrapes.** Previously, films whose `tmdb_id` was patched in Drizzle Studio after auto-match failed would lose the patch on the very next `scrape:prod` run — the cartelera would silently render an unenriched duplicate while the patched row was orphaned. Confirmed in prod 2026-05-05 for "PADRE, MADRE, HERMANA, HERMANO" and "EL DESPRECIO (1963)". Root cause: the films unique index was on `(scraped_title, year)`, but enrichment writes `year` (e.g. resolves a year-less row to 2025). The next re-scrape's lookup for `year IS NULL` then missed the patched row and inserted a fresh unenriched duplicate. Fix: split the immutable `scraped_year` (what the scraper first saw, never updated) from the mutable `year` (what we now believe), and key the unique index on `(scraped_title, scraped_year)`. Re-scrapes now find the existing row regardless of how `year` has evolved.
+
+### Changed
+
+- **New `films.scraped_year` column** (Drizzle migration `0005_spooky_zarek`). Backfilled `scraped_year = year` for every existing row, with manually-patched rows (`match_source = 'manual'`) overridden to `NULL` because we know the scraper originally emitted year=null for those (that's why auto-match failed). One-time consequence: auto-matched rows whose original scraper-emitted year was NULL will create one duplicate on the next scrape, which the existing merge-on-collision logic in `enrichment.ts` collapses automatically — bounded one-time noise in the merge warnings, then stable forever.
+
+### Maintenance
+
+- Three new regression tests in `src/scrapers/ingest.test.ts` lock the manual-patch + re-scrape sequence so this can't silently regress: a re-scrape with year=undefined finds the patched row by `scraped_year IS NULL`, distinct `scraped_year` values stay distinct (the merge logic handles their cleanup), and two consecutive year-less re-scrapes converge on a single row.
+- Stale comment block in `enrichment.ts` updated. The merge-on-collision logic is no longer a "prevent unique-constraint violation" mechanism (the new key prevents that automatically); it's now purely cross-provider deduplication.
+
 ## [0.2.0.3] - 2026-05-05
 
 ### Fixed

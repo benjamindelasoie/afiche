@@ -90,6 +90,17 @@ export const films = sqliteTable(
     scrapedTitle: text('scraped_title').notNull(),
     director: text('director'),
     year: integer('year'),
+    // The year as the SCRAPER first saw it on the source page. Immutable
+    // after first insert — only `year` evolves (e.g., TMDB resolves a
+    // year-less row to 2024). The (scraped_title, scraped_year) pair is
+    // the upsert key; (scraped_title, year) is NOT, because `year` is
+    // mutable and re-scrapes that emit year=null after enrichment filled
+    // year=YYYY would otherwise miss the existing row and create an
+    // unenriched duplicate. See the mutable-key upsert bug investigation
+    // (memory: project_afiche_mutable_key_upsert_bug.md). Nullable
+    // because some providers can't determine year (Lugones cycle pages
+    // with truncated metadata, MALBA single-event pages, etc.).
+    scrapedYear: integer('scraped_year'),
     country: text('country'),
     runtimeMin: integer('runtime_min'),
     synopsisEs: text('synopsis_es'),
@@ -131,8 +142,16 @@ export const films = sqliteTable(
       .$defaultFn(() => new Date()),
   },
   (t) => [
-    // Prevent duplicate film rows from the same scraped title + year combination.
-    uniqueIndex('films_scraped_title_year_idx').on(t.scrapedTitle, t.year),
+    // Prevent duplicate film rows from the same scraped title + scraper-
+    // emitted year. Keyed on `scraped_year` (not `year`) so the upsert key
+    // stays stable even after enrichment fills in the `year` column —
+    // otherwise a re-scrape can't find the existing row by its original
+    // (scraped_title, year=null) key once year has been mutated, and ends
+    // up inserting an unenriched duplicate.
+    uniqueIndex('films_scraped_title_scraped_year_idx').on(
+      t.scrapedTitle,
+      t.scrapedYear,
+    ),
     // Slug is the URL key for /pelicula/<slug> — must be unique.
     uniqueIndex('films_slug_idx').on(t.slug),
   ],

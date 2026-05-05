@@ -64,6 +64,12 @@ async function seedFilm(args: {
   director?: string | null;
   tmdbId?: number | null;
   posterUrl?: string | null;
+  // Defaults to args.year when omitted, matching the most common test
+  // setup (scraper saw year=Y and never had it changed by enrichment).
+  // Pass `null` explicitly to simulate the post-enrichment state of a
+  // formerly year-less row (scraper emitted year=null, enrichment
+  // filled in `year` later, but `scrapedYear` stays NULL forever).
+  scrapedYear?: number | null;
 }): Promise<number> {
   const [row] = await testDb
     .insert(films)
@@ -71,6 +77,7 @@ async function seedFilm(args: {
       title: args.scrapedTitle,
       scrapedTitle: args.scrapedTitle,
       year: args.year,
+      scrapedYear: args.scrapedYear === undefined ? args.year : args.scrapedYear,
       titleOriginal: args.titleOriginal ?? null,
       director: args.director ?? null,
       matchSource: args.matchSource,
@@ -907,5 +914,186 @@ describe('ingest — slug collision retry (Cine Cosmos crash regression)', () =>
       .from(films)
       .where(eq(films.scrapedTitle, 'Nuestra tierra'));
     expect(collided.slug).toBe(`nuestra-tierra-2025-${collided.id}`);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2026-05-05 mutable-key upsert bug regression
+// ---------------------------------------------------------------------------
+//
+// Scenario: an operator manually patched tmdb_id on a row that was
+// originally scraped with year=null. Enrichment ran, fetched TMDB
+// details, wrote year=2025 to the row, flipped match_source='manual'.
+// Then a scheduled scrape:prod ran. The same provider re-emitted a
+// screening for the same film, still with year=undefined. Pre-fix, the
+// upsert keyed on (scraped_title, year) and upsertYearlessFilm looked up
+// `WHERE year IS NULL` — which missed the patched row (year was now
+// 2025), inserted an unenriched duplicate, and stranded the screenings
+// on it. Cartelera rendered the unenriched dup; the patched row was
+// orphaned. Confirmed in prod for rows 1736/1451 (PADRE, MADRE,
+// HERMANA, HERMANO) and 1740/1455 (EL DESPRECIO 1963).
+//
+// Fix: split the immutable scraped_year from the mutable year. Upsert
+// keys on (scraped_title, scraped_year), and upsertYearlessFilm looks
+// up `WHERE scraped_year IS NULL`. Patched rows keep scraped_year=NULL
+// forever, so re-scrapes find them by their original key regardless of
+// what `year` has resolved to. This test locks that behavior down.
+// ---------------------------------------------------------------------------
+describe('ingest — manual-patch + re-scrape (mutable-key regression)', () => {
+  beforeEach(async () => {
+    testDb = await makeInMemoryDb();
+    enrichFilmMock.mockReset();
+    enrichByTmdbIdMock.mockReset();
+    // Default: no enrichment matches. The regression is about the upsert
+    // path, not enrichment. Tests can override per-case below.
+    enrichFilmMock.mockResolvedValue({ delta: null, reason: 'no-candidates' });
+    await testDb
+      .insert(cinemas)
+      .values({ id: 'lugones', name: 'Sala Lugones', type: 'indie' });
+  });
+
+  it('re-scrape with year=undefined finds the manually-patched row by scraped_year IS NULL', async () => {
+    // Seed: post-enrichment state of a manually-patched film. Originally
+    // scraped year-less (scrapedYear=null), operator patched tmdbId,
+    // enrichment resolved year=2025 and locked match_source='manual'.
+    const patchedId = await seedFilm({
+      scrapedTitle: 'PADRE, MADRE, HERMANA, HERMANO',
+      year: 2025,
+      scrapedYear: null,
+      matchSource: 'manual',
+      tmdbId: 1159206,
+      posterUrl: '/posters/1159206.jpg',
+    });
+
+    // Re-scrape: same provider emits the same film with year=undefined,
+    // same as the original scrape (scraper logic hasn't changed; the
+    // film page still doesn't expose a parseable year).
+    const result = await ingest({
+      cinemaId: 'lugones',
+      success: true,
+      warnings: [],
+      screenings: [
+        {
+          cinemaId: 'lugones',
+          filmTitle: 'PADRE, MADRE, HERMANA, HERMANO',
+          // year intentionally undefined
+          startsAtUtc: new Date('2026-06-15T22:00:00Z'),
+          tags: ['cycle' as const],
+          sourceUrl: 'https://complejoteatral.gob.ar/cine',
+        },
+      ],
+    });
+
+    // Pre-fix this would be 1 (the new duplicate). Post-fix the upsert
+    // finds the existing patched row, so still 1 — but the assertions
+    // below distinguish "found existing" from "created duplicate."
+    expect(result.filmsUpserted).toBe(1);
+
+    // Critical: only ONE film row exists for this scraped_title.
+    const allRows = await testDb
+      .select()
+      .from(films)
+      .where(eq(films.scrapedTitle, 'PADRE, MADRE, HERMANA, HERMANO'));
+    expect(allRows).toHaveLength(1);
+
+    // The surviving row IS the patched original — id, tmdb_id,
+    // match_source, year, poster all preserved.
+    expect(allRows[0].id).toBe(patchedId);
+    expect(allRows[0].tmdbId).toBe(1159206);
+    expect(allRows[0].matchSource).toBe('manual');
+    expect(allRows[0].year).toBe(2025);
+    expect(allRows[0].scrapedYear).toBeNull();
+    expect(allRows[0].posterUrl).toBe('/posters/1159206.jpg');
+
+    // Screening points at the patched row, not at a phantom duplicate.
+    const screeningRows = await testDb
+      .select()
+      .from(screenings)
+      .where(eq(screenings.filmId, patchedId));
+    expect(screeningRows).toHaveLength(1);
+  });
+
+  it('re-scrape with year=undefined does not create a duplicate when scraped_year was already non-null', async () => {
+    // Edge case: a row originally scraped with year=2024 (auto-matched
+    // path, scraper got the year right). Even if a future re-scrape
+    // emits year=undefined for this same title (e.g., scraper bug, or
+    // the source page mangles a previously parseable year), we should
+    // NOT find the year=2024 row by `scraped_year IS NULL` — it has
+    // scraped_year=2024. Instead, a NEW row gets inserted at
+    // (scrapedTitle, scrapedYear=null). This is correct: distinct
+    // scraped_year values represent semantically distinct scrape
+    // observations and should be tracked separately. The merge logic
+    // handles cleanup if both end up at the same TMDB-resolved year.
+    const originalId = await seedFilm({
+      scrapedTitle: 'Some Auto-Matched Film',
+      year: 2024,
+      scrapedYear: 2024,
+      matchSource: 'auto',
+      tmdbId: 12345,
+    });
+
+    await ingest({
+      cinemaId: 'lugones',
+      success: true,
+      warnings: [],
+      screenings: [
+        {
+          cinemaId: 'lugones',
+          filmTitle: 'Some Auto-Matched Film',
+          // year=undefined this time
+          startsAtUtc: new Date('2026-07-01T22:00:00Z'),
+          tags: ['cycle' as const],
+          sourceUrl: 'https://complejoteatral.gob.ar/cine',
+        },
+      ],
+    });
+
+    const allRows = await testDb
+      .select()
+      .from(films)
+      .where(eq(films.scrapedTitle, 'Some Auto-Matched Film'));
+    // Two rows now: original (scrapedYear=2024) + new (scrapedYear=null).
+    // That's correct under the new key semantics.
+    expect(allRows).toHaveLength(2);
+    const originalAfter = allRows.find((r) => r.id === originalId);
+    expect(originalAfter?.tmdbId).toBe(12345);
+    expect(originalAfter?.scrapedYear).toBe(2024);
+    const newRow = allRows.find((r) => r.id !== originalId);
+    expect(newRow?.scrapedYear).toBeNull();
+  });
+
+  it('two consecutive re-scrapes with year=undefined produce exactly one row (idempotency lock)', async () => {
+    // Pure-idempotency check: starting from empty, scraping the same
+    // year-less screening twice in a row must converge on a single row.
+    // Pre-fix this also worked (upsertYearlessFilm did the SELECT). The
+    // test pins it post-fix to make sure the scraped_year-keyed lookup
+    // is equally idempotent.
+    const screening = {
+      cinemaId: 'lugones' as const,
+      filmTitle: 'A Year-Less Cycle Title',
+      // year=undefined
+      startsAtUtc: new Date('2026-06-20T21:00:00Z'),
+      tags: ['cycle' as const],
+      sourceUrl: 'https://complejoteatral.gob.ar/cine',
+    };
+    await ingest({
+      cinemaId: 'lugones',
+      success: true,
+      warnings: [],
+      screenings: [screening],
+    });
+    await ingest({
+      cinemaId: 'lugones',
+      success: true,
+      warnings: [],
+      screenings: [screening],
+    });
+
+    const allRows = await testDb
+      .select()
+      .from(films)
+      .where(eq(films.scrapedTitle, 'A Year-Less Cycle Title'));
+    expect(allRows).toHaveLength(1);
+    expect(allRows[0].scrapedYear).toBeNull();
   });
 });

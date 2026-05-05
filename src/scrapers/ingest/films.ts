@@ -74,11 +74,19 @@ interface UpsertResult {
 }
 
 /**
- * Upsert one film row by (scrapedTitle, year). Three branches:
+ * Upsert one film row by (scrapedTitle, scrapedYear). Three branches:
  *
- *   1. year=undefined         → app-level find-or-create on (title, year IS NULL)
+ *   1. year=undefined         → app-level find-or-create on (title, scraped_year IS NULL)
  *   2. year known + has fields → ON CONFLICT DO UPDATE
  *   3. year known + no fields  → ON CONFLICT DO NOTHING + lookup
+ *
+ * The upsert key is (scrapedTitle, scrapedYear) — NOT (scrapedTitle, year).
+ * The films table has both a `year` column (mutable; enrichment writes the
+ * TMDB-resolved year here) and a `scraped_year` column (immutable after
+ * insert; what the scraper first emitted). Keying the upsert on the
+ * immutable scraped_year is what keeps re-scrapes finding the existing
+ * row even after enrichment has filled in `year`. See
+ * project_afiche_mutable_key_upsert_bug for the bug this fixes.
  *
  * Some providers (MALBA S2 single-event pages) only know the film title —
  * every metadata field is undefined. Drizzle's mapUpdateSet strips undefined
@@ -101,6 +109,13 @@ async function upsertFilmRow(s: ScrapedScreening): Promise<UpsertResult> {
     titleOriginal: s.filmTitleOriginal,
     director: s.director,
     year: s.year,
+    // Immutable record of what the scraper saw on this insert. Never
+    // touched on subsequent updates — the (scrapedTitle, scrapedYear)
+    // pair must remain stable for the upsert to be idempotent across
+    // re-scrapes. enrichment.ts may freely update `year` (e.g.
+    // null → 2025 when TMDB resolves a year-less row) without breaking
+    // re-scrape lookup.
+    scrapedYear: s.year,
     runtimeMin: s.runtimeMin,
     synopsisEs: s.synopsisEs,
     matchSource: 'none',
@@ -117,7 +132,7 @@ async function upsertFilmRow(s: ScrapedScreening): Promise<UpsertResult> {
       .insert(films)
       .values(insertValues)
       .onConflictDoUpdate({
-        target: [films.scrapedTitle, films.year],
+        target: [films.scrapedTitle, films.scrapedYear],
         set: updateSet,
       })
       .returning({ id: films.id, slug: films.slug });
@@ -139,19 +154,28 @@ async function upsertFilmRow(s: ScrapedScreening): Promise<UpsertResult> {
   const [existing] = await db
     .select({ id: films.id, slug: films.slug })
     .from(films)
-    .where(and(eq(films.scrapedTitle, s.filmTitle), eq(films.year, s.year)))
+    .where(and(eq(films.scrapedTitle, s.filmTitle), eq(films.scrapedYear, s.year)))
     .limit(1);
   return { filmId: existing?.id, existingSlug: existing?.slug ?? null };
 }
 
 /**
  * Year-NULL branch. SQLite treats NULL as distinct in unique indexes:
- * NULL == NULL is NULL, not TRUE, so the (scraped_title, year) unique
- * constraint never fires for two NULL-year rows with the same title.
- * Without this app-level dedup, every scrape that emits a year-less
- * screening (e.g., Lugones detail pages where the year couldn't be parsed)
- * would create a new orphan film row, and downstream the cartelera would
- * render one card per row.
+ * NULL == NULL is NULL, not TRUE, so the (scraped_title, scraped_year)
+ * unique constraint never fires for two NULL-scraped-year rows with the
+ * same title. Without this app-level dedup, every scrape that emits a
+ * year-less screening (e.g., Lugones detail pages where the year
+ * couldn't be parsed) would create a new orphan film row, and downstream
+ * the cartelera would render one card per row.
+ *
+ * The lookup is keyed on `scraped_year IS NULL`, NOT `year IS NULL`.
+ * That's the whole point of the column split: enrichment may have
+ * filled in `year` from TMDB, but `scraped_year` stays at NULL forever
+ * (it's what the scraper saw, not what we now believe). Matching on
+ * `scraped_year IS NULL` finds the row regardless of whether `year`
+ * has been resolved. Pre-fix, this lookup keyed on `year IS NULL` and
+ * would miss any row whose year had been resolved by enrichment —
+ * causing the manual-patch tmdb_id loss bug from 2026-05-05.
  */
 async function upsertYearlessFilm(
   s: ScrapedScreening,
@@ -161,7 +185,7 @@ async function upsertYearlessFilm(
   const [existing] = await db
     .select({ id: films.id, slug: films.slug })
     .from(films)
-    .where(and(eq(films.scrapedTitle, s.filmTitle), isNull(films.year)))
+    .where(and(eq(films.scrapedTitle, s.filmTitle), isNull(films.scrapedYear)))
     .limit(1);
   if (existing) {
     if (Object.keys(updateSet).length > 0) {

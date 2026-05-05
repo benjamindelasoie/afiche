@@ -20,14 +20,25 @@
  * matchSource='manual', which locks it from further re-search.
  * Workflow: see DEPLOY.md "Manual TMDB patching" section.
  *
- * Merge-on-collision: the films unique index is on (scrapedTitle, year).
- * SQLite treats NULL as distinct, so a year-less provider (e.g. Lumiton)
- * can create a row with year=NULL that coexists with an older row that
- * has (same title, year=1962). When TMDB then resolves our row's year to
- * 1962, naïvely UPDATE-ing would trip the unique constraint. Instead we
- * detect the would-be collision, re-point our screenings to the existing
- * enriched row, and delete ours. The existing row wins (it's already
+ * Merge-on-collision: the films unique index is on (scrapedTitle,
+ * scrapedYear), where scraped_year is the immutable year the scraper
+ * first emitted. enrichment may freely write `year` (which is a
+ * separate, mutable column) without ever colliding with the unique
+ * index. So this merge is NOT about preventing constraint violations
+ * — it's about cross-provider/cross-scrape deduplication. Two rows
+ * can legitimately reach the same resolved year while having different
+ * scraped_year values: provider A emits year=null, provider B emits
+ * year=1962, both enrich to 1962 and reference the same film. The
+ * merge collapses them, re-pointing screenings to the existing
+ * enriched row and deleting ours. The existing row wins (it's already
  * enriched with trusted data from a prior run).
+ *
+ * (Pre-2026-05-05 the unique index was on (scrapedTitle, year), which
+ * created the mutable-key upsert bug — a re-scrape that emitted
+ * year=null couldn't find the row whose year had been resolved by an
+ * earlier enrichment, and inserted an unenriched duplicate. The split
+ * into year + scraped_year fixes that. See migration 0005 and
+ * memory: project_afiche_mutable_key_upsert_bug.)
  *
  * Rate-limiting: TMDB free tier is ~40 req/sec. For safety we sleep 100ms
  * between lookups — gives us ~10 req/sec which is plenty.
