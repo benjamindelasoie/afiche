@@ -136,9 +136,7 @@ export const cineLorcaProvider: Provider = {
       const cached = await readImageCache(cacheKey);
       const parsed = cached ?? (await readCarteleraWithVision(image));
       if (cached) {
-        warnings.push(
-          `vision call skipped: cache key unchanged (cached parse re-used)`,
-        );
+        warnings.push(`vision call skipped: cache key unchanged (cached parse re-used)`);
       }
 
       if (!parsed.validFrom || !parsed.validTo) {
@@ -188,7 +186,9 @@ export const cineLorcaProvider: Provider = {
       if (!cached) {
         await writeImageCache(cacheKey, parsed).catch((err: unknown) => {
           const msg = err instanceof Error ? err.message : String(err);
-          warnings.push(`vision cache write failed (next run will re-call vision): ${msg}`);
+          warnings.push(
+            `vision cache write failed (next run will re-call vision): ${msg}`,
+          );
         });
       }
       return { cinemaId: 'lorca', screenings, success: true, warnings };
@@ -630,9 +630,7 @@ export function composeCacheKey(
  * Exported for tests; not part of the module's public contract.
  */
 export async function readImageCache(key: string): Promise<ParsedCartelera | null> {
-  let row:
-    | { sha: string | null; parsed: unknown }
-    | undefined;
+  let row: { sha: string | null; parsed: unknown } | undefined;
   try {
     [row] = await db
       .select({

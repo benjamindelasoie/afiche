@@ -142,9 +142,11 @@ describe('image-hash cache', () => {
         },
       ],
     };
-    await testDb
-      .insert(await import('@/db/schema').then((m) => m.providers))
-      .values({ id: 'lorca', lastImageSha256: 'too-many-times', lastImageParsed: tooManyTimes });
+    await testDb.insert(await import('@/db/schema').then((m) => m.providers)).values({
+      id: 'lorca',
+      lastImageSha256: 'too-many-times',
+      lastImageParsed: tooManyTimes,
+    });
     expect(await readImageCache('too-many-times')).toBeNull();
   });
 
@@ -206,7 +208,9 @@ describe('image-hash cache', () => {
     //
     // Bypass Drizzle's JSON serializer and write raw garbage text directly
     // via libSQL's execute. The value `not-actually-json{` is unparseable.
-    await testDb.run(sql`INSERT INTO providers (id, last_image_sha256, last_image_parsed) VALUES ('lorca', 'garbage-key', 'not-actually-json{')`);
+    await testDb.run(
+      sql`INSERT INTO providers (id, last_image_sha256, last_image_parsed) VALUES ('lorca', 'garbage-key', 'not-actually-json{')`,
+    );
     const result = await readImageCache('garbage-key');
     expect(result).toBeNull();
   });
