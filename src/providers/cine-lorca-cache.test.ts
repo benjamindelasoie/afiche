@@ -113,6 +113,89 @@ describe('image-hash cache', () => {
     expect(result).toBeNull();
   });
 
+  it('rejects payloads exceeding film-count cap (DoS defense)', async () => {
+    // Hostile JSON with 100 films would, post-validation, be fed to
+    // expandScreenings and Cartesian-product across days × times.
+    // Cap is 30 films per cycle (real Lorca cycles: 4-7).
+    const exploded: ParsedCartelera = {
+      validFrom: { year: 2026, month: 5, day: 7 },
+      validTo: { year: 2026, month: 5, day: 13 },
+      films: Array.from({ length: 100 }, (_, i) => ({
+        title: `BOMB FILM ${i}`,
+        times: [{ hour: 12, minute: 0 }],
+      })),
+    };
+    await testDb
+      .insert(await import('@/db/schema').then((m) => m.providers))
+      .values({ id: 'lorca', lastImageSha256: 'too-many', lastImageParsed: exploded });
+    expect(await readImageCache('too-many')).toBeNull();
+  });
+
+  it('rejects payloads exceeding times-per-film cap', async () => {
+    const tooManyTimes: ParsedCartelera = {
+      validFrom: { year: 2026, month: 5, day: 7 },
+      validTo: { year: 2026, month: 5, day: 13 },
+      films: [
+        {
+          title: 'TIME BOMB',
+          times: Array.from({ length: 50 }, (_, i) => ({ hour: i % 24, minute: 0 })),
+        },
+      ],
+    };
+    await testDb
+      .insert(await import('@/db/schema').then((m) => m.providers))
+      .values({ id: 'lorca', lastImageSha256: 'too-many-times', lastImageParsed: tooManyTimes });
+    expect(await readImageCache('too-many-times')).toBeNull();
+  });
+
+  it('rejects payloads with absurdly long titles', async () => {
+    const longTitle: ParsedCartelera = {
+      validFrom: { year: 2026, month: 5, day: 7 },
+      validTo: { year: 2026, month: 5, day: 13 },
+      films: [{ title: 'A'.repeat(500), times: [{ hour: 12, minute: 0 }] }],
+    };
+    await testDb
+      .insert(await import('@/db/schema').then((m) => m.providers))
+      .values({ id: 'lorca', lastImageSha256: 'long-title', lastImageParsed: longTitle });
+    expect(await readImageCache('long-title')).toBeNull();
+  });
+
+  it('rejects payloads with out-of-range years (1990, 9999)', async () => {
+    // Hostile validFrom with year 9999 would explode enumerateDays into
+    // millions of iterations even with bounded films/times.
+    const badPast: ParsedCartelera = {
+      validFrom: { year: 1990, month: 5, day: 7 },
+      validTo: { year: 2026, month: 5, day: 13 },
+      films: [{ title: 'OK', times: [{ hour: 12, minute: 0 }] }],
+    };
+    const badFuture: ParsedCartelera = {
+      validFrom: { year: 2026, month: 5, day: 7 },
+      validTo: { year: 9999, month: 5, day: 13 },
+      films: [{ title: 'OK', times: [{ hour: 12, minute: 0 }] }],
+    };
+    await testDb
+      .insert(await import('@/db/schema').then((m) => m.providers))
+      .values({ id: 'lorca', lastImageSha256: 'bad-past', lastImageParsed: badPast });
+    expect(await readImageCache('bad-past')).toBeNull();
+    // Switch to the future-bad row
+    await testDb.run(
+      sql`UPDATE providers SET last_image_sha256 = 'bad-future', last_image_parsed = ${JSON.stringify(badFuture)} WHERE id = 'lorca'`,
+    );
+    expect(await readImageCache('bad-future')).toBeNull();
+  });
+
+  it('rejects payloads with out-of-range month/day primitives', async () => {
+    const badMonth: ParsedCartelera = {
+      validFrom: { year: 2026, month: 13, day: 7 },
+      validTo: { year: 2026, month: 5, day: 13 },
+      films: [{ title: 'OK', times: [{ hour: 12, minute: 0 }] }],
+    };
+    await testDb
+      .insert(await import('@/db/schema').then((m) => m.providers))
+      .values({ id: 'lorca', lastImageSha256: 'bad-month', lastImageParsed: badMonth });
+    expect(await readImageCache('bad-month')).toBeNull();
+  });
+
   it('returns null when last_image_parsed contains invalid JSON (Drizzle hydration safety)', async () => {
     // Defense against the Drizzle JSON-mode hydration path. If a non-Drizzle
     // writer (Studio hand-edit, partial write, encoding corruption) puts

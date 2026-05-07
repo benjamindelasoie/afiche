@@ -686,12 +686,28 @@ export async function writeImageCache(
 // validates the raw vision response BEFORE parseVisionResponse normalizes
 // it). The cache stores the post-normalization ParsedCartelera, so we
 // need a validator for that shape specifically.
+//
+// Cap rationale: the threat model is hostile or corrupt JSON in
+// providers.last_image_parsed (operator hand-edit, encoding corruption,
+// future schema migration gone wrong). expandScreenings cross-products
+// films × days × times into screening rows, so an unbounded films[] OR
+// an unbounded times[] OR an out-of-range year/day primitive would
+// produce a Cartesian explosion of INSERTs. The bounds below are
+// generous against real Lorca posters (typical: 4-7 films, 1-3 times
+// each, current decade) but cap the blow-radius of a hostile payload.
+const MAX_FILMS = 30;
+const MAX_TIMES_PER_FILM = 20;
+const MAX_TITLE_LENGTH = 200;
+const MIN_YEAR = 2020;
+const MAX_YEAR = 2050;
+
 function isParsedCartelera(d: unknown): d is ParsedCartelera {
   if (typeof d !== 'object' || d === null) return false;
   const o = d as Record<string, unknown>;
   if (!isYearMonthDayOrNull(o.validFrom)) return false;
   if (!isYearMonthDayOrNull(o.validTo)) return false;
   if (!Array.isArray(o.films)) return false;
+  if (o.films.length > MAX_FILMS) return false;
   return o.films.every(isParsedFilm);
 }
 
@@ -701,11 +717,10 @@ function isYearMonthDayOrNull(
   if (d === null) return true;
   if (typeof d !== 'object') return false;
   const o = d as Record<string, unknown>;
-  return (
-    typeof o.year === 'number' &&
-    typeof o.month === 'number' &&
-    typeof o.day === 'number'
-  );
+  if (typeof o.year !== 'number' || o.year < MIN_YEAR || o.year > MAX_YEAR) return false;
+  if (typeof o.month !== 'number' || o.month < 1 || o.month > 12) return false;
+  if (typeof o.day !== 'number' || o.day < 1 || o.day > 31) return false;
+  return true;
 }
 
 function isParsedFilm(
@@ -714,7 +729,9 @@ function isParsedFilm(
   if (typeof d !== 'object' || d === null) return false;
   const o = d as Record<string, unknown>;
   if (typeof o.title !== 'string') return false;
+  if (o.title.length === 0 || o.title.length > MAX_TITLE_LENGTH) return false;
   if (!Array.isArray(o.times)) return false;
+  if (o.times.length > MAX_TIMES_PER_FILM) return false;
   return o.times.every(
     (t) =>
       typeof t === 'object' &&
