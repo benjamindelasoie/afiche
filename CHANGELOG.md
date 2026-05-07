@@ -2,6 +2,36 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.2.3.0] - 2026-05-07
+
+### Fixed
+
+- **Duplicate film rows from VLM drift, cross-provider format divergence, and pre-fix year-null legacy now collapse automatically.** The session-long bug class — `GIOIA MIA` ↔ `GUIOTA MÍA`, `LA PATAGONIA REBELDE` ↔ `La patagonia rebelde`, `PADRE…HERMANO` ↔ `…HERMANO?` — is closed structurally. The enrichment loop's merge-on-collision predicate is now keyed on `tmdb_id` equality (`mergeIfTmdbIdCollides`) instead of the prior `(scrapedTitle, year)` equality (`mergeIfYearCollides`) which silently missed every case where scraped titles differed. tmdb_id, when known, is the strongest identity signal in the system; once both rows of a duplicate pair enrich, they share it, and the second row of the pair merges into the first deterministically.
+
+### Changed
+
+- **Renamed `mergeIfYearCollides` → `mergeIfTmdbIdCollides`** with the new tmdb_id-keyed predicate (`src/scrapers/ingest/enrichment.ts`). All four scenarios the original function caught are still caught (any time the old merge fired, the new one fires too — both rows eventually share tmdb_id post-enrichment). The rename + predicate change is strictly broader.
+- **Extracted shared `mergeFilmInto(loserId, winnerId, warnings?)` helper** to `src/scrapers/ingest/films.ts`. Used by both the enrichment loop's merge and the new dedupe-films cleanup script. One source of truth for the `UPDATE OR IGNORE screenings` + `DELETE films` + cascade pattern.
+- **`fetchPendingFilms` now `ORDER BY id DESC`** so when multiple rows in the pending pool collide on tmdb_id (e.g. operator manually patched several rows to the same id), the newer row (higher id) is processed first and loses, while the older row (lower id, anchored slug) survives. For the common single-pending-row VLM-drift case the order is moot.
+
+### Added
+
+- **`scripts/dedupe-films.ts`** — one-shot cleanup for existing duplicates that don't re-enter the enrichment-pending pool (most accumulated dupes have `match_source='auto'` and stay out of pending). Finds every `(tmdb_id, COUNT > 1)` cluster, picks the lowest id as winner per cluster, and runs `mergeFilmInto` on the rest. Dry-run by default; pass `--apply` to mutate. Run via `npm run db:dedupe-films` (local) or `npm run db:dedupe-films:prod` (Turso). Closes the bug class for accumulated duplicates that the structural fix alone wouldn't catch.
+- **Index on `films.tmdb_id`** (Drizzle migration `0007_safe_talon`). Keeps the merge predicate at `O(log n)` instead of `O(n)` as the catalog grows. Cheap insurance — < 100KB on disk at current scale.
+
+### Maintenance
+
+- **8 new regression tests** in `src/scrapers/ingest.test.ts` covering the structural fix end-to-end:
+  - T1 (VLM drift case — `GIOIA` / `GUIOTA`)
+  - T2 (cross-provider format divergence — `LA PATAGONIA REBELDE` / `La patagonia rebelde`)
+  - T4 (no-collision negative case — different `tmdb_ids` must not merge)
+  - T5 (TMDB miss → no merge attempted, row stays for retry)
+  - T6 (manual-patch convergence — operator patches both rows to same `tmdb_id`, second collapses into first)
+  - T7a-d (`mergeFilmInto` unit tests: re-point + delete, time-collision + cascade, pure-orphan cleanup, optional warnings array)
+  - T8 (dedupe-films integration — multiple clusters + singleton row untouched)
+- **Existing 4 merge tests updated** to seed the existing-row's `tmdb_id` (production-realistic — `match_source='auto'` rows always have it set; the prior tests were missing this detail). Describe-block renamed to "merge on tmdb_id collision".
+- **293 tests pass** (1 deliberately-skipped live vision test).
+
 ## [0.2.2.0] - 2026-05-07
 
 ### Added

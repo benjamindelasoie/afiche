@@ -19,7 +19,7 @@
  * The slug never updates after first set. URLs are the contract.
  */
 
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { db, films, type FilmInsert } from '@/db';
 import type { ScrapedScreening } from '@/providers/types';
 import { buildFilmSlug, withIdSuffix } from '@/lib/slug';
@@ -236,4 +236,60 @@ async function ensureFilmSlug(
       throw err;
     }
   }
+}
+
+/**
+ * Consolidate the loser film row INTO the winner. Used by:
+ *   - the enrichment loop's mergeIfTmdbIdCollides when two rows resolve to
+ *     the same TMDB id (cross-provider duplicates, VLM drift, year-null
+ *     legacy)
+ *   - the one-shot dedupe-films cleanup script for existing duplicates
+ *     that aren't in the enrichment-pending pool
+ *
+ * Two-step shape:
+ *   - UPDATE OR IGNORE re-points screenings. Conflicts on the (film_id,
+ *     cinema_id, starts_at_utc) unique index leave the loser's screening
+ *     row in place — those are then dropped by step two's cascade.
+ *   - DELETE on films cascades to any leftover screenings via
+ *     onDelete: 'cascade' (schema.ts:226).
+ *
+ *   NOTE on UPDATE OR IGNORE: today the only constraint that can fire is
+ *   the (film_id, cinema_id, starts_at_utc) unique index. A future
+ *   migration that adds another constraint (CHECK, additional FK) could
+ *   silently drop screenings via this clause. If you add such a
+ *   constraint, audit this merge logic.
+ *
+ * Atomicity trade-off (known): the two statements are NOT wrapped in a
+ * `db.transaction()`. libSQL `:memory:` connections (used by the test
+ * helper) don't share state with the transaction sub-client, which would
+ * break ~10 tests. In prod (libSQL HTTP / file-backed) a transaction
+ * would be safe; here the test cost outweighs the defense. The window
+ * where a mid-crash leaves screenings reparented but the loser film row
+ * alive is microseconds long. If it ever fires, the next scrape re-merges
+ * the residual loser via mergeIfTmdbIdCollides — self-healing. Worth a
+ * proper transaction once the test helper is upgraded to use shared-cache
+ * in-memory mode (`file::memory:?cache=shared`) or temp files.
+ *
+ * Slug invariant: the winner's slug is preserved; the loser's slug is
+ * freed by the DELETE. URL contract holds — `/pelicula/<winner-slug>`
+ * keeps working, `/pelicula/<loser-slug>` 404s. This is intentional; the
+ * winner is the older row by id (first to receive a slug = canonical).
+ *
+ * Best-effort warning push: if `warnings` is provided, the merge appends
+ * a human-readable line for run-log surfacing. The string format is
+ * deliberately stable across call sites (enrichment + dedupe script) so
+ * downstream tooling can grep for "merged film" uniformly.
+ */
+export async function mergeFilmInto(
+  loserId: number,
+  winnerId: number,
+  warnings?: string[],
+): Promise<void> {
+  await db.run(sql`
+    UPDATE OR IGNORE screenings
+    SET film_id = ${winnerId}
+    WHERE film_id = ${loserId}
+  `);
+  await db.delete(films).where(eq(films.id, loserId));
+  warnings?.push(`merged film ${loserId} into existing id=${winnerId}`);
 }

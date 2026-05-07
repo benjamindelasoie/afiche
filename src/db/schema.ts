@@ -151,6 +151,12 @@ export const films = sqliteTable(
     uniqueIndex('films_scraped_title_scraped_year_idx').on(t.scrapedTitle, t.scrapedYear),
     // Slug is the URL key for /pelicula/<slug> — must be unique.
     uniqueIndex('films_slug_idx').on(t.slug),
+    // Non-unique index on tmdb_id (multiple rows may legitimately have the
+    // same tmdb_id transiently — e.g. between insert and the next enrichment
+    // pass that merges them). Keeps the mergeIfTmdbIdCollides lookup at
+    // O(log n) instead of O(n) so enrichment cost stays flat as the catalog
+    // grows. See enrichment.ts for the merge predicate this index serves.
+    index('films_tmdb_id_idx').on(t.tmdbId),
   ],
 );
 

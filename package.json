@@ -1,6 +1,6 @@
 {
   "name": "afiche",
-  "version": "0.2.2.0",
+  "version": "0.2.3.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -28,6 +28,8 @@
     "db:refresh-enrichment:prod": "dotenv -e .env.prod -- tsx src/db/refresh-enrichment.ts",
     "db:inspect": "dotenv -e .env.local -- tsx src/db/inspect-catalog.ts",
     "db:inspect:prod": "dotenv -e .env.prod -- tsx src/db/inspect-catalog.ts",
+    "db:dedupe-films": "dotenv -e .env.local -- tsx scripts/dedupe-films.ts",
+    "db:dedupe-films:prod": "dotenv -e .env.prod -- tsx scripts/dedupe-films.ts",
     "scrape:prod": "./scripts/scrape-prod.sh",
     "test": "vitest",
     "test:ui": "vitest --ui",
