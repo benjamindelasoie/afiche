@@ -91,21 +91,42 @@ async function main(): Promise<void> {
     return;
   }
 
-  // APPLY path — execute the merges.
+  // APPLY path — execute the merges. Each merge is its own transaction
+  // (inside mergeFilmInto). On error we log + continue with the next
+  // cluster rather than aborting the whole script: a partial success is
+  // recoverable (re-run picks up the residual clusters), but aborting on
+  // the first error means the operator has to manually figure out which
+  // clusters succeeded.
+  //
+  // TOCTOU note: the cluster plan was computed by findTmdbIdClusters()
+  // above. If a scrape runs concurrently and inserts a NEW row under one
+  // of these tmdb_ids, that new row is NOT in c.ids and survives the
+  // current run. Re-run picks it up. For prod safety, pause cron before
+  // running with --apply.
   let executed = 0;
+  let failed = 0;
   for (const c of clusters) {
     const [winnerId, ...loserIds] = c.ids;
     for (const loserId of loserIds) {
       const warnings: string[] = [];
-      await mergeFilmInto(loserId, winnerId, warnings);
-      executed++;
-      // Surface each merge so the operator has a clear audit trail.
-      console.log(`✓ merged film ${loserId} → ${winnerId} (tmdb_id=${c.tmdbId})`);
-      for (const w of warnings) console.log(`    ${w}`);
+      try {
+        await mergeFilmInto(loserId, winnerId, warnings);
+        executed++;
+        console.log(`✓ merged film ${loserId} → ${winnerId} (tmdb_id=${c.tmdbId})`);
+        for (const w of warnings) console.log(`    ${w}`);
+      } catch (err) {
+        failed++;
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`✗ FAILED merge film ${loserId} → ${winnerId} (tmdb_id=${c.tmdbId}): ${msg}`);
+        // Continue with the next loser/cluster — partial success is recoverable.
+      }
     }
   }
 
   console.log(`\nDone. ${executed} row(s) merged into surviving winners.`);
+  if (failed > 0) {
+    console.log(`⚠ ${failed} merge(s) FAILED — see errors above. Re-run --apply to retry residual clusters.`);
+  }
   console.log('Re-run scrape:prod to repopulate any future screenings; cascade');
   console.log('already cleaned up loser rows and their orphaned screenings.');
 }

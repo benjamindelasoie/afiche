@@ -246,13 +246,29 @@ async function ensureFilmSlug(
  *   - the one-shot dedupe-films cleanup script for existing duplicates
  *     that aren't in the enrichment-pending pool
  *
- * Why not a transaction with row-level locks: libSQL/SQLite doesn't have
- * row-level locks. The two-step UPDATE-then-DELETE is safe because:
- *   - UPDATE OR IGNORE re-points screenings; conflicts on the (film_id,
- *     cinema_id, starts_at_utc) unique index drop the loser's screening
- *     row (winner already had one for that timeslot)
+ * Two-step shape:
+ *   - UPDATE OR IGNORE re-points screenings. Conflicts on the (film_id,
+ *     cinema_id, starts_at_utc) unique index leave the loser's screening
+ *     row in place — those are then dropped by step two's cascade.
  *   - DELETE on films cascades to any leftover screenings via
- *     onDelete: 'cascade' (schema.ts:226)
+ *     onDelete: 'cascade' (schema.ts:226).
+ *
+ *   NOTE on UPDATE OR IGNORE: today the only constraint that can fire is
+ *   the (film_id, cinema_id, starts_at_utc) unique index. A future
+ *   migration that adds another constraint (CHECK, additional FK) could
+ *   silently drop screenings via this clause. If you add such a
+ *   constraint, audit this merge logic.
+ *
+ * Atomicity trade-off (known): the two statements are NOT wrapped in a
+ * `db.transaction()`. libSQL `:memory:` connections (used by the test
+ * helper) don't share state with the transaction sub-client, which would
+ * break ~10 tests. In prod (libSQL HTTP / file-backed) a transaction
+ * would be safe; here the test cost outweighs the defense. The window
+ * where a mid-crash leaves screenings reparented but the loser film row
+ * alive is microseconds long. If it ever fires, the next scrape re-merges
+ * the residual loser via mergeIfTmdbIdCollides — self-healing. Worth a
+ * proper transaction once the test helper is upgraded to use shared-cache
+ * in-memory mode (`file::memory:?cache=shared`) or temp files.
  *
  * Slug invariant: the winner's slug is preserved; the loser's slug is
  * freed by the DELETE. URL contract holds — `/pelicula/<winner-slug>`

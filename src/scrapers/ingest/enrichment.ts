@@ -43,7 +43,7 @@
  * Exported for tests. Not part of the public module contract.
  */
 
-import { and, desc, eq, isNotNull, isNull, ne, or } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, isNull, lt, or } from 'drizzle-orm';
 import { db, films } from '@/db';
 import { enrichFilm, enrichByTmdbId, type EnrichResult } from '@/tmdb/enrich';
 import { hasTmdbToken } from '@/tmdb/client';
@@ -214,12 +214,20 @@ async function mergeIfTmdbIdCollides(
   resolvedTmdbId: number | null | undefined,
   warnings: string[],
 ): Promise<boolean> {
-  if (resolvedTmdbId == null) return false;
+  // Guard against null/undefined AND zero (TMDB ids are positive ints; a
+  // zero would be a bug upstream and finding any row with tmdb_id=0 would
+  // be wrong). Two checks for explicitness.
+  if (resolvedTmdbId == null || resolvedTmdbId <= 0) return false;
 
+  // Predicate is `id < f.id` (NOT `id != f.id`) so the merge ALWAYS picks
+  // a row with a lower id as the winner. f is always the loser when there's
+  // a match. This enforces the slug-stability invariant at the SQL level
+  // rather than depending on loop ordering — defense in depth against a
+  // future refactor that drops the DESC sort on fetchPendingFilms.
   const [existing] = await db
     .select({ id: films.id })
     .from(films)
-    .where(and(eq(films.tmdbId, resolvedTmdbId), ne(films.id, f.id)))
+    .where(and(eq(films.tmdbId, resolvedTmdbId), lt(films.id, f.id)))
     .limit(1);
   if (!existing) return false;
 
