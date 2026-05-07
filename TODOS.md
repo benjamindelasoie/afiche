@@ -4,6 +4,99 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 15. Synopsis preview clamping inconsistent on desktop (BUG)
+
+**What:** On desktop, the synopsis preview on film cards (cartelera tier and `/pelicula/` related-film tiles) doesn't clamp to a uniform line count. Some cards show 2 lines, some show 4, some overflow further. The visual rhythm of the row breaks because card heights are unequal.
+
+**Why:** Cards in the same row should have synopsis previews of equal height. Today the height is content-driven (whatever the synopsis happens to be). With Spanish synopses ranging from 80 to 600+ chars, this produces visibly ragged tiles.
+
+**How to investigate:**
+- Likely cause: the synopsis preview element doesn't have a `-webkit-line-clamp` rule, OR it has one but the parent's flex/grid alignment doesn't propagate height equally, OR the line-clamp rule competes with `min-height`/`height: auto` that lets longer text expand the card.
+- Reproduce: open `/` on desktop (>= md breakpoint), pick any cartelera section with 4+ cards, eyeball synopsis heights. Should be visible immediately on the homepage as currently rendered.
+- Likely files: the inline `ScreeningCard` component in `src/app/page.tsx` (per the inline-components-in-page-tsx pattern memory). Search for `synopsis` in that file.
+
+**Fix candidates:**
+- A. Add explicit `line-clamp-3` (or whatever target) on the synopsis paragraph + ensure the parent card uses `flex flex-col` with the synopsis as the flex-grow:1 child so the bottom row of metadata stays anchored
+- B. Truncate the synopsis text server-side to a fixed char count before rendering (less responsive but bulletproof)
+- C. Use `display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden` if `line-clamp` is misbehaving (Tailwind's `line-clamp-N` should set this trio automatically — verify it's not being overridden)
+
+**Trigger to act:** when next polishing the homepage. Visually obvious; not blocking.
+
+**Depends on / blocked by:** Nothing. Pure CSS / component-layer fix.
+
+---
+
+## 16. Twitter/X presence — semi-manual first, bot maybe later
+
+**What:** BA cinephile community is on X (per user's domain knowledge — verified, this is a real audience). Afiche should have a presence there for top-of-funnel discovery. Initial form: NOT a fully-automated bot. Instead:
+
+- Stage 1: Afiche emits a "today's pick" tweet draft via a scheduled job (e.g., daily cron). Draft contains: 1 curator pick + venue + time + a hook. Posted to a private Slack/Telegram/email queue for human review + manual post.
+- Stage 2 (only if engagement validates the audience hypothesis): graduate to direct API posting once worth the X API cost.
+
+**Why:** The audience exists and the structured data (cartelera + screenings) is already there. Posting to X is the natural distribution layer for the cinephile community in BA.
+
+**Why NOT a bot from day one:**
+- X API: free tier caps at ~50 writes/day with rate limits that choke daily cron in practice. Basic paid tier is $200/month — real cost decision for a personal project.
+- Auto-generated tweets read as spam in cinephile spaces. The accounts that work in this community have human editorial voice. A "TONIGHT 22:00 LORCA: Bird" dump gets muted.
+- Personal-account-with-Afiche-source is also defensible: Benjamin tweets from his own handle pointing back to Afiche. Lower friction, authentic voice.
+
+**What to build (Stage 1):**
+- A `pickOfTheDay()` function that selects 1 screening from today's cartelera based on some curator heuristic (premiere? único? rare director?)
+- A `formatTweet(pick)` function that produces a 280-char editorial-voice tweet draft
+- A scheduled job that posts the draft to a queue (Slack webhook, Telegram bot, email — cheapest is email to self)
+- A way to mark a pick as "already tweeted" so the same film doesn't queue twice (timestamp on the pick? small `tweet_log` table?)
+
+**Editorial voice (DESIGN.md cross-reference):** the project_afiche_editorial_revisit memory says "metaphor drives type/palette/voice but does NOT veto UX". Tweet voice should follow Afiche's editorial flavor — curator-y, knowing, not corporate — without becoming precious.
+
+**Cons / risks:**
+- Even semi-manual takes daily attention. Skip days are visible.
+- If queue-to-Slack is the trigger and Slack fills with drafts you don't review, the channel goes silent. Pick a delivery mechanism that fits your daily routine.
+- BA cinephile community can be small and connected; tone calibration mistakes are visible.
+
+**Depends on / blocked by:** Nothing. Independent of the site's current architecture. Could ship before #17 (newsletter signup) since X is a discovery channel and newsletter is a retention channel — opposite ends of the funnel.
+
+**First-step action:** spike the `pickOfTheDay()` heuristic against the live `screenings` table for a week to see if the picks are actually interesting. If yes, build the queue. If they're flat, the editorial heuristic itself needs work first.
+
+---
+
+## 17. Newsletter signup capture (build now), actual sends (defer)
+
+**What:** Two-stage rollout for an email newsletter:
+- Stage 1 (build now): a discreet "get the weekly Afiche" signup form on the homepage + a per-`/pelicula/` capture. Just collect emails. No sending yet.
+- Stage 2 (defer until traffic + commitment are real): start sending a weekly digest with curator's pick of the week + 3-5 highlighted screenings.
+
+**Why two stages:** Newsletter is a long-term right channel for the cinephile audience — algorithm-immune, owned, durable. A list of 500 cinephiles you control beats 5000 X followers you rent. BUT a newsletter needs three things to work that Afiche doesn't yet have:
+- **Traffic:** signup conversions need to compound. Rough benchmark: 100+ organic weekly visits.
+- **Editorial commitment:** writing it weekly for 12+ weeks before judging traction. Otherwise it's "we sent 4 issues to 12 friends, then quietly stopped" — common indie-newsletter failure mode.
+- **Clear scope:** weekly digest vs daily? curator pick vs full cartelera? Doesn't compete with the site.
+
+The signup form itself is cheap to build today; starting accumulation early means the first newsletter has a real list, not 12 friends.
+
+**Stage 1 build:**
+- Pick a provider. Recommended: **Buttondown** (free tier up to 100 subscribers; built for indie newsletters; clean API). Alternatives: Resend (more transactional-flavored), ConvertKit (overkill for indie scale), self-hosted Listmonk (ops burden).
+- One signup component reused on `/` and `/pelicula/<slug>`. Probably inline in `page.tsx` per the inline-components-in-page-tsx pattern memory.
+- A POST endpoint that calls the provider's API to add the email. Server action or `/api/newsletter/subscribe` route.
+- Argentine privacy law (Ley 25.326) compliance: explicit consent checkbox, plain-language privacy note, easy unsubscribe. Lighter than EU GDPR but exists.
+- Optional confirmation email (double opt-in) — best practice for deliverability and list hygiene.
+
+**Stage 2 trigger conditions:** all three must be true before launching actual sends:
+- (a) `~100+ organic weekly visits` for at least 4 consecutive weeks
+- (b) operator commitment to writing 12+ weeks of weekly issues without skipping
+- (c) defined scope ("weekly digest, every Thursday morning, 1 pick + 4 highlights")
+
+**Editorial spec for Stage 2:** ONE pick of the week that ALSO becomes the X tweet (#16) and a "pick of the week" anchor on the site. Don't fragment editorial effort across channels — same writing, three distribution layers.
+
+**Cons / risks:**
+- Email infrastructure (deliverability, SPF/DKIM, list management) has a learning curve. Buttondown abstracts most of it.
+- A signup form that leads nowhere for 6 months is OK; one that leads to 4 issues then silence is worse than no signup at all. Don't start sending until commitment is locked.
+- Discovery problem persists — newsletter doesn't acquire users, only retains them. Pair with #16 for top-of-funnel.
+
+**Depends on / blocked by:** Nothing for Stage 1. Stage 2 depends on Stage 1 + traffic + editorial commitment.
+
+**First-step action:** spike the Buttondown integration on a feature branch, drop the signup form into `/` and `/pelicula/`, ship behind a feature flag if you want to A/B placement.
+
+---
+
 ## 3. MALBA recurring-weekly cycles (S3 strategy)
 
 **What:** The MALBA provider now has two strategies (as of e616d33):
