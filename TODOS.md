@@ -4,6 +4,63 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 18. Nosferatu disambiguation — MALBA Cineclub Nocturna mismatched to wrong film (BUG)
+
+**What:** MALBA's Cineclub Nocturna 5 page (`https://malba.org.ar/evento/cineclub-nocturna-5/`) is a screening of Werner Herzog's **Nosferatu, fantasma de la noche** (1979, TMDB likely id ~5648). Afiche matched it to Robert Eggers' **Nosferatu** (2024, TMDB id 426063). User-visible: the wrong poster + wrong synopsis on the cartelera.
+
+**Root cause hypothesis (verify before fixing):**
+
+The bug class is "ambiguous title resolved to most-popular TMDB hit." `enrichFilm()` runs a fuzzy search; for a bare "Nosferatu" string with no other disambiguators, TMDB returns the most popular/recent match (Eggers 2024) rather than Herzog 1979.
+
+Two specific failure points to check by inspecting the prod row:
+
+```sql
+SELECT id, scraped_title, year, director, tmdb_id, match_source, match_confidence
+FROM films
+WHERE tmdb_id = 426063 OR scraped_title LIKE '%osferatu%';
+```
+
+- **If `director` column is NULL:** the MALBA scraper didn't extract director from the cycle page. Fix is at the scraper layer — figure out which Cineclub Nocturna format is in use and extend the parser to capture director (`src/providers/malba.ts` already has director-extraction for some formats — line ~293 and ~711). With `director: "Werner Herzog"` passed to `enrichFilm`, the director-fallback path at `src/tmdb/enrich.ts:151-164` would walk top-N candidates and pick the right one.
+- **If `director` is "Werner Herzog" but `tmdb_id` is 426063 anyway:** the bug is in the matcher — director-fallback didn't fire or didn't recognize the match. Audit `directorsMatch()` at `src/tmdb/enrich.ts:191`.
+
+**Quick fix (operator-side, ship today if you want):** Add to `tmdb-overrides.json`:
+
+```json
+{
+  "scrapedTitle": "Nosferatu",
+  "tmdbId": 5648,
+  "note": "Werner Herzog 1979 (Cineclub Nocturna 5). Without override, fuzzy search picks Eggers 2024 (id=426063) — the most popular Nosferatu on TMDB."
+}
+```
+
+(Verify the TMDB id is actually 5648 before committing — search `tmdb.org` for "Nosferatu the Vampyre 1979".)
+
+Then either:
+- Manual patch in Studio: `UPDATE films SET tmdb_id=5648, match_source='manual', poster_url=NULL WHERE id=<the_row>;` then run `npm run db:enrich:prod` to re-fetch metadata
+- OR delete the row and let next scrape recreate it; the override will be checked first
+
+**Structural fix path (the right answer for the bug class, not just this one film):**
+
+This is the same TMDB-fuzzy-fails-on-ambiguous-title risk discussed in the architectural review's Smell 1 (Aggregate + Source pattern). Other ambiguous titles likely already silently mismatched too — `Nosferatu` is just the one we caught. Worth a one-shot diagnostic pass:
+
+```sql
+-- Find films with low match_confidence — candidates for manual review
+SELECT id, scraped_title, year, director, tmdb_id, match_confidence
+FROM films
+WHERE match_source = 'auto' AND match_confidence < 0.85
+ORDER BY match_confidence;
+```
+
+If the list is short, eyeball each one against the source venue page. If long, the structural answer is to upgrade the matcher to be stricter about title-uniqueness (e.g., reject any match where TMDB returns 2+ candidates with the same title and we have no director hint — flag as `none-attempted` for operator review instead of guessing).
+
+**Editorial note:** Cycle-context is also a strong signal. "Cineclub Nocturna" is a curated cycle of older / cult / classic films — Eggers 2024 doesn't fit the curatorial profile. A future enhancement: pass `programName` as a hint to TMDB search, weighting older films when the program signals "classic" or "retrospective" framing. Heuristic, but would help on this exact bug class without requiring per-film overrides.
+
+**Depends on / blocked by:** Nothing for the override quick-fix. Structural fix is a milestone-sized refactor (Smell 1 / Aggregate + Source).
+
+**First-step action:** Run the diagnostic SQL above against prod; check the `director` column on the bad row to determine which layer needs the structural fix. Add the override either way as the operator-side patch.
+
+---
+
 ## 15. Synopsis preview clamping inconsistent on desktop (BUG)
 
 **What:** On desktop, the synopsis preview on film cards (cartelera tier and `/pelicula/` related-film tiles) doesn't clamp to a uniform line count. Some cards show 2 lines, some show 4, some overflow further. The visual rhythm of the row breaks because card heights are unequal.
