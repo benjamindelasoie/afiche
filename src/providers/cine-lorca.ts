@@ -6,7 +6,7 @@
  * Strategy:
  *   Lorca publishes its weekly cartelera as a JPEG image only — no HTML
  *   schedule, no API. Each Thursday a new image goes up with that week's
- *   program. We send the image to Claude Haiku 4.5 vision and parse the
+ *   program. We send the image to Claude Sonnet 4.6 vision and parse the
  *   structured JSON it returns.
  *
  *   1. Fetch /current-production from the Wix-hosted site.
@@ -24,7 +24,17 @@
  *   (chars split mid-word, single-char substitutions, dropped lines on
  *   narrow-cell wraps) defeat the cleanup heuristics we tried, and the
  *   manual-patch tax on a weekly cartelera was too high. Claude vision
- *   handles this kind of poster reliably for ~$0.01 per scrape.
+ *   handles this kind of poster reliably for ~$0.015 per scrape.
+ *
+ * Why Sonnet 4.6 and not Haiku 4.5:
+ *   Originally Haiku 4.5 (~$0.005/call). Upgraded to Sonnet 4.6 on
+ *   2026-05-07 after observing letter-substitution hallucinations
+ *   (`GIOIA` → `GUIOTA`) and stray-punctuation drift (`HERMANO` →
+ *   `HERMANO?`) at temperature 0. Sonnet's OCR accuracy on dense small-
+ *   text Spanish posters is markedly better. Cost difference at Lorca's
+ *   weekly-cycle + image-hash-cached scale is ~$0.50/year — trivially
+ *   worth it. Combined with the cache, the catalog pays for one Sonnet
+ *   call per week max.
  *
  * The vision call is encapsulated in `readCarteleraWithVision()`. If we
  * ever want to swap the backend (a different VLM, a hand-rolled OCR
@@ -44,7 +54,21 @@ const PROGRAMACION_URL = 'https://cinelorca.wixsite.com/cine-lorca/current-produ
 const USER_AGENT =
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-const VISION_MODEL = 'claude-haiku-4-5-20251001';
+// Use the Sonnet 4.6 alias (no dated snapshot listed in the SDK enum
+// for 4-6 yet — only the alias is published; see
+// node_modules/@anthropic-ai/sdk/resources/messages/messages.d.mts:707).
+// Aliases auto-upgrade to newer snapshots when Anthropic releases them;
+// for OCR-style transcription we want the latest training, so the
+// auto-upgrade is fine.
+//
+// Cache invalidation note: composeCacheKey hashes the literal string
+// VISION_MODEL, NOT the snapshot id Anthropic actually serves. If the
+// alias moves under us, cached parses from the prior snapshot keep
+// serving — the cache won't notice. To force a fresh parse, bump
+// PROMPT_VERSION below. In practice Anthropic alias moves are rare and
+// snapshot-to-snapshot drift on the same image+prompt at temperature 0
+// is small, so this is acceptable.
+const VISION_MODEL = 'claude-sonnet-4-6';
 const VISION_MAX_TOKENS = 2000;
 // Greedy decoding — OCR-style transcription has no creative aspect, so any
 // run-to-run variance on the same image is a bug. Setting temperature: 0

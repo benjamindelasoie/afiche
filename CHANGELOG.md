@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.2.3.1] - 2026-05-07
+
+### Changed
+
+- **Lorca vision call upgraded from Haiku 4.5 to Sonnet 4.6.** Same prompt, same `temperature: 0`, same image-hash cache. Sonnet's OCR accuracy on dense small-text Spanish posters is markedly better — closes the rare residual drift cases (letter-substitution hallucinations like `GIOIA` → `GUIOTA`, stray punctuation like `HERMANO?`) that survived even temperature-0 deterministic decoding on Haiku. Cost goes from ~$0.005 to ~$0.015 per call; with the image-hash cache hitting 6 of 7 days per week, real annual cost is ~$0.78 (vs. ~$0.26 on Haiku). Cache key composes `VISION_MODEL`, so the model swap auto-invalidates — first scrape after deploy burns one Sonnet call to repopulate, then back to cache hits. Uses the alias `claude-sonnet-4-6` (the SDK enum at `node_modules/@anthropic-ai/sdk/resources/messages/messages.d.mts:707` doesn't list a dated snapshot for 4-6 yet — only the alias).
+
 ## [0.2.3.0] - 2026-05-07
 
 ### Fixed
