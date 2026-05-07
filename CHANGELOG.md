@@ -2,6 +2,30 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.2.2.0] - 2026-05-07
+
+### Added
+
+- **Image-hash cache for the Cine Lorca vision call.** Lorca posts a new cartelera every Thursday and the same poster image is served for the rest of the week. Each daily scrape was paying ~$0.005 for an Anthropic call AND giving Haiku another roll of the dice on title transcription — the structural source of the title-drift duplicate bug (e.g., `GIOIA MIA` ↔ `GUIOTA MÍA`, `PADRE…HERMANO` ↔ `…HERMANO?`). Now the provider hashes the fetched image (SHA-256) and short-circuits when the hash matches what was cached on the last successful parse. Drift surface drops from 7 calls/week to 1. Persisted in two new `providers` columns: `last_image_sha256` and `last_image_parsed` (Drizzle migration `0006_awesome_doctor_doom`).
+
+### Changed
+
+- **Tuned the Lorca vision call for transcription accuracy.** Four changes to `readCarteleraWithVision` in `src/providers/cine-lorca.ts`:
+  - `temperature: 0` — greedy decoding so the same image deterministically produces the same transcription. Eliminates the run-to-run variance that turned `GIOIA` into `GUIOTA` between scrapes.
+  - System prompt promoted to the dedicated `system` field — persona + output-format guardrails separated from per-image instructions, per Anthropic instruction-following best practice.
+  - Few-shot example added to the user prompt — one worked sample of the JSON shape with mixed time-format normalization (`14.10 hs.` → `14:10`, `16:00 hs.` → `16:00`). Highest-leverage prompt-engineering tool for structured-output OCR.
+  - `stop_sequences` added — defensive clip on any runaway prose.
+
+### Fixed
+
+- **`parseHHMM` now accepts both `:` and `.` as time separators.** The Lorca poster mixes `14.10 hs.` (period) and `16:00 hs.` (colon) on the same week — different films use different formats. The vision prompt asks for normalization to colon, but if a stray period-format time slipped through, the previous regex `^(\d{1,2}):(\d{2})$` would silently drop it. New regex `^(\d{1,2})[:.](\d{2})$` accepts both as a defensive backstop.
+
+### Maintenance
+
+- New test file `src/providers/cine-lorca-cache.test.ts` exercises the cache write/read/round-trip, hash-mismatch miss, overwrite-on-new-image, and shape-validation defense paths against an in-memory libSQL with the real Drizzle schema.
+- Existing `src/providers/cine-lorca.test.ts` gains a regression test for the `parseHHMM` period-format fix and a minimal `@/db` stub so its pure-function tests don't pull the libSQL client.
+- Schema docstring updated to reflect that `providers` now holds per-provider state cache fields in addition to health/observability columns.
+
 ## [0.2.1.1] - 2026-05-05
 
 ### Fixed

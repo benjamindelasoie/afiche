@@ -155,8 +155,19 @@ export const films = sqliteTable(
 );
 
 // ---------------------------------------------------------------------------
-// providers — scraper health + observability, one row per cinema
+// providers — scraper health, observability, and per-provider state cache
 // ---------------------------------------------------------------------------
+//
+// Two roles in one table:
+//   1. Health/observability — last_run_at, last_success_at, last_error,
+//      screening_count. Read by the dashboard.
+//   2. Per-provider cache — last_image_sha256, last_image_parsed. Currently
+//      used only by Lorca, which fetches a weekly poster image and pays
+//      $0.005 + a drift dice roll per Anthropic call. Caching by image hash
+//      means we only call vision when the poster changes (Thursday), not on
+//      every daily scrape. Both columns are nullable; non-Lorca providers
+//      simply never write to them.
+//
 export const providers = sqliteTable('providers', {
   id: text('id')
     .primaryKey()
@@ -165,6 +176,17 @@ export const providers = sqliteTable('providers', {
   lastSuccessAt: integer('last_success_at', { mode: 'timestamp' }),
   lastError: text('last_error'),
   screeningCount: integer('screening_count').default(0),
+  // SHA-256 (hex) of the last successfully-parsed source artifact for this
+  // provider. Lorca uses it to short-circuit Anthropic vision calls when
+  // the weekly cartelera image is unchanged. Other providers may adopt
+  // the same pattern (e.g., HTML body hash) if they want to skip ingest
+  // on unchanged sources.
+  lastImageSha256: text('last_image_sha256'),
+  // The parsed artifact corresponding to lastImageSha256, stored verbatim
+  // as JSON so we can re-derive screenings without re-calling the model.
+  // Format is provider-defined (Lorca stores ParsedCartelera). Only read
+  // when lastImageSha256 matches the current fetch's hash.
+  lastImageParsed: text('last_image_parsed', { mode: 'json' }),
 });
 
 // ---------------------------------------------------------------------------

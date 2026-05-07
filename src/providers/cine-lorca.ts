@@ -33,8 +33,11 @@
  * caller all stay the same.
  */
 
+import { createHash } from 'node:crypto';
 import * as cheerio from 'cheerio';
 import Anthropic from '@anthropic-ai/sdk';
+import { eq } from 'drizzle-orm';
+import { db, providers } from '@/db';
 import { type Provider, type ProviderRunResult, type ScrapedScreening } from './types';
 
 const PROGRAMACION_URL = 'https://cinelorca.wixsite.com/cine-lorca/current-production';
@@ -43,6 +46,17 @@ const USER_AGENT =
 
 const VISION_MODEL = 'claude-haiku-4-5-20251001';
 const VISION_MAX_TOKENS = 2000;
+// Greedy decoding — OCR-style transcription has no creative aspect, so any
+// run-to-run variance on the same image is a bug. Setting temperature: 0
+// makes the call deterministic for a given image, which is what makes the
+// image-hash short-circuit (see fetch()) safe: cached parsed JSON will
+// match what a fresh call would produce.
+const VISION_TEMPERATURE = 0;
+// Defensive clip on runaway prose. With temperature: 0 + a strict-JSON
+// prompt the model effectively never appends commentary, but if it ever
+// does, these stop early.
+const VISION_STOP_SEQUENCES = ['\n```', '\n\nNote:', '\n\nExplanation'];
+const PROVIDER_ID = 'lorca';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -96,7 +110,23 @@ export const cineLorcaProvider: Provider = {
       }
 
       const image = await fetchBytes(imageUrl);
-      const parsed = await readCarteleraWithVision(image);
+      const imageSha256 = sha256Hex(image);
+
+      // Image-hash short-circuit: Lorca posts a new cartelera on Thursdays
+      // and the image stays unchanged for 6-7 days. Re-running the scrape
+      // on an unchanged image wastes one Anthropic call (~$0.005) AND gives
+      // the VLM another roll of the dice on title transcription, which is
+      // the structural source of the title-drift duplicate bug. If the
+      // hash matches what we cached on the last successful parse, we
+      // re-derive screenings from the cached parsed JSON instead of
+      // calling vision again.
+      const cached = await readImageCache(imageSha256);
+      const parsed = cached ?? (await readCarteleraWithVision(image));
+      if (cached) {
+        warnings.push(
+          `vision call skipped: image sha256 unchanged (cached parse re-used)`,
+        );
+      }
 
       if (!parsed.validFrom || !parsed.validTo) {
         return {
@@ -135,6 +165,13 @@ export const cineLorcaProvider: Provider = {
       }
 
       const screenings = expandScreenings(parsed, PROGRAMACION_URL);
+      // Persist the cache only when we just parsed fresh (not on cache hits;
+      // the row already holds the same hash + parsed). Best-effort: a cache
+      // write failure should not abort the scrape — we still have a valid
+      // result to return.
+      if (!cached) {
+        await writeImageCache(imageSha256, parsed).catch(() => {});
+      }
       return { cinemaId: 'lorca', screenings, success: true, warnings };
     } catch (err) {
       return {
@@ -230,9 +267,22 @@ function parseRenderedArea(url: string): number {
 // Vision extraction (impure)
 // ---------------------------------------------------------------------------
 
-const VISION_PROMPT = `You are looking at the weekly cartelera (film schedule) of Cine Lorca, a Buenos Aires arthouse cinema. The image is a printed-style poster with a black background and white panels containing film blocks.
+// System prompt: persona + output-format guardrails. Stable across calls;
+// promoted to the system field per Anthropic best practice for instruction
+// adherence.
+const VISION_SYSTEM_PROMPT = `You are an OCR transcription engine specialized in Argentine cinema cartelera posters. Your sole job is to read printed text from a single image and return a strict JSON object describing the schedule. You do not interpret, paraphrase, or summarize. You transcribe verbatim and structure the output.
 
-Return ONLY a JSON object with exactly this shape, no prose, no markdown fences:
+Output MUST be a single JSON object with no prose, no markdown fences, no commentary. Any non-JSON output is a failure.`;
+
+// User prompt: per-image context, extraction rules, and a few-shot example.
+// Few-shot is the highest-leverage prompt-engineering tool for structured-
+// output OCR tasks: one worked example calibrates exact JSON shape, exact
+// HH:MM normalization (Lorca posters mix '14.10 hs.' and '16:00 hs.' for
+// different films on the same week — both must normalize to colon), and
+// exact diacritic discipline. Worth more than paragraphs of rules.
+const VISION_USER_PROMPT = `This image is the weekly cartelera (film schedule) of Cine Lorca, a Buenos Aires arthouse cinema. It is a printed poster with a black background and white panels containing film blocks.
+
+Return a JSON object with exactly this shape:
 
 {
   "validFrom": { "day": <1-31>, "month": <1-12> },
@@ -245,22 +295,39 @@ Return ONLY a JSON object with exactly this shape, no prose, no markdown fences:
 
 Rules:
 - The validity range appears in the left column as "PROGRAMACIÓN VÁLIDA DESDE EL DD/MM AL DD/MM" with the year on its own line nearby.
-- This is ARGENTINE DATE FORMAT: the first number in each slash-pair is the DAY, the second is the MONTH. Always.
+- ARGENTINE DATE FORMAT: the first number in each slash-pair is the DAY, the second is the MONTH. Always.
   Example: "30/04 AL 06/05" means starts April 30 (day=30, month=4), ends May 6 (day=6, month=5).
   NEVER interpret "06/05" as June 5 — it's always May 6 here. If a number is greater than 12, it's the day.
 - The cycle is always 6 to 8 days long (Thursday through Wednesday). If your parsed dates produce a longer range, you misread one of them. Re-check.
 - Each film block contains a quoted title, one or more "HH:MM hs." showtime lines, and a "Duración: ... MIN ..." line.
-- Times in 24-hour format. "20:05 hs." → "20:05".
+- Times in 24-hour format. The poster MIXES separators: "14.10 hs." (period) and "16:00 hs." (colon) can both appear on the same poster. NORMALIZE every time to colon form: "14.10 hs." → "14:10", "16:00 hs." → "16:00".
+- Preserve title text VERBATIM as printed. Do not add or remove punctuation, do not change capitalization, do not add or strip diacritics. If the poster prints "GIOIA MIA" without an accent, output "GIOIA MIA"; if it prints "GIOIA MÍA", output "GIOIA MÍA". If a title is multi-line on the poster, join with a single space.
 - IGNORE the SALA labels (Sala 1, Sala 2). We don't track which auditorium.
 - IGNORE pricing.
 - IGNORE the "Abrimos nuestras puertas" footer.
-- Preserve diacritics. If a title is multi-line on the poster, join with a single space.`;
+
+Example output for a poster running June 1 to June 7, 2026 with two films:
+
+{
+  "validFrom": { "day": 1, "month": 6 },
+  "validTo": { "day": 7, "month": 6 },
+  "year": 2026,
+  "films": [
+    { "title": "EL DRAMA", "times": ["14:00", "22:10"] },
+    { "title": "GIOIA MIA: un verano en Sicilia", "times": ["16:15"] }
+  ]
+}
+
+Now produce the JSON for the attached image.`;
 
 async function readCarteleraWithVision(image: Buffer): Promise<ParsedCartelera> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
   const message = await client.messages.create({
     model: VISION_MODEL,
     max_tokens: VISION_MAX_TOKENS,
+    temperature: VISION_TEMPERATURE,
+    stop_sequences: VISION_STOP_SEQUENCES,
+    system: VISION_SYSTEM_PROMPT,
     messages: [
       {
         role: 'user',
@@ -273,7 +340,7 @@ async function readCarteleraWithVision(image: Buffer): Promise<ParsedCartelera> 
               data: image.toString('base64'),
             },
           },
-          { type: 'text', text: VISION_PROMPT },
+          { type: 'text', text: VISION_USER_PROMPT },
         ],
       },
     ],
@@ -366,7 +433,12 @@ function isDayMonth(d: unknown): d is { day: number; month: number } {
 }
 
 function parseHHMM(s: string): { hour: number; minute: number } | null {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(s.trim());
+  // Accept both colon and period separators. Lorca posters use BOTH on the
+  // same poster (different film blocks): "14.10 hs." for one film and
+  // "16:00 hs." for another. The vision prompt tells the model to
+  // normalize to colons, but accepting period defensively means a stray
+  // un-normalized time doesn't get silently dropped at this filter step.
+  const m = /^(\d{1,2})[:.](\d{2})$/.exec(s.trim());
   if (!m) return null;
   const hour = parseInt(m[1], 10);
   const minute = parseInt(m[2], 10);
@@ -479,4 +551,117 @@ async function fetchBytes(url: string): Promise<Buffer> {
   if (!res.ok) throw new Error(`GET ${url} → HTTP ${res.status}`);
   const arr = await res.arrayBuffer();
   return Buffer.from(arr);
+}
+
+// ---------------------------------------------------------------------------
+// Image-hash cache (impure — reads/writes providers row)
+// ---------------------------------------------------------------------------
+//
+// Lorca's weekly poster is unchanged for 6-7 days at a time. Each scrape
+// run fetches the image, hashes it, and short-circuits the Anthropic call
+// when the hash matches what we cached on the last successful parse.
+// Storage lives in providers.last_image_sha256 + providers.last_image_parsed
+// (see schema.ts).
+//
+// The cached value is the raw ParsedCartelera (validity dates + films).
+// We do NOT cache the expanded screenings array because expandScreenings
+// is pure and cheap; re-deriving from the parsed structure on each cache
+// hit costs nothing and keeps the on-disk shape compact.
+
+function sha256Hex(buf: Buffer): string {
+  return createHash('sha256').update(buf).digest('hex');
+}
+
+/**
+ * Read the cached parsed cartelera if its image hash matches `sha`.
+ * Returns null on cache miss (different hash, no row, or stored payload
+ * fails validation — defensive against schema drift between writers).
+ *
+ * Exported for tests; not part of the module's public contract.
+ */
+export async function readImageCache(sha: string): Promise<ParsedCartelera | null> {
+  const [row] = await db
+    .select({
+      sha: providers.lastImageSha256,
+      parsed: providers.lastImageParsed,
+    })
+    .from(providers)
+    .where(eq(providers.id, PROVIDER_ID))
+    .limit(1);
+  if (!row || row.sha !== sha || row.parsed == null) return null;
+  if (!isParsedCartelera(row.parsed)) return null;
+  return row.parsed;
+}
+
+/**
+ * Persist the freshly-parsed cartelera + the image hash that produced it.
+ * Best-effort: cache misses are cheap (one extra Anthropic call), so we
+ * intentionally don't propagate write failures up to the caller.
+ *
+ * Exported for tests; not part of the module's public contract.
+ */
+export async function writeImageCache(
+  sha: string,
+  parsed: ParsedCartelera,
+): Promise<void> {
+  // The providers row is created lazily by recordProviderRun on the first
+  // run. By the time fetch() reaches this write, that row may or may not
+  // exist (recordProviderRun fires AFTER the provider returns). So we
+  // INSERT-or-UPDATE rather than assuming the row is there.
+  await db
+    .insert(providers)
+    .values({
+      id: PROVIDER_ID,
+      lastImageSha256: sha,
+      lastImageParsed: parsed,
+    })
+    .onConflictDoUpdate({
+      target: providers.id,
+      set: {
+        lastImageSha256: sha,
+        lastImageParsed: parsed,
+      },
+    });
+}
+
+// ParsedCartelera shape validator. Distinct from isVisionShape (which
+// validates the raw vision response BEFORE parseVisionResponse normalizes
+// it). The cache stores the post-normalization ParsedCartelera, so we
+// need a validator for that shape specifically.
+function isParsedCartelera(d: unknown): d is ParsedCartelera {
+  if (typeof d !== 'object' || d === null) return false;
+  const o = d as Record<string, unknown>;
+  if (!isYearMonthDayOrNull(o.validFrom)) return false;
+  if (!isYearMonthDayOrNull(o.validTo)) return false;
+  if (!Array.isArray(o.films)) return false;
+  return o.films.every(isParsedFilm);
+}
+
+function isYearMonthDayOrNull(
+  d: unknown,
+): d is { year: number; month: number; day: number } | null {
+  if (d === null) return true;
+  if (typeof d !== 'object') return false;
+  const o = d as Record<string, unknown>;
+  return (
+    typeof o.year === 'number' &&
+    typeof o.month === 'number' &&
+    typeof o.day === 'number'
+  );
+}
+
+function isParsedFilm(
+  d: unknown,
+): d is { title: string; times: Array<{ hour: number; minute: number }> } {
+  if (typeof d !== 'object' || d === null) return false;
+  const o = d as Record<string, unknown>;
+  if (typeof o.title !== 'string') return false;
+  if (!Array.isArray(o.times)) return false;
+  return o.times.every(
+    (t) =>
+      typeof t === 'object' &&
+      t !== null &&
+      typeof (t as Record<string, unknown>).hour === 'number' &&
+      typeof (t as Record<string, unknown>).minute === 'number',
+  );
 }
