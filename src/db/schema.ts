@@ -155,8 +155,19 @@ export const films = sqliteTable(
 );
 
 // ---------------------------------------------------------------------------
-// providers — scraper health + observability, one row per cinema
+// providers — scraper health, observability, and per-provider state cache
 // ---------------------------------------------------------------------------
+//
+// Two roles in one table:
+//   1. Health/observability — last_run_at, last_success_at, last_error,
+//      screening_count. Read by the dashboard.
+//   2. Per-provider cache — last_image_sha256, last_image_parsed. Currently
+//      used only by Lorca, which fetches a weekly poster image and pays
+//      $0.005 + a drift dice roll per Anthropic call. Caching by image hash
+//      means we only call vision when the poster changes (Thursday), not on
+//      every daily scrape. Both columns are nullable; non-Lorca providers
+//      simply never write to them.
+//
 export const providers = sqliteTable('providers', {
   id: text('id')
     .primaryKey()
@@ -165,6 +176,21 @@ export const providers = sqliteTable('providers', {
   lastSuccessAt: integer('last_success_at', { mode: 'timestamp' }),
   lastError: text('last_error'),
   screeningCount: integer('screening_count').default(0),
+  // 64-char hex digest used as the cache key for the last successfully-
+  // parsed source artifact. For Lorca it's SHA-256 of
+  // (imageBytes || ':' || VISION_MODEL || ':' || PROMPT_VERSION) so a
+  // model upgrade or prompt revision automatically invalidates the cache
+  // (otherwise a buggy parse could persist for the full week the poster
+  // image stays unchanged). Column name kept as `last_image_sha256` for
+  // migration stability — the value is still a SHA-256 digest, just of
+  // composed inputs rather than image bytes alone. Other providers may
+  // adopt the same pattern with their own composition.
+  lastImageSha256: text('last_image_sha256'),
+  // The parsed artifact corresponding to lastImageSha256, stored verbatim
+  // as JSON so we can re-derive screenings without re-calling the model.
+  // Format is provider-defined (Lorca stores ParsedCartelera). Only read
+  // when lastImageSha256 matches the current fetch's hash.
+  lastImageParsed: text('last_image_parsed', { mode: 'json' }),
 });
 
 // ---------------------------------------------------------------------------

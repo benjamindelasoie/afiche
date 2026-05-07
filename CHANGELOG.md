@@ -2,6 +2,33 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.2.2.0] - 2026-05-07
+
+### Added
+
+- **Image-hash cache for the Cine Lorca vision call.** Lorca posts a new cartelera every Thursday and the same poster image is served for the rest of the week. Each daily scrape was paying ~$0.005 for an Anthropic call AND giving Haiku another roll of the dice on title transcription — the structural source of the title-drift duplicate bug (e.g., `GIOIA MIA` ↔ `GUIOTA MÍA`, `PADRE…HERMANO` ↔ `…HERMANO?`). Now the provider hashes the fetched image and short-circuits when the cache key matches what was cached on the last successful parse. Drift surface drops from 7 calls/week to 1. Persisted in two new `providers` columns: `last_image_sha256` and `last_image_parsed` (Drizzle migration `0006_awesome_doctor_doom`). The cache key is `sha256(imageBytes ‖ ':' ‖ VISION_MODEL ‖ ':' ‖ PROMPT_VERSION)` so a model upgrade or a prompt revision automatically invalidates prior parses — bumping `PROMPT_VERSION` (a constant in `cine-lorca.ts`) on a meaningful prompt change forces a fresh vision call on the next run.
+
+### Changed
+
+- **Tuned the Lorca vision call for transcription accuracy.** Four changes to `readCarteleraWithVision` in `src/providers/cine-lorca.ts`:
+  - `temperature: 0` — greedy decoding so the same image deterministically produces the same transcription. Eliminates the run-to-run variance that turned `GIOIA` into `GUIOTA` between scrapes.
+  - System prompt promoted to the dedicated `system` field — persona + output-format guardrails separated from per-image instructions, per Anthropic instruction-following best practice.
+  - Few-shot example added to the user prompt — one worked sample of the JSON shape with mixed time-format normalization (`14.10 hs.` → `14:10`, `16:00 hs.` → `16:00`). Highest-leverage prompt-engineering tool for structured-output OCR.
+  - `stop_sequences` added — defensive clip on any runaway prose.
+
+### Fixed
+
+- **`parseHHMM` now accepts both `:` and `.` as time separators.** The Lorca poster mixes `14.10 hs.` (period) and `16:00 hs.` (colon) on the same week — different films use different formats. The vision prompt asks for normalization to colon, but if a stray period-format time slipped through, the previous regex `^(\d{1,2}):(\d{2})$` would silently drop it. New regex `^(\d{1,2})[:.](\d{2})$` accepts both as a defensive backstop.
+- **Cache-read hardening against corrupt JSON.** `readImageCache` now wraps the SELECT in try/catch — Drizzle's `mode: 'json'` parses the column during row hydration, so an operator hand-edit or partial write that left invalid JSON in `last_image_parsed` would have aborted the whole scrape run. Now it degrades to a safe cache miss and a fresh vision call.
+- **Cache-write failure surfaces in `scrape_runs.warnings`.** Previously `writeImageCache(...).catch(() => {})` swallowed every write failure, so a permanently-failing cache write would mean re-calling Anthropic forever with no signal. Now the catch pushes a warning into the run-log so operators see it in the dashboard.
+
+### Maintenance
+
+- **Bounded the cache validator against Cartesian-explosion payloads.** `isParsedCartelera` now caps `films[]` (≤30), `times[]` per film (≤20), title length (≤200 chars), year (2020-2050), month (1-12), day (1-31). Before, a corrupt or hand-edited `last_image_parsed` JSON could have passed validation and fed `expandScreenings` (films × days × times) a Cartesian explosion of INSERTs. Cap violations degrade to cache miss.
+- New test file `src/providers/cine-lorca-cache.test.ts` (16 tests) exercises the cache write/read/round-trip, hash-mismatch miss, overwrite-on-new-image, shape-validation defense, JSON-hydration safety, every cap boundary, and `composeCacheKey` determinism + invalidation.
+- Existing `src/providers/cine-lorca.test.ts` gains a regression test for the `parseHHMM` period-format fix and a minimal `@/db` stub so its pure-function tests don't pull the libSQL client.
+- Schema docstring updated to reflect that `providers` now holds per-provider state cache fields in addition to health/observability columns.
+
 ## [0.2.1.1] - 2026-05-05
 
 ### Fixed

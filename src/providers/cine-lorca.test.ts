@@ -13,9 +13,17 @@
  * so we can sanity-check the live VLM call once an API key is available.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+
+// Stub @/db so pure-function tests in this file don't pull in the libSQL
+// client (which throws unless DATABASE_URL is set). The provider module
+// imports db + providers for the image-hash cache; none of the tests
+// below reach that code path. Cache tests live in cine-lorca-cache.test.ts
+// with a real in-memory DB.
+vi.mock('@/db', () => ({ db: {}, providers: {} }));
+
 import {
   extractCarteleraImageUrl,
   parseVisionResponse,
@@ -145,6 +153,32 @@ describe('parseVisionResponse', () => {
     });
     const out = parseVisionResponse(json);
     expect(out.films.map((f) => f.title)).toEqual(['Real']);
+  });
+
+  it('accepts period-format times the poster actually uses (14.10 → 14:10)', () => {
+    // SUEÑOS DE OSLO on the 2026-05-07 poster lists "14.10 hs." and
+    // "20.10 hs." with periods. The vision prompt asks the model to
+    // normalize to colon, but the parser also accepts periods defensively
+    // — a stray un-normalized time must not be silently dropped.
+    const raw = JSON.stringify({
+      validFrom: { day: 7, month: 5 },
+      validTo: { day: 13, month: 5 },
+      year: 2026,
+      films: [
+        { title: 'SUEÑOS DE OSLO', times: ['14.10', '20.10'] },
+        { title: 'EL DRAMA', times: ['14:00', '22:10'] },
+      ],
+    });
+    const parsed = parseVisionResponse(raw);
+    expect(parsed.films).toHaveLength(2);
+    expect(parsed.films[0].times).toEqual([
+      { hour: 14, minute: 10 },
+      { hour: 20, minute: 10 },
+    ]);
+    expect(parsed.films[1].times).toEqual([
+      { hour: 14, minute: 0 },
+      { hour: 22, minute: 10 },
+    ]);
   });
 
   it('skips out-of-range time tuples but keeps valid ones in the same film', () => {
