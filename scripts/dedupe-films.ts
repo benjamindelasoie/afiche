@@ -77,7 +77,9 @@ async function main(): Promise<void> {
       )})
       ORDER BY id
     `);
-    console.log(`tmdb_id=${c.tmdbId} → keep id=${winnerId}, merge ${loserIds.length} loser(s):`);
+    console.log(
+      `tmdb_id=${c.tmdbId} → keep id=${winnerId}, merge ${loserIds.length} loser(s):`,
+    );
     for (const t of titles) {
       const tag = t.id === winnerId ? '  WINNER' : '  loser ';
       console.log(`${tag}  id=${t.id}  "${t.scraped_title}"`);
@@ -117,7 +119,9 @@ async function main(): Promise<void> {
       } catch (err) {
         failed++;
         const msg = err instanceof Error ? err.message : String(err);
-        console.error(`✗ FAILED merge film ${loserId} → ${winnerId} (tmdb_id=${c.tmdbId}): ${msg}`);
+        console.error(
+          `✗ FAILED merge film ${loserId} → ${winnerId} (tmdb_id=${c.tmdbId}): ${msg}`,
+        );
         // Continue with the next loser/cluster — partial success is recoverable.
       }
     }
@@ -125,7 +129,9 @@ async function main(): Promise<void> {
 
   console.log(`\nDone. ${executed} row(s) merged into surviving winners.`);
   if (failed > 0) {
-    console.log(`⚠ ${failed} merge(s) FAILED — see errors above. Re-run --apply to retry residual clusters.`);
+    console.log(
+      `⚠ ${failed} merge(s) FAILED — see errors above. Re-run --apply to retry residual clusters.`,
+    );
   }
   console.log('Re-run scrape:prod to repopulate any future screenings; cascade');
   console.log('already cleaned up loser rows and their orphaned screenings.');

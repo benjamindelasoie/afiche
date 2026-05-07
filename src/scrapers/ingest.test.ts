@@ -783,7 +783,10 @@ describe('enrichPendingFilms — merge on tmdb_id collision', () => {
     const result = await enrichPendingFilms(warnings);
 
     expect(result.merged).toBe(1);
-    const lorcaStillThere = await testDb.select().from(films).where(eq(films.id, lorcaId));
+    const lorcaStillThere = await testDb
+      .select()
+      .from(films)
+      .where(eq(films.id, lorcaId));
     expect(lorcaStillThere).toHaveLength(0);
     const [kept] = await testDb.select().from(films).where(eq(films.id, existingId));
     expect(kept.scrapedTitle).toBe('La patagonia rebelde');
@@ -827,8 +830,12 @@ describe('enrichPendingFilms — merge on tmdb_id collision', () => {
     expect(result.merged).toBe(0);
     expect(result.enriched).toBe(1);
     // Both rows survive.
-    expect(await testDb.select().from(films).where(eq(films.id, filmAId))).toHaveLength(1);
-    expect(await testDb.select().from(films).where(eq(films.id, filmBId))).toHaveLength(1);
+    expect(await testDb.select().from(films).where(eq(films.id, filmAId))).toHaveLength(
+      1,
+    );
+    expect(await testDb.select().from(films).where(eq(films.id, filmBId))).toHaveLength(
+      1,
+    );
   });
 
   // ---------------------------------------------------------------------------
@@ -917,7 +924,9 @@ describe('enrichPendingFilms — merge on tmdb_id collision', () => {
     expect(result.enriched).toBe(1);
 
     // Drift row gone, canonical row survives with both screenings re-pointed.
-    expect(await testDb.select().from(films).where(eq(films.id, driftId))).toHaveLength(0);
+    expect(await testDb.select().from(films).where(eq(films.id, driftId))).toHaveLength(
+      0,
+    );
     const reparented = await testDb
       .select()
       .from(screenings)
@@ -972,9 +981,13 @@ describe('mergeFilmInto', () => {
     await mergeFilmInto(loserId, winnerId, warnings);
 
     // Loser is gone.
-    expect(await testDb.select().from(films).where(eq(films.id, loserId))).toHaveLength(0);
+    expect(await testDb.select().from(films).where(eq(films.id, loserId))).toHaveLength(
+      0,
+    );
     // Winner survives intact.
-    expect(await testDb.select().from(films).where(eq(films.id, winnerId))).toHaveLength(1);
+    expect(await testDb.select().from(films).where(eq(films.id, winnerId))).toHaveLength(
+      1,
+    );
     // Both screenings re-pointed.
     const reparented = await testDb
       .select()
@@ -1023,7 +1036,9 @@ describe('mergeFilmInto', () => {
     await mergeFilmInto(loserId, winnerId);
 
     // Winner row survived; loser is deleted.
-    expect(await testDb.select().from(films).where(eq(films.id, loserId))).toHaveLength(0);
+    expect(await testDb.select().from(films).where(eq(films.id, loserId))).toHaveLength(
+      0,
+    );
     // Screenings: winner had 1, loser had 2, but one collided → final 2.
     const winnerScreenings = await testDb
       .select()
@@ -1054,8 +1069,12 @@ describe('mergeFilmInto', () => {
 
     await mergeFilmInto(loserId, winnerId);
 
-    expect(await testDb.select().from(films).where(eq(films.id, loserId))).toHaveLength(0);
-    expect(await testDb.select().from(films).where(eq(films.id, winnerId))).toHaveLength(1);
+    expect(await testDb.select().from(films).where(eq(films.id, loserId))).toHaveLength(
+      0,
+    );
+    expect(await testDb.select().from(films).where(eq(films.id, winnerId))).toHaveLength(
+      1,
+    );
   });
 
   it('T7d: optional warnings array — call without it does not throw', async () => {
@@ -1072,7 +1091,9 @@ describe('mergeFilmInto', () => {
       tmdbId: 400,
     });
     await expect(mergeFilmInto(loserId, winnerId)).resolves.not.toThrow();
-    expect(await testDb.select().from(films).where(eq(films.id, loserId))).toHaveLength(0);
+    expect(await testDb.select().from(films).where(eq(films.id, loserId))).toHaveLength(
+      0,
+    );
   });
 
   // ---------------------------------------------------------------------------
@@ -1169,7 +1190,9 @@ describe('mergeFilmInto', () => {
 
     // Surviving rows: aWinner, bWinner, singleton (3 total).
     const surviving = await testDb.select().from(films);
-    expect(surviving.map((r) => r.id).sort()).toEqual([aWinner, bWinner, singleton].sort());
+    expect(surviving.map((r) => r.id).sort()).toEqual(
+      [aWinner, bWinner, singleton].sort(),
+    );
 
     // Cluster A's screenings consolidated onto aWinner (2 total).
     const aScreenings = await testDb

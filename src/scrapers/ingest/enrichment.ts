@@ -117,39 +117,41 @@ export async function enrichPendingFilms(warnings: string[]): Promise<Enrichment
  *      the loop by manually setting poster_url to '' in Studio.
  */
 async function fetchPendingFilms(): Promise<PendingFilm[]> {
-  return db
-    .select({
-      id: films.id,
-      scrapedTitle: films.scrapedTitle,
-      titleOriginal: films.titleOriginal,
-      director: films.director,
-      year: films.year,
-      // Read existing synopsisEs so we can apply provider-fields-win:
-      // never overwrite a scraped venue synopsis (Lumiton/MALBA/Lugones
-      // detail-page enrichment) with a TMDB-sourced one.
-      synopsisEs: films.synopsisEs,
-      tmdbId: films.tmdbId,
-    })
-    .from(films)
-    .where(
-      or(
-        eq(films.matchSource, 'none'),
-        and(eq(films.matchSource, 'none-attempted'), isNotNull(films.tmdbId)),
-        and(
-          eq(films.matchSource, 'manual'),
-          isNotNull(films.tmdbId),
-          isNull(films.posterUrl),
+  return (
+    db
+      .select({
+        id: films.id,
+        scrapedTitle: films.scrapedTitle,
+        titleOriginal: films.titleOriginal,
+        director: films.director,
+        year: films.year,
+        // Read existing synopsisEs so we can apply provider-fields-win:
+        // never overwrite a scraped venue synopsis (Lumiton/MALBA/Lugones
+        // detail-page enrichment) with a TMDB-sourced one.
+        synopsisEs: films.synopsisEs,
+        tmdbId: films.tmdbId,
+      })
+      .from(films)
+      .where(
+        or(
+          eq(films.matchSource, 'none'),
+          and(eq(films.matchSource, 'none-attempted'), isNotNull(films.tmdbId)),
+          and(
+            eq(films.matchSource, 'manual'),
+            isNotNull(films.tmdbId),
+            isNull(films.posterUrl),
+          ),
         ),
-      ),
-    )
-    // Highest id first. mergeIfTmdbIdCollides makes the row currently being
-    // processed the loser when a collision is found — DESC order means the
-    // newer row (higher id) loses, the older row (lower id, anchored slug)
-    // survives. Matters when multiple rows in the pending pool collide
-    // (e.g. operator manually patched several rows to the same tmdb_id).
-    // For the common single-pending-row VLM-drift case the order is moot —
-    // the existing winner row isn't in the pool to begin with.
-    .orderBy(desc(films.id));
+      )
+      // Highest id first. mergeIfTmdbIdCollides makes the row currently being
+      // processed the loser when a collision is found — DESC order means the
+      // newer row (higher id) loses, the older row (lower id, anchored slug)
+      // survives. Matters when multiple rows in the pending pool collide
+      // (e.g. operator manually patched several rows to the same tmdb_id).
+      // For the common single-pending-row VLM-drift case the order is moot —
+      // the existing winner row isn't in the pool to begin with.
+      .orderBy(desc(films.id))
+  );
 }
 
 /**
