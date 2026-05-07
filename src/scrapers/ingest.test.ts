@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { makeInMemoryDb, type TestDb } from '../../test/helpers/in-memory-db';
 import { films, cinemas, screenings } from '@/db/schema';
 
@@ -448,7 +448,7 @@ describe('enrichPendingFilms — manual tmdb_id patch path', () => {
 // constraint and crash the whole scrape. enrichPendingFilms must detect
 // this and merge: re-point screenings to the existing row, delete ours.
 // ---------------------------------------------------------------------------
-describe('enrichPendingFilms — merge on (scrapedTitle, year) collision', () => {
+describe('enrichPendingFilms — merge on tmdb_id collision', () => {
   beforeEach(async () => {
     testDb = await makeInMemoryDb();
     enrichFilmMock.mockReset();
@@ -456,12 +456,16 @@ describe('enrichPendingFilms — merge on (scrapedTitle, year) collision', () =>
     await seedCinema();
   });
 
-  it('merges a null-year pending row into an existing year-known row when TMDB resolves the year', async () => {
-    // The existing row that was enriched in a prior run.
+  it('merges a null-year pending row into an existing year-known row when TMDB resolves the same tmdb_id', async () => {
+    // The existing row that was enriched in a prior run. Production
+    // matchSource='auto' rows always have tmdb_id set (it's the whole
+    // point of an auto match) — the test seeds it explicitly so the new
+    // tmdb_id-keyed merge predicate has something to find.
     const existingId = await seedFilm({
       scrapedTitle: 'LAWRENCE DE ARABIA',
       year: 1962,
       matchSource: 'auto',
+      tmdbId: 947,
     });
     // Our year-less pending row created by a year-less provider this run.
     const pendingId = await seedFilm({
@@ -614,17 +618,18 @@ describe('enrichPendingFilms — merge on (scrapedTitle, year) collision', () =>
   it('merges when TMDB changes a wrong year into a colliding row (Tardes de soledad case)', async () => {
     // Regression: observed live on 2026-04-23.
     //   Scraper emits "TARDES DE SOLEDAD" with year=2024 (its best guess
-    //   from surrounding context). Inserts as new row since
-    //   (scrapedTitle, year) doesn't match any existing row.
+    //   from surrounding context). Inserts as new row.
     //   Earlier scrape had inserted same title with year=2025 (TMDB had
     //   already enriched it). Now the 2024 row enriches — TMDB returns
-    //   year=2025 — UPDATE collides with the 2025 row's unique index.
-    // The merge check used to only fire when f.year === null. Broadened
-    // to any year change that would collide.
+    //   tmdb_id=975324, which collides with the 2025 row's tmdb_id.
+    // Pre-2026-05-07 this merge keyed on (scrapedTitle, year) equality
+    // and only fired when f.year === null. Now it keys on tmdb_id, which
+    // catches this case AND the broader VLM-drift / cross-provider classes.
     const existingId = await seedFilm({
       scrapedTitle: 'TARDES DE SOLEDAD',
       year: 2025,
       matchSource: 'auto',
+      tmdbId: 975324,
     });
     const pendingId = await seedFilm({
       scrapedTitle: 'TARDES DE SOLEDAD',
@@ -673,10 +678,516 @@ describe('enrichPendingFilms — merge on (scrapedTitle, year) collision', () =>
       .from(screenings)
       .where(eq(screenings.filmId, existingId));
     expect(reparented).toHaveLength(1);
-    // Warning surfaces the year transition, not "no year".
-    expect(warnings.some((w) => w.includes('year=2024') && w.includes('year=2025'))).toBe(
-      true,
-    );
+    // Warning surfaces the merge with the colliding tmdb_id.
+    expect(warnings.some((w) => w.includes('tmdb_id=975324'))).toBe(true);
+    expect(warnings.some((w) => w.includes(`id=${existingId}`))).toBe(true);
+  });
+
+  // ---------------------------------------------------------------------------
+  // T1: VLM drift on Lorca (same image → different scraped_title across runs).
+  // The original mergeIfYearCollides MISSED this entire class because scraped
+  // titles differ. The new mergeIfTmdbIdCollides catches it once both rows
+  // resolve to the same tmdb_id.
+  // ---------------------------------------------------------------------------
+  it('T1: merges VLM drift case (different scraped_titles, same tmdb_id)', async () => {
+    // Existing row from prior scrape — Haiku read "GIOIA MIA" that week.
+    const existingId = await seedFilm({
+      scrapedTitle: 'GIOIA MIA: un verano en Sicilia',
+      year: 2025,
+      matchSource: 'auto',
+      tmdbId: 1510325,
+    });
+    // This week's scrape — Haiku drifted to "GUIOTA MÍA" (letter hallucination).
+    const driftId = await seedFilm({
+      scrapedTitle: 'GUIOTA MÍA: un verano en Sicilia',
+      year: null,
+      matchSource: 'none',
+    });
+    await testDb.insert(screenings).values({
+      filmId: driftId,
+      cinemaId: 'lugones',
+      startsAtUtc: new Date('2026-05-08T19:00:00Z'),
+      tags: [],
+    });
+    enrichFilmMock.mockResolvedValue({
+      delta: {
+        tmdbId: 1510325,
+        imdbId: null,
+        title: 'Gioia mia',
+        titleOriginal: 'Gioia mia',
+        director: null,
+        country: 'IT',
+        year: 2025,
+        runtimeMin: 93,
+        posterUrl: null,
+        matchConfidence: 0.95,
+        matchSource: 'auto' as const,
+      },
+      reason: 'ok',
+    });
+
+    const warnings: string[] = [];
+    const result = await enrichPendingFilms(warnings);
+
+    expect(result.merged).toBe(1);
+    // Drift row deleted; existing row (with the canonical scraped_title) survives.
+    const drifted = await testDb.select().from(films).where(eq(films.id, driftId));
+    expect(drifted).toHaveLength(0);
+    const [kept] = await testDb.select().from(films).where(eq(films.id, existingId));
+    expect(kept.scrapedTitle).toBe('GIOIA MIA: un verano en Sicilia');
+    expect(kept.tmdbId).toBe(1510325);
+    // Drift row's screening re-pointed to the canonical row.
+    const reparented = await testDb
+      .select()
+      .from(screenings)
+      .where(eq(screenings.filmId, existingId));
+    expect(reparented).toHaveLength(1);
+  });
+
+  // ---------------------------------------------------------------------------
+  // T2: Cross-provider format divergence. Lorca emits all-caps `LA PATAGONIA
+  // REBELDE`, another scraper emits title-case `La patagonia rebelde`. Both
+  // resolve to the same TMDB id. The original merge missed this because
+  // scraped_titles differed AND scraped_years differed.
+  // ---------------------------------------------------------------------------
+  it('T2: merges cross-provider duplicates (different scraped_title AND scraped_year)', async () => {
+    const existingId = await seedFilm({
+      scrapedTitle: 'La patagonia rebelde',
+      year: 1974,
+      matchSource: 'auto',
+      tmdbId: 64978,
+    });
+    const lorcaId = await seedFilm({
+      scrapedTitle: 'LA PATAGONIA REBELDE',
+      year: null,
+      matchSource: 'none',
+    });
+    enrichFilmMock.mockResolvedValue({
+      delta: {
+        tmdbId: 64978,
+        imdbId: null,
+        title: 'La Patagonia rebelde',
+        titleOriginal: 'La Patagonia rebelde',
+        director: 'Héctor Olivera',
+        country: 'AR',
+        year: 1974,
+        runtimeMin: 109,
+        posterUrl: null,
+        matchConfidence: 1,
+        matchSource: 'auto' as const,
+      },
+      reason: 'ok',
+    });
+
+    const warnings: string[] = [];
+    const result = await enrichPendingFilms(warnings);
+
+    expect(result.merged).toBe(1);
+    const lorcaStillThere = await testDb.select().from(films).where(eq(films.id, lorcaId));
+    expect(lorcaStillThere).toHaveLength(0);
+    const [kept] = await testDb.select().from(films).where(eq(films.id, existingId));
+    expect(kept.scrapedTitle).toBe('La patagonia rebelde');
+  });
+
+  // ---------------------------------------------------------------------------
+  // T4: Negative case — different tmdb_ids must NOT merge. Two distinct
+  // films sharing nothing but a TMDB miss-and-rematch pattern.
+  // ---------------------------------------------------------------------------
+  it('T4: does NOT merge when resolved tmdb_ids differ', async () => {
+    const filmAId = await seedFilm({
+      scrapedTitle: 'Film A',
+      year: 2024,
+      matchSource: 'auto',
+      tmdbId: 100,
+    });
+    const filmBId = await seedFilm({
+      scrapedTitle: 'Film B',
+      year: 2024,
+      matchSource: 'none',
+    });
+    enrichFilmMock.mockResolvedValue({
+      delta: {
+        tmdbId: 200, // distinct from film A's 100
+        imdbId: null,
+        title: 'Film B',
+        titleOriginal: null,
+        director: null,
+        country: null,
+        year: 2024,
+        runtimeMin: null,
+        posterUrl: null,
+        matchConfidence: 0.9,
+        matchSource: 'auto' as const,
+      },
+      reason: 'ok',
+    });
+
+    const result = await enrichPendingFilms([]);
+
+    expect(result.merged).toBe(0);
+    expect(result.enriched).toBe(1);
+    // Both rows survive.
+    expect(await testDb.select().from(films).where(eq(films.id, filmAId))).toHaveLength(1);
+    expect(await testDb.select().from(films).where(eq(films.id, filmBId))).toHaveLength(1);
+  });
+
+  // ---------------------------------------------------------------------------
+  // T5: TMDB miss path — when enrichFilm returns no delta, no merge is
+  // attempted (the predicate has nothing to query for).
+  // ---------------------------------------------------------------------------
+  it('T5: TMDB miss → no merge attempted, row stays for retry', async () => {
+    const id = await seedFilm({
+      scrapedTitle: 'Obscure festival short',
+      year: null,
+      matchSource: 'none',
+    });
+    enrichFilmMock.mockResolvedValue({
+      delta: null,
+      reason: 'no-candidates',
+    });
+
+    const result = await enrichPendingFilms([]);
+
+    expect(result.merged).toBe(0);
+    expect(result.skipped).toBe(1);
+    // Row still exists; downstream "none-attempted" logic owns this row's fate now.
+    const stillThere = await testDb.select().from(films).where(eq(films.id, id));
+    expect(stillThere).toHaveLength(1);
+  });
+
+  // ---------------------------------------------------------------------------
+  // T6: Manual-patch convergence — operator patches BOTH rows with the same
+  // tmdb_id (today's prod recovery scenario). Enrichment loop processes both;
+  // the second row merges into the first.
+  // ---------------------------------------------------------------------------
+  it('T6: manual-patch convergence — two rows patched to same tmdb_id collapse to one', async () => {
+    // Both rows patched by the operator to point at TMDB id 1159206.
+    // First row was the canonical "PADRE..."; second was the drift "...HERMANO?".
+    // Both have match_source='manual' + tmdb_id NOT NULL + poster_url NULL,
+    // so both qualify for fetchPendingFilms's clause #3.
+    const firstId = await seedFilm({
+      scrapedTitle: 'PADRE, MADRE, HERMANA, HERMANO',
+      year: null,
+      matchSource: 'manual',
+      tmdbId: 1159206,
+    });
+    const driftId = await seedFilm({
+      scrapedTitle: 'PADRE, MADRE, HERMANA, HERMANO?',
+      year: null,
+      matchSource: 'manual',
+      tmdbId: 1159206,
+    });
+    // Both rows have screenings (different time slots so no collisions).
+    await testDb.insert(screenings).values([
+      {
+        filmId: firstId,
+        cinemaId: 'lugones',
+        startsAtUtc: new Date('2026-04-25T18:00:00Z'),
+        tags: [],
+      },
+      {
+        filmId: driftId,
+        cinemaId: 'lugones',
+        startsAtUtc: new Date('2026-05-08T18:00:00Z'),
+        tags: [],
+      },
+    ]);
+    enrichByTmdbIdMock.mockResolvedValue({
+      delta: {
+        tmdbId: 1159206,
+        imdbId: null,
+        title: 'Padre, madre, hermana, hermano',
+        titleOriginal: 'Father Mother Sister Brother',
+        director: 'Jim Jarmusch',
+        country: 'US',
+        year: 2025,
+        runtimeMin: 109,
+        posterUrl: '/posters/padre.jpg',
+        matchConfidence: 1,
+        matchSource: 'manual' as const,
+      },
+      reason: 'ok',
+    });
+
+    const result = await enrichPendingFilms([]);
+
+    // First row enriches normally (no collision yet — itself).
+    // Second row finds first via tmdb_id and merges.
+    expect(result.merged).toBe(1);
+    expect(result.enriched).toBe(1);
+
+    // Drift row gone, canonical row survives with both screenings re-pointed.
+    expect(await testDb.select().from(films).where(eq(films.id, driftId))).toHaveLength(0);
+    const reparented = await testDb
+      .select()
+      .from(screenings)
+      .where(eq(screenings.filmId, firstId));
+    expect(reparented).toHaveLength(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// mergeFilmInto unit tests — the shared primitive used by both the
+// enrichment loop's merge-on-collision and the dedupe-films cleanup script.
+// ---------------------------------------------------------------------------
+const { mergeFilmInto } = await import('./ingest/films');
+
+describe('mergeFilmInto', () => {
+  beforeEach(async () => {
+    testDb = await makeInMemoryDb();
+    enrichFilmMock.mockReset();
+    enrichByTmdbIdMock.mockReset();
+    await seedCinema();
+  });
+
+  it('T7a: re-points all loser screenings to winner and deletes loser', async () => {
+    const winnerId = await seedFilm({
+      scrapedTitle: 'Winner',
+      year: 2024,
+      matchSource: 'auto',
+      tmdbId: 100,
+    });
+    const loserId = await seedFilm({
+      scrapedTitle: 'Loser drift',
+      year: 2024,
+      matchSource: 'auto',
+      tmdbId: 100,
+    });
+    await testDb.insert(screenings).values([
+      {
+        filmId: loserId,
+        cinemaId: 'lugones',
+        startsAtUtc: new Date('2026-05-08T18:00:00Z'),
+        tags: [],
+      },
+      {
+        filmId: loserId,
+        cinemaId: 'lugones',
+        startsAtUtc: new Date('2026-05-09T20:00:00Z'),
+        tags: [],
+      },
+    ]);
+
+    const warnings: string[] = [];
+    await mergeFilmInto(loserId, winnerId, warnings);
+
+    // Loser is gone.
+    expect(await testDb.select().from(films).where(eq(films.id, loserId))).toHaveLength(0);
+    // Winner survives intact.
+    expect(await testDb.select().from(films).where(eq(films.id, winnerId))).toHaveLength(1);
+    // Both screenings re-pointed.
+    const reparented = await testDb
+      .select()
+      .from(screenings)
+      .where(eq(screenings.filmId, winnerId));
+    expect(reparented).toHaveLength(2);
+    // Warning surfaces with stable format.
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatch(/merged film \d+ into existing id=\d+/);
+  });
+
+  it('T7b: time-collision drops loser screening; cascade cleans the rest', async () => {
+    // Winner already has a screening at the same (cinema, time) as one of
+    // the loser's. The unique index (film_id, cinema_id, starts_at_utc)
+    // would fire if UPDATE forced both rows to share that key.
+    // UPDATE OR IGNORE skips that one; cascade-delete on films sweeps it
+    // when the loser row is deleted. Net: winner ends with its original
+    // screenings + loser's non-colliding ones; the colliding screening
+    // row is gone (one fewer total).
+    const winnerId = await seedFilm({
+      scrapedTitle: 'Winner',
+      year: 2024,
+      matchSource: 'auto',
+      tmdbId: 200,
+    });
+    const loserId = await seedFilm({
+      scrapedTitle: 'Loser',
+      year: 2024,
+      matchSource: 'auto',
+      tmdbId: 200,
+    });
+    const collidingTime = new Date('2026-05-10T19:00:00Z');
+    await testDb.insert(screenings).values([
+      // Winner has a screening at the colliding time.
+      { filmId: winnerId, cinemaId: 'lugones', startsAtUtc: collidingTime, tags: [] },
+      // Loser has the same colliding screening, plus a unique one.
+      { filmId: loserId, cinemaId: 'lugones', startsAtUtc: collidingTime, tags: [] },
+      {
+        filmId: loserId,
+        cinemaId: 'lugones',
+        startsAtUtc: new Date('2026-05-11T19:00:00Z'),
+        tags: [],
+      },
+    ]);
+
+    await mergeFilmInto(loserId, winnerId);
+
+    // Winner row survived; loser is deleted.
+    expect(await testDb.select().from(films).where(eq(films.id, loserId))).toHaveLength(0);
+    // Screenings: winner had 1, loser had 2, but one collided → final 2.
+    const winnerScreenings = await testDb
+      .select()
+      .from(screenings)
+      .where(eq(screenings.filmId, winnerId));
+    expect(winnerScreenings).toHaveLength(2);
+    // No orphan screenings pointing at the deleted loser id.
+    const orphans = await testDb
+      .select()
+      .from(screenings)
+      .where(eq(screenings.filmId, loserId));
+    expect(orphans).toHaveLength(0);
+  });
+
+  it('T7c: works when the loser has no screenings (pure orphan cleanup)', async () => {
+    const winnerId = await seedFilm({
+      scrapedTitle: 'Winner',
+      year: 2024,
+      matchSource: 'auto',
+      tmdbId: 300,
+    });
+    const loserId = await seedFilm({
+      scrapedTitle: 'Orphan',
+      year: null,
+      matchSource: 'manual',
+      tmdbId: 300,
+    });
+
+    await mergeFilmInto(loserId, winnerId);
+
+    expect(await testDb.select().from(films).where(eq(films.id, loserId))).toHaveLength(0);
+    expect(await testDb.select().from(films).where(eq(films.id, winnerId))).toHaveLength(1);
+  });
+
+  it('T7d: optional warnings array — call without it does not throw', async () => {
+    const winnerId = await seedFilm({
+      scrapedTitle: 'A',
+      year: 2024,
+      matchSource: 'auto',
+      tmdbId: 400,
+    });
+    const loserId = await seedFilm({
+      scrapedTitle: 'B',
+      year: 2024,
+      matchSource: 'auto',
+      tmdbId: 400,
+    });
+    await expect(mergeFilmInto(loserId, winnerId)).resolves.not.toThrow();
+    expect(await testDb.select().from(films).where(eq(films.id, loserId))).toHaveLength(0);
+  });
+
+  // ---------------------------------------------------------------------------
+  // T8: dedupe-films cleanup integration. Simulates the prod scenario the
+  // structural fix's companion script handles: existing duplicates that
+  // never re-enter the enrichment-pending pool. Walks the same shape the
+  // script's main() does — find clusters, pick lowest id per cluster as
+  // winner, merge the rest. (Script tests it end-to-end via process spawn
+  // are heavier than necessary; this validates the underlying logic.)
+  // ---------------------------------------------------------------------------
+  it('T8: simulates dedupe-films across multiple clusters', async () => {
+    // Cluster A (tmdb_id=500): three rows. Lowest id wins.
+    const aWinner = await seedFilm({
+      scrapedTitle: 'Cluster A canonical',
+      year: 2024,
+      matchSource: 'auto',
+      tmdbId: 500,
+    });
+    const aLoser1 = await seedFilm({
+      scrapedTitle: 'Cluster A drift',
+      year: 2024,
+      matchSource: 'auto',
+      tmdbId: 500,
+    });
+    const aLoser2 = await seedFilm({
+      scrapedTitle: 'CLUSTER A ALL CAPS',
+      year: null,
+      matchSource: 'auto',
+      tmdbId: 500,
+    });
+    // Cluster B (tmdb_id=600): two rows.
+    const bWinner = await seedFilm({
+      scrapedTitle: 'Cluster B canonical',
+      year: 2025,
+      matchSource: 'auto',
+      tmdbId: 600,
+    });
+    const bLoser = await seedFilm({
+      scrapedTitle: 'Cluster B drift',
+      year: 2025,
+      matchSource: 'auto',
+      tmdbId: 600,
+    });
+    // Singleton — no cluster, must NOT be touched.
+    const singleton = await seedFilm({
+      scrapedTitle: 'Lone film',
+      year: 2024,
+      matchSource: 'auto',
+      tmdbId: 700,
+    });
+
+    // Spread some screenings to verify they re-point correctly.
+    await testDb.insert(screenings).values([
+      {
+        filmId: aLoser1,
+        cinemaId: 'lugones',
+        startsAtUtc: new Date('2026-05-08T18:00:00Z'),
+        tags: [],
+      },
+      {
+        filmId: aLoser2,
+        cinemaId: 'lugones',
+        startsAtUtc: new Date('2026-05-08T20:00:00Z'),
+        tags: [],
+      },
+      {
+        filmId: bLoser,
+        cinemaId: 'lugones',
+        startsAtUtc: new Date('2026-05-09T19:00:00Z'),
+        tags: [],
+      },
+    ]);
+
+    // Mirror what scripts/dedupe-films.ts does: find clusters, merge each.
+    const clusters = await testDb.all<{ tmdb_id: number; ids: string }>(sql`
+      SELECT tmdb_id, GROUP_CONCAT(id) AS ids
+      FROM films
+      WHERE tmdb_id IS NOT NULL
+      GROUP BY tmdb_id
+      HAVING COUNT(*) > 1
+    `);
+    expect(clusters).toHaveLength(2);
+
+    for (const c of clusters) {
+      const ids = c.ids
+        .split(',')
+        .map((s: string) => parseInt(s, 10))
+        .sort((a: number, b: number) => a - b);
+      const [winnerId, ...loserIds] = ids;
+      for (const loserId of loserIds) {
+        await mergeFilmInto(loserId, winnerId);
+      }
+    }
+
+    // Surviving rows: aWinner, bWinner, singleton (3 total).
+    const surviving = await testDb.select().from(films);
+    expect(surviving.map((r) => r.id).sort()).toEqual([aWinner, bWinner, singleton].sort());
+
+    // Cluster A's screenings consolidated onto aWinner (2 total).
+    const aScreenings = await testDb
+      .select()
+      .from(screenings)
+      .where(eq(screenings.filmId, aWinner));
+    expect(aScreenings).toHaveLength(2);
+
+    // Cluster B's screening re-pointed to bWinner.
+    const bScreenings = await testDb
+      .select()
+      .from(screenings)
+      .where(eq(screenings.filmId, bWinner));
+    expect(bScreenings).toHaveLength(1);
+
+    // Singleton untouched, no screenings.
+    const singletonRow = await testDb.select().from(films).where(eq(films.id, singleton));
+    expect(singletonRow).toHaveLength(1);
   });
 });
 

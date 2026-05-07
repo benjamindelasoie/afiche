@@ -19,7 +19,7 @@
  * The slug never updates after first set. URLs are the contract.
  */
 
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { db, films, type FilmInsert } from '@/db';
 import type { ScrapedScreening } from '@/providers/types';
 import { buildFilmSlug, withIdSuffix } from '@/lib/slug';
@@ -236,4 +236,44 @@ async function ensureFilmSlug(
       throw err;
     }
   }
+}
+
+/**
+ * Consolidate the loser film row INTO the winner. Used by:
+ *   - the enrichment loop's mergeIfTmdbIdCollides when two rows resolve to
+ *     the same TMDB id (cross-provider duplicates, VLM drift, year-null
+ *     legacy)
+ *   - the one-shot dedupe-films cleanup script for existing duplicates
+ *     that aren't in the enrichment-pending pool
+ *
+ * Why not a transaction with row-level locks: libSQL/SQLite doesn't have
+ * row-level locks. The two-step UPDATE-then-DELETE is safe because:
+ *   - UPDATE OR IGNORE re-points screenings; conflicts on the (film_id,
+ *     cinema_id, starts_at_utc) unique index drop the loser's screening
+ *     row (winner already had one for that timeslot)
+ *   - DELETE on films cascades to any leftover screenings via
+ *     onDelete: 'cascade' (schema.ts:226)
+ *
+ * Slug invariant: the winner's slug is preserved; the loser's slug is
+ * freed by the DELETE. URL contract holds — `/pelicula/<winner-slug>`
+ * keeps working, `/pelicula/<loser-slug>` 404s. This is intentional; the
+ * winner is the older row by id (first to receive a slug = canonical).
+ *
+ * Best-effort warning push: if `warnings` is provided, the merge appends
+ * a human-readable line for run-log surfacing. The string format is
+ * deliberately stable across call sites (enrichment + dedupe script) so
+ * downstream tooling can grep for "merged film" uniformly.
+ */
+export async function mergeFilmInto(
+  loserId: number,
+  winnerId: number,
+  warnings?: string[],
+): Promise<void> {
+  await db.run(sql`
+    UPDATE OR IGNORE screenings
+    SET film_id = ${winnerId}
+    WHERE film_id = ${loserId}
+  `);
+  await db.delete(films).where(eq(films.id, loserId));
+  warnings?.push(`merged film ${loserId} into existing id=${winnerId}`);
 }

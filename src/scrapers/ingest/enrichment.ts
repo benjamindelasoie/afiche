@@ -20,25 +20,22 @@
  * matchSource='manual', which locks it from further re-search.
  * Workflow: see DEPLOY.md "Manual TMDB patching" section.
  *
- * Merge-on-collision: the films unique index is on (scrapedTitle,
- * scrapedYear), where scraped_year is the immutable year the scraper
- * first emitted. enrichment may freely write `year` (which is a
- * separate, mutable column) without ever colliding with the unique
- * index. So this merge is NOT about preventing constraint violations
- * — it's about cross-provider/cross-scrape deduplication. Two rows
- * can legitimately reach the same resolved year while having different
- * scraped_year values: provider A emits year=null, provider B emits
- * year=1962, both enrich to 1962 and reference the same film. The
- * merge collapses them, re-pointing screenings to the existing
- * enriched row and deleting ours. The existing row wins (it's already
- * enriched with trusted data from a prior run).
+ * Merge-on-collision: cross-provider/cross-scrape deduplication. Multiple
+ * rows can legitimately scrape into existence pointing at the same film
+ * — VLM drift on image-source providers (Lorca: `GIOIA MIA` vs `GUIOTA MÍA`),
+ * cross-provider format divergence (Lorca all-caps vs Lugones title-case
+ * for the same film), and pre-fix year-null legacy. Once enrichment
+ * resolves the same tmdb_id on each, mergeIfTmdbIdCollides collapses them:
+ * re-points screenings to the existing row, deletes ours. Existing row
+ * wins (it has the slug; URL contract is anchored on it).
  *
- * (Pre-2026-05-05 the unique index was on (scrapedTitle, year), which
- * created the mutable-key upsert bug — a re-scrape that emitted
- * year=null couldn't find the row whose year had been resolved by an
- * earlier enrichment, and inserted an unenriched duplicate. The split
- * into year + scraped_year fixes that. See migration 0005 and
- * memory: project_afiche_mutable_key_upsert_bug.)
+ * (History: pre-2026-05-07 this merge keyed on (scrapedTitle, year)
+ * equality. That predicate silently missed VLM drift and cross-provider
+ * format divergence because scrapedTitle differed between the two rows.
+ * Replaced with tmdb_id equality — strictly broader, closes all three
+ * classes uniformly. See migration 0007 for the supporting tmdb_id index.
+ * See memory: project_afiche_mutable_key_upsert_bug for the prior fix
+ * arc that introduced scraped_year as the immutable upsert anchor.)
  *
  * Rate-limiting: TMDB free tier is ~40 req/sec. For safety we sleep 100ms
  * between lookups — gives us ~10 req/sec which is plenty.
@@ -46,10 +43,11 @@
  * Exported for tests. Not part of the public module contract.
  */
 
-import { and, eq, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, isNull, ne, or } from 'drizzle-orm';
 import { db, films } from '@/db';
 import { enrichFilm, enrichByTmdbId, type EnrichResult } from '@/tmdb/enrich';
 import { hasTmdbToken } from '@/tmdb/client';
+import { mergeFilmInto } from './films';
 
 interface PendingFilm {
   id: number;
@@ -82,7 +80,7 @@ export async function enrichPendingFilms(warnings: string[]): Promise<Enrichment
     const result = await fetchTmdbResult(f);
 
     if (result.delta) {
-      const wasMerged = await mergeIfYearCollides(f, result.delta.year, warnings);
+      const wasMerged = await mergeIfTmdbIdCollides(f, result.delta.tmdbId, warnings);
       if (wasMerged) {
         merged++;
       } else {
@@ -143,7 +141,15 @@ async function fetchPendingFilms(): Promise<PendingFilm[]> {
           isNull(films.posterUrl),
         ),
       ),
-    );
+    )
+    // Highest id first. mergeIfTmdbIdCollides makes the row currently being
+    // processed the loser when a collision is found — DESC order means the
+    // newer row (higher id) loses, the older row (lower id, anchored slug)
+    // survives. Matters when multiple rows in the pending pool collide
+    // (e.g. operator manually patched several rows to the same tmdb_id).
+    // For the common single-pending-row VLM-drift case the order is moot —
+    // the existing winner row isn't in the pool to begin with.
+    .orderBy(desc(films.id));
 }
 
 /**
@@ -168,58 +174,58 @@ async function fetchTmdbResult(f: PendingFilm): Promise<EnrichResult> {
 }
 
 /**
- * If TMDB resolved a year that would collide with an existing
- * (scrapedTitle, year) row, merge our row into theirs and return true.
- * Otherwise return false and let the caller proceed with a normal UPDATE.
+ * If another row already has the tmdb_id this enrichment just resolved,
+ * merge our row into theirs and return true. Otherwise return false and
+ * let the caller proceed with a normal UPDATE.
  *
- * Two collision shapes both trip this:
- *   a) f.year was null, TMDB provides one (classic duplicate from the
- *      scraper emitting the same title pre- vs post-year-match)
- *   b) f.year was WRONG (scraper's best guess), TMDB corrects it —
- *      e.g., scraper said 2024, TMDB returns 2025 and a row with
- *      (same title, 2025) already exists from a prior enrichment.
+ * Why tmdb_id and not (scrapedTitle, year):
+ *
+ *   The original mergeIfYearCollides keyed on scrapedTitle equality, which
+ *   silently missed three duplicate classes:
+ *     1. VLM drift on Lorca (same image, different scraped_title across
+ *        Haiku runs — `GIOIA MIA` vs `GUIOTA MÍA`, `…HERMANO` vs `…HERMANO?`)
+ *     2. Cross-provider format divergence (Lorca all-caps vs Lugones
+ *        title-case for the same film)
+ *     3. Pre-fix year-null legacy rows
+ *
+ *   Once both rows enrich, they resolve to the same tmdb_id — that's the
+ *   strongest identity signal in the system. Keying the merge on tmdb_id
+ *   collision closes all three classes uniformly.
+ *
+ * Sequencing guarantee: enrichment runs sequentially over fetchPendingFilms.
+ * The first row in any duplicate pair writes its tmdb_id via applyEnrichment.
+ * The second row, on its iteration, sees the first row in the SELECT and
+ * merges into it. This is why the merge fires BEFORE applyEnrichment in
+ * the loop — applyEnrichment would write a duplicate tmdb_id otherwise.
+ *
+ * "Existing row wins" invariant: the row found by the SELECT keeps its
+ * slug, prior enrichment, and any provider-fields-win venue synopsis.
+ * Our row (the duplicate) is the loser. This anchors slug stability —
+ * `films.slug` is a unique index and the URL contract; the first row to
+ * receive a slug owns it forever.
+ *
+ * Concurrency note: across two simultaneous scrape processes, both could
+ * fetch + apply enrichment before either merges, leaving a duplicate that
+ * the next scrape catches. Vercel cron is serial so this is mostly
+ * theoretical; manual + cron overlap is operator error and self-heals.
  */
-async function mergeIfYearCollides(
+async function mergeIfTmdbIdCollides(
   f: PendingFilm,
-  resolvedYearMaybe: number | null | undefined,
+  resolvedTmdbId: number | null | undefined,
   warnings: string[],
 ): Promise<boolean> {
-  const resolvedYear = resolvedYearMaybe ?? f.year;
-  const yearWouldChange =
-    resolvedYear !== f.year && resolvedYear !== null && resolvedYear !== undefined;
-  if (!yearWouldChange) return false;
+  if (resolvedTmdbId == null) return false;
 
   const [existing] = await db
     .select({ id: films.id })
     .from(films)
-    .where(
-      and(
-        eq(films.scrapedTitle, f.scrapedTitle),
-        eq(films.year, resolvedYear),
-        ne(films.id, f.id),
-      ),
-    )
+    .where(and(eq(films.tmdbId, resolvedTmdbId), ne(films.id, f.id)))
     .limit(1);
   if (!existing) return false;
 
-  // Re-point our screenings to the already-enriched row. Use
-  // UPDATE OR IGNORE: some of our screenings may duplicate screenings
-  // already pointing at the existing film (same cinema + same starts_at,
-  // just inserted by this or a prior run). For those, the unique index
-  // (film_id, cinema_id, starts_at_utc) would fire on UPDATE; OR IGNORE
-  // makes the conflicting UPDATEs silently skip. The losing rows stay
-  // with filmId=f.id and get cleaned up by the cascade when we DELETE
-  // films.id=f.id below.
-  await db.run(sql`
-    UPDATE OR IGNORE screenings
-    SET film_id = ${existing.id}
-    WHERE film_id = ${f.id}
-  `);
-  await db.delete(films).where(eq(films.id, f.id));
-
-  const fromYear = f.year === null ? 'no year' : `year=${f.year}`;
+  await mergeFilmInto(f.id, existing.id);
   warnings.push(
-    `merged film ${f.id} "${f.scrapedTitle}" (${fromYear}) into existing id=${existing.id} after TMDB resolved year=${resolvedYear}`,
+    `merged film ${f.id} "${f.scrapedTitle}" into existing id=${existing.id} (tmdb_id=${resolvedTmdbId} collision)`,
   );
   return true;
 }
