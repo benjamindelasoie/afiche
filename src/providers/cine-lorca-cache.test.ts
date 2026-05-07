@@ -14,6 +14,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { sql } from 'drizzle-orm';
 import { makeInMemoryDb, type TestDb } from '../../test/helpers/in-memory-db';
 import { cinemas } from '@/db/schema';
 
@@ -32,6 +33,7 @@ vi.mock('@/db', async () => {
 import {
   readImageCache,
   writeImageCache,
+  composeCacheKey,
   type ParsedCartelera,
 } from './cine-lorca';
 
@@ -109,5 +111,51 @@ describe('image-hash cache', () => {
     });
     const result = await readImageCache('corrupt-hash');
     expect(result).toBeNull();
+  });
+
+  it('returns null when last_image_parsed contains invalid JSON (Drizzle hydration safety)', async () => {
+    // Defense against the Drizzle JSON-mode hydration path. If a non-Drizzle
+    // writer (Studio hand-edit, partial write, encoding corruption) puts
+    // raw garbage text in the column, Drizzle's mode:'json' attempts to
+    // JSON.parse it during row hydration and throws synchronously. Without
+    // a try/catch around the SELECT, that would abort the whole scrape.
+    // The wrapper in readImageCache turns this into a safe miss.
+    //
+    // Bypass Drizzle's JSON serializer and write raw garbage text directly
+    // via libSQL's execute. The value `not-actually-json{` is unparseable.
+    await testDb.run(sql`INSERT INTO providers (id, last_image_sha256, last_image_parsed) VALUES ('lorca', 'garbage-key', 'not-actually-json{')`);
+    const result = await readImageCache('garbage-key');
+    expect(result).toBeNull();
+  });
+});
+
+describe('composeCacheKey', () => {
+  it('produces a 64-char hex digest', () => {
+    const key = composeCacheKey(Buffer.from('image-bytes'), 'haiku', 1);
+    expect(key).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('is deterministic — same inputs always produce the same key', () => {
+    const a = composeCacheKey(Buffer.from('image-bytes'), 'haiku', 1);
+    const b = composeCacheKey(Buffer.from('image-bytes'), 'haiku', 1);
+    expect(a).toBe(b);
+  });
+
+  it('changes when the model changes (model upgrade invalidates cache)', () => {
+    const oldModel = composeCacheKey(Buffer.from('same-image'), 'haiku-4-5', 1);
+    const newModel = composeCacheKey(Buffer.from('same-image'), 'haiku-4-7', 1);
+    expect(oldModel).not.toBe(newModel);
+  });
+
+  it('changes when the prompt version changes (prompt revision invalidates cache)', () => {
+    const v1 = composeCacheKey(Buffer.from('same-image'), 'haiku', 1);
+    const v2 = composeCacheKey(Buffer.from('same-image'), 'haiku', 2);
+    expect(v1).not.toBe(v2);
+  });
+
+  it('changes when the image changes (the original use case)', () => {
+    const week1 = composeCacheKey(Buffer.from('week-1-poster'), 'haiku', 1);
+    const week2 = composeCacheKey(Buffer.from('week-2-poster'), 'haiku', 1);
+    expect(week1).not.toBe(week2);
   });
 });

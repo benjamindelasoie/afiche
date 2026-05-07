@@ -56,6 +56,14 @@ const VISION_TEMPERATURE = 0;
 // prompt the model effectively never appends commentary, but if it ever
 // does, these stop early.
 const VISION_STOP_SEQUENCES = ['\n```', '\n\nNote:', '\n\nExplanation'];
+// Cache-key version: bump this when VISION_PROMPT or VISION_SYSTEM_PROMPT
+// changes in a way that should invalidate prior parses (e.g. fixed a
+// systematic misread, tightened normalization rules). Combined with
+// VISION_MODEL into the cache key composition so a model upgrade or
+// prompt revision automatically misses the cache and re-calls vision —
+// otherwise a stuck-on-bad-parse failure mode could persist for the
+// entire week the poster is unchanged.
+const PROMPT_VERSION = 1;
 const PROVIDER_ID = 'lorca';
 
 // ---------------------------------------------------------------------------
@@ -110,21 +118,26 @@ export const cineLorcaProvider: Provider = {
       }
 
       const image = await fetchBytes(imageUrl);
-      const imageSha256 = sha256Hex(image);
+      // Cache key composes the image hash with VISION_MODEL + PROMPT_VERSION
+      // so a model upgrade OR a prompt revision automatically invalidates
+      // the cache. Without this, a stuck-on-bad-parse failure mode could
+      // persist for the entire 6-7 days a poster image stays unchanged —
+      // even after the operator fixed the prompt and redeployed.
+      const cacheKey = composeCacheKey(image, VISION_MODEL, PROMPT_VERSION);
 
       // Image-hash short-circuit: Lorca posts a new cartelera on Thursdays
       // and the image stays unchanged for 6-7 days. Re-running the scrape
       // on an unchanged image wastes one Anthropic call (~$0.005) AND gives
       // the VLM another roll of the dice on title transcription, which is
       // the structural source of the title-drift duplicate bug. If the
-      // hash matches what we cached on the last successful parse, we
-      // re-derive screenings from the cached parsed JSON instead of
+      // composed key matches what we cached on the last successful parse,
+      // we re-derive screenings from the cached parsed JSON instead of
       // calling vision again.
-      const cached = await readImageCache(imageSha256);
+      const cached = await readImageCache(cacheKey);
       const parsed = cached ?? (await readCarteleraWithVision(image));
       if (cached) {
         warnings.push(
-          `vision call skipped: image sha256 unchanged (cached parse re-used)`,
+          `vision call skipped: cache key unchanged (cached parse re-used)`,
         );
       }
 
@@ -166,11 +179,17 @@ export const cineLorcaProvider: Provider = {
 
       const screenings = expandScreenings(parsed, PROGRAMACION_URL);
       // Persist the cache only when we just parsed fresh (not on cache hits;
-      // the row already holds the same hash + parsed). Best-effort: a cache
-      // write failure should not abort the scrape — we still have a valid
-      // result to return.
+      // the row already holds the same key + parsed). A write failure
+      // should not abort the scrape — we still have a valid result to
+      // return — but it MUST be visible in the run warnings, otherwise a
+      // permanently-failing write means we re-call Anthropic forever with
+      // no signal anyone is paying attention to. The operator sees these
+      // in scrape_runs.warnings via run-log.
       if (!cached) {
-        await writeImageCache(imageSha256, parsed).catch(() => {});
+        await writeImageCache(cacheKey, parsed).catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          warnings.push(`vision cache write failed (next run will re-call vision): ${msg}`);
+        });
       }
       return { cinemaId: 'lorca', screenings, success: true, warnings };
     } catch (err) {
@@ -568,40 +587,79 @@ async function fetchBytes(url: string): Promise<Buffer> {
 // is pure and cheap; re-deriving from the parsed structure on each cache
 // hit costs nothing and keeps the on-disk shape compact.
 
-function sha256Hex(buf: Buffer): string {
-  return createHash('sha256').update(buf).digest('hex');
-}
-
 /**
- * Read the cached parsed cartelera if its image hash matches `sha`.
- * Returns null on cache miss (different hash, no row, or stored payload
- * fails validation — defensive against schema drift between writers).
+ * Compose the cache key from image bytes plus model and prompt version.
+ * Stored verbatim in providers.last_image_sha256 (the column name is now
+ * a misnomer — kept for migration stability — but the value is a 64-char
+ * hex digest of {imageBytes || ':' || model || ':' || promptVersion}).
+ *
+ * Why include model + prompt version: a future Haiku upgrade or a prompt
+ * revision should automatically invalidate prior parses. Without this,
+ * the cache could lock in a buggy transcription for the full week the
+ * poster image stays unchanged, even after the operator fixed the prompt.
  *
  * Exported for tests; not part of the module's public contract.
  */
-export async function readImageCache(sha: string): Promise<ParsedCartelera | null> {
-  const [row] = await db
-    .select({
-      sha: providers.lastImageSha256,
-      parsed: providers.lastImageParsed,
-    })
-    .from(providers)
-    .where(eq(providers.id, PROVIDER_ID))
-    .limit(1);
-  if (!row || row.sha !== sha || row.parsed == null) return null;
+export function composeCacheKey(
+  image: Buffer,
+  model: string,
+  promptVersion: number,
+): string {
+  return createHash('sha256')
+    .update(image)
+    .update(':')
+    .update(model)
+    .update(':')
+    .update(String(promptVersion))
+    .digest('hex');
+}
+
+/**
+ * Read the cached parsed cartelera if its cache key matches `key`.
+ * Returns null on cache miss (different key, no row, stored payload
+ * fails validation, or the JSON column itself is corrupt).
+ *
+ * Defensive against THREE failure modes:
+ *   1. Different cache key → ordinary miss
+ *   2. Wrong-shape JSON (e.g. operator hand-edit) → validator returns null
+ *   3. Invalid JSON in last_image_parsed (encoding corruption, partial
+ *      write from a non-Drizzle path) → Drizzle's JSON-mode hydration
+ *      throws synchronously inside .select(). The try/catch turns that
+ *      into a safe miss instead of failing the whole scrape run.
+ *
+ * Exported for tests; not part of the module's public contract.
+ */
+export async function readImageCache(key: string): Promise<ParsedCartelera | null> {
+  let row:
+    | { sha: string | null; parsed: unknown }
+    | undefined;
+  try {
+    [row] = await db
+      .select({
+        sha: providers.lastImageSha256,
+        parsed: providers.lastImageParsed,
+      })
+      .from(providers)
+      .where(eq(providers.id, PROVIDER_ID))
+      .limit(1);
+  } catch {
+    return null;
+  }
+  if (!row || row.sha !== key || row.parsed == null) return null;
   if (!isParsedCartelera(row.parsed)) return null;
   return row.parsed;
 }
 
 /**
- * Persist the freshly-parsed cartelera + the image hash that produced it.
- * Best-effort: cache misses are cheap (one extra Anthropic call), so we
- * intentionally don't propagate write failures up to the caller.
+ * Persist the freshly-parsed cartelera + the cache key that produced it.
+ * On failure, the caller pushes a warning into the run-log so a
+ * permanently-failing write surfaces in scrape_runs.warnings instead of
+ * silently re-calling vision forever.
  *
  * Exported for tests; not part of the module's public contract.
  */
 export async function writeImageCache(
-  sha: string,
+  key: string,
   parsed: ParsedCartelera,
 ): Promise<void> {
   // The providers row is created lazily by recordProviderRun on the first
@@ -612,13 +670,13 @@ export async function writeImageCache(
     .insert(providers)
     .values({
       id: PROVIDER_ID,
-      lastImageSha256: sha,
+      lastImageSha256: key,
       lastImageParsed: parsed,
     })
     .onConflictDoUpdate({
       target: providers.id,
       set: {
-        lastImageSha256: sha,
+        lastImageSha256: key,
         lastImageParsed: parsed,
       },
     });

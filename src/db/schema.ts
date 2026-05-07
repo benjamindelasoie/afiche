@@ -176,11 +176,15 @@ export const providers = sqliteTable('providers', {
   lastSuccessAt: integer('last_success_at', { mode: 'timestamp' }),
   lastError: text('last_error'),
   screeningCount: integer('screening_count').default(0),
-  // SHA-256 (hex) of the last successfully-parsed source artifact for this
-  // provider. Lorca uses it to short-circuit Anthropic vision calls when
-  // the weekly cartelera image is unchanged. Other providers may adopt
-  // the same pattern (e.g., HTML body hash) if they want to skip ingest
-  // on unchanged sources.
+  // 64-char hex digest used as the cache key for the last successfully-
+  // parsed source artifact. For Lorca it's SHA-256 of
+  // (imageBytes || ':' || VISION_MODEL || ':' || PROMPT_VERSION) so a
+  // model upgrade or prompt revision automatically invalidates the cache
+  // (otherwise a buggy parse could persist for the full week the poster
+  // image stays unchanged). Column name kept as `last_image_sha256` for
+  // migration stability — the value is still a SHA-256 digest, just of
+  // composed inputs rather than image bytes alone. Other providers may
+  // adopt the same pattern with their own composition.
   lastImageSha256: text('last_image_sha256'),
   // The parsed artifact corresponding to lastImageSha256, stored verbatim
   // as JSON so we can re-derive screenings without re-calling the model.
