@@ -2,6 +2,19 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.2.3.6] - 2026-05-11
+
+### Added
+
+- **Vercel Web Analytics** (`@vercel/analytics@^2.0.1`) wired into `src/app/layout.tsx` via the `<Analytics />` component from `@vercel/analytics/next`. Cookieless by design — no PII collection, no consent banner required under Argentina's Ley 25.326 or EU GDPR. Tracks page views + referrers + countries + device class across both the cartelera homepage and `/pelicula/<slug>` pages, with App Router soft-navigation events properly attributed (the component subscribes to Next.js's `usePathname()` so cross-page navigation in a single visit registers as separate events). Inert in development (no requests fire from localhost). Dashboard surfaces at `vercel.com/<project>/analytics` once a deploy lands. Zero performance cost in practice — Vercel injects the tracker via their edge, no third-party script round-trip.
+
+  Primary use case is validating the user-pain signal Benjamin is hearing in conversation: per-film popularity (which `/pelicula/<slug>` pages get visits), referrer split (direct / X / search), and time-of-day patterns (when do cinephiles actually open the cartelera). Pairs naturally with the X presence (TODO #16) and newsletter capture (TODO #17) work, which both depend on knowing *which* channels actually deliver traffic before investing in either.
+
+### Maintenance
+
+- **New `.npmrc` with `legacy-peer-deps=true`** to document and persist the workaround for `@vercel/analytics`'s optional SvelteKit peer dep. The package is intentionally multi-framework (Next.js, SvelteKit, Nuxt, Astro share one npm name), so it declares an optional peer on `@sveltejs/kit` whose transitive chain reaches `vite@^8` — conflicting with our `vitest@2.1.9`'s `vite@^5`. Nothing in our runtime touches SvelteKit, but npm v7+ enforces optional peers by default and errors at install time. The `.npmrc` reverts npm to v6-era resolution for this project, exactly what the flag is intended for per npm's own docs. Persists across all future installs (CI, fresh clones, post-`rm -rf node_modules`) without anyone needing to remember `--legacy-peer-deps`. To remove: when `@vercel/analytics` ships a Next.js-only variant OR the SvelteKit-via-vite peer chain relaxes to `^5 || ^8`.
+- **No new vulnerabilities introduced.** `npm audit --omit=dev` shows 2 moderate (pre-existing in Next.js's internal `postcss`, fixes pending upstream); `@vercel/analytics` itself is clean.
+
 ## [0.2.3.5] - 2026-05-11
 
 ### Fixed

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 
 const geistSans = Geist({
@@ -48,7 +49,14 @@ export default function RootLayout({
       lang="es-AR"
       className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} h-full antialiased`}
     >
-      <body className="bg-cream text-ink flex min-h-full flex-col">{children}</body>
+      <body className="bg-cream text-ink flex min-h-full flex-col">
+        {children}
+        {/* Vercel Web Analytics — cookieless pageview + referrer tracking.
+            No PII, no consent banner required under Ley 25.326 / GDPR.
+            Inert in development (no requests fire from localhost). Dashboard
+            at vercel.com/<project>/analytics. */}
+        <Analytics />
+      </body>
     </html>
   );
 }
