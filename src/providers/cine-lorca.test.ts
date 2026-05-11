@@ -28,6 +28,7 @@ import {
   extractCarteleraImageUrl,
   parseVisionResponse,
   expandScreenings,
+  normalizeVisionTitle,
   type ParsedCartelera,
 } from './cine-lorca';
 
@@ -269,5 +270,147 @@ describe.skipIf(!process.env.ANTHROPIC_API_KEY)('live vision call', () => {
     //   - 7 films
     //   - validFrom == 2026-04-23, validTo == 2026-04-29
     //   - sum of times across all films == 10
+  });
+});
+
+// ---------------------------------------------------------------------------
+// normalizeVisionTitle — quote-frame + year-suffix stripping. Documented
+// on the function in cine-lorca.ts; tests pin the contract for the post-
+// processing safety net that protects against VERBATIM-loyal VLM output.
+// ---------------------------------------------------------------------------
+describe('normalizeVisionTitle', () => {
+  it('passes a clean title through unchanged', () => {
+    expect(normalizeVisionTitle('EL DRAMA')).toEqual({ title: 'EL DRAMA' });
+  });
+
+  it('strips matching ASCII double-quote pair', () => {
+    expect(normalizeVisionTitle('"EL DRAMA"')).toEqual({ title: 'EL DRAMA' });
+  });
+
+  it('strips matching typographic curly-quote pair', () => {
+    expect(normalizeVisionTitle('“EL DRAMA”')).toEqual({ title: 'EL DRAMA' });
+  });
+
+  it('strips matching Spanish guillemets pair', () => {
+    expect(normalizeVisionTitle('«EL DRAMA»')).toEqual({ title: 'EL DRAMA' });
+  });
+
+  it('does NOT strip a one-sided quote (protects legitimate stylized punctuation)', () => {
+    // "EL DIABLO VISTE A LA MODA?" — the literal trailing '?' is the poster's
+    // stylistic flourish, not a punctuation mark we should remove. Likewise,
+    // a leading-only quote like "'Tis a Pity..." shouldn't lose its apostrophe.
+    expect(normalizeVisionTitle('EL DIABLO VISTE A LA MODA?')).toEqual({
+      title: 'EL DIABLO VISTE A LA MODA?',
+    });
+    expect(normalizeVisionTitle('FOO"')).toEqual({ title: 'FOO"' });
+    expect(normalizeVisionTitle('"FOO')).toEqual({ title: '"FOO' });
+  });
+
+  it('does NOT strip ASCII single quote (overloaded with apostrophe; cost of false positive too high)', () => {
+    // A title starting AND ending with ASCII apostrophe is unusual but real
+    // ("'Tis the season"); excluding ASCII `'` from the strippable pairs
+    // prevents damaging it. The fancy single-quote pair ‘…’ is still stripped.
+    expect(normalizeVisionTitle("'EL DRAMA'")).toEqual({ title: "'EL DRAMA'" });
+    expect(normalizeVisionTitle('‘EL DRAMA’')).toEqual({ title: 'EL DRAMA' });
+  });
+
+  it('extracts trailing "(YYYY)" as year', () => {
+    expect(normalizeVisionTitle('EL DESPRECIO (1963)')).toEqual({
+      title: 'EL DESPRECIO',
+      year: 1963,
+    });
+  });
+
+  it('handles year-inside-quotes ("EL DESPRECIO (1963)") via fix-point loop', () => {
+    expect(normalizeVisionTitle('"EL DESPRECIO (1963)"')).toEqual({
+      title: 'EL DESPRECIO',
+      year: 1963,
+    });
+  });
+
+  it('handles year-outside-quotes ("EL DESPRECIO" (1963)) via fix-point loop', () => {
+    expect(normalizeVisionTitle('"EL DESPRECIO" (1963)')).toEqual({
+      title: 'EL DESPRECIO',
+      year: 1963,
+    });
+  });
+
+  it('handles guillemets with year', () => {
+    expect(normalizeVisionTitle('«EL DESPRECIO» (1963)')).toEqual({
+      title: 'EL DESPRECIO',
+      year: 1963,
+    });
+  });
+
+  it('only extracts one year — a sequel-number lookalike like "EL DIABLO 2" is left alone', () => {
+    // "(2)" is not a 4-digit year and shouldn't be extracted. This is a
+    // sanity test against accidentally too-permissive regex.
+    expect(normalizeVisionTitle('EL DIABLO 2')).toEqual({ title: 'EL DIABLO 2' });
+    expect(normalizeVisionTitle('EL DIABLO (2)')).toEqual({ title: 'EL DIABLO (2)' });
+  });
+
+  it('trims whitespace around the stripped result', () => {
+    expect(normalizeVisionTitle('  "  EL DRAMA  "  ')).toEqual({ title: 'EL DRAMA' });
+  });
+
+  it('preserves mid-title quotes (internal punctuation is part of the title)', () => {
+    // A title that LEGITIMATELY contains quotation marks mid-string — e.g.
+    // a film named after a quoted phrase. Only the OUTER matching pair gets
+    // stripped; inner ones are content.
+    expect(normalizeVisionTitle('"LA "MORA": una historia"')).toEqual({
+      title: 'LA "MORA": una historia',
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseVisionResponse → expandScreenings end-to-end: titles get normalized
+// before reaching ScrapedScreening.
+// ---------------------------------------------------------------------------
+describe('parseVisionResponse with normalization (regression for Cine Lorca quote-titles bug)', () => {
+  it('strips decorative quotes from titles AND emits the extracted year on screenings', () => {
+    // Shaped after a real run-109 VLM output: titles came back wrapped in
+    // ASCII double quotes, sometimes with a year-in-parens suffix.
+    const visionJson = JSON.stringify({
+      validFrom: { day: 11, month: 5 },
+      validTo: { day: 17, month: 5 },
+      year: 2026,
+      films: [
+        { title: '"EL DRAMA"', times: ['14:00', '22:10'] },
+        { title: '"EL DESPRECIO (1963)"', times: ['18:00'] },
+        { title: '«SUEÑOS DE OSLO»', times: ['20:00'] },
+      ],
+    });
+    const parsed = parseVisionResponse(visionJson);
+    const screenings = expandScreenings(parsed, 'https://example.test');
+
+    // Distinct film titles after normalization — no quote wrappers, no
+    // parenthesized year suffix.
+    const titles = new Set(screenings.map((s) => s.filmTitle));
+    expect(titles.has('EL DRAMA')).toBe(true);
+    expect(titles.has('EL DESPRECIO')).toBe(true);
+    expect(titles.has('SUEÑOS DE OSLO')).toBe(true);
+    // Pre-fix bug check: none of the original quote-wrapped variants
+    // should survive into a ScrapedScreening.
+    expect(titles.has('"EL DRAMA"')).toBe(false);
+    expect(titles.has('"EL DESPRECIO (1963)"')).toBe(false);
+    expect(titles.has('«SUEÑOS DE OSLO»')).toBe(false);
+
+    // The "(1963)" year is now on the screening rows, so the upsert key
+    // becomes (title='EL DESPRECIO', year=1963) instead of (title=..., NULL).
+    const elDesprecio = screenings.filter((s) => s.filmTitle === 'EL DESPRECIO');
+    expect(elDesprecio.length).toBeGreaterThan(0);
+    for (const s of elDesprecio) {
+      expect(s.year).toBe(1963);
+    }
+
+    // Films without a year suffix do not emit a year (still null at the
+    // upsert key — the mutable-key-upsert bug class persists for those,
+    // but at least decorative quotes no longer compound it).
+    const elDrama = screenings.filter((s) => s.filmTitle === 'EL DRAMA');
+    expect(elDrama.length).toBeGreaterThan(0);
+    for (const s of elDrama) {
+      expect(s.year).toBeUndefined();
+    }
   });
 });

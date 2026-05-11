@@ -87,7 +87,12 @@ const VISION_STOP_SEQUENCES = ['\n```', '\n\nNote:', '\n\nExplanation'];
 // prompt revision automatically misses the cache and re-calls vision —
 // otherwise a stuck-on-bad-parse failure mode could persist for the
 // entire week the poster is unchanged.
-const PROMPT_VERSION = 1;
+// 2: 2026-05-11 — added explicit rules for decorative quote-frames and
+//    "(YYYY)" release-year suffix in titles. Without these, the model
+//    interpreted both as part of the title text per the VERBATIM rule,
+//    which produced quote-wrapped duplicates and year-buried-in-title
+//    rows that broke the (scraped_title, scraped_year) upsert key.
+const PROMPT_VERSION = 2;
 const PROVIDER_ID = 'lorca';
 
 // ---------------------------------------------------------------------------
@@ -96,6 +101,16 @@ const PROVIDER_ID = 'lorca';
 
 export interface ParsedFilm {
   title: string;
+  /**
+   * Per-film release year, extracted from a trailing "(YYYY)" suffix on
+   * the printed title (e.g. "EL DESPRECIO (1963)" → year=1963). Distinct
+   * from the cartelera-wide year on `ParsedCartelera.validFrom.year`,
+   * which anchors the screening dates, not the films' release dates.
+   * When present, threaded through `ScrapedScreening.year` so the films
+   * upsert key (`scraped_title`, `scraped_year`) becomes non-null and
+   * the TMDB matcher gets a year hint.
+   */
+  year?: number;
   times: Array<{ hour: number; minute: number }>;
 }
 
@@ -345,6 +360,9 @@ Rules:
 - Each film block contains a quoted title, one or more "HH:MM hs." showtime lines, and a "Duración: ... MIN ..." line.
 - Times in 24-hour format. The poster MIXES separators: "14.10 hs." (period) and "16:00 hs." (colon) can both appear on the same poster. NORMALIZE every time to colon form: "14.10 hs." → "14:10", "16:00 hs." → "16:00".
 - Preserve title text VERBATIM as printed. Do not add or remove punctuation, do not change capitalization, do not add or strip diacritics. If the poster prints "GIOIA MIA" without an accent, output "GIOIA MIA"; if it prints "GIOIA MÍA", output "GIOIA MÍA". If a title is multi-line on the poster, join with a single space.
+- EXCEPTIONS to verbatim preservation — exclude these poster-design elements from the title string:
+  - Decorative quotation marks wrapping the WHOLE title as a stylistic frame (typographic "...", ASCII "...", or Spanish guillemets «...»). These are framing devices, not part of the title text. Output the title WITHOUT them. Internal quotation marks (mid-title, indicating a quoted phrase within the title) ARE preserved.
+  - A release-year suffix in parentheses at the END of the title (e.g. "EL DESPRECIO (1963)"). The "(1963)" is the film's release year, not part of the title — omit the parenthesized year from the title string. The cartelera-wide "year" field at the top of the JSON is the cycle's year (used to anchor screening dates), not the film's release year; do NOT confuse the two.
 - IGNORE the SALA labels (Sala 1, Sala 2). We don't track which auditorium.
 - IGNORE pricing.
 - IGNORE the "Abrimos nuestras puertas" footer.
@@ -429,15 +447,96 @@ export function parseVisionResponse(raw: string): ParsedCartelera {
   const validTo = { year: toYear, month: data.validTo.month, day: data.validTo.day };
 
   const films = data.films
-    .map((f) => ({
-      title: f.title.trim(),
-      times: (f.times ?? [])
-        .map(parseHHMM)
-        .filter((t): t is { hour: number; minute: number } => t !== null),
-    }))
+    .map((f) => {
+      const { title, year } = normalizeVisionTitle(f.title);
+      return {
+        title,
+        ...(year !== undefined ? { year } : {}),
+        times: (f.times ?? [])
+          .map(parseHHMM)
+          .filter((t): t is { hour: number; minute: number } => t !== null),
+      };
+    })
     .filter((f) => f.title.length > 0 && f.times.length > 0);
 
   return { validFrom, validTo, films };
+}
+
+/**
+ * Normalize a title string returned by the vision model. Cine Lorca posters
+ * use two editorial flourishes that the VERBATIM-preserve prompt instruction
+ * faithfully (but incorrectly) carries through to the JSON output:
+ *
+ *   1. Decorative quotation marks around the title — ASCII `"..."`,
+ *      typographic `"..."`, or Spanish guillemets `«...»`. These are
+ *      poster framing, not part of the title text. Without stripping,
+ *      future scrapes that drop the quotes create duplicate `films` rows
+ *      (the upsert key (scraped_title, scraped_year) treats quoted and
+ *      unquoted variants as distinct).
+ *
+ *   2. Per-film release year as a parenthesized suffix — "EL DESPRECIO
+ *      (1963)". The VLM's JSON schema only carries a cartelera-wide year
+ *      (the cycle's year, used to anchor screening dates), so a per-film
+ *      year printed on the poster would otherwise stay buried in the
+ *      title string, locking the upsert key to scraped_year=NULL and
+ *      starving the TMDB matcher of a year hint.
+ *
+ * Strips both, returns the cleaned title plus the extracted year (if any).
+ * The fix-point loop handles both orderings: `"EL DESPRECIO (1963)"` and
+ * `"EL DESPRECIO" (1963)` both normalize to `{ title: 'EL DESPRECIO',
+ * year: 1963 }`.
+ *
+ * Strictness: only strips when an enclosing pair is detected — never
+ * removes a one-sided quote character. That protects legitimate stylized
+ * poster typography like "EL DIABLO VISTE A LA MODA?" (literal trailing
+ * `?` is the poster's flourish, not punctuation we should erase). ASCII
+ * single quote `'` is deliberately excluded from the strippable pairs:
+ * it doubles as an apostrophe within words, and the cost of a false
+ * positive (eating a real apostrophe) outweighs the benefit (handling
+ * an unusual stylistic frame).
+ */
+export function normalizeVisionTitle(raw: string): {
+  title: string;
+  year?: number;
+} {
+  // Matching pairs of enclosing quote characters. Open → close.
+  const QUOTE_PAIRS: Record<string, string> = {
+    '"': '"',
+    '“': '”', // " "
+    '‘': '’', // ' '
+    '«': '»', // « »
+  };
+
+  let title = raw.trim();
+  let year: number | undefined;
+
+  // Fix-point: keep alternating quote-strip and year-extract until neither
+  // makes progress. Handles `"FOO (1963)"`, `"FOO" (1963)`, `FOO (1963)`,
+  // `«FOO»`, etc. uniformly.
+  let changed = true;
+  while (changed) {
+    changed = false;
+
+    if (title.length >= 2) {
+      const first = title[0];
+      const last = title[title.length - 1];
+      if (QUOTE_PAIRS[first] === last) {
+        title = title.slice(1, -1).trim();
+        changed = true;
+      }
+    }
+
+    if (year === undefined) {
+      const m = title.match(/^(.+?)\s*\((\d{4})\)\s*$/);
+      if (m) {
+        title = m[1].trim();
+        year = parseInt(m[2], 10);
+        changed = true;
+      }
+    }
+  }
+
+  return year !== undefined ? { title, year } : { title };
 }
 
 interface VisionShape {
@@ -506,6 +605,13 @@ export function expandScreenings(
         out.push({
           cinemaId: 'lorca',
           filmTitle: film.title,
+          // Per-film release year extracted from a "(YYYY)" suffix on
+          // the poster title. Threaded through so the ingest upsert key
+          // becomes (title, year) rather than (title, NULL), which lets
+          // the unique index actually fire for repeat scrapes — see
+          // upsertYearlessFilm's NULL-distinctness gymnastics in
+          // src/scrapers/ingest/films.ts:180.
+          ...(film.year !== undefined ? { year: film.year } : {}),
           startsAtUtc: buildBaLocalToUtc(d.year, d.month, d.day, t.hour, t.minute),
           tags: [],
           sourceUrl,

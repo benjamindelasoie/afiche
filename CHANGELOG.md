@@ -2,6 +2,25 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.2.3.5] - 2026-05-11
+
+### Fixed
+
+- **Cine Lorca titles no longer carry their decorative poster quotes through to the films table.** The VLM-extracted titles from recent Cine Lorca scrapes were arriving wrapped in ASCII double quotes (`"EL DRAMA"`, `"SUEÑOS DE OSLO"`) and Spanish guillemets (`«FILM»`) — the prompt's VERBATIM-preserve rule faithfully but incorrectly carried the poster's framing typography into the title string. Each new variant created a fresh `films` row that didn't collide with the canonical un-quoted row on the `(scraped_title, scraped_year)` upsert key, accumulating orphan duplicates each scrape. Films that auto-matched (`EL DRAMA`, `CALLE MÁLAGA`) merged correctly via the v0.2.3.0 tmdb_id-collision dedup, but films TMDB didn't auto-match (Spanish-localized titles like `PADRE, MADRE, HERMANA, HERMANO`) stayed as orphan duplicates forever — including alongside manually-patched rows the operator had carefully fixed.
+
+  The fix has two layers, both load-bearing:
+
+  1. **Post-processing strip in `parseVisionResponse`** (`src/providers/cine-lorca.ts`). New `normalizeVisionTitle()` helper runs a fix-point loop that alternates between stripping enclosing quote pairs and extracting a trailing `(YYYY)` release-year suffix. Handles all orderings — `"FOO (1963)"`, `"FOO" (1963)`, `«FOO» (1963)` — uniformly. Strict pair-matching: only strips when BOTH ends carry the matching open/close character; never removes a one-sided quote (protects legitimate stylized poster typography like `EL DIABLO VISTE A LA MODA?` and apostrophe-leading titles like `'Tis a Pity`). ASCII single quote `'` is deliberately excluded from the strippable pairs because it doubles as an apostrophe within words; the typographic single-quote pair `'…'` is still stripped.
+
+  2. **Prompt rule update** (`VISION_USER_PROMPT`) teaching the model that decorative whole-title quotes and `(YYYY)` year suffixes are framing elements, not part of the title text. Adds explicit exceptions to the existing VERBATIM-preserve rule. Bumps `PROMPT_VERSION` 1 → 2, which invalidates the image-hash cache and forces one fresh Sonnet call per Cine Lorca poster on the next scrape (~$0.015) — acceptable cost for retroactive correctness on the cached parses.
+
+- **Per-film release year in title now reaches the upsert key.** A poster like "EL DESPRECIO (1963)" used to bury the year inside the `scraped_title` and emit `scraped_year=NULL`. The `(YYYY)` extractor now sets `ScrapedScreening.year`, which becomes the films row's `scraped_year` — the unique index `(scraped_title, scraped_year)` actually fires on subsequent scrapes instead of falling through SQLite's NULL-distinct semantics. (For films without a printed year, the mutable-key-upsert bug class still applies; this is a partial mitigation, not the structural fix tracked in memory `project_afiche_mutable_key_upsert_bug.md`.)
+
+### Maintenance
+
+- **14 new tests** in `src/providers/cine-lorca.test.ts`: 11 covering `normalizeVisionTitle` directly (clean-pass, ASCII/curly/guillemet pair stripping, one-sided non-strip protection, ASCII single-quote exclusion, trailing `(YYYY)` extraction, year-inside-quotes and year-outside-quotes via the fix-point loop, sequel-number lookalikes left alone, whitespace handling, mid-title quote preservation), and 3 end-to-end through `parseVisionResponse` + `expandScreenings` asserting that normalized titles + extracted years land on `ScrapedScreening` correctly.
+- **Operator-side cleanup (not in this commit)** required for existing orphan rows that accumulated before the fix. Films like `films.id IN (1435, 1523)` (`PADRE, MADRE, HERMANA, HERMANO` duplicates of the patched row 1335) need manual merge in Drizzle Studio: `UPDATE OR IGNORE screenings SET film_id = <winner_id> WHERE film_id IN (<loser_ids>); DELETE FROM films WHERE id IN (<loser_ids>);`. The dedupe-films script (added v0.2.3.0) only merges by tmdb_id clusters and won't help here since the orphans have no tmdb_id. Future scrapes won't create new quote-class orphans once this fix deploys.
+
 ## [0.2.3.4] - 2026-05-11
 
 ### Fixed
