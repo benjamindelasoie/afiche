@@ -4,6 +4,69 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 19. Indexability strategy for `/pelicula/<slug>` — keep noindex or restructure for persistence? (STRATEGIC)
+
+**What:** `/pelicula/<slug>` currently emits `robots: { index: false, follow: true }` (`src/app/pelicula/[slug]/page.tsx:97`). The decision was made during /design-review outside-voice #4 to protect against flap-404 SEO penalties — pages 404 when no upcoming screenings exist, and Google penalizes URLs that flip between 200 and 404 as low-quality. Per-film pages are therefore invisible to search engines by design.
+
+Two strategies are coherent. This TODO is the decision, not the implementation:
+
+### Strategy A: Keep noindex (current state)
+
+Acquisition channels = curated/owned (X #16, newsletter #17, word-of-mouth). SEO is a non-channel. JSON-LD on `/pelicula/<slug>` is a no-op feature (blocked, see TODO #13.1 dependency). The page exists for cinephiles arriving from the cartelera, not for cold search traffic.
+
+**Defensible when:** Afiche stays a hyper-local cinephile cartelera; the audience finds it through channels the operator controls. SEO investment doesn't pay back at this scope.
+
+### Strategy B: Indexability-first via persistent pages
+
+Restructure `/pelicula/<slug>` lifecycle. Page never 404s once a film has had at least one BA screening. Content shifts based on liveness:
+
+- **Live (upcoming screenings exist):** current layout — the "when/where to see it" killer feature.
+- **Archived (no upcoming screenings):** "*Film Title* played in BA from May 1-14. [past screenings list]. Currently no upcoming screenings. [related films playing now / streaming links if known]."
+
+Remove `noindex`. Add JSON-LD (`Movie` + `ScreeningEvent` when live; `Movie` only when archived). SEO compounds over months — pages become canonical answers for "film-name + buenos aires" queries. Archive becomes a real product feature: "what played at MALBA in May 2026?" becomes answerable.
+
+**Defensible when:** Afiche aspires to be **the canonical BA cinema reference**, not just this week's cartelera. The brand-with-BA decision (memory: project_afiche_brand_ba) and the user-organized-screenings direction (memory: project_user_organized_screenings) both point this way — both benefit from a stable URL space.
+
+### Decision factors
+
+| Factor | A (noindex) | B (indexable + persistent) |
+|---|---|---|
+| Acquisition cost | Manual: X, newsletter, word-of-mouth | Compounding: SEO over months, ~free once seeded |
+| Engineering investment | Zero new work | M-L effort: lifecycle redesign + archive-state UI + JSON-LD + maybe slug-history (#13.2) |
+| Brand positioning | "BA cinephile's cartelera" | "The structured BA cinema index" |
+| Failure mode if wrong | Audience plateaus at curated channels' reach | Engineering time spent on a feature that doesn't compound (rare query patterns, no organic traffic) |
+| Reversibility | Low cost to flip later | Low cost to add noindex back |
+
+### Why this is upstream of multiple other TODOs
+
+This decision gates:
+- **#13.1** (JSON-LD `Movie` + `ScreeningEvent`) — value prop unreachable while `noindex` is on; only useful under Strategy B.
+- **#13.2** (slug-history for 301 redirects) — defensive against slug-change incidents under Strategy B; irrelevant under Strategy A (pages 404 anyway).
+- **#14** (Programs entity expansion to `/programa/`) — `/programa/` pages would face the same indexability question; coherent answer requires Strategy choice first.
+- **#11** (.ics calendar export) — orthogonal; ships under either strategy.
+- **#16, #17** (X presence, newsletter) — orthogonal; both work under either strategy.
+
+### Why this isn't a quick-fix decision
+
+The persistent-pages restructure is M-to-L work that needs more than a coding session:
+
+1. **Archive-state UI is a different page genre.** It's not the live page with sections hidden — the dominant content shifts from "when can I see it" to "this film's BA history + where to watch now." Deserves a /design-shotgun pass.
+2. **Data model implications.** Current schema treats screenings as the source of truth for "does this film page exist." Persistent pages need a separate "this film has appeared in BA at least once" signal (could be `films.first_screened_in_ba` timestamp, or just `EXISTS (SELECT 1 FROM screenings WHERE film_id = X)` regardless of date).
+3. **Editorial commitment for archive states.** A page that says "Currently no upcoming screenings" is editorially flat unless paired with related-film recommendations or streaming-availability lookups. Choosing what goes in the archived state is itself a design call.
+4. **Search Console setup + monitoring.** Removing `noindex` should be paired with indexing health monitoring (Search Console properties, crawl coverage reports). Operator workflow change, not just code change.
+
+### Trigger to revisit
+
+- Operator decision that Afiche should expand beyond curated channels (probable signal: stalled audience growth via X/newsletter despite editorial effort).
+- Stable editorial cadence on the cartelera makes the live → archive transition uniform across films (need consistent rhythm for archive pages to read as a coherent corpus).
+- Time to invest M-L engineering work in a single direction (probably not during /office-hours-pending exploration of user-organized-screenings).
+
+**First-step action:** Spin `/office-hours` on the indexability question itself with the framing *"Is Afiche the cartelera (Strategy A) or the index (Strategy B)?"* — get to a saved design doc with the decision locked. Then either accept Strategy A and strike-close #13.1, OR plan the Strategy B engineering work as a multi-cycle initiative.
+
+**Depends on / blocked by:** Nothing technical. Needs a strategic-direction session and operator commitment.
+
+---
+
 ~~**18. Nosferatu disambiguation — MALBA Cineclub Nocturna mismatched to wrong film (BUG)**~~ Resolved structurally 2026-05-11 (v0.2.3.3). Diagnosis: MALBA's Cineclub Nocturna 5 page rendered the film as just "Nosferatu", scraper extracted `scrapedTitle="Nosferatu"` + `director="Werner Herzog"` + no year, TMDB search returned both Eggers 2024 (title="Nosferatu", score 1.0) and Herzog 1979 (title="Nosferatu, fantasma de la noche", score ~0.87). `pickBestMatch` picked Eggers on the higher title score; the director hint was plumbed through but never consulted because the existing director-fallback was a low-confidence rescue path (only fires when `pickBestMatch` returns null). Two complementary fixes ship together in `src/tmdb/`: (1) **director-verification on the top match** in `enrich.ts:145-180` — when a director hint is provided, fetch the top candidate's TMDB credits (already happens) and check `directorsMatch` against the hint; on mismatch, fall through to the existing director-fallback with the top details cached (no duplicate API call); (2) **title-ambiguity guard** in `match.ts` `pickBestMatch` — when top-2 candidates both clear the 0.85 threshold AND tie within `TITLE_AMBIGUITY_EPSILON=0.01`, return null so the caller can disambiguate (covers the adjacent case where TMDB has multiple entries with identical localized titles). Operator-side cleanup: the bad prod row had `match_source='auto'` so a next-scrape rebuild won't re-touch it. Manual patch in Drizzle Studio (set `tmdb_id=5648, match_source='manual', poster_url=NULL`) and run `npm run db:enrich:prod` to re-fetch metadata — or just delete the row since the screening already passed. Tests in `src/tmdb/match.test.ts` + `src/tmdb/enrich.test.ts` lock down both fix paths.
 
 **Original context (preserved for the bug-class trail):**
@@ -312,6 +375,8 @@ If the heuristic fails on real-page shape, refine the selector (e.g. scope to a 
 ---
 
 ## 13. /pelicula/ post-launch hardening (JSON-LD, slug-history, normalization)
+
+**⚠️ STATUS UPDATE 2026-05-11:** Sub-items #13.1 (JSON-LD) and #13.2 (slug-history) are **blocked upstream on TODO #19** (indexability strategy decision). `/pelicula/<slug>` is currently `noindex` (`src/app/pelicula/[slug]/page.tsx:97` — set during /design-review to protect against flap-404 SEO penalties when films leave BA). While noindex is on, Google won't crawl or index these pages, which makes JSON-LD a no-op (search engines never see the structured data) and slug-history's 301-redirect value irrelevant (no SEO link-equity to preserve). Both sub-items only make sense under Strategy B of TODO #19 (indexable + persistent pages). #13.3 (program name normalization) is independent of the indexability question and remains a standalone item — re-evaluate when /programa/ pages are planned.
 
 **What:** Three hardening additions for /pelicula/ after the MVP ships:
 
