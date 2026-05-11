@@ -2,6 +2,21 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.2.3.4] - 2026-05-11
+
+### Fixed
+
+- **Lugones S2 parser now handles the "a las" editorial prose schedule form.** The Justa cycle (Teresa Villaverde 2025, screenings 2026-05-28 → 2026-06-04) used a previously-unseen schedule shape: `"Jueves 28 y viernes 29 de mayo a las 21 horas"` / `"Sábado 30 a las 18 horas"` instead of the comma-form `"Viernes 8 y sábado 9, 20.30 horas"` the parser was written for. `matchSingleFilmShowtime`'s regex required a comma between the day-list and the time, so all 45 paragraphs on the Justa detail page failed to parse — the run logged a `program "Justa": 0 screenings parsed from 45 <p> tags` warning and the cycle's 7 funciones never reached the cartelera.
+
+  The fix extends the regex to accept either connector (`,` or ` a las `), plus an optional `" de MONTH"` suffix on the day list. When the suffix is present, the explicit month is returned and `parseS2SingleFilm` treats it as a signal-wins-over-heuristic override of the running month context (more robust than the day-decrease rollover heuristic against out-of-order listings or month skips). The same regex still accepts the existing comma form, so the Boris Karloff and Ojos extraños cycles continue to parse unchanged.
+
+- **FICHA TÉCNICA parser extended for three additional editorial conventions.** Justa's metadata section combined country and year on a single line (`"Portugal/Francia, 2025"` rather than the existing two-line `"Country list"` / `"YYYY"` shape), used prose runtime (`"108 minutos"` rather than apostrophe-marked `"126'"`), and credited the director with a multi-role prefix (`"Dirección, guion y producción: Teresa Villaverde"` rather than `"Dirección:"` or `"Dirección y guion:"`). `parseFichaLines` now handles all three. The director regex was tightened with a whitelist of allowed role-list words (`guion|guión|producción|montaje`) so neighbouring credit lines like `"Dirección de fotografía"` (cinematographer) and `"Dirección de arte"` (art director) don't false-match as the film's director.
+
+### Maintenance
+
+- **10 new tests** in `src/providers/lugones.test.ts`: six covering the new `matchSingleFilmShowtime` shapes (`"a las"` connector, decimal-minute under the new form, explicit `de MONTH` suffix capture at mayo + junio, single-day inheritance, unrecognized-month defensive null return); and four covering the Justa fixture end-to-end (7 screenings emitted, exact `(month, day, hour, minute)` tuples for each, film metadata extracted across every row, no `"0 screenings parsed"` warning).
+- **New fixture `test/fixtures/lugones/justa.html`** — real capture from `https://complejoteatral.gob.ar/ver/Justa` taken 2026-05-11. Stored verbatim so future regressions surface in CI without re-fetching.
+
 ## [0.2.3.3] - 2026-05-11
 
 ### Fixed

@@ -450,8 +450,22 @@ function parseS2SingleFilm(
     if (!line) continue;
     const parsed = matchSingleFilmShowtime(line);
     if (!parsed) continue;
+
+    // Explicit "de MONTH" on the line (Justa-class editorial prose
+    // schedules) is the strongest signal — it overrides the running
+    // month context AND skips the day-decrease rollover heuristic for
+    // this line. When the explicit month is BEFORE the running month
+    // (e.g. diciembre → enero), bump the year too.
+    if (parsed.month !== undefined) {
+      if (parsed.month < currentMonth) currentYear += 1;
+      currentMonth = parsed.month;
+      // Reset lastDay so the inner-loop rollover heuristic stays dormant
+      // for this line — explicit month already pinned the calendar.
+      lastDay = 0;
+    }
+
     for (const day of parsed.days) {
-      if (day < lastDay) {
+      if (parsed.month === undefined && day < lastDay) {
         currentMonth = (currentMonth + 1) % 12;
         if (currentMonth === 0) currentYear += 1;
       }
@@ -524,24 +538,44 @@ function parseS2SingleFilm(
 }
 
 /**
- * Parse a single S2 showtime line like "Jueves 7, 20 horas" or
- * "Viernes 8 y sábado 9, 20.30 horas". Returns the day numbers (one or
- * more) sharing a single hour/minute, or null if the shape doesn't match.
+ * Parse a single S2 showtime line. Two connector shapes are supported:
  *
- * Times accept "HH" or "HH.MM" / "HH:MM" — Lugones uses "20.30 horas"
- * with a decimal point as minute separator.
+ *   - Comma form (terse, compressed):
+ *       "Jueves 7, 20 horas"
+ *       "Viernes 8 y sábado 9, 20.30 horas"
+ *
+ *   - "a las" form (editorial prose, e.g. the Justa cycle 2026-05):
+ *       "Jueves 28 y viernes 29 de mayo a las 21 horas"
+ *       "Sábado 30 a las 18 horas"
+ *       "Martes 2 y miércoles 3 de junio a las 21 horas"
+ *
+ * The "a las" form additionally supports an explicit "de MONTH" suffix
+ * on the day list. When present, the explicit month is returned and
+ * `parseS2SingleFilm` treats it as a signal-wins-over-heuristic override
+ * of the running month context (more robust than the day-decrease rollover
+ * heuristic against out-of-order listings or month skips).
+ *
+ * Times accept "HH" or "HH.MM" / "HH:MM" — Lugones uses both decimal
+ * and colon minute separators interchangeably.
+ *
+ * Returns the day numbers (one or more) sharing a single hour/minute,
+ * plus an optional explicit month index (0-11). Null if the shape
+ * doesn't match.
  */
 export function matchSingleFilmShowtime(
   text: string,
-): { days: number[]; hour: number; minute: number } | null {
+): { days: number[]; hour: number; minute: number; month?: number } | null {
   const cleaned = text.toLowerCase().replace(/[°º]/g, '').trim();
-  // Prefix: one or more "DAYNAME N" joined by " y ", then a comma, then
-  // "HH[.:]MM horas" with optional trailing period.
+  // Days "DAYNAME N [y DAYNAME M ...]" → optional " de MONTH" → connector
+  // (comma OR "a las") → "HH[.:]MM horas" with optional trailing period.
+  // Days prefix is non-greedy so the optional "de MONTH" group is preferred
+  // over absorbing " de mayo" into the day-list when the suffix is present.
   const m = cleaned.match(
-    /^([a-záéíóú\s\d]+?),\s*(\d{1,2})(?:[.:](\d{2}))?\s+horas?\.?$/,
+    /^([a-záéíóú\s\d]+?)(?:\s+de\s+([a-záéíóú]+))?\s*(?:,|a\s+las)\s+(\d{1,2})(?:[.:](\d{2}))?\s+horas?\.?$/,
   );
   if (!m) return null;
   const prefix = m[1].trim();
+  const monthName = m[2];
   const parts = prefix.split(/\s+y\s+/);
   const days: number[] = [];
   for (const p of parts) {
@@ -554,10 +588,21 @@ export function matchSingleFilmShowtime(
     days.push(parseInt(pm[1], 10));
   }
   if (days.length === 0) return null;
-  const hour = parseInt(m[2], 10);
-  const minute = m[3] ? parseInt(m[3], 10) : 0;
+  const hour = parseInt(m[3], 10);
+  const minute = m[4] ? parseInt(m[4], 10) : 0;
   if (hour < 0 || hour > 24 || minute < 0 || minute > 59) return null;
-  return { days, hour, minute };
+
+  // Resolve explicit month suffix to an index. If captured but not a
+  // recognized Spanish month, treat as a parse failure — better to miss
+  // and surface a warning than to silently drift the date by accepting
+  // a corrupt month signal.
+  let month: number | undefined;
+  if (monthName !== undefined) {
+    const idx = MONTH_INDEX[monthName];
+    if (idx === undefined) return null;
+    month = idx;
+  }
+  return { days, hour, minute, month };
 }
 
 /**
@@ -581,12 +626,15 @@ function parseFichaLines(lines: string[], film: FilmContext): void {
     }
 
     if (!film.year) {
-      const m = line.match(/^(\d{4})$/);
-      if (m) {
-        film.year = parseInt(m[1], 10);
-        // Country sits on the line directly preceding the year (Lugones
-        // ficha order: title-internal? → countries → year → language →
-        // format → runtime).
+      // Two shapes seen in the wild:
+      //   - Year-only line: "2024"                  (country on preceding line)
+      //   - Country+year:   "Portugal/Francia, 2025"  (one-line combined,
+      //                                                Justa-class editorial)
+      const yearAlone = line.match(/^(\d{4})$/);
+      if (yearAlone) {
+        film.year = parseInt(yearAlone[1], 10);
+        // Country sits on the line directly preceding the year (ficha order:
+        // title-internal? → countries → year → language → format → runtime).
         if (!film.country && i > 0) {
           const candidate = lines[i - 1];
           if (candidate && !/^Título/i.test(candidate) && !/:/.test(candidate)) {
@@ -595,20 +643,45 @@ function parseFichaLines(lines: string[], film: FilmContext): void {
         }
         continue;
       }
+      const countryYear = line.match(/^(.+?)\s*,\s*(\d{4})\.?$/);
+      // Guard: the prefix mustn't contain a colon (otherwise this would
+      // false-match a metadata line like "Sonido: X, 2025").
+      if (countryYear && !/:/.test(countryYear[1])) {
+        film.year = parseInt(countryYear[2], 10);
+        if (!film.country) {
+          film.country = countryYear[1].trim();
+        }
+        continue;
+      }
     }
 
     if (!film.runtimeMin) {
-      // "126' – DM" or "99' DM" — apostrophe may be ASCII (U+0027), prime
-      // (U+2032), right single quote (U+2019), or acute (U+00B4).
-      const m = line.match(/^(\d+)\s*['’′´]/);
-      if (m) {
-        film.runtimeMin = parseInt(m[1], 10);
+      // Two forms:
+      //   "126' – DM"      → apostrophe-marked (apostrophe may be ASCII
+      //                      U+0027, prime U+2032, right single U+2019,
+      //                      or acute U+00B4)
+      //   "108 minutos"    → prose-marked (Justa-class editorial)
+      const apos = line.match(/^(\d+)\s*['’′´]/);
+      if (apos) {
+        film.runtimeMin = parseInt(apos[1], 10);
+        continue;
+      }
+      const prose = line.match(/^(\d+)\s+minutos?$/i);
+      if (prose) {
+        film.runtimeMin = parseInt(prose[1], 10);
         continue;
       }
     }
 
     if (!film.director) {
-      const m = line.match(/^Direcci[oó]n(?:\s+y\s+guion)?:\s*(.+?)\.?$/i);
+      // Stable prefix is "Dirección" plus an optional comma/and-separated
+      // role list (e.g. "Dirección, guion y producción"). The middle role
+      // tokens are whitelisted so neighbouring credit lines like
+      // "Dirección de fotografía" (cinematographer) and "Dirección de arte"
+      // (art director) don't false-match as the film's director.
+      const m = line.match(
+        /^Direcci[oó]n(?:(?:[,\s]+|\s+y\s+)(?:guion|guión|producción|montaje))*:\s*(.+?)\.?$/i,
+      );
       if (m) {
         film.director = m[1].trim();
         continue;

@@ -202,6 +202,67 @@ describe('matchSingleFilmShowtime', () => {
     expect(matchSingleFilmShowtime('Director: Some Person')).toBeNull();
     expect(matchSingleFilmShowtime('Color')).toBeNull();
   });
+
+  // -------------------------------------------------------------------------
+  // "a las" connector + optional "de MONTH" suffix (Justa-class editorial
+  // prose schedules — first observed in the Teresa Villaverde "Justa" cycle
+  // 2026-05). The compressed comma form ("Viernes 8 y sábado 9, 20.30 horas")
+  // continues to be supported; this just adds the prose-shaped form alongside.
+  // -------------------------------------------------------------------------
+  it('parses "Sábado 30 a las 18 horas" via the "a las" connector', () => {
+    expect(matchSingleFilmShowtime('Sábado 30 a las 18 horas')).toEqual({
+      days: [30],
+      hour: 18,
+      minute: 0,
+    });
+  });
+
+  it('parses decimal-minute via "a las" form: "Domingo 31 a las 17.30 horas"', () => {
+    expect(matchSingleFilmShowtime('Domingo 31 a las 17.30 horas')).toEqual({
+      days: [31],
+      hour: 17,
+      minute: 30,
+    });
+  });
+
+  it('captures explicit "de MONTH" suffix: "Jueves 28 y viernes 29 de mayo a las 21 horas"', () => {
+    expect(
+      matchSingleFilmShowtime('Jueves 28 y viernes 29 de mayo a las 21 horas'),
+    ).toEqual({
+      days: [28, 29],
+      hour: 21,
+      minute: 0,
+      month: 4, // mayo
+    });
+  });
+
+  it('captures a different month: "Martes 2 y miércoles 3 de junio a las 21 horas"', () => {
+    expect(
+      matchSingleFilmShowtime('Martes 2 y miércoles 3 de junio a las 21 horas'),
+    ).toEqual({
+      days: [2, 3],
+      hour: 21,
+      minute: 0,
+      month: 5, // junio
+    });
+  });
+
+  it('parses single day without explicit month under "a las" form', () => {
+    // The line that proves month-context carryover is needed in the caller
+    // (Justa line [12]: inherits "junio" from the preceding "Martes 2 y
+    // miércoles 3 de junio" line).
+    expect(matchSingleFilmShowtime('Jueves 4 a las 18 horas')).toEqual({
+      days: [4],
+      hour: 18,
+      minute: 0,
+    });
+  });
+
+  it('returns null when "de MONTH" suffix is unrecognized (defensive — would silently drift the date otherwise)', () => {
+    expect(
+      matchSingleFilmShowtime('Sábado 30 de mesnoexistente a las 18 horas'),
+    ).toBeNull();
+  });
 });
 
 describe('parseDetailPage S2 fallback (Ojos extraños fixture)', () => {
@@ -317,5 +378,85 @@ describe('parseDetailPage single-day one-off (Chabrol bis fixture)', () => {
     expect(s.startsAtUtc.getUTCHours()).toBe(18);
     expect(s.director).toBe('Claude Chabrol');
     expect(s.runtimeMin).toBe(95);
+  });
+});
+
+describe('parseDetailPage Justa-class prose schedule (Justa fixture, captured 2026-05-11)', () => {
+  // The bug: Lugones started using an editorial prose schedule format for
+  // Justa (Teresa Villaverde 2025), spreading dates across multiple <p>s
+  // with the connector "a las" instead of a comma, plus optional
+  // "de MONTH" suffixes for the first line of each month. Before the
+  // matchSingleFilmShowtime regex was extended, all 45 detail-page <p>s
+  // failed to parse and the run logged 0 screenings + a warning. Now the
+  // 7 announced funciones come through.
+  //
+  // Source: https://complejoteatral.gob.ar/ver/Justa
+  // Schedule (per the page):
+  //   Jueves 28 y viernes 29 de mayo a las 21 horas       → 2026-05-28 21:00, 2026-05-29 21:00
+  //   Sábado 30 a las 18 horas                            → 2026-05-30 18:00
+  //   Domingo 31 a las 17.30 horas                        → 2026-05-31 17:30
+  //   Martes 2 y miércoles 3 de junio a las 21 horas      → 2026-06-02 21:00, 2026-06-03 21:00
+  //   Jueves 4 a las 18 horas (inherits junio)            → 2026-06-04 18:00
+  const html = fixture('justa.html');
+  const program: ProgramLink = {
+    slug: 'Justa',
+    title: 'Justa',
+    dateRangeText: 'A partir del 28 de mayo',
+    detailUrl: 'https://complejoteatral.gob.ar/ver/Justa',
+  };
+
+  it('emits all 7 announced funciones with no parser warnings', () => {
+    const warnings: string[] = [];
+    const screenings = parseDetailPage(html, program, warnings);
+    expect(warnings).toEqual([]);
+    expect(screenings).toHaveLength(7);
+  });
+
+  it('produces the announced (date, BA-local-hour, BA-local-minute) tuples exactly', () => {
+    const screenings = parseDetailPage(html, program, []);
+    // Convert to (month, day, hourBA, minuteBA) tuples for legible asserts.
+    // BA is UTC-3 year-round (no DST), so UTC time minus 3h = BA local.
+    const tuples = screenings
+      .map((s) => {
+        const baMs = s.startsAtUtc.getTime() - 3 * 3600 * 1000;
+        const d = new Date(baMs);
+        return [
+          d.getUTCMonth(),
+          d.getUTCDate(),
+          d.getUTCHours(),
+          d.getUTCMinutes(),
+        ] as const;
+      })
+      .sort(([m1, d1], [m2, d2]) => m1 - m2 || d1 - d2);
+
+    expect(tuples).toEqual([
+      [4, 28, 21, 0], // mayo 28, 21:00 BA
+      [4, 29, 21, 0], // mayo 29, 21:00 BA
+      [4, 30, 18, 0], // mayo 30, 18:00 BA
+      [4, 31, 17, 30], // mayo 31, 17:30 BA
+      [5, 2, 21, 0], // junio 2, 21:00 BA
+      [5, 3, 21, 0], // junio 3, 21:00 BA
+      [5, 4, 18, 0], // junio 4, 18:00 BA (inherits 'junio' from the preceding line)
+    ]);
+  });
+
+  it('attaches the film metadata across every screening (single-film page invariant)', () => {
+    const screenings = parseDetailPage(html, program, []);
+    for (const s of screenings) {
+      expect(s.filmTitle).toBe('Justa');
+      expect(s.year).toBe(2025); // FICHA TÉCNICA section: "Portugal/Francia, 2025"
+      expect(s.director).toBe('Teresa Villaverde');
+      expect(s.runtimeMin).toBe(108); // "108 minutos"
+    }
+  });
+
+  it('does not emit the "0 screenings parsed" warning that surfaced the bug', () => {
+    // Pre-fix, the run's warnings included:
+    //   program "Justa": 0 screenings parsed from 45 <p> tags...
+    // That's the regression guard against the matchSingleFilmShowtime regex
+    // tightening back up to comma-only.
+    const warnings: string[] = [];
+    parseDetailPage(html, program, warnings);
+    expect(warnings.find((w) => /0 screenings parsed/i.test(w))).toBeUndefined();
   });
 });
