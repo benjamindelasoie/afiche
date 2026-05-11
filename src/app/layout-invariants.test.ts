@@ -17,12 +17,24 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(__dirname, '../..');
+
+// Recursively collect all *.tsx files under a directory.
+async function collectTsxFiles(dir: string): Promise<string[]> {
+  const out: string[] = [];
+  const entries = await readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const full = resolve(dir, entry.name);
+    if (entry.isDirectory()) out.push(...(await collectTsxFiles(full)));
+    else if (entry.isFile() && entry.name.endsWith('.tsx')) out.push(full);
+  }
+  return out;
+}
 
 // All top-level <main> elements rendered as direct flex children of body.
 // Body is `flex flex-col` per layout.tsx. Each of these mains MUST carry
@@ -61,6 +73,74 @@ describe('layout invariant: <main> elements need w-full + min-w-0', () => {
       ).toContain('min-w-0');
     },
   );
+
+  // -----------------------------------------------------------------
+  // line-clamp-N + display utility on the same element silently
+  // breaks the clamp at runtime.
+  //
+  // Background: Tailwind's `line-clamp-N` sets
+  //   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: N
+  // on the element. Any sibling display utility (`block`, `hidden`,
+  // `flex`, `grid`, ...) on the same element — whether as the base or
+  // behind a responsive variant like `md:block` — competes for the
+  // `display` property and defeats the clamp at that breakpoint.
+  // Observable symptom: cards render at content height (2/4/6+ lines)
+  // instead of the configured clamp. Pre-fix, the homepage synopsis
+  // `<p>` had `line-clamp-3 hidden md:block` co-located; from `md` up,
+  // `display: block` won and clamping stopped (TODOS.md #15).
+  //
+  // Fix pattern: move the visibility utility onto a *wrapper* element
+  // so the clamped element owns `display: -webkit-box` exclusively.
+  it('no className combines line-clamp-N with a display utility on the same element', async () => {
+    const tsxFiles = await collectTsxFiles(resolve(projectRoot, 'src/app'));
+
+    // Display utilities that compete with line-clamp's `display: -webkit-box`.
+    // `inline` last — it is a substring of `inline-block` etc., but since we
+    // tokenize on whitespace before matching, substring overlap isn't an issue.
+    const DISPLAY_UTILS = [
+      'block',
+      'hidden',
+      'flex',
+      'grid',
+      'inline-block',
+      'inline-flex',
+      'inline-grid',
+      'contents',
+      'flow-root',
+      'table',
+      'inline',
+    ];
+    // Match: optional variant prefix chain (e.g. `md:`, `dark:md:`) + utility
+    const displayRe = new RegExp(`^(?:[a-z0-9-]+:)*(?:${DISPLAY_UTILS.join('|')})$`);
+    const clampRe = /^(?:[a-z0-9-]+:)*line-clamp-\d+$/;
+    // Permissive className matcher — catches simple string literal classes,
+    // including those with curly-brace wrapping but no template interpolation.
+    const classNameRe = /className=\{?(["'`])([^"'`]+)\1\}?/g;
+
+    const violations: string[] = [];
+    for (const file of tsxFiles) {
+      const src = await readFile(file, 'utf8');
+      for (const match of src.matchAll(classNameRe)) {
+        const classes = match[2];
+        const tokens = classes.split(/\s+/).filter(Boolean);
+        const hasClamp = tokens.some((t) => clampRe.test(t));
+        if (!hasClamp) continue;
+        const offender = tokens.find((t) => displayRe.test(t));
+        if (offender) {
+          const lineNo = src.slice(0, match.index ?? 0).split('\n').length;
+          const rel = file.replace(projectRoot + '/', '');
+          violations.push(`  ${rel}:${lineNo} — "${classes}" (offender: ${offender})`);
+        }
+      }
+    }
+
+    expect(
+      violations,
+      'Found line-clamp-N co-located with a display utility on the same element. ' +
+        'Move the display utility onto a wrapper. Offenders:\n' +
+        violations.join('\n'),
+    ).toEqual([]);
+  });
 
   it('layout.tsx body is the flex-col container these mains depend on', async () => {
     // If body stops being flex-col, the w-full + min-w-0 requirement may

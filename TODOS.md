@@ -61,7 +61,7 @@ If the list is short, eyeball each one against the source venue page. If long, t
 
 ---
 
-## 15. Synopsis preview clamping inconsistent on desktop (BUG)
+~~**15. Synopsis preview clamping inconsistent on desktop (BUG)**~~ Resolved 2026-05-11. Root cause: the synopsis `<p>` in `ScreeningCard` (src/app/page.tsx) co-located `line-clamp-3` with `hidden md:block`. `line-clamp-N` requires `display: -webkit-box` to function; `md:block` is `display: block` inside `@media (min-width: 48rem)`. At equal specificity, the responsive variant wins on source order at the breakpoint and silently defeats the clamp — paragraphs then render at content height (2/4/6+ lines). Fix: pushed `hidden md:block` (and `mt-3`) onto a wrapper `<div>`, leaving the `<p>` with `line-clamp-3` + styling only. Added a regression guard in `src/app/layout-invariants.test.ts` that scans `src/app/**/*.tsx` and fails on any className combining `line-clamp-N` with a display utility (`block`, `hidden`, `flex`, `grid`, ...) — fixture-style, same discipline as the existing `<main>` w-full check. /pelicula/ was not affected (it renders the full synopsis unclamped).
 
 **What:** On desktop, the synopsis preview on film cards (cartelera tier and `/pelicula/` related-film tiles) doesn't clamp to a uniform line count. Some cards show 2 lines, some show 4, some overflow further. The visual rhythm of the row breaks because card heights are unequal.
 

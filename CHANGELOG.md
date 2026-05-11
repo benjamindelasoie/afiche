@@ -2,6 +2,16 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.2.3.2] - 2026-05-11
+
+### Fixed
+
+- **Synopsis preview now clamps to 3 lines on desktop cartelera cards.** The `<p>` in `ScreeningCard` (`src/app/page.tsx`) carried `line-clamp-3 hidden md:block` on the same element. `line-clamp-N` requires `display: -webkit-box` to function; `md:block` sets `display: block` inside `@media (min-width: 48rem)`. At equal specificity, the responsive variant won on source order at the `md:` breakpoint and silently defeated the clamp — synopses then rendered at content height (2/4/6+ lines depending on text length), producing ragged card heights across each row. Fix: pushed `hidden md:block` onto a wrapper `<div>`, leaving the inner `<p>` with `line-clamp-3` and its `display: -webkit-box` uncontested. Visual rhythm is restored; card heights in a row now line up to the 3-line cap.
+
+### Maintenance
+
+- **New regression guard in `src/app/layout-invariants.test.ts`** scans every `*.tsx` under `src/app/` and fails when any single className combines `line-clamp-N` with a display utility (`block`, `hidden`, `flex`, `grid`, `inline-block`, `inline-flex`, `inline-grid`, `contents`, `flow-root`, `table`, `inline`) — including responsive variants like `md:block`. Fixture-style, no browser needed. Same discipline as the existing `<main>` w-full check (CLAUDE.md frontend-conventions #1). Closes `TODOS.md` #15.
+
 ## [0.2.3.1] - 2026-05-07
 
 ### Changed
