@@ -2,6 +2,24 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.2.3.3] - 2026-05-11
+
+### Fixed
+
+- **TMDB matcher no longer silently picks the wrong confident match when the scraped director disagrees.** The Nosferatu / Eggers vs Herzog bug class (TODOS.md #18). MALBA's Cineclub Nocturna 5 page rendered Werner Herzog's *Nosferatu, fantasma de la noche* (1979) as a bare "Nosferatu" line; the matcher's `pickBestMatch` saw an exact title hit on Eggers 2024 (score 1.0) versus a partial hit on Herzog 1979 (score ~0.87) and confidently picked Eggers. The director hint "Werner Herzog" was passed in but never consulted because the existing director-fallback at `src/tmdb/enrich.ts:151` was a low-confidence rescue path — it only fired when `pickBestMatch` returned null, not when it picked the wrong film. The result on the cartelera: Eggers's 2024 poster + Eggers's synopsis on a Herzog 1979 screening. Two structural fixes ship together:
+
+  1. **Director-verification on the top match** — when a director hint is provided, `enrichFilm` now fetches the top candidate's TMDB credits (it already did, to build the delta) and checks `directorsMatch(hint, topDirectors)`. On mismatch, it falls through to the existing director-fallback rescue across the sorted top-3. The top candidate's already-fetched details are reused (no duplicate API call). This catches the actual Nosferatu shape — a *single confident top match* that happens to be the wrong film. Cost: zero extra TMDB calls on the success path; one extra call on the rescue path when the rescue picks a different candidate than the top.
+
+  2. **Title-ambiguity guard in `pickBestMatch`** — when the top-2 candidates both clear the 0.85 confidence threshold AND tie within a new `TITLE_AMBIGUITY_EPSILON` (0.01, same band already used to tiebreak by popularity), `pickBestMatch` now returns `null` instead of letting popularity decide. This catches the adjacent shape — *multiple TMDB entries with identical localized titles* (e.g. Eggers 2024 + Murnau 1922 both stored as "Nosferatu" in es-AR). When a director hint is available, the director-fallback rescues; otherwise the film surfaces as `low-confidence` (operator-actionable miss in Drizzle Studio), which beats silently picking the most-popular wrong entry on the cartelera.
+
+  Trade-off accepted: a scraped director with a typo or unusual variant (e.g. "W. Herzog" vs TMDB's "Werner Herzog") that previously matched on title alone now drops to `low-confidence`. The matcher remains intentionally strict on director-name equality (per the existing `directorsMatch` note: "prefer a missed fallback over a false positive"). Visible misses are preferable to silent mismatches.
+
+### Maintenance
+
+- **6 new tests** in `src/tmdb/match.test.ts` and `src/tmdb/enrich.test.ts` covering: the title-ambiguity guard returning null on tied-title pairs; the year-hint resolution path (filters Eggers out before scoring); the director-verification rescue path (Eggers picked then rejected → Herzog wins via fallback); the `topDetails` reuse invariant (Eggers fetched once across verification + fallback); the no-director-hint low-confidence outcome on ambiguous titles; and an out-of-epsilon test ensuring the guard isn't over-conservative on legitimate top matches.
+- **Existing "popularity tiebreaker" test rewritten** to encode the new contract: `pickBestMatch` returns null on title-tied high-confidence pairs (caller disambiguates), while `scoreCandidates` still sorts more-popular first (so director-fallback's top-3 walk is in the right order).
+- **`TITLE_AMBIGUITY_EPSILON = 0.01`** is now exported alongside `MATCH_CONFIDENCE_THRESHOLD` and `YEAR_TOLERANCE` so the threshold is co-located with the other tunable knobs.
+
 ## [0.2.3.2] - 2026-05-11
 
 ### Fixed

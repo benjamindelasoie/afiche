@@ -24,6 +24,21 @@ import type { TmdbMovieSummary } from './client';
 
 export const MATCH_CONFIDENCE_THRESHOLD = 0.85;
 export const YEAR_TOLERANCE = 1;
+/**
+ * Two candidates whose confidence scores are within this band are considered
+ * tied on title — the matcher cannot disambiguate them by title similarity
+ * alone. When such a tie occurs AND both tied candidates clear the confidence
+ * threshold, `pickBestMatch` refuses to auto-pick (returns null) so the
+ * director-fallback rescue in `enrich.ts` can disambiguate via TMDB credits.
+ *
+ * Same numeric band as the existing tiebreak (line ~82): below this delta
+ * the original sort uses popularity to break ties. Popularity is the wrong
+ * signal when we have a director hint that can actually disambiguate — the
+ * Nosferatu case (TODOS.md #18) silently picked Eggers 2024 over Herzog 1979
+ * because both scored ≈1.0 on title-only similarity and Eggers had vastly
+ * higher TMDB popularity.
+ */
+export const TITLE_AMBIGUITY_EPSILON = 0.01;
 
 export interface MatchHints {
   /** Original-language title from the scrape (e.g. "The Misfits"). */
@@ -92,6 +107,23 @@ export function pickBestMatch(
   const sorted = scoreCandidates(candidates, scrapedTitle, scrapedYear, hints);
   const best = sorted[0];
   if (!best || best.confidence < MATCH_CONFIDENCE_THRESHOLD) return null;
+
+  // Title-ambiguity guard: if a runner-up clears the confidence threshold
+  // AND ties the top within TITLE_AMBIGUITY_EPSILON, the matcher cannot
+  // disambiguate by title similarity alone. Return null so enrich.ts's
+  // director-fallback rescue can resolve via TMDB credits. When no director
+  // hint is provided, the caller surfaces this as 'low-confidence' (visible
+  // operator-actionable miss), which beats silently mismatching on
+  // popularity (the Nosferatu / Eggers vs Herzog bug class — TODOS.md #18).
+  const runnerUp = sorted[1];
+  if (
+    runnerUp &&
+    runnerUp.confidence >= MATCH_CONFIDENCE_THRESHOLD &&
+    best.confidence - runnerUp.confidence <= TITLE_AMBIGUITY_EPSILON
+  ) {
+    return null;
+  }
+
   return best;
 }
 

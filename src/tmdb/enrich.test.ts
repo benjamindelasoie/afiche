@@ -337,3 +337,221 @@ describe('enrichFilm — director fallback (rescues below-threshold matches)', (
     expect(getMovieMock).not.toHaveBeenCalled();
   });
 });
+
+describe('enrichFilm — wrong confident top match rescued by director-verification (Nosferatu / Eggers vs Herzog)', () => {
+  beforeEach(() => {
+    searchMock.mockReset();
+    getMovieMock.mockReset();
+    findOverrideMock.mockReset().mockResolvedValue(null);
+    hasTokenMock.mockReset().mockReturnValue(true);
+  });
+
+  it('rescues the right film via director-verification when the top title-match has wrong director (TODOS.md #18)', async () => {
+    // The exact shape of the production bug. MALBA's Cineclub Nocturna 5
+    // page renders Werner Herzog's Nosferatu (1979) as just "Nosferatu".
+    // TMDB search returns Eggers 2024 (title "Nosferatu", score 1.0)
+    // and Herzog 1979 (title "Nosferatu, fantasma de la noche",
+    // score ~0.87). Pre-fix: pickBestMatch picked Eggers on title score
+    // alone, director-fallback never ran. Post-fix: pickBestMatch still
+    // picks Eggers, but director-verification rejects him on hint
+    // mismatch and falls through to director-fallback, which walks
+    // top-3 and accepts Herzog (whose director matches the hint).
+    const herzog = summary({
+      id: 5648,
+      title: 'Nosferatu, fantasma de la noche',
+      original_title: 'Nosferatu: Phantom der Nacht',
+      release_date: '1979-01-17',
+      popularity: 20.0,
+    });
+    const eggers = summary({
+      id: 426063,
+      title: 'Nosferatu',
+      original_title: 'Nosferatu',
+      release_date: '2024-12-25',
+      popularity: 500.0,
+    });
+    searchMock.mockResolvedValue([eggers, herzog]);
+    getMovieMock.mockImplementation((id: number) => {
+      if (id === 426063)
+        return Promise.resolve(
+          details({
+            ...eggers,
+            credits: {
+              cast: [],
+              crew: [
+                {
+                  id: 1,
+                  name: 'Robert Eggers',
+                  job: 'Director',
+                  department: 'Directing',
+                },
+              ],
+            },
+          }),
+        );
+      if (id === 5648)
+        return Promise.resolve(
+          details({
+            ...herzog,
+            credits: {
+              cast: [],
+              crew: [
+                {
+                  id: 2,
+                  name: 'Werner Herzog',
+                  job: 'Director',
+                  department: 'Directing',
+                },
+              ],
+            },
+          }),
+        );
+      throw new Error(`unexpected getMovie call: id=${id}`);
+    });
+
+    const r = await enrichFilm('Nosferatu', undefined, { director: 'Werner Herzog' });
+
+    expect(r.reason).toBe('ok');
+    expect(r.delta!.tmdbId).toBe(5648);
+    expect(r.delta!.director).toBe('Werner Herzog');
+    // Confidence is the candidate's original score boosted to at least
+    // MATCH_CONFIDENCE_THRESHOLD (director match is a strong signal).
+    expect(r.delta!.matchConfidence).toBeGreaterThanOrEqual(0.85);
+  });
+
+  it('the top-details fetch is reused — no duplicate getMovie when verification fails and rescue revisits the top', async () => {
+    // Verifies the topDetails cache: when director-verification on the
+    // top match fails AND the fallback walks scoreCandidates' top-3,
+    // the top candidate's details are reused (already fetched). For
+    // the Nosferatu shape, Eggers is fetched exactly once: during the
+    // verification probe. The fallback's first iteration reuses that;
+    // its second iteration fetches Herzog (1 new call). Total: 2.
+    const herzog = summary({
+      id: 5648,
+      title: 'Nosferatu, fantasma de la noche',
+      original_title: 'Nosferatu: Phantom der Nacht',
+      release_date: '1979-01-17',
+      popularity: 20.0,
+    });
+    const eggers = summary({
+      id: 426063,
+      title: 'Nosferatu',
+      original_title: 'Nosferatu',
+      release_date: '2024-12-25',
+      popularity: 500.0,
+    });
+    searchMock.mockResolvedValue([eggers, herzog]);
+    getMovieMock.mockImplementation((id: number) => {
+      if (id === 426063)
+        return Promise.resolve(
+          details({
+            ...eggers,
+            overview: 'A 24-year-old apprentice estate agent...',
+            credits: {
+              cast: [],
+              crew: [
+                {
+                  id: 1,
+                  name: 'Robert Eggers',
+                  job: 'Director',
+                  department: 'Directing',
+                },
+              ],
+            },
+          }),
+        );
+      // Non-empty overview so resolveSpanishSynopsis doesn't trigger an
+      // es-AR → es fallback fetch — that's a separate concern from the
+      // dedup invariant under test.
+      return Promise.resolve(
+        details({
+          ...herzog,
+          overview: 'Después de un siglo, el conde Drácula viaja...',
+          credits: {
+            cast: [],
+            crew: [
+              { id: 2, name: 'Werner Herzog', job: 'Director', department: 'Directing' },
+            ],
+          },
+        }),
+      );
+    });
+
+    await enrichFilm('Nosferatu', undefined, { director: 'Werner Herzog' });
+
+    // Eggers fetched once (verification probe), reused by fallback.
+    // Herzog fetched once (fallback step 2). Total = 2.
+    expect(getMovieMock).toHaveBeenCalledTimes(2);
+    expect(getMovieMock.mock.calls.filter((c) => c[0] === 426063)).toHaveLength(1);
+    expect(getMovieMock.mock.calls.filter((c) => c[0] === 5648)).toHaveLength(1);
+  });
+
+  it('returns low-confidence when title is genuinely ambiguous AND no director hint is available (operator-actionable miss)', async () => {
+    // Different shape: TMDB has two entries with the SAME localized
+    // title (e.g. Eggers 2024 + Murnau 1922 both stored as just
+    // "Nosferatu" in es-AR — a real TMDB pattern for classic remakes).
+    // Both score 1.0; ambiguity guard fires; no director hint to
+    // disambiguate; surfaces as low-confidence so the operator can
+    // patch via override or manual tmdb_id.
+    const eggers = summary({
+      id: 426063,
+      title: 'Nosferatu',
+      original_title: 'Nosferatu',
+      release_date: '2024-12-25',
+      popularity: 500.0,
+    });
+    const murnau = summary({
+      id: 653,
+      title: 'Nosferatu',
+      original_title: 'Nosferatu, eine Symphonie des Grauens',
+      release_date: '1922-03-04',
+      popularity: 30.0,
+    });
+    searchMock.mockResolvedValue([eggers, murnau]);
+
+    const r = await enrichFilm('Nosferatu', undefined);
+
+    expect(r.reason).toBe('low-confidence');
+    expect(r.delta).toBeNull();
+    // No getMovie calls — ambiguity guard returns null in step 3 and
+    // step 4 is skipped because no director hint was provided.
+    expect(getMovieMock).not.toHaveBeenCalled();
+  });
+
+  it('a year hint resolves ambiguity at the candidate-filter layer (Nosferatu + year=1979 → Herzog wins on title alone)', async () => {
+    // Year=1979 filters Eggers 2024 out via yearAcceptable (±1 window),
+    // leaving Herzog 1979 as the sole high-confidence candidate. No
+    // ambiguity, no director-fallback needed.
+    const herzog = summary({
+      id: 5648,
+      title: 'Nosferatu, fantasma de la noche',
+      original_title: 'Nosferatu: Phantom der Nacht',
+      release_date: '1979-01-17',
+      popularity: 20.0,
+    });
+    const eggers = summary({
+      id: 426063,
+      title: 'Nosferatu',
+      original_title: 'Nosferatu',
+      release_date: '2024-12-25',
+      popularity: 500.0,
+    });
+    searchMock.mockResolvedValue([eggers, herzog]);
+    getMovieMock.mockResolvedValue(
+      details({
+        ...herzog,
+        credits: {
+          cast: [],
+          crew: [
+            { id: 2, name: 'Werner Herzog', job: 'Director', department: 'Directing' },
+          ],
+        },
+      }),
+    );
+
+    const r = await enrichFilm('Nosferatu', 1979);
+
+    expect(r.reason).toBe('ok');
+    expect(r.delta!.tmdbId).toBe(5648);
+  });
+});

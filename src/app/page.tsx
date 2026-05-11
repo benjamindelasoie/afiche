@@ -472,7 +472,8 @@ function ScreeningCard({
                   <p
                     className="border-carmine line-clamp-3 max-w-prose border-l-2 pl-3 text-sm"
                     style={{
-                      maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)',
+                      maskImage:
+                        'linear-gradient(to bottom, black 70%, transparent 100%)',
                       WebkitMaskImage:
                         'linear-gradient(to bottom, black 70%, transparent 100%)',
                     }}

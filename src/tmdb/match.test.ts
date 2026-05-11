@@ -12,7 +12,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { pickBestMatch, scoreCandidates, MATCH_CONFIDENCE_THRESHOLD } from './match';
+import {
+  pickBestMatch,
+  scoreCandidates,
+  MATCH_CONFIDENCE_THRESHOLD,
+  TITLE_AMBIGUITY_EPSILON,
+} from './match';
 import type { TmdbMovieSummary } from './client';
 
 function candidate(overrides: Partial<TmdbMovieSummary>): TmdbMovieSummary {
@@ -155,8 +160,111 @@ describe('pickBestMatch — year filter', () => {
   });
 });
 
-describe('pickBestMatch — popularity tiebreaker', () => {
-  it('prefers the more popular candidate when string scores tie', () => {
+describe('pickBestMatch — title ambiguity guard', () => {
+  // Bug class adjacent to TODOS.md #18: when TMDB returns multiple
+  // candidates with the SAME localized title (e.g. Eggers 2024 and
+  // Murnau 1922 both stored under "Nosferatu" in TMDB's es-AR
+  // localization), pickBestMatch would previously break the tie by
+  // popularity — silently picking the most-popular wrong film. With
+  // the ambiguity guard, identical-title candidates above threshold
+  // force a null return so the caller disambiguates via director or
+  // surfaces as 'low-confidence' (operator-actionable miss).
+  it('returns null when top-2 candidates tie at high confidence (identical localized titles)', () => {
+    const eggers = candidate({
+      id: 426063,
+      title: 'Nosferatu',
+      original_title: 'Nosferatu',
+      release_date: '2024-12-25',
+      popularity: 500.0,
+    });
+    const murnau = candidate({
+      id: 653,
+      title: 'Nosferatu',
+      original_title: 'Nosferatu, eine Symphonie des Grauens',
+      release_date: '1922-03-04',
+      popularity: 30.0,
+    });
+    const m = pickBestMatch([eggers, murnau], 'Nosferatu', undefined);
+    expect(m).toBeNull();
+  });
+
+  it('still returns null on ambiguous high-confidence ties even with a year hint that filters nothing', () => {
+    // Three candidates all in 1979 ±1 — year filter passes all, ambiguity remains.
+    const a = candidate({
+      id: 1,
+      title: 'Test Movie',
+      original_title: 'Test Movie',
+      release_date: '1979-01-01',
+      popularity: 1.0,
+    });
+    const b = candidate({
+      id: 2,
+      title: 'Test Movie',
+      original_title: 'Test Movie',
+      release_date: '1979-01-01',
+      popularity: 99.0,
+    });
+    expect(pickBestMatch([a, b], 'Test Movie', 1979)).toBeNull();
+  });
+
+  it('still picks the top when the runner-up is below threshold', () => {
+    const top = candidate({
+      id: 1,
+      title: 'The Misfits',
+      original_title: 'The Misfits',
+      release_date: '1961-01-01',
+      popularity: 10.0,
+    });
+    const weak = candidate({
+      id: 2,
+      title: 'Something Else Entirely',
+      original_title: 'Different Title',
+      release_date: '1961-01-01',
+      popularity: 100.0,
+    });
+    const m = pickBestMatch([top, weak], 'The Misfits', 1961);
+    expect(m).not.toBeNull();
+    expect(m!.candidate.id).toBe(1);
+  });
+
+  it('still picks the top when the runner-up is above threshold but outside the epsilon band', () => {
+    // Top scores ~1.0; runner-up scores ~0.90 — both clear 0.85, but the
+    // gap (~0.10) is well outside TITLE_AMBIGUITY_EPSILON (0.01). The
+    // matcher should be confident enough to pick the top without forcing
+    // a director-fallback.
+    const top = candidate({
+      id: 1,
+      title: 'Persona',
+      original_title: 'Persona',
+      release_date: '1966-01-01',
+      popularity: 10.0,
+    });
+    const runnerUp = candidate({
+      id: 2,
+      title: 'Personae',
+      original_title: 'Personae',
+      release_date: '1966-01-01',
+      popularity: 1.0,
+    });
+    const m = pickBestMatch([top, runnerUp], 'Persona', 1966);
+    expect(m).not.toBeNull();
+    expect(m!.candidate.id).toBe(1);
+    // Sanity-check the gap is in fact outside epsilon (otherwise this
+    // test would be encoding the wrong intent).
+    const sorted = scoreCandidates([top, runnerUp], 'Persona', 1966);
+    expect(sorted[0].confidence - sorted[1].confidence).toBeGreaterThan(
+      TITLE_AMBIGUITY_EPSILON,
+    );
+  });
+});
+
+describe('scoreCandidates — popularity still tiebreaks the sort order', () => {
+  // Ambiguity guard only affects pickBestMatch's final decision —
+  // scoreCandidates still sorts more-popular first when title scores tie.
+  // This matters for director-fallback in enrich.ts, which walks the
+  // sorted top-3: popularity-first order means the most likely candidate
+  // is checked first, minimizing wasted TMDB credit fetches.
+  it('orders tied-title candidates by popularity, more-popular first', () => {
     const less = candidate({
       id: 1,
       title: 'The Misfits',
@@ -171,8 +279,9 @@ describe('pickBestMatch — popularity tiebreaker', () => {
       release_date: '1961-01-01',
       popularity: 50.0,
     });
-    const m = pickBestMatch([less, more], 'The Misfits', 1961);
-    expect(m!.candidate.id).toBe(2);
+    const sorted = scoreCandidates([less, more], 'The Misfits', 1961);
+    expect(sorted[0].candidate.id).toBe(2);
+    expect(sorted[1].candidate.id).toBe(1);
   });
 });
 

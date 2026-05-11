@@ -142,23 +142,51 @@ export async function enrichFilm(
     const match = pickBestMatch(candidates, scrapedTitle, year, {
       titleOriginal: hints.titleOriginal,
     });
+
+    // Cache the already-fetched top details so step 4 doesn't re-fetch
+    // when director-verification fails and the rescue loop revisits the
+    // same top candidate.
+    let topDetails: TmdbMovieDetails | null = null;
+
     if (match) {
-      const details = await getMovie(match.candidate.id);
-      const delta = await buildDelta(details, 'auto', match.confidence);
-      return { delta, reason: 'ok' };
+      topDetails = await getMovie(match.candidate.id);
+
+      // Director verification — when the scraper provided a director hint,
+      // the top title-match must agree before we accept it. This catches
+      // the bug class where a single high-confidence title match is the
+      // wrong film: e.g. the Nosferatu / Eggers vs Herzog case
+      // (TODOS.md #18) where MALBA scraped just "Nosferatu" + "Werner
+      // Herzog" but TMDB had Eggers 2024 with an exact title match
+      // (score 1.0) AND Herzog 1979 with a longer localized title
+      // (score ~0.87). pickBestMatch alone returned Eggers; director-
+      // fallback never ran because the match wasn't low-confidence.
+      // With this verification, mismatched director on the top match
+      // falls through to step 4, which walks the sorted top-N and
+      // accepts the first candidate whose director matches.
+      const directorVerified =
+        !hints.director || directorsMatch(hints.director, extractDirectors(topDetails));
+      if (directorVerified) {
+        const delta = await buildDelta(topDetails, 'auto', match.confidence);
+        return { delta, reason: 'ok' };
+      }
+      // Fall through to step 4 — preserve topDetails for reuse.
     }
 
-    // 4. Director fallback — for films whose string similarity is below
-    // the 0.85 threshold (localized titles that drift significantly from
-    // both the scrape and the TMDB entry), fetch credits for the top-3
-    // candidates and accept any whose credited director matches.
-    // This costs 1–3 extra API calls per low-confidence film, only.
+    // 4. Director fallback — fires when EITHER pickBestMatch returned
+    // null (no candidate cleared threshold OR title was ambiguous per
+    // the TITLE_AMBIGUITY_EPSILON guard in match.ts) OR the top match's
+    // director failed verification above. Walks the sorted top-3 and
+    // accepts the first whose credited director matches the hint.
+    // This costs 1–3 extra API calls (minus 1 when topDetails is cached).
     if (hints.director) {
       const sorted = scoreCandidates(candidates, scrapedTitle, year, {
         titleOriginal: hints.titleOriginal,
       });
       for (const { candidate, confidence } of sorted.slice(0, 3)) {
-        const details = await getMovie(candidate.id);
+        const details =
+          match && candidate.id === match.candidate.id && topDetails
+            ? topDetails
+            : await getMovie(candidate.id);
         const tmdbDirectors = extractDirectors(details);
         if (directorsMatch(hints.director, tmdbDirectors)) {
           // Confidence boost: director match is a strong disambiguator,
