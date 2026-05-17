@@ -2,6 +2,16 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.2.3.7] - 2026-05-17
+
+### Fixed
+
+- **Date strip's "you are here" signal now actually follows the user's gaze.** Triggered by a user reporting the exact confusion that was anticipated when the original dual-signal model was specced: the strip was encoding two facts simultaneously — today is permanently carmine-filled, AND the currently-viewed day section gets a carmine bottom underline — and the solid fill always beat the 2px underline at quick-glance distance. Users reported thinking they were always viewing HOY regardless of how far they'd scrolled. Collapsed to one signal: the carmine fill (cream text on carmine bg) IS the scroll-spy affordance, and it moves with the user's position in the cartelera. The underline is gone entirely. First paint seeds the active chip to today, so HOY is filled on initial load and only un-fills once the user scrolls down. The "HOY" caps text on today's chip remains regardless of active state — that's the day label (verbal symmetry with the day-banner HOY pill, per DESIGN.md), not a styling concern. Click-driven smooth scroll still optimistically fills the clicked chip during the IO suppression window; the IntersectionObserver model is unchanged (rootMargin `-30% 0px -50% 0px`, threshold 0). `aria-current="date"` stays on today's chip — that's a semantic "this is today" signal, orthogonal to the new visual "where you are scrolled" signal. Implementation: `src/app/_components/DateStrip.tsx` (single derived `isActive` boolean drives bg + text colors; bootstrap to today's `dateKey` via lazy `useState`; transition updated from `background-color,border-color` to `transition-colors` to cover the text-color toggle).
+
+### Documentation
+
+- **`DESIGN.md` updated** to reflect the new one-signal model: the date-strip token table (lines ~82-89) renames "Today chip bg/text" rows to "Active chip bg/text" and adds a "Today chip (when not active)" row clarifying that HOY label-text behavior is independent of the fill; the active-state transition spec swaps `border-color` for `color` to match the implementation; and the date-strip prose on line 149 is rewritten to describe the single carmine-fill scroll-spy. A 2026-05-17 entry in the Decisions Log captures the rationale — including the user-reported confusion that triggered the fix — so future-me doesn't try to re-introduce the dual-signal model.
+
 ## [0.2.3.6] - 2026-05-11
 
 ### Added

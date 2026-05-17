@@ -4,10 +4,17 @@
  * DateStrip — sticky horizontal day-chip nav above the cartelera.
  *
  * Layout: 14 date chips (today through today+13) + 1 trailing "Próximamente →"
- * chip (only when there's content beyond day 14). Today is permanently
- * carmine-filled. Days with zero screenings are muted (50% opacity, still
- * tappable). When the user scrolls, the chip whose corresponding day section
- * is currently in the upper-middle viewport band gets a carmine underline.
+ * chip (only when there's content beyond day 14). The chip whose day section
+ * is currently in the upper-middle viewport band gets the carmine fill
+ * (cream text on carmine bg) — "you are here." Initial state seeds this to
+ * today, so HOY is filled on first paint until the user scrolls. Days with
+ * zero screenings are muted (50% opacity, still tappable).
+ *
+ * Earlier design encoded TWO facts on the strip (today = permanent carmine
+ * fill, scroll-position = carmine underline). The fill always won the
+ * eyeball — users thought they were viewing HOY regardless of scroll.
+ * Collapsed to one signal: the active fill is the only scroll-spy
+ * affordance.
  *
  * Active-state IO model:
  *
@@ -21,7 +28,7 @@
  *      ─────────────────────────────  ← rootMargin bottom: -50%
  *      viewport bottom
  *
- * A day section is "in view" (and its chip gets the underline) when its
+ * A day section is "in view" (and its chip gets the carmine fill) when its
  * top edge is within that 30%-50% upper-middle band. Threshold is 0 — any
  * pixel-level intersection inside the rootMargin counts. This prevents
  * tall day sections (with 25 screenings) from never crossing a threshold:0.3
@@ -80,7 +87,13 @@ function deriveChipMeta(day: DayGroup): ChipMeta {
 }
 
 export function DateStrip({ days, hasUpcoming }: DateStripProps) {
-  const [activeKey, setActiveKey] = useState<string | null>(null);
+  // Bootstrap active to today's dateKey so HOY is filled on first paint
+  // (matching the scroll position — user lands at the top of the page,
+  // which is today's section). Without this, the strip would briefly show
+  // no carmine fill before the IO observer first fires.
+  const [activeKey, setActiveKey] = useState<string | null>(
+    () => days.find((d) => d.isToday)?.dateKey ?? null,
+  );
   // Edge-fade gradients show only when the strip can actually scroll in
   // that direction — at scroll-start, no left fade; at scroll-end, no
   // right fade. Avoids a phantom "more this way" pointing at nothing.
@@ -236,6 +249,7 @@ export function DateStrip({ days, hasUpcoming }: DateStripProps) {
       <div className="date-strip flex gap-1 overflow-x-auto py-2">
         {days.map((day) => {
           const c = deriveChipMeta(day);
+          const isActive = c.dateKey === activeKey;
           return (
             <a
               key={c.dateKey}
@@ -246,19 +260,16 @@ export function DateStrip({ days, hasUpcoming }: DateStripProps) {
               onClick={onChipClick(c.dateKey)}
               className={[
                 'date-chip flex shrink-0 snap-start flex-col items-center justify-center px-3 py-2 font-mono no-underline',
-                'min-w-[64px] transition-[background-color,border-color] duration-[50ms] ease-out',
+                'min-w-[64px] transition-colors duration-[50ms] ease-out',
                 'focus-visible:outline-carmine focus-visible:outline-2 focus-visible:outline-offset-2',
-                c.isToday ? 'bg-carmine text-cream' : 'text-ink hover:bg-carmine/10',
-                c.isEmpty && !c.isToday ? 'opacity-50' : '',
-                !c.isToday && c.dateKey === activeKey
-                  ? 'border-carmine border-b-2'
-                  : 'border-b-2 border-transparent',
+                isActive ? 'bg-carmine text-cream' : 'text-ink hover:bg-carmine/10',
+                c.isEmpty && !isActive ? 'opacity-50' : '',
               ].join(' ')}
             >
               <span
                 className={[
                   'tracking-card text-[10px] uppercase',
-                  c.isToday
+                  isActive
                     ? 'text-cream'
                     : c.isWeekend
                       ? 'text-carmine'
@@ -272,11 +283,21 @@ export function DateStrip({ days, hasUpcoming }: DateStripProps) {
                 // numeric day. Echoes DESIGN.md's day-banner HOY pill —
                 // tapping the today chip lands on a banner that also
                 // reads "HOY". Visual + verbal symmetry.
-                <span className="tracking-card text-cream font-mono text-[15px] font-bold uppercase">
+                <span
+                  className={[
+                    'tracking-card font-mono text-[15px] font-bold uppercase',
+                    isActive ? 'text-cream' : 'text-ink',
+                  ].join(' ')}
+                >
                   HOY
                 </span>
               ) : (
-                <span className="text-ink font-serif text-[22px] leading-none tabular-nums">
+                <span
+                  className={[
+                    'font-serif text-[22px] leading-none tabular-nums',
+                    isActive ? 'text-cream' : 'text-ink',
+                  ].join(' ')}
+                >
                   {c.dayNum}
                 </span>
               )}
@@ -292,17 +313,29 @@ export function DateStrip({ days, hasUpcoming }: DateStripProps) {
             onClick={onChipClick('upcoming')}
             className={[
               'date-chip flex shrink-0 snap-start flex-col items-center justify-center px-3 py-2 font-mono no-underline',
-              'text-ink hover:bg-carmine/10 min-w-[64px] transition-colors duration-[50ms] ease-out',
+              'min-w-[64px] transition-colors duration-[50ms] ease-out',
               'focus-visible:outline-carmine focus-visible:outline-2 focus-visible:outline-offset-2',
               activeKey === 'upcoming'
-                ? 'border-carmine border-b-2'
-                : 'border-b-2 border-transparent',
+                ? 'bg-carmine text-cream'
+                : 'text-ink hover:bg-carmine/10',
             ].join(' ')}
           >
-            <span className="tracking-card text-ink-gray text-[10px] uppercase">
+            <span
+              className={[
+                'tracking-card text-[10px] uppercase',
+                activeKey === 'upcoming' ? 'text-cream' : 'text-ink-gray',
+              ].join(' ')}
+            >
               próx.
             </span>
-            <span className="font-serif text-[22px] leading-none">→</span>
+            <span
+              className={[
+                'font-serif text-[22px] leading-none',
+                activeKey === 'upcoming' ? 'text-cream' : 'text-ink',
+              ].join(' ')}
+            >
+              →
+            </span>
           </a>
         )}
       </div>
