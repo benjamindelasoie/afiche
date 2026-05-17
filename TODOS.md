@@ -4,6 +4,83 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 22. Rescrape still loses enrichment after the 2026-05-07 structural fix (BUG / structural residue)
+
+**What:** Despite v0.2.1.0 + v0.2.3.0 shipping the `scraped_year` split + `tmdb_id`-as-merge-axis fixes for the mutable-key upsert class (memory: `project_afiche_mutable_key_upsert_bug`), the operator continues to observe enrichment data getting "stepped on" during prod rescrapes (reported 2026-05-17). The original bug class is closed; this is a residual mechanism in the same family that the May 7 fix did not cover.
+
+**Why:** The May 7 fix made the upsert *key* stable (`(scraped_title, scraped_year)` no longer mutates between scrapes). But the *update side* of the upsert — what columns get rewritten when a matching row already exists — may still be too aggressive. If `upsertFilm` does `ON CONFLICT (...) DO UPDATE SET poster_url = excluded.poster_url, director = excluded.director, ...` for every column (including enrichment-only columns), the scraper-stage values (mostly NULL for `posterUrl`/`director`/`tmdbId`/etc.) will null out the enriched data on every rescrape. The fix would limit the update to scraper-stage columns only (the title/scraped_title/scraped_year/maybe one or two scraper-emitted hints), leaving enrichment-set columns untouched.
+
+**Hypotheses, ordered by suspected likelihood:**
+
+1. **Field-level overwrite (most likely).** Upsert UPDATE clause covers enrichment-only columns. Investigate `src/scrapers/ingest/` for the `upsertFilm` (or equivalent) implementation; check whether it scopes the SET to scraper-emitted columns. Fix: scope `SET` to only what the scraper actually knows.
+2. **Cross-provider title drift.** MALBA emits "Eraserhead", Lugones emits "Eraserhead " (trailing space), VLM-OCR'd Lorca emits "ERASERHEAD" or similar. Three distinct `(scraped_title, scraped_year)` rows for one film. The `tmdb_id`-merge logic resolves after enrichment runs, but during the rescrape→pre-enrichment window the cartelera may render the unenriched duplicate while the enriched original sits orphaned.
+3. **Slug regeneration.** `films.slug` is computed from `title` (per `src/lib/slug.ts`). If TMDB's canonical title differs from the scraper's, an enrichment-time `title` update could regenerate the slug — breaking in-flight `/pelicula/<slug>` URLs that crawlers / social previews / personal bookmarks may already point at. Less likely the operator's reported "lost enrichment" issue, but adjacent and worth confirming the slug is locked post-insert (the schema comment at `src/db/schema.ts` line ~135 claims slug is stable "across the project's lifetime"; verify the upsert path doesn't violate that contract).
+
+**How to investigate:**
+
+```sql
+-- Diagnostic 1: find rows where the enrichment-only fields are NULL but
+-- tmdb_id is set — symptom of a recent overwrite that didn't fully clear
+-- tmdb_id (or where enrichment never ran for some reason).
+SELECT id, scraped_title, scraped_year, tmdb_id, poster_url, director,
+       synopsis_es, match_source, match_confidence
+FROM films
+WHERE tmdb_id IS NOT NULL
+  AND (poster_url IS NULL OR director IS NULL)
+ORDER BY id DESC
+LIMIT 50;
+```
+
+```sql
+-- Diagnostic 2: find duplicate (scraped_title, scraped_year) candidates
+-- where one row is enriched and another isn't.
+SELECT a.id AS enriched_id, b.id AS unenriched_id,
+       a.scraped_title, a.scraped_year, a.tmdb_id AS enriched_tmdb_id,
+       b.tmdb_id AS unenriched_tmdb_id, b.match_source
+FROM films a
+JOIN films b ON a.scraped_title = b.scraped_title
+              AND a.scraped_year IS NOT DISTINCT FROM b.scraped_year
+              AND a.id < b.id
+WHERE a.tmdb_id IS NOT NULL
+  AND b.tmdb_id IS NULL;
+```
+
+Then read `src/scrapers/ingest/` (likely `upsert.ts` or similar) to confirm the `ON CONFLICT DO UPDATE SET` clause's column list.
+
+**Fix shape (assuming hypothesis 1 is right):**
+
+- Restrict the upsert's `SET` to scraper-emitted columns only. The Drizzle pattern:
+  ```ts
+  onConflictDoUpdate({
+    target: [films.scrapedTitle, films.scrapedYear],
+    set: { /* only scraper-stage columns: scraped_title, scraped_year (no-op),
+             maybe `country` if the scraper extracts it. NEVER poster_url,
+             director, tmdb_id, synopsis_es, runtime_min, cast, genres. */ },
+  })
+  ```
+- Pair with a regression test in `src/scrapers/ingest.test.ts`: enrich a film, simulate a rescrape, assert that `poster_url`, `director`, `synopsis_es`, `tmdb_id` remain unchanged.
+
+**Pros:**
+- Clean operator workflow — manual TMDB ID patches stop getting overwritten.
+- Cuts re-enrichment workload (currently the enrichment loop has to re-resolve TMDB for any film whose data got nulled).
+- Closes a class of bug that was never fully closed by May 7.
+
+**Cons / risks:**
+- Touches the hottest path in ingest. Regression risk for happy-path scrape correctness if the column scope is too narrow (e.g., if some scraper-emitted hint genuinely should refresh on rescrape).
+- Cross-provider title drift (hypothesis 2) is structurally adjacent and may need to be addressed in the same cycle.
+
+**Effort estimate:** S–M (1-3 hours of focused investigation + fix + tests). Possibly L if hypothesis 2 turns out to also be live in prod and needs a normalize-on-write strategy.
+
+**Priority:** P2 — operator-facing pain, affects every prod rescrape currently. Not blocking ship, but every rescrape costs cleanup effort until fixed.
+
+**Per Afiche ship workflow:** scraper + ingest path → branch + PR, not direct-to-main. Pair with a `/plan-eng-review` to lock the column-scoping rule + test plan before implementing.
+
+**Depends on / blocked by:** nothing. Investigation can start from prod evidence (the two diagnostic SQL queries above).
+
+**First-step action:** run the two diagnostic SQL queries against prod, paste a few example rows into the next session, and `/plan-eng-review` from there. The fix is short once the diagnosis is named.
+
+---
+
 ## 21. Wall-of-afiches: full-screen interactive poster wall as a second view (CONCEPT)
 
 **What:** A full-screen "Street-View POV" looking at a wall covered in the posters of currently-playing films. The user navigates by panning / scrolling / tilting; the wall is the cartelera but as a *visual lineup*, not a card-by-card list. Idea floated 2026-05-17 at end-of-day — captured here so it survives until next session.
