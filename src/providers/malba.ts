@@ -37,6 +37,7 @@
 import * as cheerio from 'cheerio';
 import { type Provider, type ProviderRunResult, type ScrapedScreening } from './types';
 import type { ScreeningTag } from '@/db';
+import { BA_TZ } from '@/lib/date-ranges';
 
 const LISTING_URL = 'https://malba.org.ar/cine/';
 const DETAIL_BASE = 'https://malba.org.ar/evento/';
@@ -336,7 +337,7 @@ function nextWeekdayBaToUtc(
 ): Date {
   // Compute today's BA-local date by reading the parts via Intl.
   const fmt = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Argentina/Buenos_Aires',
+    timeZone: BA_TZ,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

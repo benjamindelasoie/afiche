@@ -155,3 +155,66 @@ describe('layout invariant: <main> elements need w-full + min-w-0', () => {
     expect(classes).toContain('flex-col');
   });
 });
+
+// ---------------------------------------------------------------------------
+// JSON-LD mount invariants.
+//
+// Pin the structural contract that Schema.org JSON-LD ships from the
+// surfaces the design doc (20260517-135641) commits to: the homepage and
+// the alive /pelicula/<slug> branch. Reverse-pin that the notFound branch
+// (rendered by not-found.tsx after the page's notFound() call) does NOT
+// emit JSON-LD — semantically wrong under Strategy A (page is noindex
+// AND dormant), would risk soft-404 classification.
+//
+// String-based scan matches the existing layout-invariants discipline —
+// no DB or render simulation needed. The runtime correctness of the
+// payload itself is covered by src/lib/json-ld.test.ts.
+// ---------------------------------------------------------------------------
+
+describe('json-ld mount invariants', () => {
+  it.each([
+    ['src/app/page.tsx', 'buildHomepageJsonLd'],
+    ['src/app/pelicula/[slug]/page.tsx', 'buildFilmPageJsonLd'],
+  ] as const)(
+    '%s — imports JsonLd + %s from @/lib/json-ld and renders <JsonLd payload=',
+    async (relPath, builderName) => {
+      const src = await readFile(resolve(projectRoot, relPath), 'utf8');
+
+      // Import line — both symbols pulled from the canonical module.
+      const importRe = new RegExp(
+        `import\\s+\\{[^}]*\\bJsonLd\\b[^}]*\\b${builderName}\\b[^}]*\\}\\s+from\\s+['"]@/lib/json-ld['"]|` +
+          `import\\s+\\{[^}]*\\b${builderName}\\b[^}]*\\bJsonLd\\b[^}]*\\}\\s+from\\s+['"]@/lib/json-ld['"]`,
+      );
+      expect(
+        importRe.test(src),
+        `Expected ${relPath} to import { JsonLd, ${builderName} } from '@/lib/json-ld'. ` +
+          'See design doc benjamin.delasoie-main-design-20260517-135641.md.',
+      ).toBe(true);
+
+      // Render line — the actual mount.
+      expect(
+        src,
+        `Expected ${relPath} to render <JsonLd payload={...}>. ` +
+          'See eng-review test plan benjamin.delasoie-main-eng-review-test-plan-20260517-142914.md.',
+      ).toMatch(/<JsonLd\s+payload=/);
+    },
+  );
+
+  it('not-found.tsx does NOT emit JSON-LD (notFound branch is dormant)', async () => {
+    const src = await readFile(
+      resolve(projectRoot, 'src/app/pelicula/[slug]/not-found.tsx'),
+      'utf8',
+    );
+    // No import of JsonLd, no mount. The page's notFound() interrupts
+    // render before the page-level JSON-LD mount is reached, so this is
+    // structurally guaranteed — but pinning it here means a future dev
+    // can't accidentally add a JSON-LD mount on the 404 page (which would
+    // emit `Movie` with empty `subjectOf`, semantically wrong and
+    // soft-404-prone).
+    expect(
+      src,
+      'not-found.tsx must not import JsonLd. The notFound branch is dormant ' +
+        'under Strategy A and must emit no Schema.org structured data.',
+    ).not.toMatch(/\bJsonLd\b/);
+  });
+});

@@ -10,6 +10,7 @@ import {
   type ScreeningRow,
 } from '@/db/queries';
 import { TAG_LABELS_ES, GENRE_LABELS_ES } from '@/db';
+import { JsonLd, buildFilmPageJsonLd } from '@/lib/json-ld';
 
 // Server Component, dynamic per request. The cartelera anchors to BA
 // "today" via `new Date()`, and the screenings horizon shifts every
@@ -126,8 +127,21 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
     .map((id) => GENRE_LABELS_ES[id])
     .filter((label): label is string => Boolean(label));
 
+  // JSON-LD payload for the alive /pelicula/<slug> branch. Reaches this
+  // line only after lookupFilm returns non-null AND screenings.length > 0
+  // (getUpcomingScreeningsByFilm contractually returns null when there
+  // are zero upcoming rows — see queries.ts:395). Present for future-
+  // optionality under Strategy A: robots.index is currently false so
+  // Google does not surface this in SERPs today; structured data is
+  // pre-baked for the moment the Strategy A revisit-trigger fires (see
+  // ~/.gstack/projects/kino/benjamin.delasoie-main-design-20260517-135641.md).
+  // If this mount ever accumulates maintenance overhead, strip it back to
+  // homepage-only — the helper is shared, removal is one line.
+  const jsonLdPayload = buildFilmPageJsonLd(film, screenings);
+
   return (
     <main className="mx-auto w-full max-w-5xl min-w-0 px-4 py-8 sm:px-6 md:py-16">
+      <JsonLd payload={jsonLdPayload} />
       {/* Back link to cartelera. Editorial breadcrumb-style: small mono
           caps, carmine, sits above the headline. Lets the user ground
           themselves before the page-shaped content lands. */}

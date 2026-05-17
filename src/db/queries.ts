@@ -31,6 +31,7 @@ import {
   getTodayStartBA,
   getEndOfTwoWeeksBA,
   getIsoWeekStartBA,
+  BA_TZ,
 } from '@/lib/date-ranges';
 
 export interface ScreeningRow {
@@ -69,6 +70,12 @@ export interface ScreeningRow {
     id: string;
     name: string;
     neighborhood: string | null;
+    /**
+     * Street address, when known. Nullable because seed data backfilled
+     * addresses on a venue-by-venue cadence; some cinemas still have it
+     * blank. Consumed by JSON-LD's MovieTheater.address (omits when null).
+     */
+    address: string | null;
     type: 'indie' | 'chain';
   };
 }
@@ -152,6 +159,7 @@ async function fetchRows({
       id: row.cinema.id,
       name: row.cinema.name,
       neighborhood: row.cinema.neighborhood,
+      address: row.cinema.address,
       type: row.cinema.type,
     },
   }));
@@ -395,10 +403,9 @@ export async function getUpcomingScreeningsByFilm(
 }
 
 // ---------------------------------------------------------------------------
-// Date formatting helpers — always in America/Argentina/Buenos_Aires
+// Date formatting helpers — always in America/Argentina/Buenos_Aires.
+// BA_TZ is imported from @/lib/date-ranges (canonical home for the constant).
 // ---------------------------------------------------------------------------
-
-const BA_TZ = 'America/Argentina/Buenos_Aires';
 
 function formatDateKeyBA(d: Date): string {
   // Returns 'YYYY-MM-DD' as seen in Buenos Aires (stable grouping key)

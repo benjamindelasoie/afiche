@@ -26,6 +26,15 @@
  * *right now*.
  */
 
+/**
+ * Canonical IANA timezone identifier for Buenos Aires. Used by every
+ * BA-local Intl.DateTimeFormat call across the codebase. Imported by
+ * src/db/queries.ts and src/lib/json-ld.ts; the literal string should
+ * NOT appear anywhere else in the source — grep for the literal as a
+ * cleanliness check.
+ */
+export const BA_TZ = 'America/Argentina/Buenos_Aires';
+
 // BA is UTC-3 year-round. When the BA wall clock says 00:00, UTC says 03:00.
 const BA_OFFSET_HOURS = 3;
 
@@ -44,7 +53,7 @@ interface BAParts {
  */
 function baParts(instant: Date): BAParts {
   const fmt = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Argentina/Buenos_Aires',
+    timeZone: BA_TZ,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

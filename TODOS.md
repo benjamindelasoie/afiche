@@ -88,7 +88,9 @@ Naive: `startsAtUtc < now()`. Better: `startsAtUtc + grace_minutes < now()` wher
 
 ---
 
-## 19. Indexability strategy for `/pelicula/<slug>` — keep noindex or restructure for persistence? (STRATEGIC)
+~~**19. Indexability strategy for `/pelicula/<slug>` — keep noindex or restructure for persistence? (STRATEGIC)**~~ Resolved 2026-05-17 via /office-hours design doc `~/.gstack/projects/kino/benjamin.delasoie-main-design-20260517-135641.md`. **Strategy A locked.** `/pelicula/<slug>` keeps `robots: { index: false }` (`src/app/pelicula/[slug]/page.tsx:97`); curated channels (physical posters + X + newsletter + word-of-mouth) remain primary acquisition; SEO is deferred. Triggers to revisit: (a) curated channels plateau for 4+ weeks AND operator wants more growth, OR (b) Vercel Analytics shows >10% of homepage traffic from Google referrer over a 4-week window while /pelicula/ stays noindex (surprising organic upside that suggests the lifecycle restructure would pay back). Sub-items #13.1 reframed (JSON-LD via shared helper — homepage authoritative; /pelicula/ future-optional) and shipped in same PR; #13.2 strike-closed (slug-history is irrelevant when pages 404 on departure — no SEO link equity to preserve).
+
+**Original framing (preserved for the strategic-decision trail):**
 
 **What:** `/pelicula/<slug>` currently emits `robots: { index: false, follow: true }` (`src/app/pelicula/[slug]/page.tsx:97`). The decision was made during /design-review outside-voice #4 to protect against flap-404 SEO penalties — pages 404 when no upcoming screenings exist, and Google penalizes URLs that flip between 200 and 404 as low-quality. Per-film pages are therefore invisible to search engines by design.
 
@@ -460,7 +462,11 @@ If the heuristic fails on real-page shape, refine the selector (e.g. scope to a 
 
 ## 13. /pelicula/ post-launch hardening (JSON-LD, slug-history, normalization)
 
-**⚠️ STATUS UPDATE 2026-05-11:** Sub-items #13.1 (JSON-LD) and #13.2 (slug-history) are **blocked upstream on TODO #19** (indexability strategy decision). `/pelicula/<slug>` is currently `noindex` (`src/app/pelicula/[slug]/page.tsx:97` — set during /design-review to protect against flap-404 SEO penalties when films leave BA). While noindex is on, Google won't crawl or index these pages, which makes JSON-LD a no-op (search engines never see the structured data) and slug-history's 301-redirect value irrelevant (no SEO link-equity to preserve). Both sub-items only make sense under Strategy B of TODO #19 (indexable + persistent pages). #13.3 (program name normalization) is independent of the indexability question and remains a standalone item — re-evaluate when /programa/ pages are planned.
+**✅ STATUS UPDATE 2026-05-17 (supersedes 2026-05-11):** Sub-items #13.1 and #13.2 resolved via /office-hours + /plan-eng-review on 2026-05-17. See design doc `~/.gstack/projects/kino/benjamin.delasoie-main-design-20260517-135641.md` and test plan `~/.gstack/projects/kino/benjamin.delasoie-main-eng-review-test-plan-20260517-142914.md`.
+
+- **#13.1 (JSON-LD) — reframed and shipped.** Original framing scoped JSON-LD on `/pelicula/<slug>` as part of a Strategy B SEO play; the May 17 design doc replaced this with a Strategy A scope: shared helper at `src/lib/json-ld.tsx`, homepage emits `@graph<ScreeningEvent>` (7-day high-intent window — the authoritative SEO surface since `/` is publicly indexed), `/pelicula/<slug>` alive emits `Movie + subjectOf<ItemList<ScreeningEvent>>` as future-optionality (read-and-discarded by Google today; pre-baked for the Strategy A revisit-trigger). XSS-safe via `</`→`<\/` escape + U+2028/U+2029 escape in `serialize()`. ScreeningRow extended with `cinema.address` for MovieTheater enrichment.
+- **#13.2 (slug-history) — strike-closed.** Strategy A locks `/pelicula/<slug>` to 404 on departure, so there is no SEO link equity to preserve via 301 redirects. Re-open if and only if Strategy A's revisit-trigger fires and noindex is dropped — slug-history becomes load-bearing under any persistent-pages restructure (orphaning risk for indexed URLs).
+- **#13.3 (program-name normalization) — still open.** Independent of indexability; re-evaluate when /programa/ pages are planned (TODO #14).
 
 **What:** Three hardening additions for /pelicula/ after the MVP ships:
 
@@ -488,6 +494,8 @@ If the heuristic fails on real-page shape, refine the selector (e.g. scope to a 
 ---
 
 ## 14. Programs entity expansion (/programa/ pages + entity table)
+
+**Indexability note (inherited from TODO #19, locked 2026-05-17):** when `/programa/<slug>` pages eventually ship, default them to `robots: { index: false }` (Strategy A precedent). The indexability sub-question is answered upstream — no separate /office-hours needed for /programa/ unless TODO #19's revisit-trigger fires. JSON-LD on `/programa/` would follow the same future-optionality pattern as `/pelicula/`: emit a structured payload via the shared `src/lib/json-ld.tsx` helper, ready for Strategy A flip, but understand Google does not surface it while noindex is on. See `~/.gstack/projects/kino/benjamin.delasoie-main-design-20260517-135641.md`.
 
 **What:** Promote `programName` from a denormalized text column on `screenings` to a first-class entity. New `programs` table (id, slug, cinemaId, name, normalized_name, started_at, ended_at, descriptionEs). Migrate existing string values to FK references. Build /programa/<slug> pages with a curatorial argument, the program's films, and the program's dates.
 

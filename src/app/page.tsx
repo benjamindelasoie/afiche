@@ -13,7 +13,8 @@ import {
 } from '@/db/queries';
 import { TAG_LABELS_ES } from '@/db';
 import { getEditionNumber, editionFullSentence } from '@/lib/iso-week';
-import { getIsoWeekStartBA, getIsoWeekEndBA } from '@/lib/date-ranges';
+import { getIsoWeekStartBA, getIsoWeekEndBA, BA_TZ } from '@/lib/date-ranges';
+import { JsonLd, buildHomepageJsonLd } from '@/lib/json-ld';
 import { DateStrip } from '@/app/_components/DateStrip';
 
 // This page is a Server Component — it runs on the server, awaits the DB
@@ -74,6 +75,15 @@ export default async function HomePage() {
   const hasAny = twoWeeks.some((d) => d.screenings.length > 0) || upcoming.length > 0;
   const hasUpcoming = upcoming.length > 0;
 
+  // Schema.org JSON-LD payload for the 7-day high-intent window. Built
+  // from the visible 14-day cartelera (the helper internally filters to
+  // today + next 6 days per eng-review D3). Empty `@graph` is still valid
+  // when the cartelera is empty; Google ignores it gracefully.
+  const jsonLdPayload = buildHomepageJsonLd(
+    twoWeeks.flatMap((d) => d.screenings),
+    { now },
+  );
+
   return (
     <>
       {/* Skip link — keyboard users tab onto this first; hits the main
@@ -85,6 +95,7 @@ export default async function HomePage() {
       >
         Saltar al contenido
       </a>
+      <JsonLd payload={jsonLdPayload} />
       <main className="mx-auto w-full max-w-5xl min-w-0 px-4 py-8 sm:px-6 md:py-16">
         {/* Masthead — full editorial layout. Top kicker carries the
             location identity; the wordmark sits in the middle; bottom
@@ -814,7 +825,7 @@ function computeEdition(
 // ---------------------------------------------------------------------------
 function formatRangeLabel(first: Date, last: Date): string {
   const fmt = new Intl.DateTimeFormat('es-AR', {
-    timeZone: 'America/Argentina/Buenos_Aires',
+    timeZone: BA_TZ,
     day: 'numeric',
     month: 'long',
   });
@@ -843,7 +854,7 @@ function formatRangeLabel(first: Date, last: Date): string {
  */
 function formatRangeShort(first: Date, last: Date): string {
   const fmt = new Intl.DateTimeFormat('es-AR', {
-    timeZone: 'America/Argentina/Buenos_Aires',
+    timeZone: BA_TZ,
     day: 'numeric',
     month: 'short',
   });
@@ -864,7 +875,7 @@ function formatRangeShort(first: Date, last: Date): string {
  */
 function formatLastScrape(d: Date): string {
   const dateFmt = new Intl.DateTimeFormat('es-AR', {
-    timeZone: 'America/Argentina/Buenos_Aires',
+    timeZone: BA_TZ,
     day: 'numeric',
     month: 'long',
   });
