@@ -191,12 +191,14 @@ describe('json-ld mount invariants', () => {
           'See design doc benjamin.delasoie-main-design-20260517-135641.md.',
       ).toBe(true);
 
-      // Render line — the actual mount.
+      // Render line — the actual mount. Permissive over any JSX attributes
+      // between `<JsonLd` and `payload=` (e.g., `key={i}` when the page
+      // emits one mount per event).
       expect(
         src,
-        `Expected ${relPath} to render <JsonLd payload={...}>. ` +
+        `Expected ${relPath} to render <JsonLd ... payload={...}>. ` +
           'See eng-review test plan benjamin.delasoie-main-eng-review-test-plan-20260517-142914.md.',
-      ).toMatch(/<JsonLd\s+payload=/);
+      ).toMatch(/<JsonLd\s+[^>]*payload=/);
     },
   );
 

@@ -129,24 +129,35 @@ describe('buildMovie', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildMovieTheater', () => {
-  it('emits name + address + addressLocality for a fully populated cinema', () => {
+  it('always emits a PostalAddress with addressLocality + addressCountry', () => {
     const t = buildMovieTheater(makeCinema());
     expect(t['@type']).toBe('MovieTheater');
     expect(t.name).toBe('Cine Lorca');
-    expect(t.address).toBe('Avenida Corrientes 1428');
-    expect(t.addressLocality).toBe('San Nicolás');
+    expect(t.address['@type']).toBe('PostalAddress');
+    expect(t.address.addressLocality).toBe('Buenos Aires');
+    expect(t.address.addressCountry).toBe('AR');
   });
 
-  it('omits address when null (Google accepts MovieTheater without address)', () => {
+  it('emits streetAddress when cinema.address is present', () => {
+    const t = buildMovieTheater(makeCinema());
+    expect(t.address.streetAddress).toBe('Avenida Corrientes 1428');
+  });
+
+  it('omits streetAddress when cinema.address is null (PostalAddress stays valid)', () => {
     const t = buildMovieTheater(makeCinema({ address: null }));
-    expect(t.address).toBeUndefined();
-    expect(t.name).toBe('Cine Lorca');
+    expect(t.address.streetAddress).toBeUndefined();
+    // Required PostalAddress fields stay present even without streetAddress.
+    expect(t.address.addressLocality).toBe('Buenos Aires');
+    expect(t.address.addressCountry).toBe('AR');
   });
 
-  it('omits addressLocality when neighborhood is null', () => {
-    const t = buildMovieTheater(makeCinema({ neighborhood: null }));
-    expect(t.addressLocality).toBeUndefined();
-    expect(t.name).toBe('Cine Lorca');
+  it('drops the cinema neighborhood from JSON-LD (no clean Schema.org slot)', () => {
+    const t = buildMovieTheater(makeCinema({ neighborhood: 'Palermo' }));
+    // Neighborhood does not surface anywhere on the address — Schema.org
+    // has no sub-locality property; PostalAddress.addressLocality is "city".
+    const json = JSON.stringify(t);
+    expect(json).not.toContain('Palermo');
+    expect(json).not.toContain('San Nicolás');
   });
 });
 
@@ -192,10 +203,9 @@ describe('buildScreeningEvent', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildHomepageJsonLd', () => {
-  it('returns minimal @graph for empty screening list', () => {
+  it('returns empty array for empty screening list', () => {
     const out = buildHomepageJsonLd([]);
-    expect(out['@context']).toBe('https://schema.org');
-    expect(out['@graph']).toEqual([]);
+    expect(out).toEqual([]);
   });
 
   it('includes screenings within the 7-day window', () => {
@@ -204,7 +214,7 @@ describe('buildHomepageJsonLd', () => {
       startsAtUtc: new Date('2026-05-23T22:00:00Z'),
     });
     const out = buildHomepageJsonLd([in3days], { now });
-    expect(out['@graph']).toHaveLength(1);
+    expect(out).toHaveLength(1);
   });
 
   it('excludes screenings beyond the 7-day window', () => {
@@ -213,17 +223,27 @@ describe('buildHomepageJsonLd', () => {
       startsAtUtc: new Date('2026-05-30T22:00:00Z'),
     });
     const out = buildHomepageJsonLd([in10days], { now });
-    expect(out['@graph']).toEqual([]);
+    expect(out).toEqual([]);
   });
 
-  it('emits each in-window screening as a ScreeningEvent in @graph', () => {
+  it('emits each in-window screening as a typed ScreeningEvent with its own @context', () => {
     const now = new Date('2026-05-20T00:00:00Z');
     const a = makeScreening({ startsAtUtc: new Date('2026-05-20T22:00:00Z') });
     const b = makeScreening({ id: 1002, startsAtUtc: new Date('2026-05-21T22:00:00Z') });
     const out = buildHomepageJsonLd([a, b], { now });
-    expect(out['@graph']).toHaveLength(2);
-    expect(out['@graph'][0]['@type']).toBe('ScreeningEvent');
-    expect(out['@graph'][1]['@type']).toBe('ScreeningEvent');
+    expect(out).toHaveLength(2);
+    expect(out[0]['@context']).toBe('https://schema.org');
+    expect(out[0]['@type']).toBe('ScreeningEvent');
+    expect(out[1]['@context']).toBe('https://schema.org');
+    expect(out[1]['@type']).toBe('ScreeningEvent');
+  });
+
+  it('no `@graph` wrapper anywhere in the output (Google validator trips on typeless roots)', () => {
+    const now = new Date('2026-05-20T00:00:00Z');
+    const a = makeScreening({ startsAtUtc: new Date('2026-05-20T22:00:00Z') });
+    const out = buildHomepageJsonLd([a], { now });
+    const json = JSON.stringify(out);
+    expect(json).not.toContain('@graph');
   });
 });
 

@@ -86,12 +86,36 @@ export interface MovieJsonLd {
   duration?: string;
 }
 
+/**
+ * Schema.org PostalAddress. Google's Event rich result strongly prefers
+ * structured location data over a plain `address` string. Schema.org's
+ * `addressLocality` is the city (e.g., "Buenos Aires"); `addressRegion`
+ * is the state/province; `streetAddress` is the line for street + number.
+ * The cinema's neighborhood (e.g., "Palermo", "San Nicolás") is a sub-
+ * locality which Schema.org has no formal slot for — it stays in the DB
+ * and UI but does not surface in JSON-LD.
+ */
+export interface PostalAddressJsonLd {
+  '@type': 'PostalAddress';
+  streetAddress?: string;
+  addressLocality: string;
+  addressCountry: string;
+}
+
 export interface MovieTheaterJsonLd {
   '@type': 'MovieTheater';
   name: string;
-  address?: string;
-  addressLocality?: string;
+  address: PostalAddressJsonLd;
 }
+
+/**
+ * Hardcoded locality for every BA cinema's MovieTheater.address. Schema.org
+ * requires addressLocality on PostalAddress; Afiche's geographic scope is
+ * BA-only, so the value is a constant.
+ */
+const ADDRESS_LOCALITY = 'Buenos Aires';
+/** ISO 3166-1 alpha-2 country code for Argentina. */
+const ADDRESS_COUNTRY = 'AR';
 
 export interface ScreeningEventJsonLd {
   '@type': 'ScreeningEvent';
@@ -129,18 +153,24 @@ export function buildMovie(film: ScreeningRow['film']): MovieJsonLd {
 }
 
 /**
- * Schema.org MovieTheater. `address` is the street address when known;
- * `addressLocality` is the neighborhood. Google's Event rich result
- * prefers a complete address but accepts MovieTheater with just `name`.
+ * Schema.org MovieTheater. `address` is always a `PostalAddress` object —
+ * Google's Event rich result classifies a plain-string `address` as
+ * unstructured and downgrades validation. `addressLocality` and
+ * `addressCountry` are always emitted (constants since Afiche is BA-only);
+ * `streetAddress` is included when the cinema row has it.
  */
 export function buildMovieTheater(cinema: ScreeningRow['cinema']): MovieTheaterJsonLd {
-  const t: MovieTheaterJsonLd = {
+  const address: PostalAddressJsonLd = {
+    '@type': 'PostalAddress',
+    addressLocality: ADDRESS_LOCALITY,
+    addressCountry: ADDRESS_COUNTRY,
+  };
+  if (cinema.address) address.streetAddress = cinema.address;
+  return {
     '@type': 'MovieTheater',
     name: cinema.name,
+    address,
   };
-  if (cinema.address) t.address = cinema.address;
-  if (cinema.neighborhood) t.addressLocality = cinema.neighborhood;
-  return t;
 }
 
 /**
@@ -172,30 +202,41 @@ export function buildScreeningEvent(s: ScreeningRow): ScreeningEventJsonLd {
 // Top-level page wrappers — assemble a full @context'd payload per page.
 // ---------------------------------------------------------------------------
 
-export interface HomepageJsonLd {
+/**
+ * A `ScreeningEvent` with its own `@context` — the unit emitted by
+ * `buildHomepageJsonLd`, one per `<script type="application/ld+json">`
+ * tag. See the helper's doc comment for why we don't use `@graph`.
+ */
+export type ScreeningEventJsonLdRoot = ScreeningEventJsonLd & {
   '@context': typeof SCHEMA_ORG_CONTEXT;
-  '@graph': ScreeningEventJsonLd[];
-}
+};
 
 /**
- * Build the homepage JSON-LD payload. Filters the input screenings to the
- * 7-day high-intent window (today + next 6 days, per eng-review D3 — the
- * visible page shows 14 days but the JSON-LD emits the 7-day cut where
- * most search intent lives). Emits as a `@graph` array of standalone
- * `ScreeningEvent` objects per Google's Event rich-result documentation
- * (which favors `@graph` over `ItemList` for multi-event pages).
+ * Build the homepage JSON-LD payloads — one self-contained `ScreeningEvent`
+ * per upcoming screening in the 7-day high-intent window (today + next 6
+ * days, per eng-review D3). The visible page shows 14 days; the JSON-LD
+ * emits the 7-day cut where most search intent lives.
+ *
+ * Returns an **array** rather than a single `@graph` wrapper. The homepage
+ * mounts one `<JsonLd>` per element, producing one `<script>` tag per
+ * event — Google's documented pattern for multiple events on one page.
+ * `@graph` parses as Schema.org but Google's Rich Results tester
+ * classifies the typeless root as "unknown-type" and rejects the whole
+ * payload, even when every nested `ScreeningEvent` is individually valid
+ * (observed 2026-05-17).
  */
 export function buildHomepageJsonLd(
   screenings: ScreeningRow[],
   options: { now?: Date } = {},
-): HomepageJsonLd {
+): ScreeningEventJsonLdRoot[] {
   const now = options.now ?? new Date();
   const cutoff = new Date(now.getTime() + HOMEPAGE_JSON_LD_DAYS * ONE_DAY_MS);
-  const window = screenings.filter((s) => s.startsAtUtc < cutoff);
-  return {
-    '@context': SCHEMA_ORG_CONTEXT,
-    '@graph': window.map(buildScreeningEvent),
-  };
+  return screenings
+    .filter((s) => s.startsAtUtc < cutoff)
+    .map((s) => ({
+      '@context': SCHEMA_ORG_CONTEXT,
+      ...buildScreeningEvent(s),
+    }));
 }
 
 export type FilmPageJsonLd = MovieJsonLd & {

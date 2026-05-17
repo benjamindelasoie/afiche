@@ -75,11 +75,14 @@ export default async function HomePage() {
   const hasAny = twoWeeks.some((d) => d.screenings.length > 0) || upcoming.length > 0;
   const hasUpcoming = upcoming.length > 0;
 
-  // Schema.org JSON-LD payload for the 7-day high-intent window. Built
+  // Schema.org JSON-LD events for the 7-day high-intent window. Built
   // from the visible 14-day cartelera (the helper internally filters to
-  // today + next 6 days per eng-review D3). Empty `@graph` is still valid
-  // when the cartelera is empty; Google ignores it gracefully.
-  const jsonLdPayload = buildHomepageJsonLd(
+  // today + next 6 days per eng-review D3). Returns one ScreeningEvent
+  // payload per upcoming screening; each gets its own <script> tag
+  // below (Google's documented pattern for multi-event pages — a single
+  // @graph wrapper trips the Rich Results validator as "unknown-type").
+  // Empty array is fine when the cartelera is empty.
+  const jsonLdEvents = buildHomepageJsonLd(
     twoWeeks.flatMap((d) => d.screenings),
     { now },
   );
@@ -95,7 +98,9 @@ export default async function HomePage() {
       >
         Saltar al contenido
       </a>
-      <JsonLd payload={jsonLdPayload} />
+      {jsonLdEvents.map((event, i) => (
+        <JsonLd key={i} payload={event} />
+      ))}
       <main className="mx-auto w-full max-w-5xl min-w-0 px-4 py-8 sm:px-6 md:py-16">
         {/* Masthead — full editorial layout. Top kicker carries the
             location identity; the wordmark sits in the middle; bottom
