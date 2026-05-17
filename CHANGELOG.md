@@ -2,6 +2,16 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.2.3.8] - 2026-05-17
+
+### Added
+
+- **Branded favicon — cream serif "A" on carmine.** Replaces the default Next.js Vercel "N" that had been sitting in `src/app/favicon.ico` since project init in April. Two files cover the modern + legacy paths simultaneously: a new `src/app/icon.svg` (~250 bytes, vector-crisp at every device pixel ratio) which Next.js 16's file convention auto-injects as `<link rel="icon" type="image/svg+xml" sizes="any" />`, and a regenerated `src/app/favicon.ico` (~15KB, down from 25KB) which serves the legacy `/favicon.ico` path that browsers, bots, RSS readers, and Slack/X/Telegram unfurl generators all fetch directly without parsing HTML. Both `<link>` tags coexist; modern browsers prefer the SVG, direct `/favicon.ico` fetches hit the .ico. No code in `layout.tsx` changes — file conventions drive the metadata generation per Next.js 16's `app-icons.md`.
+
+  Design choice rationale: single-letter marks dominate at the 16×16 browser-tab pixel reality where favicons actually live — peer cinema sites confirm the pattern (Mubi M, Metrograph M, Screen Slate S, Letterboxd 3 dots). A full "AFICHE" wordmark is illegible below ~32px. The serif "A" matches the masthead's Instrument Serif character without depending on Instrument Serif being available in ImageMagick's font set (Times serif renders the glyph; at favicon sizes the difference between Times and Instrument Serif is imperceptible). Cream-on-carmine inversion was picked over carmine-on-cream because the foregrounded brand color stands out in a browser tab row otherwise full of white/grey favicons — the carmine fill is the same non-negotiable visual fingerprint DESIGN.md ascribes to the poster offset shadow.
+
+  Multi-resolution `.ico` contains 16/32/48 subimages (the ICO format is a container; one file holds multiple PNG-encoded sizes and the OS/browser picks the best match per render context). The 48px subimage covers Windows taskbar / Mac+iOS bookmark thumbnails. Generated via ImageMagick `convert -background none -density 384 icon.svg ...` — the high density gives `convert` a 170×170 internal canvas to rasterize into before downsampling, so anti-aliased serifs at 16×16 survive the pipeline. CDN caching note: post-deploy, first visitors may still see the Vercel N until the cache rotates (favicons cache aggressively); hard-refresh or incognito to confirm.
+
 ## [0.2.3.7] - 2026-05-17
 
 ### Fixed
