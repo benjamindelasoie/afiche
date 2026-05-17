@@ -88,12 +88,19 @@ describe('buildMovie', () => {
   it('emits all fields when the film has full TMDB metadata', () => {
     const m = buildMovie(makeFilm());
     expect(m['@type']).toBe('Movie');
+    expect(m['@id']).toBe('urn:afiche:film:mulholland-drive');
     expect(m.name).toBe('Mulholland Drive');
     expect(m.image).toBe('https://image.tmdb.org/t/p/w500/abc.jpg');
     expect(m.description).toContain('rubia amnésica');
     expect(m.director).toEqual({ '@type': 'Person', name: 'David Lynch' });
     expect(m.datePublished).toBe('2001');
     expect(m.duration).toBe('PT147M');
+  });
+
+  it('omits @id when slug is null (legacy rows pre-backfill)', () => {
+    const m = buildMovie(makeFilm({ slug: null }));
+    expect(m['@id']).toBeUndefined();
+    expect(m.name).toBe('Mulholland Drive');
   });
 
   it('omits director when null', () => {
@@ -129,13 +136,20 @@ describe('buildMovie', () => {
 // ---------------------------------------------------------------------------
 
 describe('buildMovieTheater', () => {
-  it('always emits a PostalAddress with addressLocality + addressCountry', () => {
+  it('always emits an @id URN + PostalAddress with addressLocality + addressCountry', () => {
     const t = buildMovieTheater(makeCinema());
     expect(t['@type']).toBe('MovieTheater');
+    expect(t['@id']).toBe('urn:afiche:cine:lorca');
     expect(t.name).toBe('Cine Lorca');
     expect(t.address['@type']).toBe('PostalAddress');
     expect(t.address.addressLocality).toBe('Buenos Aires');
     expect(t.address.addressCountry).toBe('AR');
+  });
+
+  it('emits the same @id across multiple calls for the same cinema (dedup signal)', () => {
+    const t1 = buildMovieTheater(makeCinema());
+    const t2 = buildMovieTheater(makeCinema());
+    expect(t1['@id']).toBe(t2['@id']);
   });
 
   it('emits streetAddress when cinema.address is present', () => {
@@ -244,6 +258,19 @@ describe('buildHomepageJsonLd', () => {
     const out = buildHomepageJsonLd([a], { now });
     const json = JSON.stringify(out);
     expect(json).not.toContain('@graph');
+  });
+
+  it('two screenings of the same film at the same cinema share embedded @ids (Schema.org dedup signal)', () => {
+    const now = new Date('2026-05-20T00:00:00Z');
+    const a = makeScreening({ startsAtUtc: new Date('2026-05-20T22:00:00Z') });
+    const b = makeScreening({ id: 1002, startsAtUtc: new Date('2026-05-21T22:00:00Z') });
+    const out = buildHomepageJsonLd([a, b], { now });
+    expect(out).toHaveLength(2);
+    expect(out[0].location['@id']).toBe(out[1].location['@id']);
+    expect(out[0].workPresented['@id']).toBe(out[1].workPresented['@id']);
+    // And the @ids carry the URN prefix.
+    expect(out[0].location['@id']).toMatch(/^urn:afiche:cine:/);
+    expect(out[0].workPresented['@id']).toMatch(/^urn:afiche:film:/);
   });
 });
 

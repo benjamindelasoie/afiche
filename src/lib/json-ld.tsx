@@ -76,6 +76,15 @@ function isoBaLocal(d: Date): string {
 
 export interface MovieJsonLd {
   '@type': 'Movie';
+  /**
+   * Stable URN identifying this Movie across every embedding on the
+   * page. Schema.org parsers (including Google's) deduplicate entities
+   * by `@id` — so the same Movie embedded in 20 different
+   * ScreeningEvents resolves to a single entity in the parsed graph
+   * instead of 20 distinct objects. Form: `urn:afiche:film:<slug>`.
+   * Omitted when the film has no slug (legacy rows pre-backfill).
+   */
+  '@id'?: string;
   name: string;
   image?: string;
   description?: string;
@@ -104,6 +113,17 @@ export interface PostalAddressJsonLd {
 
 export interface MovieTheaterJsonLd {
   '@type': 'MovieTheater';
+  /**
+   * Stable URN identifying this MovieTheater across every embedding on
+   * the page. Same entity-deduplication purpose as `MovieJsonLd['@id']`
+   * — Schema.org parsers see the same theater across N ScreeningEvents
+   * as one entity, not N. Form: `urn:afiche:cine:<cinema-id>` (where
+   * cinema-id is the slug from the `cinemas` table). URN form rather
+   * than URL because `/cine/<slug>` pages do not exist yet (see
+   * TODO #14 — when they ship, this can switch to the canonical URL
+   * without a content change).
+   */
+  '@id': string;
   name: string;
   address: PostalAddressJsonLd;
 }
@@ -116,6 +136,11 @@ export interface MovieTheaterJsonLd {
 const ADDRESS_LOCALITY = 'Buenos Aires';
 /** ISO 3166-1 alpha-2 country code for Argentina. */
 const ADDRESS_COUNTRY = 'AR';
+
+/** URN prefix for Movie entity identifiers. See MovieJsonLd['@id']. */
+const FILM_URN_PREFIX = 'urn:afiche:film:';
+/** URN prefix for MovieTheater entity identifiers. See MovieTheaterJsonLd['@id']. */
+const CINEMA_URN_PREFIX = 'urn:afiche:cine:';
 
 export interface ScreeningEventJsonLd {
   '@type': 'ScreeningEvent';
@@ -144,6 +169,12 @@ export function buildMovie(film: ScreeningRow['film']): MovieJsonLd {
     '@type': 'Movie',
     name: film.title,
   };
+  // @id placed immediately after @type when slug is available.
+  // Object-key insertion order is preserved by JSON.stringify in V8 /
+  // SpiderMonkey / JavaScriptCore so the serialized output reads
+  // canonically (@type, @id, name, ...). Slug is contractually non-null
+  // post-backfill but typed nullable for legacy rows.
+  if (film.slug) m['@id'] = `${FILM_URN_PREFIX}${film.slug}`;
   if (film.posterUrl) m.image = film.posterUrl;
   if (film.synopsisEs) m.description = film.synopsisEs;
   if (film.director) m.director = { '@type': 'Person', name: film.director };
@@ -168,6 +199,7 @@ export function buildMovieTheater(cinema: ScreeningRow['cinema']): MovieTheaterJ
   if (cinema.address) address.streetAddress = cinema.address;
   return {
     '@type': 'MovieTheater',
+    '@id': `${CINEMA_URN_PREFIX}${cinema.id}`,
     name: cinema.name,
     address,
   };
