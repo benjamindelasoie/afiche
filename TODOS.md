@@ -4,6 +4,50 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 21. Wall-of-afiches: full-screen interactive poster wall as a second view (CONCEPT)
+
+**What:** A full-screen "Street-View POV" looking at a wall covered in the posters of currently-playing films. The user navigates by panning / scrolling / tilting; the wall is the cartelera but as a *visual lineup*, not a card-by-card list. Idea floated 2026-05-17 at end-of-day — captured here so it survives until next session.
+
+**Why it has legs (more than the usual "fun feature" pitch):**
+
+The name "Afiche" *literally means poster* in Spanish (Argentinismo for *cartel* / *poster*). MALBA, Lugones, and Lorca all have physical afiche walls in their lobbies. Walking past a BA street kiosko or a cinema-front cartelera IS the visual the product name evokes — the brand draws its identity from that exact experience. This makes the wall view a rare case of a "fun" feature that's *fused* to the product's identity, not detached from it. Compare to almost any other "delight" feature that has to justify itself against the product's core — this one inherits the justification from the name.
+
+**The real question — does discovery deserve a second view?**
+
+The cartelera answers *"when can I see X?"* (decision tool — what we have). The wall would answer *"what does the lineup LOOK like right now?"* (mood / discovery / browsing — what we don't). Different jobs. Second views often fail to earn their keep past the first novelty session unless they genuinely serve a job the primary view can't. The honest case for this one: the cartelera serves *decision* well but *discovery* weakly — to browse the city's offering you have to scan card-by-card, and that's not the same as "stand in front of the wall and look at everything at once." So discovery genuinely IS a different intent the cartelera doesn't serve.
+
+The risk: novelty visits, low return engagement. The wall might be tapped once at launch, screenshot for X, then never opened again. Mitigation: the wall is a *secondary* surface, not a primary one — its existence doesn't tax the cartelera's main flow. Even if return engagement is low, the launch-moment / press-moment / X-shareable-screenshot value might justify it standalone.
+
+**Three engineering paths, ~10× effort range:**
+
+| Path | What it is | Effort | Pros | Cons |
+|---|---|---|---|---|
+| **A. CSS perspective scroll** | Horizontal-scrolling grid of posters with CSS `perspective` + `transform: rotateY()` so the row reads as a flat wall seen at angle. Snap-scroll to center a poster. | S (~4-6 hrs CC) | Zero new deps. Mobile-native (touch scroll). Tab-keyboard accessible by default. Works at 375px width. | Not literally "POV" — the wall is one-dimensional, no looking up/down. The metaphor is suggested, not embodied. |
+| **B. WebGL POV (three.js / r3f)** | Real 3D camera over a textured plane of posters. Pan, zoom, look-around via touch/drag/scroll. Optional ambient lighting suggesting venue (gallery? kiosko? street at night?). | L (~16-24 hrs CC + bundle cost) | Embodies the metaphor literally. Most editorially expressive — lighting/angle/depth become design vocabulary. Genuinely *novel* at the BA-cinephile scale. | Mobile touch UX is hard to get right — three.js camera controls are mouse-shaped by default; mobile-good libs exist but add another dep. Bundle cost ~100KB minified for r3f. Accessibility story is rough. |
+| **C. Panoramic image** | Server-side composite of all current posters tiled into one wide image; client pans it horizontally like a panorama. Each poster is a clickable region (image map or absolute-positioned anchors over the image). | M (~8-12 hrs CC) | No 3D math. Pre-rendered image is a single asset (CDN-cacheable, deterministic). Mobile pan UX is standard. Could even render as a static OG/X-share image. | The "wall" looks flat from one viewpoint only — no parallax, no atmosphere. Updates require re-rendering the image on every scrape. |
+
+**Constraints worth flagging at implementation time:**
+
+1. **Mobile is the binding constraint.** Most Afiche traffic is likely mobile. A 375px screen can show ~3-4 posters at usable resolution; trying to show "the whole wall at once" on mobile defeats the metaphor. Mobile may need a fundamentally different interaction (vertical scroll past large posters? swipe-deck?) than desktop's wider POV.
+2. **DESIGN.md's "carmine offset shadow on posters" is the non-negotiable visual fingerprint.** On a wall view, what happens to the shadows? Stacked posters would clip each other's shadows; a true 3D scene needs to decide whether shadows render in-world or stay 2D-decorative. This is a real design call, not a detail.
+3. **Spacing aesthetic — kiosko vs gallery.** Physical kiosko packs posters edge-to-edge with overlap; gallery walls use generous margins. The choice flavors the whole feature — kiosko reads as "what's playing tonight, urgent, dense"; gallery reads as "this season's lineup, curated, contemplative." Either fits Afiche; pick one.
+4. **What does the wall do for partial-card / no-poster films?** A wall of posters has no graceful fallback for films without posters (~20% of indie titles per current state). Typographic placeholder posters? Hide them? Group them in a separate "sin afiche" section?
+5. **Discoverability — how does a user get to the wall?** Top-nav button? Easter-egg from the masthead? Mobile gesture? The discoverability decision affects how much the wall earns its keep — if it's buried, low engagement is guaranteed.
+
+**Editorial connection deserves a /design-shotgun pass.** The literalness spectrum (A → B → C above) is a design call, not an engineering one. /design-shotgun could generate variants across the spectrum (CSS row, kiosko-dense WebGL, gallery-spacious WebGL, panoramic single image) and the comparison would surface the right shape faster than reasoning about it abstractly.
+
+**Effort estimate:** Wide range — depends on path (S-L). /office-hours session: 30 min. /design-shotgun: ~60 min. Implementation: 4-24 hrs CC depending on path.
+
+**Priority:** P3 — delight, not friction. The friction queue (#20 expired screenings, #16/17 distribution, #19 indexability) addresses known-bad behavior affecting every-evening users; delight queue moves after friction queue. That said: the editorial fit is unusually strong, and a launch-moment / press-moment / X-shareable visual would be high-impact if Afiche ever wants a public push.
+
+**Depends on / blocked by:** Nothing technical. Strategically gated on (a) /office-hours framing decision *"is the right second view a poster wall, or something else (calendar view, programs index, this-week-at-a-glance)?"* — per `feedback_afiche_editorial_revisit.md`, metaphor drives flavor but does NOT veto UX, so the wall must win on UX merit, not just on metaphor strength. (b) /design-shotgun pass to pick the literalness path before any code.
+
+**First-step action:** Run `/office-hours` with the framing question above. If wall wins as the answer: `/design-shotgun` for the A/B/C path. If something else wins: capture the right answer as TODO #22, retire #21 to "did not pursue" with a note explaining why.
+
+**Trigger to revisit:** When the friction queue is healthier (#20 shipped, #16/17 active), OR when a discovery-shaped user signal emerges in conversation ("I wish I could browse what's playing without committing to a date" feedback), OR if the operator wants a launch/press/X-shareable visual moment.
+
+---
+
 ## 20. Expired screenings dominate the cartelera at typical evening visit times (UX BUG)
 
 **What:** Today's day section currently renders ALL of today's screenings as full cards regardless of whether they've already started. A user opening Afiche at 20:00 BA sees the 17:00, 18:30, and 19:00 screenings (all already started — "expired") taking full poster+synopsis+metadata card space at the top of today's section, forcing them to scroll past stale content before reaching what's actually still seeable tonight. The dominant cartelera-visit intent at evening hours is *"what's still possible to see tonight?"* — current behavior serves the wrong intent.
