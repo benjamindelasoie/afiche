@@ -4,6 +4,46 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 20. Expired screenings dominate the cartelera at typical evening visit times (UX BUG)
+
+**What:** Today's day section currently renders ALL of today's screenings as full cards regardless of whether they've already started. A user opening Afiche at 20:00 BA sees the 17:00, 18:30, and 19:00 screenings (all already started — "expired") taking full poster+synopsis+metadata card space at the top of today's section, forcing them to scroll past stale content before reaching what's actually still seeable tonight. The dominant cartelera-visit intent at evening hours is *"what's still possible to see tonight?"* — current behavior serves the wrong intent.
+
+**Why:** BA indie screening times cluster in the 18:00-22:00 window. Most Afiche traffic during evening hours is people deciding *right now* what to go see. Past-start screenings at the top of the day section are pure friction for that intent — they consume the page's most valuable real estate (above the fold of today's section) on content the user can no longer act on. This is a real UX bug, not a polish concern; it degrades the dominant use case at the dominant time of use.
+
+**Three coherent solutions:**
+
+| Option | What it does | Pros | Cons |
+|---|---|---|---|
+| **A. Collapsible toggle** (recommended) | Hide expired by default. Render a single line above today's first upcoming card: *"Ver N funciones ya iniciadas ↓"*. Tap expands. | Preserves info for the rare *"wait what played at 17:00?"* curiosity. Density signal preserved (the count hints at the day's overall activity). Reversible to B if engagement data shows it's never tapped. | Adds a tiny bit of UI surface area (toggle + animation). Implementation needs client-side state if the toggle is interactive (or pure server-side render with a `<details>` element — see below). |
+| **B. Hide entirely** | Filter expired screenings out of today's section. No mention they existed. | Simplest. Zero UI. The cleanest "decision tool" interpretation. | Loses information. A cinephile checking *"when else is Bird playing this week?"* on the cartelera would miss that it was at Lorca tonight. |
+| **C. Thin one-row text index** | Above today's first upcoming card, render a single horizontal text row: *"Ya pasaron hoy: 17:00 Bird (Lorca) · 19:00 Drama (Cosmos)"*. No poster, no synopsis, no fold-out. | Lowest tax on real estate while still preserving info. Mubi's "previously" pattern. | Long days (8+ expired screenings) will wrap or overflow horizontally. Mobile width is the binding constraint — only the first ~3 might fit before truncation. |
+
+**Recommendation:** **A** (collapsible) for the first cut. Captures both intents (default = "still seeable", expandable = "what played today") without committing to a long-term call. If engagement data later shows the toggle is rarely tapped, demoting to B is one PR. The HTML-native `<details><summary>` element gives this for free with zero JS — pure server-side render, accessible by default, keyboard-friendly.
+
+**"Expired" definition — needs to be explicit:**
+
+Naive: `startsAtUtc < now()`. Better: `startsAtUtc + grace_minutes < now()` where `grace_minutes` is something like 10-15. BA indie cinemas typically have a grace period; a user looking at the cartelera at 19:12 for a 19:00 screening at Lorca can sometimes still walk in. The grace period guards against the edge case of "screening started 30 seconds ago = already gone" which is technically true but feels harsh. Empirically pick a value once and document it.
+
+"Now" MUST be BA-local. The project already has `getIsoWeekStartBA(now)` etc. in `src/lib/iso-week.ts` — same discipline applies. A naive UTC comparison would consider a 21:00 BA screening (00:00 UTC next day) "expired" the moment the cron rolls over UTC midnight, which is wrong.
+
+**Edge cases to handle:**
+
+1. **All of today's screenings are expired.** Late-evening visitor at 23:30 — should the day section render `<details>` with everything inside? Or surface editorial copy *"Las salas ya cerraron por hoy. Mirá lo de mañana ↓"*? The latter aligns with DESIGN.md's voice (cf. the existing empty-day editorial line *"Las salas descansan."*).
+2. **The "HOY" chip in the date strip.** If everything today is expired, does HOY still get the carmine fill on initial paint? The date-strip bootstrap currently seeds active=today's `dateKey` regardless of content state. The active state shouldn't change — the user IS still positioned at today's section, just that today's section is mostly archive. The carmine fill following the active section is the correct behavior.
+3. **Same problem on `/pelicula/<slug>`.** Past screenings of a single film at the top of the screenings list crowd out future ones too. The fix should compose: whatever pattern lands on the homepage (A/B/C) applies to `/pelicula/` too. Worth doing in one cycle.
+4. **SSR staleness.** If a screening is at 20:00:00 BA and SSR renders at 19:59:30 (cached for 60s), a user hitting the cached HTML at 20:00:15 will see the 20:00 screening as "still upcoming" when it's technically already started by the grace-period definition. Acceptable error margin given the grace period itself absorbs this. Don't add per-minute revalidation just for this — the BA cinema-going pattern doesn't reward second-precision freshness.
+5. **The Tier-2 Próximamente list isn't affected** — it only contains screenings beyond day 14, all future by definition.
+
+**Effort estimate:** S (~2-3 hrs CC). Mostly a `WHERE` clause on the today-section query + a `<details>` wrapper. Maybe M if applied to `/pelicula/` in the same cycle.
+
+**Priority:** P1 — high-impact, every-evening-user, current behavior actively degrades the dominant intent.
+
+**Depends on / blocked by:** Nothing. The grace-period number is a one-time editorial decision (suggest 15 min, can iterate). BA-now math already exists in `src/lib/iso-week.ts`.
+
+**First-step action:** Decide the grace-period value (15 min recommended), pick Option A/B/C, implement in `src/db/queries.ts` (today-section query filter) + `src/app/page.tsx` (the `<details>` wrapper if Option A). Apply the same pattern to `src/app/pelicula/[slug]/page.tsx`.
+
+---
+
 ## 19. Indexability strategy for `/pelicula/<slug>` — keep noindex or restructure for persistence? (STRATEGIC)
 
 **What:** `/pelicula/<slug>` currently emits `robots: { index: false, follow: true }` (`src/app/pelicula/[slug]/page.tsx:97`). The decision was made during /design-review outside-voice #4 to protect against flap-404 SEO penalties — pages 404 when no upcoming screenings exist, and Google penalizes URLs that flip between 200 and 404 as low-quality. Per-film pages are therefore invisible to search engines by design.
