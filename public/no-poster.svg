@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 750" role="img" aria-label="Afiche — sin afiche">
+  <!--
+    Fallback poster for films that don't have a TMDB-sourced posterUrl
+    yet (pre-enrichment, or TMDB had no poster on file).
+
+    Brand language:
+      - Carmine background  (#c1272d, DESIGN.md accent)
+      - Cream serif "A"     (#f6efe2, matches favicon at src/app/icon.svg)
+      - Cream editorial rule + mono caps "SIN AFICHE" wordmark below
+        (plays on the brand name — "afiche" means "poster" in Spanish,
+         so this fallback says "no poster" AND winks at the site name)
+
+    Used on:
+      - homepage ScreeningCard (when s.film.posterUrl is null)
+      - /pelicula/<slug> hero poster slot (when film.posterUrl is null)
+      - JSON-LD image field for unenriched ScreeningEvents (unlocks
+        Google Event rich-result eligibility, which requires `image`)
+  -->
+  <rect width="500" height="750" fill="#c1272d"/>
+
+  <!-- Big "A" — same font-family fallback chain as the favicon so the
+       mark renders consistently across SVG rasterizers / OS font sets.
+       Vertically positioned slightly above visual center to leave room
+       for the wordmark below. -->
+  <text
+    x="250"
+    y="430"
+    text-anchor="middle"
+    font-family="Times, Georgia, 'Instrument Serif', serif"
+    font-size="360"
+    font-weight="400"
+    fill="#f6efe2"
+  >A</text>
+
+  <!-- Thin editorial rule. Echoes the cream-on-carmine register and
+       gives the wordmark a visual anchor without a heavy frame. -->
+  <line x1="200" y1="510" x2="300" y2="510" stroke="#f6efe2" stroke-width="1"/>
+
+  <!-- "SIN AFICHE" in mono caps. Matches the eyebrow / tracking-eyebrow
+       typography used throughout the cards (Geist Mono, letter-spaced).
+       Geist Mono isn't reachable from a sandboxed <img src> render, so
+       browsers fall back to ui-monospace / system mono — acceptable for
+       a fallback poster. -->
+  <text
+    x="250"
+    y="558"
+    text-anchor="middle"
+    font-family="ui-monospace, 'Geist Mono', SFMono-Regular, Menlo, Consolas, monospace"
+    font-size="20"
+    letter-spacing="5"
+    fill="#f6efe2"
+  >SIN AFICHE</text>
+</svg>

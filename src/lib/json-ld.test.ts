@@ -125,9 +125,18 @@ describe('buildMovie', () => {
     expect(m.description).toBeUndefined();
   });
 
-  it('omits image when posterUrl is null', () => {
+  it('falls back to the branded no-poster SVG when posterUrl is null', () => {
+    // Unenriched films must still emit an `image` field — Google's Event
+    // rich-result eligibility requires it, and the fallback matches the
+    // branded UI fallback in homepage + /pelicula. See public/no-poster.svg.
     const m = buildMovie(makeFilm({ posterUrl: null }));
-    expect(m.image).toBeUndefined();
+    expect(m.image).toBe('https://afiche.vercel.app/no-poster.svg');
+  });
+
+  it('uses the real TMDB poster when present, not the fallback', () => {
+    const m = buildMovie(makeFilm());
+    expect(m.image).toBe('https://image.tmdb.org/t/p/w500/abc.jpg');
+    expect(m.image).not.toContain('no-poster');
   });
 });
 

@@ -437,11 +437,21 @@ function ScreeningCard({
                   className={`h-full w-full object-cover ${isPast ? 'grayscale' : ''}`}
                 />
               ) : (
-                <span
-                  className={`text-cream flex h-full w-full items-center justify-center bg-black px-1 text-center font-serif text-sm leading-tight italic ${isPast ? 'opacity-60' : ''}`}
-                >
-                  {s.film.title}
-                </span>
+                // Branded fallback: carmine "A" + "SIN AFICHE" wordmark.
+                // Replaces an earlier text-on-black fallback that broke the
+                // visual register (italic film title squeezed into a 80x112
+                // box, often clipped on long titles). The SVG fills the
+                // container and matches the favicon's brand mark — see
+                // public/no-poster.svg. Plain <img> rather than next/image
+                // because vectors don't benefit from optimization.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src="/no-poster.svg"
+                  alt=""
+                  width={80}
+                  height={112}
+                  className={`h-full w-full object-cover ${isPast ? 'grayscale' : ''}`}
+                />
               )}
             </div>
           )}

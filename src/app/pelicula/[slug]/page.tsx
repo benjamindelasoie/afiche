@@ -206,8 +206,8 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
           DESIGN.md-non-negotiable visual fingerprint and lands here
           unchanged from the cartelera card. */}
       <div className="mb-12 flex flex-col gap-8 md:flex-row md:items-start md:gap-10">
-        {film.posterUrl && (
-          <div className="bg-cream flex w-40 shrink-0 items-center justify-center overflow-hidden border border-black shadow-[6px_6px_0_var(--color-carmine)] md:w-56">
+        <div className="bg-cream flex w-40 shrink-0 items-center justify-center overflow-hidden border border-black shadow-[6px_6px_0_var(--color-carmine)] md:w-56">
+          {film.posterUrl ? (
             <Image
               src={film.posterUrl}
               alt={film.title}
@@ -218,8 +218,21 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
               fetchPriority="high"
               className="h-full w-full object-cover"
             />
-          </div>
-        )}
+          ) : (
+            // Branded fallback when TMDB hasn't supplied a poster.
+            // Cohesive with the homepage card's no-poster fallback (same
+            // asset). Plain <img> over next/image — vectors don't
+            // benefit from optimization. See public/no-poster.svg.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/no-poster.svg"
+              alt=""
+              width={224}
+              height={336}
+              className="h-full w-full object-cover"
+            />
+          )}
+        </div>
         {film.synopsisEs && (
           <p className="border-carmine max-w-prose border-l-2 pl-4 text-base leading-relaxed md:text-lg">
             {film.synopsisEs}

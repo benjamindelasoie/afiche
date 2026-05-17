@@ -86,7 +86,11 @@ export interface MovieJsonLd {
    */
   '@id'?: string;
   name: string;
-  image?: string;
+  /**
+   * Always present. Real TMDB poster when available, falls back to the
+   * branded `/no-poster.svg` when the film hasn't been enriched.
+   */
+  image: string;
   description?: string;
   director?: { '@type': 'Person'; name: string };
   /** Year as a string ("2001"). Schema.org accepts year-only datePublished. */
@@ -142,6 +146,17 @@ const FILM_URN_PREFIX = 'urn:afiche:film:';
 /** URN prefix for MovieTheater entity identifiers. See MovieTheaterJsonLd['@id']. */
 const CINEMA_URN_PREFIX = 'urn:afiche:cine:';
 
+/**
+ * Fully-qualified URL of the branded fallback poster. Used as the Movie
+ * `image` value when the film has no TMDB-sourced posterUrl, so the
+ * Schema.org ScreeningEvent still satisfies Google's image-required
+ * rich-result eligibility check. The asset lives at `public/no-poster.svg`
+ * (carmine field, cream serif "A", "SIN AFICHE" wordmark — matches the
+ * favicon's brand mark). Base URL must match `metadataBase` in
+ * src/app/layout.tsx.
+ */
+const NO_POSTER_URL = 'https://afiche.vercel.app/no-poster.svg';
+
 export interface ScreeningEventJsonLd {
   '@type': 'ScreeningEvent';
   name: string;
@@ -165,17 +180,22 @@ export interface ScreeningEventJsonLd {
  * only the title.
  */
 export function buildMovie(film: ScreeningRow['film']): MovieJsonLd {
+  // Image is always emitted — Google's Event rich-result eligibility
+  // requires it. Falls back to the branded SVG when the film hasn't
+  // been TMDB-enriched (or TMDB had no poster on file). Same asset is
+  // used as the visual fallback on the homepage card and /pelicula
+  // hero, so the JSON-LD mirrors what users see.
   const m: MovieJsonLd = {
     '@type': 'Movie',
     name: film.title,
+    image: film.posterUrl ?? NO_POSTER_URL,
   };
   // @id placed immediately after @type when slug is available.
   // Object-key insertion order is preserved by JSON.stringify in V8 /
   // SpiderMonkey / JavaScriptCore so the serialized output reads
-  // canonically (@type, @id, name, ...). Slug is contractually non-null
-  // post-backfill but typed nullable for legacy rows.
+  // canonically (@type, @id, name, image, ...). Slug is contractually
+  // non-null post-backfill but typed nullable for legacy rows.
   if (film.slug) m['@id'] = `${FILM_URN_PREFIX}${film.slug}`;
-  if (film.posterUrl) m.image = film.posterUrl;
   if (film.synopsisEs) m.description = film.synopsisEs;
   if (film.director) m.director = { '@type': 'Person', name: film.director };
   if (film.year) m.datePublished = String(film.year);
