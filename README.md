@@ -1,6 +1,6 @@
 # Afiche
 
-**Cartelera curada de Buenos Aires — cine más allá de la pochoclera.**
+**Cartelera curada de Buenos Aires**
 
 Afiche aggregates the weekly programming of Buenos Aires' independent and repertory cinemas into one clean, editorial-feel cartelera — a 14-day rolling window of full cards (navigated by a sticky date strip that jumps to any day) plus a "Próximamente" text index for the longer tail. Built for people who already know the difference between a Saturday at Lugones and a Saturday at Hoyts.
 
