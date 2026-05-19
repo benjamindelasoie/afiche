@@ -555,3 +555,88 @@ describe('enrichFilm — wrong confident top match rescued by director-verificat
     expect(r.delta!.tmdbId).toBe(5648);
   });
 });
+
+// ---------------------------------------------------------------------------
+// directorsMatch direct unit tests — two-tier match: exact-after-normalize
+// then Levenshtein-1 fuzzy fallback with length floor. Direct tests on the
+// exported predicate complement the integration tests above (which go
+// through enrichFilm + director-fallback rescue).
+// ---------------------------------------------------------------------------
+const { directorsMatch, MIN_FUZZY_LEN } = await import('./enrich');
+
+describe('directorsMatch — tier 1: exact match after normalize', () => {
+  it('matches identical strings', () => {
+    expect(directorsMatch('Jim Jarmusch', ['Jim Jarmusch'])).toBe(true);
+  });
+
+  it('matches across case + Spanish accents', () => {
+    expect(directorsMatch('JOSE MARTINEZ SUAREZ', ['José Martínez Suárez'])).toBe(true);
+  });
+
+  it('matches Polish letters via stripDiacritics (Possession / Żuławski case)', () => {
+    // The scraper emits the anglicized "Zulawski". TMDB carries the
+    // Polish-correct "Andrzej Żuławski". Before the extended-Latin map,
+    // ł survived NFD and broke the equality check, leaving Possession
+    // stuck at 'none-attempted' even after director-fallback rescue ran.
+    expect(directorsMatch('Andrzej Zulawski', ['Andrzej Żuławski'])).toBe(true);
+  });
+
+  it('matches one entry of a comma-split co-director string', () => {
+    // Lugones-style "Director1, Director2" — each chunk is a full name,
+    // any TMDB hit on either wins. Each side must match in full (no
+    // last-name substring magic — that historically created wrong matches
+    // and was deliberately not implemented).
+    expect(
+      directorsMatch('David Lynch, Mark Frost', ['Mark Frost', 'Other Person']),
+    ).toBe(true);
+  });
+
+  it('returns false when no exact match across normalized pairs', () => {
+    expect(directorsMatch('Stanley Kubrick', ['Christopher Nolan'])).toBe(false);
+  });
+});
+
+describe('directorsMatch — tier 2: Levenshtein-1 fuzzy fallback', () => {
+  it('matches 1-char-substitution typo (La madre / Vsevolov case)', () => {
+    // Scraper-side typo: Lugones-emitted "Vsevolov Pudovkin" (the Cyrillic
+    // transliteration drifts by one letter); TMDB carries "Vsevolod
+    // Pudovkin". Both names are 17 chars >> MIN_FUZZY_LEN; fuzzy fallback
+    // fires.
+    expect(directorsMatch('Vsevolov Pudovkin', ['Vsevolod Pudovkin'])).toBe(true);
+  });
+
+  it('matches 1-char-insertion typo', () => {
+    expect(directorsMatch('Almodovars', ['Pedro Almodovar'])).toBe(false); // different name
+    expect(directorsMatch('Almodovarx', ['Almodovar'])).toBe(true); // 1-insert at end
+  });
+
+  it('does NOT fuzzy-match short names (Lee / Lea false-positive guard)', () => {
+    // Both names < MIN_FUZZY_LEN (3 chars each). Distance 1 but fuzz blocked
+    // by the length floor — wrong matches are worse than misses.
+    expect(directorsMatch('Lee', ['Lea'])).toBe(false);
+    expect(directorsMatch('Roy', ['Rob'])).toBe(false);
+  });
+
+  it('respects the MIN_FUZZY_LEN boundary on both sides', () => {
+    // At exactly MIN_FUZZY_LEN chars both sides → fuzz applies.
+    expect(MIN_FUZZY_LEN).toBe(6);
+    const sixChar = 'abcdef';
+    const sixCharTypo = 'abcdez';
+    expect(sixChar.length).toBe(6);
+    expect(directorsMatch(sixChar, [sixCharTypo])).toBe(true);
+
+    // 5 chars on either side → no fuzz, exact required, no match.
+    expect(directorsMatch('abcde', ['abcdx'])).toBe(false);
+    expect(directorsMatch('abcdef', ['abcdx'])).toBe(false); // length diff 1 to a 5-char TMDB name
+  });
+
+  it('does NOT match when distance > 1 even with names long enough', () => {
+    // Two substitutions = distance 2; fuzzy rejects.
+    expect(directorsMatch('Pudovkin', ['Pudoxkim'])).toBe(false);
+  });
+
+  it('does NOT match unrelated names of similar length', () => {
+    expect(directorsMatch('Kubrick', ['Scorsese'])).toBe(false);
+  });
+});
+
