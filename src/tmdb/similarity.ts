@@ -1,5 +1,5 @@
 /**
- * Jaro-Winkler string similarity.
+ * Jaro-Winkler string similarity + supporting normalization helpers.
  *
  * Returns a score in [0, 1]: 1 = identical, 0 = no similarity.
  * Particularly good for short strings like film titles where typos,
@@ -10,7 +10,57 @@
  * We case-fold and strip accents before comparing, so "La Máscara" and
  * "la mascara" are treated as equal. This is important because TMDB's
  * Spanish titles often drop or add accents vs. the CTBA scrape.
+ *
+ * Extended-Latin handling (Polish ł, Danish ø, German ß, Turkish ı, etc.):
+ * NFD doesn't decompose precomposed letters that lack a base + combining-mark
+ * representation. "Żuławski" under NFD + combining-strip becomes "Zuławski"
+ * (Ż decomposes; ł survives). For matcher purposes that's still a mismatch
+ * against TMDB's anglicized "Zulawski". `stripDiacritics` applies a small
+ * extended-Latin → ASCII map BEFORE NFD so both layers are covered.
  */
+
+/**
+ * Precomposed-Latin letters NFD doesn't decompose, mapped to their closest
+ * ASCII equivalent. Small audit-able table; extend as new films expose new
+ * characters in director credits or original titles.
+ *
+ * `ß → ss` and `æ → ae` are intentional multi-char substitutions (these
+ * letters are conventionally Romanized that way; preserves match-ability
+ * against TMDB's anglicized credits).
+ */
+const EXTENDED_LATIN_MAP: Record<string, string> = {
+  ł: 'l',
+  Ł: 'L',
+  ø: 'o',
+  Ø: 'O',
+  æ: 'ae',
+  Æ: 'AE',
+  đ: 'd',
+  Đ: 'D',
+  ı: 'i',
+  İ: 'I',
+  ß: 'ss',
+};
+
+const EXTENDED_LATIN_RE = /[łŁøØæÆđĐıİß]/g;
+
+/**
+ * Strip both NFD-decomposable diacritics AND precomposed extended-Latin
+ * letters. Order matters: apply the extended-Latin map BEFORE NFD so that
+ * letters NFD won't decompose (Polish ł, Danish ø, etc.) become ASCII first,
+ * then NFD handles the decomposable rest (Cyrillic-romanized accents, Spanish
+ * tildes, etc.).
+ *
+ * Exported for callers that need the diacritic-stripping semantics without
+ * the case-folding + punctuation-stripping that `normalize()` adds on top —
+ * e.g. directorsMatch, which keeps punctuation in director names.
+ */
+export function stripDiacritics(s: string): string {
+  return s
+    .replace(EXTENDED_LATIN_RE, (ch) => EXTENDED_LATIN_MAP[ch] ?? ch)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
 
 export function jaroWinkler(a: string, b: string): number {
   const s1 = normalize(a);
@@ -61,11 +111,59 @@ export function jaroWinkler(a: string, b: string): number {
   return jaro + prefix * 0.1 * (1 - jaro);
 }
 
+/**
+ * Predicate: are two strings within Levenshtein edit distance 1 of each
+ * other? Returns true when 0 edits (identical) or exactly 1 edit (single
+ * insertion, deletion, or substitution) transforms `a` into `b`.
+ *
+ * Used by directorsMatch as a fallback when exact normalized comparison
+ * fails — catches scraper-side typos like "Vsevolov" vs TMDB's "Vsevolod"
+ * (single-char substitution) without inviting the false positives Jaro-
+ * Winkler would (Lee/Lea/Roy/Rob class). Callers MUST length-guard before
+ * invoking: short strings produce too many true distance-1 collisions for
+ * a fuzzy match to be safe (see directorsMatch's MIN_FUZZY_LEN guard).
+ *
+ * O(min(len(a), len(b))) — two-pointer walk with early termination, no DP
+ * matrix. Distance > 1 returns false on first second-edit detection.
+ */
+export function levenshteinAtMostOne(a: string, b: string): boolean {
+  const lenA = a.length;
+  const lenB = b.length;
+  if (Math.abs(lenA - lenB) > 1) return false;
+  if (a === b) return true;
+
+  let i = 0;
+  let j = 0;
+  let edits = 0;
+  while (i < lenA && j < lenB) {
+    if (a[i] === b[j]) {
+      i++;
+      j++;
+      continue;
+    }
+    if (++edits > 1) return false;
+    if (lenA === lenB) {
+      // Substitution: advance both pointers past the mismatch.
+      i++;
+      j++;
+    } else if (lenA > lenB) {
+      // Deletion from `a`: skip the extra char in `a`.
+      i++;
+    } else {
+      // Insertion into `a` (i.e. extra char in `b`): skip the char in `b`.
+      j++;
+    }
+  }
+  // Trailing chars after the shorter ran out count as one more edit.
+  if (i < lenA || j < lenB) edits++;
+  return edits <= 1;
+}
+
 function normalize(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // strip combining diacritics
+  // stripDiacritics handles both NFD-decomposable accents AND precomposed
+  // extended-Latin letters (Polish \u0142, Danish \u00f8, etc.) \u2014 see the helper's
+  // module-level docstring above for why both layers matter.
+  return stripDiacritics(s.toLowerCase())
     .replace(/[^\w\s]/g, '') // strip punctuation
     .replace(/\s+/g, ' ')
     .trim();

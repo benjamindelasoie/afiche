@@ -34,6 +34,7 @@ import {
 } from './client';
 import type { CastMember } from '@/db/schema';
 import { pickBestMatch, scoreCandidates, MATCH_CONFIDENCE_THRESHOLD } from './match';
+import { stripDiacritics, levenshteinAtMostOne } from './similarity';
 import { findOverride } from './overrides';
 
 export interface EnrichmentDelta {
@@ -211,24 +212,57 @@ export async function enrichFilm(
 
 /**
  * Compare a scraped director string against TMDB's credited directors.
- * Accepts comma-separated names in the scraped string (co-directed films),
- * normalizes accents + case, and requires at least one pair to match
- * exactly. Last-name fuzzy match is intentionally not attempted — prefer
- * a missed fallback over a false positive.
+ *
+ * Two-tier match:
+ *
+ *   1. Exact (after normalize) — scraped name normalizes equal to a TMDB
+ *      crew name. Catches the bulk of legitimate matches, including
+ *      accent/case/extended-Latin variation (Polish ł, Danish ø, Turkish ı,
+ *      German ß) via the shared `stripDiacritics` helper. Primary path.
+ *
+ *   2. Levenshtein-1 fuzzy fallback — if no exact match, compare each
+ *      scraped × TMDB pair with `levenshteinAtMostOne`. Catches single-char
+ *      scraper-side typos. Canonical case: Lugones-emitted "Vsevolov
+ *      Pudovkin" vs TMDB's "Vsevolod Pudovkin". Gated by MIN_FUZZY_LEN on
+ *      both sides — short names ("Lee", "Roy", "Cher") have too many true
+ *      distance-1 collisions in the global director-name population for a
+ *      fuzzy match to be safe (wrong matches are worse than misses —
+ *      memory: feedback_afiche_metadata_quality).
+ *
+ * Comma-split for scraped co-director strings (e.g. "Lynch, Frost"); any
+ * scraped name matching any TMDB name (exact OR fuzzy) wins.
+ *
+ * Exported for unit tests; the canonical caller is enrichFilm's director-
+ * fallback rescue.
  */
-function directorsMatch(scraped: string, tmdbDirectors: string[]): boolean {
-  const normalize = (s: string) =>
-    s
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .trim();
+
+/**
+ * Minimum normalized length for Levenshtein-1 fuzzy matching to apply.
+ * Below this, the density of distance-1 director-name collisions is too
+ * high to fuzz safely. 6 admits "Pudovkin" (8 chars) and single-name
+ * directors typo'd by one char while excluding 3-4 letter first names.
+ */
+export const MIN_FUZZY_LEN = 6;
+
+export function directorsMatch(scraped: string, tmdbDirectors: string[]): boolean {
+  const normalize = (s: string) => stripDiacritics(s).toLowerCase().trim();
   const scrapedNames = scraped
     .split(/\s*,\s*/)
     .map(normalize)
     .filter(Boolean);
   const tmdbNames = tmdbDirectors.map(normalize);
-  return scrapedNames.some((s) => tmdbNames.some((t) => t === s));
+
+  // Tier 1: exact match after normalize. Cheap; covers most cases.
+  if (scrapedNames.some((s) => tmdbNames.some((t) => t === s))) return true;
+
+  // Tier 2: Levenshtein-1 fuzzy fallback, gated by length floor on BOTH
+  // sides of the comparison. Asymmetric guards (e.g. only-scraped >= 6) leak
+  // false positives when TMDB carries a short name; require both >= N.
+  return scrapedNames.some(
+    (s) =>
+      s.length >= MIN_FUZZY_LEN &&
+      tmdbNames.some((t) => t.length >= MIN_FUZZY_LEN && levenshteinAtMostOne(s, t)),
+  );
 }
 
 async function buildDelta(
