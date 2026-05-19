@@ -133,13 +133,18 @@ async function fetchPendingFilms(): Promise<PendingFilm[]> {
       })
       .from(films)
       .where(
-        or(
-          eq(films.matchSource, 'none'),
-          and(eq(films.matchSource, 'none-attempted'), isNotNull(films.tmdbId)),
-          and(
-            eq(films.matchSource, 'manual'),
-            isNotNull(films.tmdbId),
-            isNull(films.posterUrl),
+        and(
+          // Hard skip for rows operator-marked as non-films. Survives matcher
+          // improvements — only flipped back via Drizzle Studio.
+          eq(films.skipTmdb, false),
+          or(
+            eq(films.matchSource, 'none'),
+            and(eq(films.matchSource, 'none-attempted'), isNotNull(films.tmdbId)),
+            and(
+              eq(films.matchSource, 'manual'),
+              isNotNull(films.tmdbId),
+              isNull(films.posterUrl),
+            ),
           ),
         ),
       )

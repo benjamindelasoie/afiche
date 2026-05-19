@@ -137,6 +137,20 @@ export const films = sqliteTable(
     })
       .notNull()
       .default('none'),
+    // Hard skip for the TMDB enrichment pass. Set true when the row is NOT
+    // a film and shouldn't be searched against TMDB regardless of how good
+    // the matcher gets — book presentations, "Película Sorpresa" mystery
+    // screenings, bundled-shorts programs the scraper hasn't split yet,
+    // venue screening-night labels ("EL LADO MUTANTE DE LA FUERZA"), etc.
+    // Distinct from 'none-attempted' which means "TMDB was queried and
+    // couldn't find a match" — that's still retryable when the matcher
+    // improves. skip_tmdb=true means "don't even try, this isn't a film."
+    //
+    // Set manually (Drizzle Studio or a one-shot script) after eyeballing
+    // each candidate; scraper-emitted defaults are always false. Filtered
+    // out by enrichment.fetchPendingFilms and by inspect-unmatched so the
+    // row stops appearing in the "pending" report once flipped.
+    skipTmdb: integer('skip_tmdb', { mode: 'boolean' }).notNull().default(false),
     createdAt: integer('created_at', { mode: 'timestamp' })
       .notNull()
       .$defaultFn(() => new Date()),
