@@ -70,6 +70,13 @@ async function seedFilm(args: {
   // formerly year-less row (scraper emitted year=null, enrichment
   // filled in `year` later, but `scrapedYear` stays NULL forever).
   scrapedYear?: number | null;
+  // Default behavior: insert one screening 24h in the future so the row
+  // satisfies enrichPendingFilms's "has-future-screening" filter without
+  // every test having to do this manually. Tests that exercise the
+  // no-future-screening case (or that insert their own screenings with
+  // specific timestamps for merge-on-collision assertions) pass 'none'
+  // to skip this default.
+  screeningsAt?: Date[] | 'none';
 }): Promise<number> {
   const [row] = await testDb
     .insert(films)
@@ -85,7 +92,25 @@ async function seedFilm(args: {
       posterUrl: args.posterUrl ?? null,
     })
     .returning({ id: films.id });
+
+  const screeningTimes =
+    args.screeningsAt === 'none'
+      ? []
+      : (args.screeningsAt ?? [new Date(Date.now() + 24 * 60 * 60 * 1000)]);
+  for (const startsAt of screeningTimes) {
+    await testDb.insert(screenings).values({
+      filmId: row.id,
+      cinemaId: 'lugones',
+      startsAtUtc: startsAt,
+      tags: [],
+    });
+  }
   return row.id;
+}
+
+/** A timestamp guaranteed to be in the future relative to `Date.now()`. */
+function futureDate(hoursAhead: number = 24): Date {
+  return new Date(Date.now() + hoursAhead * 60 * 60 * 1000);
 }
 
 async function getMatchSource(id: number): Promise<string | null> {
@@ -257,6 +282,142 @@ describe('enrichPendingFilms — retry semantics (regression)', () => {
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain('Network Failure');
     expect(warnings[0]).toContain('ECONNRESET');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Future-screening filter: enrichment only considers films users can still
+// see. Films whose screenings are all in the past (expired festival residue,
+// finished cycles, one-off premieres) shouldn't burn a TMDB call.
+//
+// When a stale-residue film returns (a new scrape inserts future screenings),
+// it automatically re-enters the pool — no manual operator action needed,
+// no 'none-attempted' lock reset.
+// ---------------------------------------------------------------------------
+describe('enrichPendingFilms — future-screening filter', () => {
+  beforeEach(async () => {
+    testDb = await makeInMemoryDb();
+    enrichFilmMock.mockReset();
+    enrichByTmdbIdMock.mockReset();
+    await seedCinema();
+  });
+
+  it('does NOT enrich a "none" film whose screenings are all in the past', async () => {
+    // MOTELX-style residue: film was in the catalog from a festival that ended.
+    // Even at match_source='none' (would normally retry), it's not worth a
+    // TMDB call because nobody will ever see it again unless it gets rescraped
+    // with new screenings.
+    const id = await seedFilm({
+      scrapedTitle: 'Expired Festival Short',
+      year: null,
+      matchSource: 'none',
+      screeningsAt: 'none', // we control screenings explicitly below
+    });
+    await testDb.insert(screenings).values({
+      filmId: id,
+      cinemaId: 'lugones',
+      startsAtUtc: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+      tags: [],
+    });
+
+    const result = await enrichPendingFilms([]);
+
+    expect(result.enriched).toBe(0);
+    expect(result.skipped).toBe(0);
+    expect(enrichFilmMock).not.toHaveBeenCalled();
+    expect(await getMatchSource(id)).toBe('none'); // untouched
+  });
+
+  it('does NOT enrich a "none" film with no screenings at all', async () => {
+    const id = await seedFilm({
+      scrapedTitle: 'Orphan Film Row',
+      year: null,
+      matchSource: 'none',
+      screeningsAt: 'none',
+    });
+
+    const result = await enrichPendingFilms([]);
+
+    expect(result.enriched).toBe(0);
+    expect(enrichFilmMock).not.toHaveBeenCalled();
+    expect(await getMatchSource(id)).toBe('none');
+  });
+
+  it('DOES enrich a film with at least one future screening', async () => {
+    const id = await seedFilm({
+      scrapedTitle: 'Has Upcoming Show',
+      year: 2024,
+      matchSource: 'none',
+      // screeningsAt omitted → seedFilm adds one default future screening
+    });
+    enrichFilmMock.mockResolvedValue({
+      delta: {
+        tmdbId: 555,
+        imdbId: null,
+        title: 'Has Upcoming Show',
+        titleOriginal: null,
+        director: null,
+        country: null,
+        year: 2024,
+        runtimeMin: null,
+        posterUrl: null,
+        matchConfidence: 0.92,
+        matchSource: 'auto' as const,
+      },
+      reason: 'ok',
+    });
+
+    const result = await enrichPendingFilms([]);
+
+    expect(result.enriched).toBe(1);
+    expect(enrichFilmMock).toHaveBeenCalledTimes(1);
+    expect(await getMatchSource(id)).toBe('auto');
+  });
+
+  it('DOES enrich a film with one past AND one future screening (mixed history)', async () => {
+    // A repertory film that screened last month and is screening again next
+    // week — the future screening is enough to qualify.
+    const id = await seedFilm({
+      scrapedTitle: 'Returning to the Cycle',
+      year: 1962,
+      matchSource: 'none',
+      screeningsAt: 'none',
+    });
+    await testDb.insert(screenings).values([
+      {
+        filmId: id,
+        cinemaId: 'lugones',
+        startsAtUtc: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30d ago
+        tags: [],
+      },
+      {
+        filmId: id,
+        cinemaId: 'lugones',
+        startsAtUtc: futureDate(72),
+        tags: [],
+      },
+    ]);
+    enrichFilmMock.mockResolvedValue({
+      delta: {
+        tmdbId: 777,
+        imdbId: null,
+        title: 'Returning to the Cycle',
+        titleOriginal: null,
+        director: null,
+        country: null,
+        year: 1962,
+        runtimeMin: null,
+        posterUrl: null,
+        matchConfidence: 0.9,
+        matchSource: 'auto' as const,
+      },
+      reason: 'ok',
+    });
+
+    const result = await enrichPendingFilms([]);
+
+    expect(result.enriched).toBe(1);
+    expect(enrichFilmMock).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -466,25 +627,29 @@ describe('enrichPendingFilms — merge on tmdb_id collision', () => {
       year: 1962,
       matchSource: 'auto',
       tmdbId: 947,
+      screeningsAt: 'none', // test owns the screenings via explicit insert below
     });
     // Our year-less pending row created by a year-less provider this run.
     const pendingId = await seedFilm({
       scrapedTitle: 'LAWRENCE DE ARABIA',
       year: null,
       matchSource: 'none',
+      screeningsAt: 'none',
     });
-    // Two screenings pointing at the pending row — must survive the merge.
+    // Two future screenings pointing at the pending row — must survive the
+    // merge. Future-relative timestamps so they satisfy enrichPendingFilms's
+    // future-screening filter regardless of when tests run.
     await testDb.insert(screenings).values([
       {
         filmId: pendingId,
         cinemaId: 'lugones',
-        startsAtUtc: new Date('2026-04-23T21:00:00Z'),
+        startsAtUtc: futureDate(24),
         tags: [],
       },
       {
         filmId: pendingId,
         cinemaId: 'lugones',
-        startsAtUtc: new Date('2026-04-24T21:00:00Z'),
+        startsAtUtc: futureDate(48),
         tags: [],
       },
     ]);
@@ -630,19 +795,21 @@ describe('enrichPendingFilms — merge on tmdb_id collision', () => {
       year: 2025,
       matchSource: 'auto',
       tmdbId: 975324,
+      screeningsAt: 'none',
     });
     const pendingId = await seedFilm({
       scrapedTitle: 'TARDES DE SOLEDAD',
       year: 2024,
       matchSource: 'none',
+      screeningsAt: 'none',
     });
-    // A screening pointing at the pending (wrong-year) row — must survive
-    // the merge by getting re-pointed to the existing row.
+    // A future screening pointing at the pending (wrong-year) row — must
+    // survive the merge by getting re-pointed to the existing row.
     // (Uses 'lugones' because seedCinema only seeds that one.)
     await testDb.insert(screenings).values({
       filmId: pendingId,
       cinemaId: 'lugones',
-      startsAtUtc: new Date('2026-05-01T18:00:00Z'),
+      startsAtUtc: futureDate(24),
       tags: ['cycle'],
     });
     enrichFilmMock.mockResolvedValue({
@@ -696,17 +863,19 @@ describe('enrichPendingFilms — merge on tmdb_id collision', () => {
       year: 2025,
       matchSource: 'auto',
       tmdbId: 1510325,
+      screeningsAt: 'none',
     });
     // This week's scrape — Haiku drifted to "GUIOTA MÍA" (letter hallucination).
     const driftId = await seedFilm({
       scrapedTitle: 'GUIOTA MÍA: un verano en Sicilia',
       year: null,
       matchSource: 'none',
+      screeningsAt: 'none',
     });
     await testDb.insert(screenings).values({
       filmId: driftId,
       cinemaId: 'lugones',
-      startsAtUtc: new Date('2026-05-08T19:00:00Z'),
+      startsAtUtc: futureDate(24),
       tags: [],
     });
     enrichFilmMock.mockResolvedValue({
@@ -877,25 +1046,27 @@ describe('enrichPendingFilms — merge on tmdb_id collision', () => {
       year: null,
       matchSource: 'manual',
       tmdbId: 1159206,
+      screeningsAt: 'none',
     });
     const driftId = await seedFilm({
       scrapedTitle: 'PADRE, MADRE, HERMANA, HERMANO?',
       year: null,
       matchSource: 'manual',
       tmdbId: 1159206,
+      screeningsAt: 'none',
     });
-    // Both rows have screenings (different time slots so no collisions).
+    // Both rows have future screenings (different time slots so no collisions).
     await testDb.insert(screenings).values([
       {
         filmId: firstId,
         cinemaId: 'lugones',
-        startsAtUtc: new Date('2026-04-25T18:00:00Z'),
+        startsAtUtc: futureDate(24),
         tags: [],
       },
       {
         filmId: driftId,
         cinemaId: 'lugones',
-        startsAtUtc: new Date('2026-05-08T18:00:00Z'),
+        startsAtUtc: futureDate(48),
         tags: [],
       },
     ]);
@@ -955,12 +1126,14 @@ describe('mergeFilmInto', () => {
       year: 2024,
       matchSource: 'auto',
       tmdbId: 100,
+      screeningsAt: 'none',
     });
     const loserId = await seedFilm({
       scrapedTitle: 'Loser drift',
       year: 2024,
       matchSource: 'auto',
       tmdbId: 100,
+      screeningsAt: 'none',
     });
     await testDb.insert(screenings).values([
       {
@@ -1012,12 +1185,14 @@ describe('mergeFilmInto', () => {
       year: 2024,
       matchSource: 'auto',
       tmdbId: 200,
+      screeningsAt: 'none',
     });
     const loserId = await seedFilm({
       scrapedTitle: 'Loser',
       year: 2024,
       matchSource: 'auto',
       tmdbId: 200,
+      screeningsAt: 'none',
     });
     const collidingTime = new Date('2026-05-10T19:00:00Z');
     await testDb.insert(screenings).values([
@@ -1059,12 +1234,14 @@ describe('mergeFilmInto', () => {
       year: 2024,
       matchSource: 'auto',
       tmdbId: 300,
+      screeningsAt: 'none',
     });
     const loserId = await seedFilm({
       scrapedTitle: 'Orphan',
       year: null,
       matchSource: 'manual',
       tmdbId: 300,
+      screeningsAt: 'none',
     });
 
     await mergeFilmInto(loserId, winnerId);
@@ -1083,12 +1260,14 @@ describe('mergeFilmInto', () => {
       year: 2024,
       matchSource: 'auto',
       tmdbId: 400,
+      screeningsAt: 'none',
     });
     const loserId = await seedFilm({
       scrapedTitle: 'B',
       year: 2024,
       matchSource: 'auto',
       tmdbId: 400,
+      screeningsAt: 'none',
     });
     await expect(mergeFilmInto(loserId, winnerId)).resolves.not.toThrow();
     expect(await testDb.select().from(films).where(eq(films.id, loserId))).toHaveLength(
@@ -1111,18 +1290,21 @@ describe('mergeFilmInto', () => {
       year: 2024,
       matchSource: 'auto',
       tmdbId: 500,
+      screeningsAt: 'none',
     });
     const aLoser1 = await seedFilm({
       scrapedTitle: 'Cluster A drift',
       year: 2024,
       matchSource: 'auto',
       tmdbId: 500,
+      screeningsAt: 'none',
     });
     const aLoser2 = await seedFilm({
       scrapedTitle: 'CLUSTER A ALL CAPS',
       year: null,
       matchSource: 'auto',
       tmdbId: 500,
+      screeningsAt: 'none',
     });
     // Cluster B (tmdb_id=600): two rows.
     const bWinner = await seedFilm({
@@ -1130,12 +1312,14 @@ describe('mergeFilmInto', () => {
       year: 2025,
       matchSource: 'auto',
       tmdbId: 600,
+      screeningsAt: 'none',
     });
     const bLoser = await seedFilm({
       scrapedTitle: 'Cluster B drift',
       year: 2025,
       matchSource: 'auto',
       tmdbId: 600,
+      screeningsAt: 'none',
     });
     // Singleton — no cluster, must NOT be touched.
     const singleton = await seedFilm({
@@ -1143,6 +1327,7 @@ describe('mergeFilmInto', () => {
       year: 2024,
       matchSource: 'auto',
       tmdbId: 700,
+      screeningsAt: 'none',
     });
 
     // Spread some screenings to verify they re-point correctly.

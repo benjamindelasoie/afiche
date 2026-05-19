@@ -4,6 +4,22 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 24. Scraper-update cache invalidation: reset `match_source` when a meaningful field changes (STRUCTURAL POLISH)
+
+**What:** When the scraper UPDATEs a meaningful column (`director`, `titleOriginal`, `runtimeMin`, `synopsisEs`) on a row currently at `match_source='none-attempted'`, reset `match_source='none'` in the same transaction so the next enrichment pass retries with the new data.
+
+**Why deferred:** The future-screening filter (shipped 2026-05-19) already handles the most common case: stale-locked films re-enter the enrichment pool automatically when new future screenings appear. The cache-invalidation hook is orthogonal — it covers the case where a row already has future screenings, was previously locked at `'none-attempted'` due to bad scraped data (e.g. MALBA director field contaminated with `(NN')` runtime suffix), and a scraper improvement now produces cleaner data on rescrape. Without this hook, those rows stay locked and need a manual `UPDATE films SET match_source='none'` after every scraper improvement.
+
+**Fix shape:**
+
+- In `src/scrapers/ingest/films.ts:208` (`buildUpdateSet`), track whether the scraper-emitted value differs from what's currently stored. When ≥1 field meaningfully changes, also set `matchSource: 'none'` in the SET clause — but only when the row's current `match_source` is `'none-attempted'`. (Don't touch `'auto'` / `'override'` / `'manual'` rows — those should not be re-searched.)
+- Drizzle's `excluded.X != films.X`-style predicate in the SET clause can express "set match_source only when it's currently none-attempted." Otherwise wrap the upsert in a transaction with a follow-up UPDATE.
+- Test cases: (a) MALBA scraper re-emits cleaned director on a previously locked row → `match_source` flips to `'none'`. (b) Scraper re-emits identical data → `match_source` unchanged. (c) Scraper updates a field on a row at `'auto'` → `match_source` stays `'auto'`. (d) Scraper updates a field on a row at `'manual'` → `match_source` stays `'manual'`.
+
+**Related:** Session 2026-05-19 surfaced this when MALBA's MOTELX cycle ended before the director-cleanup fix could re-flow through the affected rows. Combined with the future-screening filter, this would have automatically retried those rows on the next rescrape — even if the rescrape happened after the lock-out. Pure quality-of-life; defer until a similar scenario actually bites.
+
+---
+
 ## 23. Unenriched films display in scraped casing (UX POLISH)
 
 **What:** Films whose TMDB match has not succeeded (e.g. `match_source ∈ ('none', 'none-attempted')`, or `skip_tmdb=true`) keep their `scraped_title` verbatim in the cartelera. For Lorca-sourced films that's all-caps ("GIOIA MIA: UN VERANO EN SICILIA"); for MALBA bundles or curator-prefixed titles it can be visually noisy ("FUNCIÓN ESPECIAL: …"). Once a film matches TMDB, `films.title` gets overwritten with the canonical casing — but until then, the display is whatever the scraper saw.
