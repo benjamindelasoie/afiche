@@ -43,8 +43,8 @@
  * Exported for tests. Not part of the public module contract.
  */
 
-import { and, desc, eq, isNotNull, isNull, lt, or } from 'drizzle-orm';
-import { db, films } from '@/db';
+import { and, desc, eq, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
+import { db, films, screenings } from '@/db';
 import { enrichFilm, enrichByTmdbId, type EnrichResult } from '@/tmdb/enrich';
 import { hasTmdbToken } from '@/tmdb/client';
 import { mergeFilmInto } from './films';
@@ -137,6 +137,18 @@ async function fetchPendingFilms(): Promise<PendingFilm[]> {
           // Hard skip for rows operator-marked as non-films. Survives matcher
           // improvements — only flipped back via Drizzle Studio.
           eq(films.skipTmdb, false),
+          // Only enrich films users can still see — at least one screening
+          // today or later. Films whose screenings are all in the past
+          // (expired festival residue, finished cycles, one-off premieres)
+          // don't impact the cartelera, so they're not worth a TMDB call.
+          // When they return (a new scrape inserts future screenings),
+          // they automatically re-enter the pool. Index-backed via
+          // screenings_starts_idx + screenings.film_id cascade index.
+          sql`EXISTS (
+            SELECT 1 FROM ${screenings}
+            WHERE ${screenings.filmId} = ${films.id}
+              AND ${screenings.startsAtUtc} >= unixepoch()
+          )`,
           or(
             eq(films.matchSource, 'none'),
             and(eq(films.matchSource, 'none-attempted'), isNotNull(films.tmdbId)),

@@ -77,16 +77,14 @@ async function main() {
     )
     .orderBy(asc(films.matchSource), asc(films.id));
 
-  // Bucket
-  const byBucket = new Map<string, PendingRow[]>();
-  for (const r of pending) {
-    const key = `${r.matchSource} · tmdb_id=NULL`;
-    if (!byBucket.has(key)) byBucket.set(key, []);
-    byBucket.get(key)!.push(r);
-  }
-
   // Venue context for each film (DISTINCT cinema ids)
   const venuesByFilm = new Map<number, string[]>();
+  // Future-screening flag: a film is "active residue" if it has at least one
+  // screening today or later. Aligns with enrichPendingFilms's filter — these
+  // are the rows that actually impact users. Films with all-past screenings
+  // (stale residue) are visually de-emphasized: they don't affect the
+  // cartelera and aren't worth Iteration 2 attention until they return.
+  const hasFutureByFilm = new Map<number, boolean>();
   if (pending.length > 0) {
     const ids = pending.map((p) => p.id);
     const rows = await db
@@ -97,23 +95,66 @@ async function main() {
       if (!venuesByFilm.has(r.filmId)) venuesByFilm.set(r.filmId, []);
       venuesByFilm.get(r.filmId)!.push(r.cinemaId);
     }
+
+    const futureRows = await db.all<{ film_id: number }>(sql`
+      SELECT DISTINCT film_id FROM screenings
+      WHERE film_id IN (${sql.join(ids, sql`, `)})
+        AND starts_at_utc >= unixepoch()
+    `);
+    for (const r of futureRows) hasFutureByFilm.set(r.film_id, true);
   }
 
-  console.log(`— Pending pool (${pending.length} films):\n`);
-  for (const [bucket, rows] of byBucket) {
-    console.log(`▸ ${bucket}  (${rows.length} films)`);
-    for (const r of rows) {
-      const yr = r.scrapedYear ?? r.year ?? '????';
-      console.log(`  [${r.id}] "${r.scrapedTitle}" (${yr})`);
-      const sigs: string[] = [];
-      if (r.titleOriginal) sigs.push(`orig="${r.titleOriginal}"`);
-      if (r.director) sigs.push(`dir="${r.director}"`);
-      if (r.year !== null && r.year !== r.scrapedYear) sigs.push(`year=${r.year}`);
-      if (r.matchConfidence !== null) sigs.push(`conf=${r.matchConfidence.toFixed(3)}`);
-      if (sigs.length > 0) console.log(`        ${sigs.join(' · ')}`);
-      const venues = venuesByFilm.get(r.id) ?? [];
-      console.log(`        venues: ${venues.length > 0 ? venues.join(', ') : '(none)'}`);
+  const isActive = (id: number): boolean => hasFutureByFilm.get(id) === true;
+
+  const formatRow = (r: PendingRow): string[] => {
+    const out: string[] = [];
+    const yr = r.scrapedYear ?? r.year ?? '????';
+    out.push(`  [${r.id}] "${r.scrapedTitle}" (${yr})`);
+    const sigs: string[] = [];
+    if (r.titleOriginal) sigs.push(`orig="${r.titleOriginal}"`);
+    if (r.director) sigs.push(`dir="${r.director}"`);
+    if (r.year !== null && r.year !== r.scrapedYear) sigs.push(`year=${r.year}`);
+    if (r.matchConfidence !== null) sigs.push(`conf=${r.matchConfidence.toFixed(3)}`);
+    if (sigs.length > 0) out.push(`        ${sigs.join(' · ')}`);
+    const venues = venuesByFilm.get(r.id) ?? [];
+    out.push(`        venues: ${venues.length > 0 ? venues.join(', ') : '(none)'}`);
+    return out;
+  };
+
+  const activePending = pending.filter((r) => isActive(r.id));
+  const stalePending = pending.filter((r) => !isActive(r.id));
+
+  console.log(`— Pending pool — ACTIVE (${activePending.length} films with future screenings):\n`);
+  if (activePending.length === 0) {
+    console.log('  (none — nothing currently scheduled needs TMDB attention)\n');
+  } else {
+    // Group by bucket within active
+    const byBucketActive = new Map<string, PendingRow[]>();
+    for (const r of activePending) {
+      const key = `${r.matchSource} · tmdb_id=NULL`;
+      if (!byBucketActive.has(key)) byBucketActive.set(key, []);
+      byBucketActive.get(key)!.push(r);
     }
+    for (const [bucket, rows] of byBucketActive) {
+      console.log(`▸ ${bucket}  (${rows.length} films)`);
+      for (const r of rows) console.log(formatRow(r).join('\n'));
+      console.log();
+    }
+  }
+
+  console.log(
+    `— Pending pool — STALE (${stalePending.length} films, all screenings in the past):`,
+  );
+  if (stalePending.length === 0) {
+    console.log('  (none)\n');
+  } else {
+    console.log(
+      '  These films are excluded from enrichment by the future-screening filter.',
+    );
+    console.log(
+      '  No user impact today; they re-enter automatically if a future scrape adds new screenings.\n',
+    );
+    for (const r of stalePending) console.log(formatRow(r).join('\n'));
     console.log();
   }
 
