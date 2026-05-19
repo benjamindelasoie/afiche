@@ -4,6 +4,36 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 25. Admin panel for operator workflows (FEATURE — needs /office-hours scoping)
+
+**What:** Build a purpose-built admin UI under `/admin/*` that replaces the current Drizzle-Studio-based operator workflows. The wedge use case is **manual `tmdb_id` patching for unenriched films** (the residue that matcher iterations can't reach because TMDB doesn't index the film, or indexes it under a title the search query doesn't hit). Adjacent operator workflows the panel likely absorbs as it grows: flipping `skip_tmdb` on non-film rows, resetting `match_source='none'` to retry rows after scraper/matcher improvements, browsing low-confidence `auto` matches (the 17 rows < 0.92 confidence that are wrong-match candidates), read-only scrape-run log viewer (subsumes #4), override management (currently `tmdb-overrides.json` in git).
+
+**Why deferred for proper scoping:** The use cases are clear in isolation but the panel's _shape_ isn't. Listing 6 candidate features up front and just building them is the wrong shape; the right shape comes from /office-hours surfacing what's actually painful in the current Studio workflow and what's worth building first. Single-user operator (no auth complexity beyond a single env-var secret), Strategy A noindex applies, no multi-tenant concerns. See `project_afiche_admin_panel` memory for the full direction note.
+
+**Likely scope candidates (DO NOT enumerate as the implementation plan — let /office-hours decide order):**
+- Manual `tmdb_id` patching for unenriched films (the wedge)
+- `skip_tmdb=true` flipping for non-film rows (book presentations, mystery screenings, bundled shorts)
+- `match_source='none'` reset to retry after matcher/scraper improvements
+- Low-confidence `auto` match review (films with `match_confidence < 0.92`)
+- Scrape-run log viewer (TODO #4 — likely subsumed by this panel)
+- Override management (move `tmdb-overrides.json` to a DB-backed table?)
+
+**Strict NOT-in-scope for v1:**
+- LLM judge (was deferred earlier this iteration; admin panel is the rule-based-with-human-in-the-loop answer instead)
+- Multi-user auth / roles / audit trails (solo operator per `project_afiche_operator_stance`)
+- Public-facing operator-data exposure (Strategy A noindex stays)
+
+**How to start (next session):**
+- Invoke `/office-hours` to scope properly. The skill will surface which of the candidate features is most painful to do via Studio TODAY.
+- Don't pre-commit to building all 6 candidate features; the v1 should be the wedge (manual `tmdb_id` patching) + maybe one adjacent quick-win identified by /office-hours.
+- After /office-hours, run `/plan-eng-review` against the design before any code lands — UI work plus DB writes is exactly where premature scope kills momentum.
+
+**Estimated effort (rough, will sharpen during /office-hours):** wedge feature alone ~1-2 evening sessions including auth gating + basic styling. Full 6-feature panel ~1-2 weekends spread across iterations.
+
+**Related:** `project_afiche_admin_panel` memory, `feedback_afiche_scraper_iteration` (admin panel is the human-in-loop endpoint after exhausting scraper/matcher fixes), TODO #4 (`/admin/runs` log UI — subsumed here).
+
+---
+
 ## 24. Scraper-update cache invalidation: reset `match_source` when a meaningful field changes (STRUCTURAL POLISH)
 
 **What:** When the scraper UPDATEs a meaningful column (`director`, `titleOriginal`, `runtimeMin`, `synopsisEs`) on a row currently at `match_source='none-attempted'`, reset `match_source='none'` in the same transaction so the next enrichment pass retries with the new data.
