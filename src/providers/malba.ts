@@ -702,6 +702,17 @@ function parseShowtimeLine(lineHtml: string): {
   // Director-less: "24:00 Terciopelo azul"          (cycle-all-one-director,
   //                MALBA drops the ", de X" on midnight repeats — e.g. the
   //                david-lynch-x5 Saturday midnights).
+  // Runtime-noise: "19:00 Title, de Director (NN')" — MALBA's MOTELX cycle
+  //                appends the film's runtime in parens right after the
+  //                director name (mixing ASCII apostrophe ' and Unicode
+  //                prime ′), sometimes followed by event prose like
+  //                "Con presentación y Q&A del director". Strip from the
+  //                first `(NN['′])` onward so the captured director field
+  //                holds just the name. Without this, TMDB's director-
+  //                fallback rescue can't match the candidate's credited
+  //                director (e.g. "Carlos Conceição (71')" ≠ "Carlos
+  //                Conceição"), and the row lands in `none-attempted`
+  //                with `tmdb_id=NULL`.
   const $ = cheerio.load(`<root>${lineHtml}</root>`);
   const text = $('root').text().trim().replace(/\s+/g, ' ');
   const m = text.match(/^(\d{1,2}):(\d{2})\s+(.+?)(?:,\s+de\s+(.+?))?$/);
@@ -709,7 +720,10 @@ function parseShowtimeLine(lineHtml: string): {
   const hour = parseInt(m[1], 10);
   const minute = parseInt(m[2], 10);
   if (hour < 0 || hour > 24 || minute < 0 || minute > 59) return null;
-  const director = m[4]?.replace(/\.$/, '').trim();
+  const director = m[4]
+    ?.replace(/\s*\(\d+\s*['′]\).*$/u, '')
+    .replace(/\.$/, '')
+    .trim();
   // Capture the per-film href when the line wraps the title in an <a>.
   // MALBA's showtime lines link to /evento/<film-slug>/ for individual
   // films; midnight repeats and a few prose-style lines have no link.

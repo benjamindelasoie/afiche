@@ -477,6 +477,38 @@ describe('parseDetailPage — synthetic edge cases', () => {
     expect(warnings.some((w) => w.includes('unparseable'))).toBe(true);
   });
 
+  it('strips MOTELX-style "(NN\')" runtime suffix and trailing prose from the director field', () => {
+    // MALBA's MOTELX cycle (May 2026) appended the runtime to the director
+    // inside the showtime line:
+    //   "19:00 <a>A Vida Luminosa</a>, de João Rosas (99′). Con presentación
+    //    y Q&A del director"
+    // Without cleanup, films.director ends up as "João Rosas (99′). Con
+    // presentación y Q&A del director" which never matches TMDB's credited
+    // "João Rosas" via directorsMatch, so the row lands in 'none-attempted'.
+    // Both the ASCII apostrophe ' and the Unicode prime ′ appear in real
+    // MALBA output; cover both.
+    const html = `
+      <html><body>
+        <h3>Programación</h3>
+        <p>JUEVES 8 de mayo<br />
+        18:00 <a href="x">Baía dos Tigres</a>, de Carlos Conceição (71')<br />
+        20:00 <a href="x">A Vida Luminosa</a>, de João Rosas (99′). Con presentación y Q&amp;A del director<br />
+        22:00 <a href="x">Entroncamento</a>, de Pedro Cabeleira (131')</p>
+        <script type="application/ld+json">{"datePublished":"2026-04-30T00:00:00+00:00"}</script>
+      </body></html>
+    `;
+    const warnings: string[] = [];
+    const screenings = parseDetailPage(html, cycle, warnings);
+    expect(screenings).toHaveLength(3);
+    expect(screenings[0].director).toBe('Carlos Conceição');
+    expect(screenings[1].director).toBe('João Rosas');
+    expect(screenings[2].director).toBe('Pedro Cabeleira');
+    // The title side stays clean — only the director field carried the noise.
+    expect(screenings[0].filmTitle).toBe('Baía dos Tigres');
+    expect(screenings[1].filmTitle).toBe('A Vida Luminosa');
+    expect(screenings[2].filmTitle).toBe('Entroncamento');
+  });
+
   it('parses midnight repeats with NO ", de Director" suffix (david-lynch-x5 pattern)', () => {
     // The David Lynch x5 cycle lists regular evening shows as
     // "20:00 Title, de David Lynch" but drops the director on the Saturday

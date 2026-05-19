@@ -30,6 +30,8 @@
     "db:inspect:prod": "dotenv -e .env.prod -- tsx src/db/inspect-catalog.ts",
     "db:dedupe-films": "dotenv -e .env.local -- tsx scripts/dedupe-films.ts",
     "db:dedupe-films:prod": "dotenv -e .env.prod -- tsx scripts/dedupe-films.ts",
+    "db:inspect-unmatched": "dotenv -e .env.local -- tsx scripts/inspect-unmatched.ts",
+    "db:inspect-unmatched:prod": "dotenv -e .env.prod -- tsx scripts/inspect-unmatched.ts",
     "scrape:prod": "./scripts/scrape-prod.sh",
     "test": "vitest",
     "test:ui": "vitest --ui",

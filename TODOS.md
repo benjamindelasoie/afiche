@@ -4,6 +4,25 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 23. Unenriched films display in scraped casing (UX POLISH)
+
+**What:** Films whose TMDB match has not succeeded (e.g. `match_source ∈ ('none', 'none-attempted')`, or `skip_tmdb=true`) keep their `scraped_title` verbatim in the cartelera. For Lorca-sourced films that's all-caps ("GIOIA MIA: UN VERANO EN SICILIA"); for MALBA bundles or curator-prefixed titles it can be visually noisy ("FUNCIÓN ESPECIAL: …"). Once a film matches TMDB, `films.title` gets overwritten with the canonical casing — but until then, the display is whatever the scraper saw.
+
+**Why deferred:** Not a correctness issue, and the right fix is at the render layer, not the data layer. Per the matcher-normalization decision (session 2026-05-19), `films.scraped_title` is intentionally the audit trail of "what the scraper saw" — re-casing it at scrape time loses that signal and risks bad Spanish title-casing ("La Madre" instead of "La madre"). The display problem is separate from the matching problem.
+
+**Fix shape (when picked up):**
+
+1. **Render-layer smart-case helper.** When a film's `match_source ∈ ('none', 'none-attempted')` AND `title` is all-caps or otherwise obviously raw, apply a Spanish-aware title-casing function for display only. Rough rule: lowercase first, then capitalize first letter; leave articles ("la", "el", "los", "las", "de", "del") lowercase except at position 0. Don't touch the DB.
+2. **Or: CSS-only fallback.** `text-transform: none` is the default; consider `font-variant: small-caps` or a "low-confidence" visual treatment that makes the unmatched state legible without needing to re-case the text.
+3. Test cases: "GIOIA MIA: UN VERANO EN SICILIA" → "Gioia mia: un verano en Sicilia" (acceptable); "FUNCIÓN ESPECIAL: UN BUEN DÍA + DESPUÉS DE UN BUEN DÍA" → same shape but contains co-feature marker; "PELÍCULA SORPRESA" → "Película sorpresa". Verify the helper doesn't mangle proper-noun-heavy titles ("EL DESPRECIO" → "El desprecio" is fine; "BLADE RUNNER" → "Blade runner" is *technically* less canonical than "Blade Runner" but acceptable as a degradation since the film should match TMDB anyway).
+4. Apply at the film-card render component (probably `src/components/film-card.tsx` or wherever the title text is emitted). Single place; reversible.
+
+**Related:** [[project_afiche_state]] tracks the cartelera render layer. [[feedback_afiche_scraper_iteration]] is the principle that motivated leaving this at the render layer rather than the scraper.
+
+**Estimated effort:** 1-2 hours including tests. Best paired with a /design-review pass.
+
+---
+
 ## 22. Rescrape still loses enrichment after the 2026-05-07 structural fix (BUG / structural residue)
 
 **What:** Despite v0.2.1.0 + v0.2.3.0 shipping the `scraped_year` split + `tmdb_id`-as-merge-axis fixes for the mutable-key upsert class (memory: `project_afiche_mutable_key_upsert_bug`), the operator continues to observe enrichment data getting "stepped on" during prod rescrapes (reported 2026-05-17). The original bug class is closed; this is a residual mechanism in the same family that the May 7 fix did not cover.

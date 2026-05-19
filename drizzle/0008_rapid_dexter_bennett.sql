@@ -1,0 +1,1 @@
+ALTER TABLE `films` ADD `skip_tmdb` integer DEFAULT false NOT NULL;
