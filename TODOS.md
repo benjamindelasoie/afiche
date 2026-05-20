@@ -4,36 +4,6 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
-## 25. Admin panel for operator workflows (FEATURE — needs /office-hours scoping)
-
-**What:** Build a purpose-built admin UI under `/admin/*` that replaces the current Drizzle-Studio-based operator workflows. The wedge use case is **manual `tmdb_id` patching for unenriched films** (the residue that matcher iterations can't reach because TMDB doesn't index the film, or indexes it under a title the search query doesn't hit). Adjacent operator workflows the panel likely absorbs as it grows: flipping `skip_tmdb` on non-film rows, resetting `match_source='none'` to retry rows after scraper/matcher improvements, browsing low-confidence `auto` matches (the 17 rows < 0.92 confidence that are wrong-match candidates), read-only scrape-run log viewer (subsumes #4), override management (currently `tmdb-overrides.json` in git).
-
-**Why deferred for proper scoping:** The use cases are clear in isolation but the panel's _shape_ isn't. Listing 6 candidate features up front and just building them is the wrong shape; the right shape comes from /office-hours surfacing what's actually painful in the current Studio workflow and what's worth building first. Single-user operator (no auth complexity beyond a single env-var secret), Strategy A noindex applies, no multi-tenant concerns. See `project_afiche_admin_panel` memory for the full direction note.
-
-**Likely scope candidates (DO NOT enumerate as the implementation plan — let /office-hours decide order):**
-- Manual `tmdb_id` patching for unenriched films (the wedge)
-- `skip_tmdb=true` flipping for non-film rows (book presentations, mystery screenings, bundled shorts)
-- `match_source='none'` reset to retry after matcher/scraper improvements
-- Low-confidence `auto` match review (films with `match_confidence < 0.92`)
-- Scrape-run log viewer (TODO #4 — likely subsumed by this panel)
-- Override management (move `tmdb-overrides.json` to a DB-backed table?)
-
-**Strict NOT-in-scope for v1:**
-- LLM judge (was deferred earlier this iteration; admin panel is the rule-based-with-human-in-the-loop answer instead)
-- Multi-user auth / roles / audit trails (solo operator per `project_afiche_operator_stance`)
-- Public-facing operator-data exposure (Strategy A noindex stays)
-
-**How to start (next session):**
-- Invoke `/office-hours` to scope properly. The skill will surface which of the candidate features is most painful to do via Studio TODAY.
-- Don't pre-commit to building all 6 candidate features; the v1 should be the wedge (manual `tmdb_id` patching) + maybe one adjacent quick-win identified by /office-hours.
-- After /office-hours, run `/plan-eng-review` against the design before any code lands — UI work plus DB writes is exactly where premature scope kills momentum.
-
-**Estimated effort (rough, will sharpen during /office-hours):** wedge feature alone ~1-2 evening sessions including auth gating + basic styling. Full 6-feature panel ~1-2 weekends spread across iterations.
-
-**Related:** `project_afiche_admin_panel` memory, `feedback_afiche_scraper_iteration` (admin panel is the human-in-loop endpoint after exhausting scraper/matcher fixes), TODO #4 (`/admin/runs` log UI — subsumed here).
-
----
-
 ## 24. Scraper-update cache invalidation: reset `match_source` when a meaningful field changes (STRUCTURAL POLISH)
 
 **What:** When the scraper UPDATEs a meaningful column (`director`, `titleOriginal`, `runtimeMin`, `synopsisEs`) on a row currently at `match_source='none-attempted'`, reset `match_source='none'` in the same transaction so the next enrichment pass retries with the new data.
@@ -66,83 +36,6 @@ Captured work that was considered but deferred. Each item has enough context tha
 **Related:** [[project_afiche_state]] tracks the cartelera render layer. [[feedback_afiche_scraper_iteration]] is the principle that motivated leaving this at the render layer rather than the scraper.
 
 **Estimated effort:** 1-2 hours including tests. Best paired with a /design-review pass.
-
----
-
-## 22. Rescrape still loses enrichment after the 2026-05-07 structural fix (BUG / structural residue)
-
-**What:** Despite v0.2.1.0 + v0.2.3.0 shipping the `scraped_year` split + `tmdb_id`-as-merge-axis fixes for the mutable-key upsert class (memory: `project_afiche_mutable_key_upsert_bug`), the operator continues to observe enrichment data getting "stepped on" during prod rescrapes (reported 2026-05-17). The original bug class is closed; this is a residual mechanism in the same family that the May 7 fix did not cover.
-
-**Why:** The May 7 fix made the upsert *key* stable (`(scraped_title, scraped_year)` no longer mutates between scrapes). But the *update side* of the upsert — what columns get rewritten when a matching row already exists — may still be too aggressive. If `upsertFilm` does `ON CONFLICT (...) DO UPDATE SET poster_url = excluded.poster_url, director = excluded.director, ...` for every column (including enrichment-only columns), the scraper-stage values (mostly NULL for `posterUrl`/`director`/`tmdbId`/etc.) will null out the enriched data on every rescrape. The fix would limit the update to scraper-stage columns only (the title/scraped_title/scraped_year/maybe one or two scraper-emitted hints), leaving enrichment-set columns untouched.
-
-**Hypotheses, ordered by suspected likelihood:**
-
-1. **Field-level overwrite (most likely).** Upsert UPDATE clause covers enrichment-only columns. Investigate `src/scrapers/ingest/` for the `upsertFilm` (or equivalent) implementation; check whether it scopes the SET to scraper-emitted columns. Fix: scope `SET` to only what the scraper actually knows.
-2. **Cross-provider title drift.** MALBA emits "Eraserhead", Lugones emits "Eraserhead " (trailing space), VLM-OCR'd Lorca emits "ERASERHEAD" or similar. Three distinct `(scraped_title, scraped_year)` rows for one film. The `tmdb_id`-merge logic resolves after enrichment runs, but during the rescrape→pre-enrichment window the cartelera may render the unenriched duplicate while the enriched original sits orphaned.
-3. **Slug regeneration.** `films.slug` is computed from `title` (per `src/lib/slug.ts`). If TMDB's canonical title differs from the scraper's, an enrichment-time `title` update could regenerate the slug — breaking in-flight `/pelicula/<slug>` URLs that crawlers / social previews / personal bookmarks may already point at. Less likely the operator's reported "lost enrichment" issue, but adjacent and worth confirming the slug is locked post-insert (the schema comment at `src/db/schema.ts` line ~135 claims slug is stable "across the project's lifetime"; verify the upsert path doesn't violate that contract).
-
-**How to investigate:**
-
-```sql
--- Diagnostic 1: find rows where the enrichment-only fields are NULL but
--- tmdb_id is set — symptom of a recent overwrite that didn't fully clear
--- tmdb_id (or where enrichment never ran for some reason).
-SELECT id, scraped_title, scraped_year, tmdb_id, poster_url, director,
-       synopsis_es, match_source, match_confidence
-FROM films
-WHERE tmdb_id IS NOT NULL
-  AND (poster_url IS NULL OR director IS NULL)
-ORDER BY id DESC
-LIMIT 50;
-```
-
-```sql
--- Diagnostic 2: find duplicate (scraped_title, scraped_year) candidates
--- where one row is enriched and another isn't.
-SELECT a.id AS enriched_id, b.id AS unenriched_id,
-       a.scraped_title, a.scraped_year, a.tmdb_id AS enriched_tmdb_id,
-       b.tmdb_id AS unenriched_tmdb_id, b.match_source
-FROM films a
-JOIN films b ON a.scraped_title = b.scraped_title
-              AND a.scraped_year IS NOT DISTINCT FROM b.scraped_year
-              AND a.id < b.id
-WHERE a.tmdb_id IS NOT NULL
-  AND b.tmdb_id IS NULL;
-```
-
-Then read `src/scrapers/ingest/` (likely `upsert.ts` or similar) to confirm the `ON CONFLICT DO UPDATE SET` clause's column list.
-
-**Fix shape (assuming hypothesis 1 is right):**
-
-- Restrict the upsert's `SET` to scraper-emitted columns only. The Drizzle pattern:
-  ```ts
-  onConflictDoUpdate({
-    target: [films.scrapedTitle, films.scrapedYear],
-    set: { /* only scraper-stage columns: scraped_title, scraped_year (no-op),
-             maybe `country` if the scraper extracts it. NEVER poster_url,
-             director, tmdb_id, synopsis_es, runtime_min, cast, genres. */ },
-  })
-  ```
-- Pair with a regression test in `src/scrapers/ingest.test.ts`: enrich a film, simulate a rescrape, assert that `poster_url`, `director`, `synopsis_es`, `tmdb_id` remain unchanged.
-
-**Pros:**
-- Clean operator workflow — manual TMDB ID patches stop getting overwritten.
-- Cuts re-enrichment workload (currently the enrichment loop has to re-resolve TMDB for any film whose data got nulled).
-- Closes a class of bug that was never fully closed by May 7.
-
-**Cons / risks:**
-- Touches the hottest path in ingest. Regression risk for happy-path scrape correctness if the column scope is too narrow (e.g., if some scraper-emitted hint genuinely should refresh on rescrape).
-- Cross-provider title drift (hypothesis 2) is structurally adjacent and may need to be addressed in the same cycle.
-
-**Effort estimate:** S–M (1-3 hours of focused investigation + fix + tests). Possibly L if hypothesis 2 turns out to also be live in prod and needs a normalize-on-write strategy.
-
-**Priority:** P2 — operator-facing pain, affects every prod rescrape currently. Not blocking ship, but every rescrape costs cleanup effort until fixed.
-
-**Per Afiche ship workflow:** scraper + ingest path → branch + PR, not direct-to-main. Pair with a `/plan-eng-review` to lock the column-scoping rule + test plan before implementing.
-
-**Depends on / blocked by:** nothing. Investigation can start from prod evidence (the two diagnostic SQL queries above).
-
-**First-step action:** run the two diagnostic SQL queries against prod, paste a few example rows into the next session, and `/plan-eng-review` from there. The fix is short once the diagnosis is named.
 
 ---
 
@@ -685,6 +578,13 @@ Deferred findings from the full live audit of afiche.vercel.app. HIGH-severity i
 ---
 
 ## Done (this session arc)
+
+**2026-05-20 (admin panel v1 + scraper enrichment-protection fix — PR #9):**
+- ✅ **TODO #25** — Operator admin panel at `/admin/*`. `proxy.ts` route gate + signed-cookie HMAC session + `verifySession()` DAL (Next.js 16 two-layer auth pattern). Unmatched-films list, server-rendered TMDB search with paste-id escape hatch, collision-merge confirm dialog with lower-id-wins slug-stability invariant. Reuses `mergeFilmInto` + refactored `writeEnrichmentToFilm`. Single env-var auth (`ADMIN_SECRET`) — set in Vercel production + preview. — commit `ca3ab15`
+- ✅ **TODO #22** — Rescrape-loses-enrichment bug closed. Root cause was field-level overwrite in `buildUpdateSet` (NOT the upsert key, which the May-7 fix already nailed): scraper-emitted `director`/`synopsisEs`/`runtimeMin`/`titleOriginal` overwrote enrichment-curated values on every rescrape. Fix: SQL `CASE` gate at the SET clause checks existing `match_source` and preserves the enrichment-curated value for `manual`/`auto`/`override` rows. `synopsisEs` exempt per the existing provider-fields-win invariant. 7 regression tests in `ingest.test.ts`. — included in `ca3ab15`
+- ✅ **`writeEnrichmentToFilm` refactor** — extracted from `applyEnrichment` as an exported, row-shape-agnostic helper. Shared between the enrichment loop and the admin assign action — single source of truth for "how TMDB data lands in `films`." — included in `ca3ab15`
+
+**Test count: 394 → 424** (+30: 7 enrichment-protection regression tests + 15 admin-auth unit tests + 7 assign-action integration tests + 1 cleanup).
 
 **2026-04-20:**
 - ✅ Fix re-enrichment loop for persistent misses — commit `cd6b1a9`
