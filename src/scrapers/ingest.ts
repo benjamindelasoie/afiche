@@ -74,10 +74,12 @@ export async function ingest(result: ProviderRunResult): Promise<IngestSummary> 
 
 // Re-exports — preserve the public surface that other modules import from
 // `@/scrapers/ingest`:
-//   src/db/enrich.ts            → enrichPendingFilms
-//   src/scrapers/run.ts         → ingest, type IngestSummary
-//   src/scrapers/run-log.ts     → type IngestSummary
-//   src/scrapers/ingest.test.ts → ingest, enrichPendingFilms, isSlugUniqueViolation
-export { enrichPendingFilms } from './ingest/enrichment';
+//   src/db/enrich.ts                                  → enrichPendingFilms
+//   src/scrapers/run.ts                               → ingest, type IngestSummary
+//   src/scrapers/run-log.ts                           → type IngestSummary
+//   src/scrapers/ingest.test.ts                       → ingest, enrichPendingFilms, isSlugUniqueViolation, mergeFilmInto
+//   src/app/admin/unmatched/[id]/actions.ts (PR-2)    → mergeFilmInto, writeEnrichmentToFilm
+export { enrichPendingFilms, writeEnrichmentToFilm } from './ingest/enrichment';
+export { mergeFilmInto } from './ingest/films';
 export { isSlugUniqueViolation } from './ingest/errors';
 export type { IngestSummary } from './ingest/types';
