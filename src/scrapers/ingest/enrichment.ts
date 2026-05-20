@@ -264,11 +264,37 @@ async function mergeIfTmdbIdCollides(
  * editorially better than TMDB's peninsular-Spanish fallback.
  */
 async function applyEnrichment(f: PendingFilm, result: EnrichResult): Promise<void> {
-  const delta = result.delta;
-  if (!delta) return; // narrow; caller already checked
+  if (!result.delta) return; // narrow; caller already checked
+  await writeEnrichmentToFilm(f.id, f.synopsisEs, f.year, result.delta);
+}
 
+/**
+ * Single source of truth for "how a successful TMDB match lands in films".
+ *
+ * Shared by:
+ *   - enrichPendingFilms (this file's auto/manual/override re-enrichment loop)
+ *   - the admin panel's manual-assign server action (operator picks a TMDB
+ *     id in the UI → assign action calls getMovie → constructs a delta →
+ *     calls this helper; same write path, same provider-fields-win invariant)
+ *
+ * Centralizing the write path is what keeps the two surfaces from drifting:
+ * an enrichment change here automatically flows through to operator patches.
+ *
+ * The signature takes a film id + the two "current row state" pieces the
+ * write logic needs (current synopsis for the provider-fields-win check,
+ * current year as a fallback when TMDB returned year=null) instead of a
+ * full row object, so callers don't need to fabricate a PendingFilm shape.
+ */
+export async function writeEnrichmentToFilm(
+  filmId: number,
+  currentSynopsisEs: string | null,
+  currentYear: number | null,
+  delta: NonNullable<EnrichResult['delta']>,
+): Promise<void> {
   const synopsisToWrite =
-    f.synopsisEs && f.synopsisEs.trim().length > 0 ? f.synopsisEs : delta.synopsisEs;
+    currentSynopsisEs && currentSynopsisEs.trim().length > 0
+      ? currentSynopsisEs
+      : delta.synopsisEs;
 
   await db
     .update(films)
@@ -279,7 +305,7 @@ async function applyEnrichment(f: PendingFilm, result: EnrichResult): Promise<vo
       titleOriginal: delta.titleOriginal,
       director: delta.director,
       country: delta.country,
-      year: delta.year ?? f.year,
+      year: delta.year ?? currentYear,
       runtimeMin: delta.runtimeMin,
       posterUrl: delta.posterUrl,
       backdropUrl: delta.backdropUrl,
@@ -289,7 +315,7 @@ async function applyEnrichment(f: PendingFilm, result: EnrichResult): Promise<vo
       matchConfidence: delta.matchConfidence,
       matchSource: delta.matchSource,
     })
-    .where(eq(films.id, f.id));
+    .where(eq(films.id, filmId));
 }
 
 /**
