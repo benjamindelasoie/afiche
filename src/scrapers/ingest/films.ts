@@ -204,12 +204,31 @@ async function upsertYearlessFilm(
  * Build the ON CONFLICT DO UPDATE set clause from a scraped row. Only
  * fields the scraper actually defined go in — Drizzle's mapUpdateSet
  * strips undefineds and throws on an empty set, so we own the filter here.
+ *
+ * Enrichment-protection invariant: titleOriginal, director, and runtimeMin
+ * are written by BOTH the scraper AND enrichment. For rows that already
+ * have an enrichment-curated value (match_source IN 'manual', 'auto',
+ * 'override'), scraper data must not overwrite TMDB-canonical data — that
+ * was the orphan-patch bug class reported 2026-05-17. The CASE expression
+ * gates each column at SQL level: existing match_source decides whether
+ * the new scraped value lands. Atomic, single-statement, idempotent.
+ *
+ * synopsisEs is exempt from the gate. The provider-fields-win invariant
+ * in enrichment.ts:270 means venue-scraped synopses are preferred over
+ * TMDB peninsular-Spanish, so a fresh scraped synopsis should always
+ * overwrite (it can only be "better" by definition).
  */
 function buildUpdateSet(s: ScrapedScreening): Record<string, unknown> {
   const set: Record<string, unknown> = {};
-  if (s.filmTitleOriginal !== undefined) set.titleOriginal = s.filmTitleOriginal;
-  if (s.director !== undefined) set.director = s.director;
-  if (s.runtimeMin !== undefined) set.runtimeMin = s.runtimeMin;
+  if (s.filmTitleOriginal !== undefined) {
+    set.titleOriginal = sql`CASE WHEN ${films.matchSource} IN ('manual', 'auto', 'override') THEN ${films.titleOriginal} ELSE ${s.filmTitleOriginal} END`;
+  }
+  if (s.director !== undefined) {
+    set.director = sql`CASE WHEN ${films.matchSource} IN ('manual', 'auto', 'override') THEN ${films.director} ELSE ${s.director} END`;
+  }
+  if (s.runtimeMin !== undefined) {
+    set.runtimeMin = sql`CASE WHEN ${films.matchSource} IN ('manual', 'auto', 'override') THEN ${films.runtimeMin} ELSE ${s.runtimeMin} END`;
+  }
   if (s.synopsisEs !== undefined) set.synopsisEs = s.synopsisEs;
   return set;
 }

@@ -1816,3 +1816,338 @@ describe('ingest — manual-patch + re-scrape (mutable-key regression)', () => {
     expect(allRows[0].scrapedYear).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression: orphan-patch bug from 2026-05-17. Operator-reported that
+// enrichment data was getting "stepped on" during prod rescrapes after the
+// May 7 mutable-key fix. Investigation (see design doc 2026-05-20) found
+// that buildUpdateSet writes scraper-emitted director/synopsisEs/runtimeMin/
+// titleOriginal unconditionally on every re-scrape, regardless of the row's
+// match_source. For a manually-patched (or auto-matched) row, this overwrites
+// TMDB-canonical enrichment-quality data with scraper-quality data.
+//
+// Fix: gate the director/runtimeMin/titleOriginal columns in buildUpdateSet
+// on the row's current match_source. Manual / auto / override rows keep
+// their enrichment-curated values; none / none-attempted rows still get
+// scraper updates so future enrichment passes see the freshest hints.
+// synopsisEs is exempt from the gate (the "provider-fields-win" invariant
+// in enrichment.ts:270 already keeps the scraper synopsis preferred).
+// ---------------------------------------------------------------------------
+describe('ingest — re-scrape preserves enrichment on manual/auto/override rows', () => {
+  beforeEach(async () => {
+    testDb = await makeInMemoryDb();
+    enrichFilmMock.mockReset();
+    enrichByTmdbIdMock.mockReset();
+    // No-op default: rows that match fetchPendingFilms's WHERE clause
+    // (manual + tmdbId set + posterUrl IS NULL, or none, or none-attempted +
+    // tmdbId set) trigger enrichment as part of ingest. Returning a
+    // transient-error result leaves match_source untouched and produces
+    // no DB writes — the regression tests below are concerned with the
+    // upsert path, not the enrichment path.
+    enrichFilmMock.mockResolvedValue({ delta: null, reason: 'error', error: 'no-op-mock' });
+    enrichByTmdbIdMock.mockResolvedValue({ delta: null, reason: 'error', error: 'no-op-mock' });
+    await testDb
+      .insert(cinemas)
+      .values({ id: 'lugones', name: 'Sala Lugones', type: 'indie' });
+  });
+
+  // CRITICAL REGRESSION
+  it('does NOT overwrite director on a match_source="manual" row when the scraper emits a different director', async () => {
+    // Seed: post-enrichment state of a manually-patched film. Operator
+    // patched tmdb_id, enrichment ran and filled in canonical TMDB data
+    // including the director's full name. The scraper now re-emits the
+    // film with the abbreviated director string it originally saw.
+    const [seeded] = await testDb
+      .insert(films)
+      .values({
+        title: 'La madre',
+        scrapedTitle: 'La madre',
+        scrapedYear: 1926,
+        year: 1926,
+        titleOriginal: 'Мать',
+        director: 'Vsevolod Pudovkin', // <- enrichment-canonical
+        synopsisEs: 'Una madre intenta salvar a su hijo durante la Revolución rusa de 1905.',
+        runtimeMin: 89,
+        tmdbId: 53472,
+        imdbId: 'tt0017217',
+        posterUrl: '/posters/53472.jpg',
+        backdropUrl: '/backdrops/53472.jpg',
+        country: 'SU',
+        matchSource: 'manual',
+        matchConfidence: 1.0,
+        slug: 'la-madre-1926',
+      })
+      .returning({ id: films.id });
+
+    // Re-scrape: provider emits the same film with a DIFFERENT director
+    // string (the original abbreviated form the scraper saw on the venue
+    // page). This is the exact shape that triggered the 2026-05-17 report.
+    await ingest({
+      cinemaId: 'lugones',
+      success: true,
+      warnings: [],
+      screenings: [
+        {
+          cinemaId: 'lugones',
+          filmTitle: 'La madre',
+          year: 1926,
+          director: 'V. I. Pudovkin', // <- scraper-emitted, abbreviated
+          startsAtUtc: new Date('2026-06-15T22:00:00Z'),
+          tags: ['cycle' as const],
+          sourceUrl: 'https://complejoteatral.gob.ar/cine',
+        },
+      ],
+    });
+
+    const [after] = await testDb
+      .select()
+      .from(films)
+      .where(eq(films.id, seeded.id));
+
+    // The enrichment-curated director MUST survive the rescrape.
+    expect(after.director).toBe('Vsevolod Pudovkin');
+    // All other enrichment columns must also survive.
+    expect(after.tmdbId).toBe(53472);
+    expect(after.matchSource).toBe('manual');
+    expect(after.matchConfidence).toBe(1.0);
+    expect(after.titleOriginal).toBe('Мать');
+    expect(after.posterUrl).toBe('/posters/53472.jpg');
+    expect(after.backdropUrl).toBe('/backdrops/53472.jpg');
+    expect(after.runtimeMin).toBe(89);
+    expect(after.imdbId).toBe('tt0017217');
+    expect(after.country).toBe('SU');
+    expect(after.slug).toBe('la-madre-1926');
+  });
+
+  it('does NOT overwrite director on a match_source="auto" row', async () => {
+    // Same shape as the manual case, but the row was auto-matched (TMDB
+    // confidence >= 0.8). The enrichment-quality director must still
+    // survive a rescrape that emits a different string.
+    const [seeded] = await testDb
+      .insert(films)
+      .values({
+        title: 'Solaris',
+        scrapedTitle: 'Solaris',
+        scrapedYear: 1972,
+        year: 1972,
+        director: 'Andrei Tarkovsky',
+        tmdbId: 593,
+        matchSource: 'auto',
+        matchConfidence: 0.95,
+        slug: 'solaris-1972',
+      })
+      .returning({ id: films.id });
+
+    await ingest({
+      cinemaId: 'lugones',
+      success: true,
+      warnings: [],
+      screenings: [
+        {
+          cinemaId: 'lugones',
+          filmTitle: 'Solaris',
+          year: 1972,
+          director: 'A. Tarkovski', // typo in scraped page
+          startsAtUtc: new Date('2026-06-20T21:00:00Z'),
+          tags: ['cycle' as const],
+          sourceUrl: 'https://complejoteatral.gob.ar/cine',
+        },
+      ],
+    });
+
+    const [after] = await testDb.select().from(films).where(eq(films.id, seeded.id));
+    expect(after.director).toBe('Andrei Tarkovsky');
+    expect(after.matchSource).toBe('auto');
+  });
+
+  it('does NOT overwrite director on a match_source="override" row', async () => {
+    // Override rows come from tmdb-overrides.json. Same protection applies.
+    const [seeded] = await testDb
+      .insert(films)
+      .values({
+        title: 'Possession',
+        scrapedTitle: 'Possession',
+        scrapedYear: 1981,
+        year: 1981,
+        director: 'Andrzej Żuławski',
+        tmdbId: 11665,
+        matchSource: 'override',
+        slug: 'possession-1981',
+      })
+      .returning({ id: films.id });
+
+    await ingest({
+      cinemaId: 'lugones',
+      success: true,
+      warnings: [],
+      screenings: [
+        {
+          cinemaId: 'lugones',
+          filmTitle: 'Possession',
+          year: 1981,
+          director: 'Andrzej Zulawski', // ASCII-stripped form
+          startsAtUtc: new Date('2026-06-22T20:00:00Z'),
+          tags: ['cycle' as const],
+          sourceUrl: 'https://complejoteatral.gob.ar/cine',
+        },
+      ],
+    });
+
+    const [after] = await testDb.select().from(films).where(eq(films.id, seeded.id));
+    expect(after.director).toBe('Andrzej Żuławski');
+    expect(after.matchSource).toBe('override');
+  });
+
+  it('DOES update director on a match_source="none" row (negative case — protection is scoped, not blanket)', async () => {
+    // Films that haven't been enriched yet have no enrichment-quality data
+    // to protect. The scraper IS the only data source, so re-scrapes must
+    // freely update director/synopsisEs/runtimeMin/titleOriginal so future
+    // enrichment passes see the freshest hints.
+    const [seeded] = await testDb
+      .insert(films)
+      .values({
+        title: 'Unenriched Title',
+        scrapedTitle: 'Unenriched Title',
+        scrapedYear: 2024,
+        year: 2024,
+        director: 'Old Director Name',
+        matchSource: 'none',
+      })
+      .returning({ id: films.id });
+
+    await ingest({
+      cinemaId: 'lugones',
+      success: true,
+      warnings: [],
+      screenings: [
+        {
+          cinemaId: 'lugones',
+          filmTitle: 'Unenriched Title',
+          year: 2024,
+          director: 'New Director Name',
+          startsAtUtc: new Date('2026-06-25T20:00:00Z'),
+          tags: ['cycle' as const],
+          sourceUrl: 'https://complejoteatral.gob.ar/cine',
+        },
+      ],
+    });
+
+    const [after] = await testDb.select().from(films).where(eq(films.id, seeded.id));
+    expect(after.director).toBe('New Director Name');
+  });
+
+  it('DOES update director on a match_source="none-attempted" row (also unenriched)', async () => {
+    const [seeded] = await testDb
+      .insert(films)
+      .values({
+        title: 'Tried But Missed',
+        scrapedTitle: 'Tried But Missed',
+        scrapedYear: 2023,
+        year: 2023,
+        director: 'Stale Director',
+        matchSource: 'none-attempted',
+      })
+      .returning({ id: films.id });
+
+    await ingest({
+      cinemaId: 'lugones',
+      success: true,
+      warnings: [],
+      screenings: [
+        {
+          cinemaId: 'lugones',
+          filmTitle: 'Tried But Missed',
+          year: 2023,
+          director: 'Fresh Director Name',
+          startsAtUtc: new Date('2026-06-26T20:00:00Z'),
+          tags: ['cycle' as const],
+          sourceUrl: 'https://complejoteatral.gob.ar/cine',
+        },
+      ],
+    });
+
+    const [after] = await testDb.select().from(films).where(eq(films.id, seeded.id));
+    expect(after.director).toBe('Fresh Director Name');
+  });
+
+  it('preserves runtimeMin and titleOriginal on manual rows (same gate applies to all three TMDB-canonical fields)', async () => {
+    const [seeded] = await testDb
+      .insert(films)
+      .values({
+        title: 'Stalker',
+        scrapedTitle: 'Stalker',
+        scrapedYear: 1979,
+        year: 1979,
+        titleOriginal: 'Сталкер',
+        director: 'Andrei Tarkovsky',
+        runtimeMin: 162,
+        tmdbId: 1398,
+        matchSource: 'manual',
+        slug: 'stalker-1979',
+      })
+      .returning({ id: films.id });
+
+    await ingest({
+      cinemaId: 'lugones',
+      success: true,
+      warnings: [],
+      screenings: [
+        {
+          cinemaId: 'lugones',
+          filmTitle: 'Stalker',
+          year: 1979,
+          filmTitleOriginal: 'Stalker (the venue version)', // scraper-emitted, lossy
+          runtimeMin: 155, // scraper guessed a different runtime
+          startsAtUtc: new Date('2026-06-27T20:00:00Z'),
+          tags: ['cycle' as const],
+          sourceUrl: 'https://complejoteatral.gob.ar/cine',
+        },
+      ],
+    });
+
+    const [after] = await testDb.select().from(films).where(eq(films.id, seeded.id));
+    expect(after.titleOriginal).toBe('Сталкер');
+    expect(after.runtimeMin).toBe(162);
+  });
+
+  it('synopsisEs IS still updated by scraper on manual rows (provider-fields-win invariant)', async () => {
+    // synopsisEs is the exception to the protection. The enrichment.ts:270
+    // "provider-fields-win" invariant means venue-scraped synopses are
+    // preferred over TMDB peninsular-Spanish. So a fresh scraped synopsis
+    // should overwrite whatever's there — including an enriched one (which
+    // only exists when the scraper had no synopsis at enrichment time).
+    const [seeded] = await testDb
+      .insert(films)
+      .values({
+        title: 'Película con sinopsis',
+        scrapedTitle: 'Película con sinopsis',
+        scrapedYear: 2020,
+        year: 2020,
+        synopsisEs: 'Sinopsis vieja del scraper original.',
+        tmdbId: 99999,
+        matchSource: 'manual',
+        slug: 'pelicula-con-sinopsis-2020',
+      })
+      .returning({ id: films.id });
+
+    await ingest({
+      cinemaId: 'lugones',
+      success: true,
+      warnings: [],
+      screenings: [
+        {
+          cinemaId: 'lugones',
+          filmTitle: 'Película con sinopsis',
+          year: 2020,
+          synopsisEs: 'Sinopsis nueva del scraper actualizado.',
+          startsAtUtc: new Date('2026-06-28T20:00:00Z'),
+          tags: ['cycle' as const],
+          sourceUrl: 'https://complejoteatral.gob.ar/cine',
+        },
+      ],
+    });
+
+    const [after] = await testDb.select().from(films).where(eq(films.id, seeded.id));
+    expect(after.synopsisEs).toBe('Sinopsis nueva del scraper actualizado.');
+  });
+});
