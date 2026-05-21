@@ -2,6 +2,22 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.2.3.9] - 2026-05-20
+
+### Fixed
+
+- **Expired screenings no longer occupy the top of today's cartelera section.** The dominant evening-cartelera intent is "what's still seeable tonight," and prior behavior rendered every today screening as a full poster+synopsis+metadata card regardless of whether it had already started — forcing a 20:00 BA visitor to scroll past 17:00 / 18:30 / 19:00 cards to reach what was actually still attainable. Expired screenings (defined as `startsAtUtc + 15min < now`) are now filtered out of today's day section entirely. The count is preserved in the day-banner subhead as a density signal so the day's overall activity stays legible without resurrecting card chrome: "12 funciones · 4 ya pasaron" (the "· N ya pasaron" suffix is omitted when nothing is expired). The all-expired edge case shows "12 funciones · todas ya pasaron" plus editorial body copy "No más funciones por hoy" in place of the cards. The 15-minute grace window matches BA-indie-cinema reality — a user looking at the cartelera at 19:12 for a 19:00 Lorca screening can typically still walk in, so flagging it expired the moment it nominally starts felt harsh.
+
+  Predicate `isScreeningExpired(startsAtUtc, now)` lives in `src/lib/date-ranges.ts` alongside the existing BA-tz helpers, with `SCREENING_GRACE_MS = 15 * 60 * 1000`. Instant comparison only — no BA-timezone math needed because both inputs are UTC Date instants; the BA-local discipline only matters for date-bucketing (which day "today" means), not for "has this instant passed?". Partition happens in `DaySection` (`src/app/page.tsx`) and is gated on `day.isToday` — non-today days pass through unchanged because they're entirely future by construction. 7 new boundary tests in `src/lib/date-ranges.test.ts` lock down the predicate at 14:59 ago (not expired), exactly 15:00 ago (boundary, not expired — predicate is strict `<`), 15:01 ago (expired), and multi-hour-past (expired). Test count: 424 → 431. Browser-verified at `localhost:3000` with a synthetic seed across all three banner states (mixed expired/upcoming, all-expired-today, non-today unchanged).
+
+  `/pelicula/<slug>` deliberately not touched in this change. Different intent — the film-detail page is "this film's full BA-circuit history," and past screenings on it carry editorial value ("played at MALBA last Thursday" is interesting context to a user landing there post-screening). The `FilmScreeningRow.isPast` grayscale demotion on that page is independent and retained.
+
+  Closes TODO #20.
+
+### Removed
+
+- **`ScreeningCard.isPast` prop** in `src/app/page.tsx` (and the grayscale-poster + ink-gray time-color paths it controlled). With expired screenings hidden upstream, the flag became dead code — the partition is the only path that ever sets it, and the partition no longer renders the past branch. Removing it kept the card component honest. `/pelicula/`'s `FilmScreeningRow` has its own independent `isPast` for that page's past-screenings-stay-visible rendering — unrelated, unchanged.
+
 ## [0.2.3.8] - 2026-05-17
 
 ### Added

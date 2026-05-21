@@ -14,6 +14,8 @@ import {
   getIsoWeekStartBA,
   getIsoWeekEndBA,
   getStartOfWeekAfterNextBA,
+  isScreeningExpired,
+  SCREENING_GRACE_MS,
 } from './date-ranges';
 
 // Helper: assert a Date equals a given ISO string (for readability).
@@ -113,3 +115,46 @@ describe('getStartOfWeekAfterNextBA — exclusive upper bound of "próxima seman
     );
   });
 });
+
+describe('isScreeningExpired — 15-min grace past startsAtUtc', () => {
+  // Anchor "now" at a round UTC instant; the helper only cares about
+  // instant comparison (no BA-tz math), so we don't need fixture dates
+  // tied to BA wall time here.
+  const now = new Date('2026-05-20T22:00:00.000Z');
+
+  it('grace constant is exactly 15 minutes', () => {
+    expect(SCREENING_GRACE_MS).toBe(15 * 60 * 1000);
+  });
+
+  it('future screening is not expired', () => {
+    const startsAt = new Date(now.getTime() + 60 * 60 * 1000); // +1h
+    expect(isScreeningExpired(startsAt, now)).toBe(false);
+  });
+
+  it('screening starting exactly at "now" is not expired (grace still applies)', () => {
+    expect(isScreeningExpired(now, now)).toBe(false);
+  });
+
+  it('screening that started 14:59 ago is still within grace → not expired', () => {
+    const startsAt = new Date(now.getTime() - (14 * 60 + 59) * 1000);
+    expect(isScreeningExpired(startsAt, now)).toBe(false);
+  });
+
+  it('screening that started exactly 15:00 ago is at the boundary → not expired', () => {
+    // Predicate is `startsAt + 15min < now`, strict <. At exactly 15:00 ago,
+    // startsAt + 15min === now, so not expired yet.
+    const startsAt = new Date(now.getTime() - 15 * 60 * 1000);
+    expect(isScreeningExpired(startsAt, now)).toBe(false);
+  });
+
+  it('screening that started 15:01 ago is expired', () => {
+    const startsAt = new Date(now.getTime() - (15 * 60 + 1) * 1000);
+    expect(isScreeningExpired(startsAt, now)).toBe(true);
+  });
+
+  it('screening that started 3 hours ago is expired', () => {
+    const startsAt = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+    expect(isScreeningExpired(startsAt, now)).toBe(true);
+  });
+});
+

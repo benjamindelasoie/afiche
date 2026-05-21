@@ -13,7 +13,12 @@ import {
 } from '@/db/queries';
 import { TAG_LABELS_ES } from '@/db';
 import { getEditionNumber, editionFullSentence } from '@/lib/iso-week';
-import { getIsoWeekStartBA, getIsoWeekEndBA, BA_TZ } from '@/lib/date-ranges';
+import {
+  getIsoWeekStartBA,
+  getIsoWeekEndBA,
+  isScreeningExpired,
+  BA_TZ,
+} from '@/lib/date-ranges';
 import { JsonLd, buildHomepageJsonLd } from '@/lib/json-ld';
 import { DateStrip } from '@/app/_components/DateStrip';
 
@@ -276,13 +281,24 @@ function DaySection({
   // ScreeningCard to flag the ÚLTIMA FUNCIÓN pill on rows where this
   // screening's startsAtUtc equals the film's max.
   lastScreeningPerFilm: Map<number, number>;
-  // "Now" anchor used to flag past-but-today screenings (startsAtUtc < now).
-  // Only matters for today's section; later days in the rolling window
-  // are entirely future so isPast there is always false.
+  // BA-now anchor used to filter expired (already-started + 15 min grace)
+  // screenings out of today's section. Only matters for today; later
+  // days in the rolling window are entirely future by construction.
   now: Date;
 }) {
-  const nowMs = now.getTime();
-  const isEmpty = day.screenings.length === 0;
+  // Hide expired screenings from today entirely — the dominant evening
+  // intent is "what's still seeable tonight", and past-start cards
+  // dominate the page's most valuable real estate (top of today). The
+  // count of dropped screenings still surfaces in the banner subhead so
+  // density isn't lost ("12 funciones · 4 ya pasaron"). Non-today days
+  // pass through unchanged.
+  const upcoming = day.isToday
+    ? day.screenings.filter((s) => !isScreeningExpired(s.startsAtUtc, now))
+    : day.screenings;
+  const total = day.screenings.length;
+  const expiredCount = total - upcoming.length;
+  const isEmpty = total === 0;
+  const isAllExpired = day.isToday && total > 0 && upcoming.length === 0;
   return (
     <div>
       {/* Day banner — rendered as <h2> for screen-reader outline. The
@@ -308,14 +324,20 @@ function DaySection({
           )}
         </span>
         <span className="tracking-eyebrow text-ink-gray font-mono text-[11px] uppercase">
-          {day.screenings.length} {day.screenings.length === 1 ? 'función' : 'funciones'}
+          {total} {total === 1 ? 'función' : 'funciones'}
+          {expiredCount > 0 &&
+            (isAllExpired ? ' · todas ya pasaron' : ` · ${expiredCount} ya pasaron`)}
         </span>
       </h2>
       {isEmpty ? (
         <p className="text-ink-gray font-serif text-base italic">Las salas descansan.</p>
+      ) : isAllExpired ? (
+        <p className="text-ink-gray font-serif text-base italic">
+          No más funciones por hoy.
+        </p>
       ) : (
         <div className="space-y-5">
-          {day.screenings.map((s, idx) => (
+          {upcoming.map((s, idx) => (
             <ScreeningCard
               key={s.id}
               s={s}
@@ -323,7 +345,6 @@ function DaySection({
               isLastFunction={
                 lastScreeningPerFilm.get(s.film.id) === s.startsAtUtc.getTime()
               }
-              isPast={s.startsAtUtc.getTime() < nowMs}
             />
           ))}
         </div>
@@ -344,7 +365,6 @@ function ScreeningCard({
   s,
   isAboveFold,
   isLastFunction,
-  isPast,
 }: {
   s: ScreeningRow;
   isAboveFold: boolean;
@@ -354,26 +374,13 @@ function ScreeningCard({
   // FUNCIÓN pill in the tag strip — visual urgency signal for "catch
   // it now or wait years."
   isLastFunction: boolean;
-  // True when this screening's startsAtUtc is in the past relative to
-  // "now". Only happens for today's earlier screenings. We keep them
-  // visible (the day's full programming is meaningful context) but
-  // desaturate the poster (grayscale) and mute the carmine time accent
-  // to ink-gray. No text label — "Ya empezó" / "Ya terminó" are both
-  // wrong some of the time (in-progress vs hours-past), and the visual
-  // signal alone is enough: "you're not making this one." The card link
-  // still works — /pelicula/<slug> shows the same screenings consistently.
-  isPast: boolean;
 }) {
   // DESIGN.md display-md spec: tracking -0.01em (not Tailwind's tracking-tight
   // = -0.025em). Looser tracking is more legible at 24–30px card-title sizes.
   const titleClass =
     'font-serif text-2xl sm:text-3xl leading-tight tracking-[-0.01em] text-balance';
-  // Time accent: carmine for attendable screenings (visual call-to-action),
-  // muted ink-gray for already-started ones. Dropping the carmine on past
-  // screenings is the strongest signal — it's the loudest pixel on the
-  // attendable card, so removing it on a past card visibly demotes the row.
-  const timeColor = isPast ? 'text-ink-gray' : 'text-carmine';
-  const timeClass = `font-serif italic text-4xl leading-none ${timeColor} tabular-nums md:mt-2`;
+  const timeClass =
+    'font-serif italic text-4xl leading-none text-carmine tabular-nums md:mt-2';
 
   // Filter out 'cycle' — it's on every Lugones card (inferTags pushes it
   // unconditionally), so universal ≠ signal. Only meaningful tags like
@@ -434,7 +441,7 @@ function ScreeningCard({
                   sizes="80px"
                   loading={isAboveFold ? 'eager' : 'lazy'}
                   fetchPriority={isAboveFold ? 'high' : 'auto'}
-                  className={`h-full w-full object-cover ${isPast ? 'grayscale' : ''}`}
+                  className="h-full w-full object-cover"
                 />
               ) : (
                 // Branded fallback: carmine "A" + "SIN AFICHE" wordmark.
@@ -450,7 +457,7 @@ function ScreeningCard({
                   alt=""
                   width={80}
                   height={112}
-                  className={`h-full w-full object-cover ${isPast ? 'grayscale' : ''}`}
+                  className="h-full w-full object-cover"
                 />
               )}
             </div>

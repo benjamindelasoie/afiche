@@ -150,6 +150,21 @@ export function getStartOfWeekAfterNextBA(now: Date): Date {
 }
 
 /**
+ * Grace window applied to "has this screening already started?" checks.
+ * A user arriving 0–15 min after a posted start time can typically still
+ * walk into a BA indie cinema; treating those screenings as expired and
+ * hiding them would feel harsh. After 15 min they're gone.
+ *
+ * Pure instant comparison — no BA-tz math needed because both Date
+ * inputs are UTC instants.
+ */
+export const SCREENING_GRACE_MS = 15 * 60 * 1000;
+
+export function isScreeningExpired(startsAtUtc: Date, now: Date): boolean {
+  return startsAtUtc.getTime() + SCREENING_GRACE_MS < now.getTime();
+}
+
+/**
  * 14 days from today at 00:00 BA — exclusive upper bound of the
  * 14-day rolling cartelera window (the date-strip horizon) and
  * inclusive lower bound of "Próximamente" (the awareness layer).

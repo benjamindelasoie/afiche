@@ -4,6 +4,53 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 26. Trigger scrapes + enrichment from the admin panel (FEATURE — combines with #4)
+
+**What:** A new `/admin/scrape` page (folds in TODO #4 — log query UI) that shows each cinema's most recent `scrape_runs` row with status / finished_at / warnings, plus trigger buttons:
+
+- Per-cinema **Scrape** button (each row)
+- Page-level **Scrape all** / **Enrich pending** / **Refresh enrichment** buttons
+
+Server actions wrap the existing CLI entry points (`src/scrapers/run.ts`, `src/db/enrich.ts`) so behavior matches `npm run db:scrape` exactly.
+
+**Why:** Two operator pains land in one panel — (a) any scrape or enrich currently requires terminal access to run the CLI, annoying on mobile or away from a dev machine; (b) seeing recent scrape state requires manual SQL against `scrape_runs`. TODO #4 was already calling for the second half; the trigger surface makes the first half trivial since the same page renders both.
+
+**Three design decisions to lock before implementing:**
+
+1. **Sync vs async execution.**
+   - **Recommended: inline-blocking, sequential, with `export const maxDuration = 300` on the route.** Per-cinema scrapes run 10–60s, comfortably within Vercel's 300s default. "Scrape all" across 7 cinemas serially could hit the ceiling.
+   - Fallback if "Scrape all" times out: client-side parallel — 7 separate fetch calls from the browser to per-cinema endpoints, each with its own 300s budget. No queue infra needed.
+   - Async (fire-and-forget with polling) is overkill at this scale; revisit only if Vercel function budget becomes the binding constraint.
+
+2. **Rate-limit / accident guard.**
+   - MALBA has 429'd from the home IP for multi-day stretches (per TODO #9). A casual "Scrape all" click from mobile could earn a ban.
+   - **Recommended:** confirm dialog before any trigger + visual disable when the cinema's most-recent `scrape_runs` row has `status='in-progress'`. Cheap, blocks the obvious foot-gun.
+   - Optional: a 60s cooldown between successive scrapes of the same cinema (not enforced server-side at first; trust the operator + the confirm dialog).
+
+3. **Status freshness.**
+   - Server action calls `revalidatePath('/admin/scrape')` on submit so the table reflects the new run immediately.
+   - For `in-progress` rows, no live status — operator refreshes the page. Live polling is overkill at v1.
+
+**Pros:**
+- Folds TODO #4 (log query UI) into the same panel — two open items closed for the cost of one.
+- Reuses existing `runScrape()` / `enrich.ts` entry points end-to-end.
+- Operator can rescrape from a phone after spotting bad data via the existing `/admin/unmatched` panel.
+
+**Cons:**
+- Vercel function timeout cap is a real ceiling — "Scrape all" might need fallback to client-side fan-out.
+- Triggering scrapes from a phone is convenient until it's not: rate-limits on MALBA/Lorca don't reset on a schedule the operator controls.
+- One more attack surface on `/admin/*` if `ADMIN_SECRET` ever leaks (current threat model is "single operator with retained authority" per `project_afiche_operator_stance` memory).
+
+**Effort estimate:** S–M (~4-6 hrs CC). One new route (`src/app/admin/scrape/page.tsx`), one server-action module (`src/app/admin/scrape/actions.ts`), one query helper for "latest scrape_runs per cinema" (extends `src/db/queries.ts` or `src/lib/admin-dal.ts`). Reuses scrape + enrich entry points unchanged.
+
+**Priority:** P2 — real operator pain on mobile / away-from-dev sessions, but not a blocker. Sits below the friction queue.
+
+**Depends on / blocked by:** Nothing. Existing admin auth + DAL handle access; `scrape_runs` already holds the state.
+
+**First-step action:** Locate `src/scrapers/run.ts` entry point, confirm it accepts a single cinema id (not just "run all"). If the runner is "all-or-nothing" today, the first PR splits it into per-cinema callables before any UI work. Then sketch the server-action signature and the `getLatestRunPerCinema()` query helper.
+
+---
+
 ## 24. Scraper-update cache invalidation: reset `match_source` when a meaningful field changes (STRUCTURAL POLISH)
 
 **What:** When the scraper UPDATEs a meaningful column (`director`, `titleOriginal`, `runtimeMin`, `synopsisEs`) on a row currently at `match_source='none-attempted'`, reset `match_source='none'` in the same transaction so the next enrichment pass retries with the new data.
@@ -83,7 +130,9 @@ The risk: novelty visits, low return engagement. The wall might be tapped once a
 
 ---
 
-## 20. Expired screenings dominate the cartelera at typical evening visit times (UX BUG)
+~~**20. Expired screenings dominate the cartelera at typical evening visit times (UX BUG)**~~ Resolved 2026-05-20. Option B (hide entirely) shipped over Option A (collapsible) — the cartelera is a forward-looking decision tool, not a TV-guide-of-history, and a `<details>` toggle still carried design tax (visual integration, mobile spacing) that hiding-entirely avoids. Density signal preserved in the day-banner subhead instead of as card chrome: `X funciones · Y ya pasaron` (omit suffix when `Y=0`); all-expired case shows `X funciones · todas ya pasaron` + body line `No más funciones por hoy`. Predicate `isScreeningExpired(startsAtUtc, now)` lives in `src/lib/date-ranges.ts` with `SCREENING_GRACE_MS = 15 * 60 * 1000` — instant comparison only, no BA-tz math needed since both inputs are UTC. Partition happens in `DaySection` (`src/app/page.tsx`) and only fires for `day.isToday`; non-today days pass through unchanged because they're entirely future by construction. `ScreeningCard.isPast` prop dropped along with the grayscale poster + ink-gray time color it controlled — with expired screenings hidden, the flag became dead code. `/pelicula/` deliberately NOT touched (per session decision: that page's intent is "this film's full BA-circuit history" where past screenings have editorial value, and `FilmScreeningRow.isPast` keeps its grayscale demotion). Tests in `src/lib/date-ranges.test.ts` cover the grace-window boundary (14:59 ago → not expired, 15:00 ago → boundary not expired, 15:01 ago → expired). Browser-verified at `localhost:3000` with synthetic data across all three banner states.
+
+**Original context (preserved for the bug-class trail):**
 
 **What:** Today's day section currently renders ALL of today's screenings as full cards regardless of whether they've already started. A user opening Afiche at 20:00 BA sees the 17:00, 18:30, and 19:00 screenings (all already started — "expired") taking full poster+synopsis+metadata card space at the top of today's section, forcing them to scroll past stale content before reaching what's actually still seeable tonight. The dominant cartelera-visit intent at evening hours is *"what's still possible to see tonight?"* — current behavior serves the wrong intent.
 
