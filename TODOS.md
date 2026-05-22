@@ -67,25 +67,6 @@ Server actions wrap the existing CLI entry points (`src/scrapers/run.ts`, `src/d
 
 ---
 
-## 23. Unenriched films display in scraped casing (UX POLISH)
-
-**What:** Films whose TMDB match has not succeeded (e.g. `match_source ∈ ('none', 'none-attempted')`, or `skip_tmdb=true`) keep their `scraped_title` verbatim in the cartelera. For Lorca-sourced films that's all-caps ("GIOIA MIA: UN VERANO EN SICILIA"); for MALBA bundles or curator-prefixed titles it can be visually noisy ("FUNCIÓN ESPECIAL: …"). Once a film matches TMDB, `films.title` gets overwritten with the canonical casing — but until then, the display is whatever the scraper saw.
-
-**Why deferred:** Not a correctness issue, and the right fix is at the render layer, not the data layer. Per the matcher-normalization decision (session 2026-05-19), `films.scraped_title` is intentionally the audit trail of "what the scraper saw" — re-casing it at scrape time loses that signal and risks bad Spanish title-casing ("La Madre" instead of "La madre"). The display problem is separate from the matching problem.
-
-**Fix shape (when picked up):**
-
-1. **Render-layer smart-case helper.** When a film's `match_source ∈ ('none', 'none-attempted')` AND `title` is all-caps or otherwise obviously raw, apply a Spanish-aware title-casing function for display only. Rough rule: lowercase first, then capitalize first letter; leave articles ("la", "el", "los", "las", "de", "del") lowercase except at position 0. Don't touch the DB.
-2. **Or: CSS-only fallback.** `text-transform: none` is the default; consider `font-variant: small-caps` or a "low-confidence" visual treatment that makes the unmatched state legible without needing to re-case the text.
-3. Test cases: "GIOIA MIA: UN VERANO EN SICILIA" → "Gioia mia: un verano en Sicilia" (acceptable); "FUNCIÓN ESPECIAL: UN BUEN DÍA + DESPUÉS DE UN BUEN DÍA" → same shape but contains co-feature marker; "PELÍCULA SORPRESA" → "Película sorpresa". Verify the helper doesn't mangle proper-noun-heavy titles ("EL DESPRECIO" → "El desprecio" is fine; "BLADE RUNNER" → "Blade runner" is *technically* less canonical than "Blade Runner" but acceptable as a degradation since the film should match TMDB anyway).
-4. Apply at the film-card render component (probably `src/components/film-card.tsx` or wherever the title text is emitted). Single place; reversible.
-
-**Related:** [[project_afiche_state]] tracks the cartelera render layer. [[feedback_afiche_scraper_iteration]] is the principle that motivated leaving this at the render layer rather than the scraper.
-
-**Estimated effort:** 1-2 hours including tests. Best paired with a /design-review pass.
-
----
-
 ## 21. Wall-of-afiches: full-screen interactive poster wall as a second view (CONCEPT)
 
 **What:** A full-screen "Street-View POV" looking at a wall covered in the posters of currently-playing films. The user navigates by panning / scrolling / tilting; the wall is the cartelera but as a *visual lineup*, not a card-by-card list. Idea floated 2026-05-17 at end-of-day — captured here so it survives until next session.
@@ -627,6 +608,13 @@ Deferred findings from the full live audit of afiche.vercel.app. HIGH-severity i
 ---
 
 ## Done (this session arc)
+
+**2026-05-22 (TODO #23 — render-layer smart-casing for unmatched titles):**
+- ✅ `displayFilmTitle()` in `src/lib/title-case.ts` — sentence-cases all-caps titles when `match_source ∈ ('none', 'none-attempted')` or `skip_tmdb=true`. Colon stays lowercase per Spanish typography; `.!?` introduce a new capital, including across `¡¿` opening punctuation. Proper-noun degradation accepted ("BLADE RUNNER" → "Blade runner"; "SUEÑOS DE OSLO" → "Sueños de oslo"). 13 unit tests covering gating, sentence boundaries, diacritics, leading punctuation, non-Latin scripts.
+- ✅ Wired at the query-shaper layer (`src/db/queries.ts` `fetchRows`) so homepage cards, Próximamente index, `/pelicula` h1 + `<title>` + og metadata, JSON-LD `name`, alt text, and aria-labels all flow through one transform. DB `films.title` stays raw — render-only fix per [[feedback_afiche_scraper_iteration]].
+- Verified against 9 real unmatched rows in local DB; all render improvements. Browser-checked on homepage + `/pelicula`.
+
+**Test count: 424 → 444** (+20: 13 new title-case + 7 unrelated since last bump).
 
 **2026-05-20 (admin panel v1 + scraper enrichment-protection fix — PR #9):**
 - ✅ **TODO #25** — Operator admin panel at `/admin/*`. `proxy.ts` route gate + signed-cookie HMAC session + `verifySession()` DAL (Next.js 16 two-layer auth pattern). Unmatched-films list, server-rendered TMDB search with paste-id escape hatch, collision-merge confirm dialog with lower-id-wins slug-stability invariant. Reuses `mergeFilmInto` + refactored `writeEnrichmentToFilm`. Single env-var auth (`ADMIN_SECRET`) — set in Vercel production + preview. — commit `ca3ab15`

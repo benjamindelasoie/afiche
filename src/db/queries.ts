@@ -33,6 +33,7 @@ import {
   getIsoWeekStartBA,
   BA_TZ,
 } from '@/lib/date-ranges';
+import { displayFilmTitle } from '@/lib/title-case';
 
 export interface ScreeningRow {
   id: number;
@@ -142,7 +143,9 @@ async function fetchRows({
     programName: row.screening.programName ?? null,
     film: {
       id: row.film.id,
-      title: row.film.title,
+      // Render-ready: smart-cased for unmatched all-caps titles, otherwise
+      // verbatim. The DB column stays raw; see src/lib/title-case.ts.
+      title: displayFilmTitle(row.film),
       titleOriginal: row.film.titleOriginal,
       director: row.film.director,
       year: row.film.year,
