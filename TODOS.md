@@ -4,50 +4,66 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
-## 26. Trigger scrapes + enrichment from the admin panel (FEATURE — combines with #4)
+## 26. `/admin/runs` — scrape status + enrich-trigger panel (FEATURE — Path A scope, in flight 2026-05-23)
 
-**What:** A new `/admin/scrape` page (folds in TODO #4 — log query UI) that shows each cinema's most recent `scrape_runs` row with status / finished_at / warnings, plus trigger buttons:
+**Scope reshape 2026-05-23:** original spec included per-cinema and page-level **Scrape** buttons. Dropped from this cycle. **Why:** Vercel functions egress from AWS datacenter IPs; MALBA has IP-banned datacenter ranges persistently (per TODO #9 — "rate limit is IP-scoped"). Scrape triggers from Vercel would either fail outright on blocked venues or earn fresh bans. Full scrape-trigger surface depends on the residential-egress daemon — see TODO #27 below.
 
-- Per-cinema **Scrape** button (each row)
-- Page-level **Scrape all** / **Enrich pending** / **Refresh enrichment** buttons
+**What ships in this cycle (Path A):**
+- `/admin/runs` route. Server-renders one row per cinema with latest `scrape_runs` row: status / finished_at / counts (scraped/inserted/upserted/enriched/skipped) / first few warnings.
+- Page-level **"Enrich pending"** server action — wraps `src/db/enrich.ts` entry. Runs enrichment on `match_source ∈ ('none', null)` films. No IP risk: TMDB API is global, no venue egress.
+- Page-level **"Refresh enrichment"** server action — wraps `src/db/refresh-enrichment.ts`. Re-fetches TMDB metadata for already-enriched rows. Same no-IP-risk profile.
+- Confirm dialog on Refresh (many API calls). `revalidatePath('/admin/runs')` after submit.
+- `export const maxDuration = 300` on the route.
+- Status only — no live polling; operator refreshes page for `in-progress` state.
 
-Server actions wrap the existing CLI entry points (`src/scrapers/run.ts`, `src/db/enrich.ts`) so behavior matches `npm run db:scrape` exactly.
+**Why this captures most of the value:** the two operator pains were (a) "see recent scrape state without SQLing" and (b) "trigger work without terminal access." Enrich is the more frequent need (every scrape produces unmatched rows; enrich runs on-demand to backfill TMDB hits). Scrape itself only needs to be triggered when adding a cinema or after a parser fix — both rare, both naturally done from a dev machine where the CLI lives anyway.
 
-**Why:** Two operator pains land in one panel — (a) any scrape or enrich currently requires terminal access to run the CLI, annoying on mobile or away from a dev machine; (b) seeing recent scrape state requires manual SQL against `scrape_runs`. TODO #4 was already calling for the second half; the trigger surface makes the first half trivial since the same page renders both.
+**Effort estimate:** S (~2-3 hrs CC). One new route (`src/app/admin/runs/page.tsx`), server actions inline, one query helper `getLatestRunPerCinema()`.
 
-**Three design decisions to lock before implementing:**
+**Priority:** P2. **Depends on / blocked by:** Nothing. Existing admin auth + DAL handle access.
 
-1. **Sync vs async execution.**
-   - **Recommended: inline-blocking, sequential, with `export const maxDuration = 300` on the route.** Per-cinema scrapes run 10–60s, comfortably within Vercel's 300s default. "Scrape all" across 7 cinemas serially could hit the ceiling.
-   - Fallback if "Scrape all" times out: client-side parallel — 7 separate fetch calls from the browser to per-cinema endpoints, each with its own 300s budget. No queue infra needed.
-   - Async (fire-and-forget with polling) is overkill at this scale; revisit only if Vercel function budget becomes the binding constraint.
+**Folds in:** TODO #4 (log query UI) — closed by the status table half of this work.
 
-2. **Rate-limit / accident guard.**
-   - MALBA has 429'd from the home IP for multi-day stretches (per TODO #9). A casual "Scrape all" click from mobile could earn a ban.
-   - **Recommended:** confirm dialog before any trigger + visual disable when the cinema's most-recent `scrape_runs` row has `status='in-progress'`. Cheap, blocks the obvious foot-gun.
-   - Optional: a 60s cooldown between successive scrapes of the same cinema (not enforced server-side at first; trust the operator + the confirm dialog).
+---
 
-3. **Status freshness.**
-   - Server action calls `revalidatePath('/admin/scrape')` on submit so the table reflects the new run immediately.
-   - For `in-progress` rows, no live status — operator refreshes the page. Live polling is overkill at v1.
+## 27. Residential-egress scrape daemon (UNBLOCKS full /admin/scrape + future cron)
+
+**What:** A tiny daemon running on a residential-IP machine (Benjamin's home machine, a Raspberry Pi, or any always-on box at home) that accepts authenticated webhook requests from `/admin/scrape` and runs `npm run db:scrape -- --cinema=<id>` (or all) on demand. Reports status back via webhook or by writing to the same `scrape_runs` table the panel already reads.
+
+**Why this is upstream of multiple things:**
+
+1. **Unblocks TODO #26 Path A → full scope** — per-cinema and "Scrape all" buttons on `/admin/runs` would route through this daemon instead of Vercel, dodging datacenter-IP bans entirely.
+2. **Unblocks the original cron ambition** — fully-automated daily scraping was deferred because Vercel cron egress hits the same IP-block wall. With a daemon, the cron lives on the residential machine (systemd timer, launchd, cron) and Vercel only sees the resulting DB writes.
+3. **Removes the laptop-bound workflow constraint** — today scraping requires Benjamin's laptop to be on and `npm run db:scrape` to be invoked manually. A daemon makes scraping ambient: it just keeps happening at the configured cadence.
+
+**Three shape decisions to lock before implementing:**
+
+1. **Hardware.** Options: (a) repurpose an old laptop/Mini — zero new cost, but burns power when idle; (b) Raspberry Pi 4 / 5 — ~$50-80 one-time, ~3W idle, purpose-built; (c) home server / NAS if one exists. Recommended: **Pi 5** — quiet, low-power, dedicated, no risk of "I closed my laptop and forgot."
+
+2. **Transport.** Options: (a) webhook from Vercel → daemon's tunneled URL (cloudflared / tailscale funnel / ngrok); (b) daemon polls a Vercel endpoint for "any work queued?"; (c) daemon ignores Vercel entirely and runs on its own cron, writes to DB, admin panel just reflects state. Recommended: **(c) for v1, layer (a) on later if/when on-demand scrape from the panel becomes a real need.** (c) is dead-simple and captures 90% of the value with zero auth/tunnel surface.
+
+3. **Auth (for option (a) only).** If/when webhook is added: shared secret in `Authorization` header, env-var on both sides. Same threat model as `ADMIN_SECRET` — single operator, retained authority, no public surface.
 
 **Pros:**
-- Folds TODO #4 (log query UI) into the same panel — two open items closed for the cost of one.
-- Reuses existing `runScrape()` / `enrich.ts` entry points end-to-end.
-- Operator can rescrape from a phone after spotting bad data via the existing `/admin/unmatched` panel.
+- Solves the IP-block problem cleanly and permanently. The daemon's IP is the same IP Benjamin uses today to run the CLI.
+- Decouples scrape cadence from "is the laptop on right now."
+- Composes with TODO #26 — once the daemon exists, the panel just adds scrape buttons that webhook into it.
+- A Pi is a one-time ~$60 and the cheapest possible always-on infra.
 
 **Cons:**
-- Vercel function timeout cap is a real ceiling — "Scrape all" might need fallback to client-side fan-out.
-- Triggering scrapes from a phone is convenient until it's not: rate-limits on MALBA/Lorca don't reset on a schedule the operator controls.
-- One more attack surface on `/admin/*` if `ADMIN_SECRET` ever leaks (current threat model is "single operator with retained authority" per `project_afiche_operator_stance` memory).
+- New piece of physical infrastructure to maintain (firmware updates, disk space, "oh no the power went out").
+- Webhook path (3a) needs a tunnel — cloudflared / tailscale / ngrok each have their own ops cost.
+- Local DB drift risk if the daemon writes to a local SQLite instead of the prod Turso — must point at prod DB credentials directly. Adds a "prod credentials live on a Pi in my house" risk surface (mitigation: read-write scoped Turso token, rotatable).
 
-**Effort estimate:** S–M (~4-6 hrs CC). One new route (`src/app/admin/scrape/page.tsx`), one server-action module (`src/app/admin/scrape/actions.ts`), one query helper for "latest scrape_runs per cinema" (extends `src/db/queries.ts` or `src/lib/admin-dal.ts`). Reuses scrape + enrich entry points unchanged.
+**Effort estimate:** M (~6-10 hrs across hardware setup + daemon code + cron config + Turso credential plumbing). Pi-flash + OS setup is ~1-2 hrs of clock time but mostly idle waiting. Daemon itself is `~50 lines of shell or a tiny Node script` for option (c).
 
-**Priority:** P2 — real operator pain on mobile / away-from-dev sessions, but not a blocker. Sits below the friction queue.
+**Priority:** P2. Real strategic value, but no day-to-day pain since the laptop-CLI workflow works. Trigger to act: (a) Benjamin wants to stop running the CLI manually, OR (b) #26 Path A ships and the missing scrape buttons start to feel like a hole, OR (c) audience grows enough that daily-fresh data becomes important.
 
-**Depends on / blocked by:** Nothing. Existing admin auth + DAL handle access; `scrape_runs` already holds the state.
+**Depends on / blocked by:** Nothing. Pi can be ordered any day; existing CLI entry points already work.
 
-**First-step action:** Locate `src/scrapers/run.ts` entry point, confirm it accepts a single cinema id (not just "run all"). If the runner is "all-or-nothing" today, the first PR splits it into per-cinema callables before any UI work. Then sketch the server-action signature and the `getLatestRunPerCinema()` query helper.
+**First-step action:** Decide hardware (Pi vs. existing always-on machine). Order if needed. Then a clock-time of ~30 min to install Node + clone the repo + paste in Turso credentials + cron the existing `npm run db:scrape` command. v1 ships without webhook surface; webhook is a follow-up.
+
+**See also:** [[project_afiche_operator_stance]] (solo BDFL, retained authority — prod creds on personal hardware is acceptable under this model). TODO #26 (the panel that fully composes with this).
 
 ---
 

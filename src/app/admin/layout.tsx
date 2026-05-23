@@ -25,7 +25,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link href="/admin/unmatched" className="text-base font-semibold">
               Admin · Afiche
             </Link>
-            <span className="text-xs text-neutral-500">operator panel</span>
+            <nav className="flex items-center gap-3 text-sm text-neutral-600">
+              <Link href="/admin/unmatched" className="hover:text-neutral-900">
+                Unmatched
+              </Link>
+              <Link href="/admin/runs" className="hover:text-neutral-900">
+                Runs
+              </Link>
+            </nav>
           </div>
           <Link href="/" className="text-sm text-neutral-600 hover:underline">
             ← Back to cartelera
