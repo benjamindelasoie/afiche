@@ -300,7 +300,7 @@ function FilmScreeningRow({ s, isPast }: { s: ScreeningRow; isPast: boolean }) {
   const cinemaColor = isPast ? 'text-ink-gray' : 'text-carmine';
 
   const rowBody = (
-    <div className="grid grid-cols-[auto_1fr_auto] items-baseline gap-x-4 gap-y-1 px-1 py-4 md:gap-x-6">
+    <div className="grid grid-cols-[auto_1fr_auto] items-baseline gap-x-4 gap-y-1 px-1 py-4 hover:bg-carmine/5 transition-colors md:gap-x-6">
       {/* Date + time — left column. Date in mono caps, time in italic
           serif (carmine for attendable, ink-gray for past). */}
       <div className="flex items-baseline gap-3">
@@ -320,11 +320,12 @@ function FilmScreeningRow({ s, isPast }: { s: ScreeningRow; isPast: boolean }) {
           visual scale than the cartelera tag strip; this column is
           wider). */}
       <div className="min-w-0">
-        <p
-          className={`tracking-card ${cinemaColor} font-mono text-xs font-bold uppercase`}
+        <Link
+          href={`/sala/${s.cinema.id}`}
+          className={`relative tracking-card ${cinemaColor} font-mono text-xs font-bold uppercase focus-visible:outline-2 focus-visible:outline-carmine focus-visible:outline-offset-2`}
         >
           {s.cinema.name}
-        </p>
+        </Link>
         {s.cinema.neighborhood && (
           <p className="text-ink-gray mt-0.5 font-mono text-[11px] tracking-wider uppercase">
             {s.cinema.neighborhood}
@@ -348,25 +349,26 @@ function FilmScreeningRow({ s, isPast }: { s: ScreeningRow; isPast: boolean }) {
           </div>
         )}
       </div>
-    </div>
-  );
 
-  return (
-    <li>
+      {/* Ticketing link — right column. Previously the whole row was the
+          link; now it's a discrete element so the cinema name can be its
+          own link without nesting <a> inside <a>. */}
       {s.sourceUrl ? (
         <a
           href={s.sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
           data-screening-card
-          className="hover:bg-carmine/5 focus-visible:outline-carmine block transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
-          aria-label={`${s.cinema.name} — ${dayLabel} ${timeLabel}`}
+          className="tracking-eyebrow text-ink-gray hover:text-carmine self-center font-mono text-[10px] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-carmine focus-visible:outline-offset-2"
+          aria-label={`Entradas — ${s.cinema.name} ${timeLabel}`}
         >
-          {rowBody}
+          Entradas →
         </a>
       ) : (
-        rowBody
+        <span />
       )}
-    </li>
+    </div>
   );
+
+  return <li>{rowBody}</li>;
 }

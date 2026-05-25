@@ -1,0 +1,190 @@
+import Image from 'next/image';
+import Link from 'next/link';
+import { formatTimeBA, type ScreeningRow } from '@/db/queries';
+import { TAG_LABELS_ES } from '@/db';
+
+// Heuristic: synopsis must be long enough and end with terminal punctuation.
+// Filters out ~100-140 char Lumiton tile-preview synopses that trail off
+// mid-sentence with dangling commas.
+export function isCompleteSynopsis(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length < 60) return false;
+  return /[.!?…»"']$/.test(trimmed);
+}
+
+function ProgramPill({ name }: { name: string }) {
+  return (
+    <span
+      title={name}
+      className="tracking-card bg-carmine text-cream max-w-[40ch] truncate px-2 py-0.5 font-mono text-[11px] uppercase"
+    >
+      {name}
+    </span>
+  );
+}
+
+export function ScreeningCard({
+  s,
+  isAboveFold,
+  isLastFunction,
+}: {
+  s: ScreeningRow;
+  isAboveFold: boolean;
+  // True when this screening is the LAST upcoming screening of its
+  // film across the entire BA cartelera (computed unbounded, NOT
+  // limited to cartelera tier horizons). Renders a carmine ÚLTIMA
+  // FUNCIÓN pill in the tag strip.
+  isLastFunction: boolean;
+}) {
+  const titleClass =
+    'font-serif text-2xl sm:text-3xl leading-tight tracking-[-0.01em] text-balance';
+  const timeClass =
+    'font-serif italic text-4xl leading-none text-carmine tabular-nums md:mt-2';
+
+  const visibleTags = s.tags.filter((t) => t !== 'cycle');
+  const showTagStrip = visibleTags.length > 0 || s.programName !== null || isLastFunction;
+
+  const cardBody = (
+    <>
+      {showTagStrip && (
+        <div className="mb-2 flex flex-wrap gap-2">
+          {isLastFunction && (
+            <span className="tracking-card bg-carmine text-cream px-2 py-0.5 font-mono text-[11px] uppercase">
+              Última función
+            </span>
+          )}
+          {visibleTags.map((t) => (
+            <span
+              key={t}
+              className="tracking-card bg-carmine text-cream px-2 py-0.5 font-mono text-[11px] uppercase"
+            >
+              {TAG_LABELS_ES[t]}
+            </span>
+          ))}
+          {s.programName && <ProgramPill name={s.programName} />}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
+        <div className="flex min-w-0 gap-4 md:flex-1">
+          {s.cinema.type === 'indie' && (
+            <div className="bg-cream flex h-28 w-20 shrink-0 items-center justify-center overflow-hidden border border-black shadow-[4px_4px_0_var(--color-carmine)]">
+              {s.film.posterUrl ? (
+                <Image
+                  src={s.film.posterUrl}
+                  alt={s.film.title}
+                  width={80}
+                  height={112}
+                  sizes="80px"
+                  loading={isAboveFold ? 'eager' : 'lazy'}
+                  fetchPriority={isAboveFold ? 'high' : 'auto'}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src="/no-poster.svg"
+                  alt=""
+                  width={80}
+                  height={112}
+                  className="h-full w-full object-cover"
+                />
+              )}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            {s.cinema.type === 'indie' ? (
+              <h3 className={titleClass}>{s.film.title}</h3>
+            ) : (
+              <h3 className="font-sans text-lg leading-tight font-medium text-balance">
+                {s.film.title}
+              </h3>
+            )}
+            {s.film.titleOriginal &&
+              s.film.titleOriginal.toLowerCase() !== s.film.title.toLowerCase() && (
+                <p className="text-ink-gray mt-0.5 font-serif text-base italic sm:text-lg">
+                  «{s.film.titleOriginal}»
+                </p>
+              )}
+            {s.film.director && (
+              <p className="text-ink-gray mt-1 text-sm">
+                {s.film.director}
+                {s.film.year && ` · ${s.film.year}`}
+                {s.film.country && (
+                  <span className="hidden sm:inline"> · {s.film.country}</span>
+                )}
+                {s.film.runtimeMin && ` · ${s.film.runtimeMin} min`}
+              </p>
+            )}
+            {s.film.synopsisEs &&
+              s.cinema.type === 'indie' &&
+              isCompleteSynopsis(s.film.synopsisEs) && (
+                <div className="mt-3 hidden md:block">
+                  <p
+                    className="border-carmine line-clamp-3 max-w-prose border-l-2 pl-3 text-sm"
+                    style={{
+                      maskImage:
+                        'linear-gradient(to bottom, black 70%, transparent 100%)',
+                      WebkitMaskImage:
+                        'linear-gradient(to bottom, black 70%, transparent 100%)',
+                    }}
+                  >
+                    {s.film.synopsisEs}
+                  </p>
+                </div>
+              )}
+          </div>
+        </div>
+
+        <div className="flex items-end justify-between gap-4 md:shrink-0 md:flex-col md:items-end md:gap-0 md:text-right">
+          <div>
+            <Link
+              href={`/sala/${s.cinema.id}`}
+              className={`relative z-10 tracking-card font-mono text-xs uppercase ${
+                s.cinema.type === 'indie' ? 'text-carmine font-bold' : 'text-ink-gray'
+              }`}
+            >
+              {s.cinema.name}
+            </Link>
+            {s.cinema.neighborhood && (
+              <p className="text-ink-gray mt-1 font-mono text-[11px] tracking-wider uppercase">
+                {s.cinema.neighborhood}
+              </p>
+            )}
+          </div>
+          <time dateTime={s.startsAtUtc.toISOString()} className={timeClass}>
+            {formatTimeBA(s.startsAtUtc)}
+          </time>
+        </div>
+      </div>
+    </>
+  );
+
+  // Stretched-link pattern: article is the visual card; invisible absolute
+  // <Link> covers it for the film-page tap target. Cinema name sits above
+  // via relative z-10 — avoids nesting <a> inside <a>.
+  const cardClasses = `block p-4 sm:p-5 border relative transition-[background-color,box-shadow] [&:has(a:active)]:translate-y-[1px] ${
+    s.cinema.type === 'indie'
+      ? 'border-carmine bg-carmine/5 border-l-4 hover:bg-carmine/10'
+      : 'border-neutral-300 bg-black/[0.02] hover:bg-black/[0.04]'
+  }`;
+  const focusClasses =
+    s.cinema.type === 'indie'
+      ? 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-carmine'
+      : 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black';
+
+  const ariaLabel = `${s.film.title} — ${s.cinema.name} — ${formatTimeBA(s.startsAtUtc)}`;
+  return (
+    <article className={cardClasses}>
+      {s.film.slug && (
+        <Link
+          href={`/pelicula/${s.film.slug}`}
+          data-screening-card
+          className={`absolute inset-0 ${focusClasses}`}
+          aria-label={ariaLabel}
+        />
+      )}
+      {cardBody}
+    </article>
+  );
+}

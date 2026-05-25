@@ -104,23 +104,22 @@ interface BoundedQuery {
   lower: Date;
   /** Exclusive upper bound. Omit for open-ended (próximamente). */
   upper?: Date;
-  /**
-   * Optional film-id filter. When set, the query only returns screenings
-   * for that film (used by /pelicula/<slug> for the cross-venue
-   * upcoming-screenings list). When omitted, all films are included
-   * (cartelera tier queries).
-   */
+  /** Optional film-id filter — used by /pelicula/<slug>. */
   filmId?: number;
+  /** Optional cinema-id filter — used by /sala/<id>. */
+  cinemaId?: string;
 }
 
 async function fetchRows({
   lower,
   upper,
   filmId,
+  cinemaId,
 }: BoundedQuery): Promise<ScreeningRow[]> {
   const conditions = [gte(screenings.startsAtUtc, lower)];
   if (upper) conditions.push(lt(screenings.startsAtUtc, upper));
   if (filmId !== undefined) conditions.push(eq(screenings.filmId, filmId));
+  if (cinemaId !== undefined) conditions.push(eq(screenings.cinemaId, cinemaId));
   const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions);
 
   const rows = await db
@@ -491,4 +490,55 @@ function formatWeekLabel(monday: Date, sunday: Date): string {
   const sm = sp.find((p) => p.type === 'month')?.value ?? '';
   if (mm === sm) return `Semana del ${md} al ${sd} de ${mm}`;
   return `Semana del ${md} de ${mm} al ${sd} de ${sm}`;
+}
+
+// ---------------------------------------------------------------------------
+// Per-cinema queries — used by /sala/<id>
+// ---------------------------------------------------------------------------
+
+export interface CinemaRow {
+  id: string;
+  name: string;
+  neighborhood: string | null;
+  address: string | null;
+  type: 'indie' | 'chain';
+  ticketingBaseUrl: string | null;
+}
+
+/** Look up a single cinema by its slug id. Returns null when not found. */
+export async function getCinema(id: string): Promise<CinemaRow | null> {
+  const [row] = await db
+    .select({
+      id: cinemas.id,
+      name: cinemas.name,
+      neighborhood: cinemas.neighborhood,
+      address: cinemas.address,
+      type: cinemas.type,
+      ticketingBaseUrl: cinemas.ticketingBaseUrl,
+    })
+    .from(cinemas)
+    .where(eq(cinemas.id, id))
+    .limit(1);
+  return row ?? null;
+}
+
+/** Tier 1 for a single cinema — same 14-day rolling window as the homepage. */
+export async function getTwoWeeksScreeningsByCinema(
+  cinemaId: string,
+  now: Date = new Date(),
+): Promise<DayGroup[]> {
+  const lower = getTodayStartBA(now);
+  const upper = getEndOfTwoWeeksBA(now);
+  const rows = await fetchRows({ lower, upper, cinemaId });
+  return fillTwoWeeks(groupByDay(rows, now), lower, now);
+}
+
+/** Tier 2 for a single cinema — open-ended beyond the 14-day window. */
+export async function getUpcomingScreeningsByCinema(
+  cinemaId: string,
+  now: Date = new Date(),
+): Promise<WeekGroup[]> {
+  const lower = getEndOfTwoWeeksBA(now);
+  const rows = await fetchRows({ lower, cinemaId });
+  return groupByWeek(rows);
 }

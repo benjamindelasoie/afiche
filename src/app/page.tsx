@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import {
   getTwoWeeksScreenings,
@@ -12,11 +11,11 @@ import {
   type ScreeningRow,
 } from '@/db/queries';
 import { TAG_LABELS_ES } from '@/db';
+import { DaySection } from './_components/DaySection';
 import { getEditionNumber, editionFullSentence } from '@/lib/iso-week';
 import {
   getIsoWeekStartBA,
   getIsoWeekEndBA,
-  isScreeningExpired,
   BA_TZ,
 } from '@/lib/date-ranges';
 import { JsonLd, buildHomepageJsonLd } from '@/lib/json-ld';
@@ -258,360 +257,6 @@ function SectionHeader({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Day section — banner (anchored as #dia-${dateKey} for the date strip's
-// chip-jumps) + screening rows. Renders for every day in the 14-day
-// rolling window, including empty days (which surface an editorial
-// "Las salas descansan" line in place of the card list).
-// ---------------------------------------------------------------------------
-function DaySection({
-  day,
-  isFirstDay = false,
-  lastScreeningPerFilm,
-  now,
-}: {
-  day: DayGroup;
-  // First day of the rolling window (always today). Drives Next/Image
-  // priority on the top cards so the LCP poster loads eagerly even when
-  // today has no screenings. Without this, day.isToday is never true and
-  // no card gets priority — that was the prod console warning on
-  // afiche.vercel.app after deploy.
-  isFirstDay?: boolean;
-  // Per-film MAX(startsAtUtc) over all upcoming screenings — used by
-  // ScreeningCard to flag the ÚLTIMA FUNCIÓN pill on rows where this
-  // screening's startsAtUtc equals the film's max.
-  lastScreeningPerFilm: Map<number, number>;
-  // BA-now anchor used to filter expired (already-started + 15 min grace)
-  // screenings out of today's section. Only matters for today; later
-  // days in the rolling window are entirely future by construction.
-  now: Date;
-}) {
-  // Hide expired screenings from today entirely — the dominant evening
-  // intent is "what's still seeable tonight", and past-start cards
-  // dominate the page's most valuable real estate (top of today). The
-  // count of dropped screenings still surfaces in the banner subhead so
-  // density isn't lost ("12 funciones · 4 ya pasaron"). Non-today days
-  // pass through unchanged.
-  const upcoming = day.isToday
-    ? day.screenings.filter((s) => !isScreeningExpired(s.startsAtUtc, now))
-    : day.screenings;
-  const total = day.screenings.length;
-  const expiredCount = total - upcoming.length;
-  const isEmpty = total === 0;
-  const isAllExpired = day.isToday && total > 0 && upcoming.length === 0;
-  return (
-    <div>
-      {/* Day banner — rendered as <h2> for screen-reader outline. The
-          id="dia-${dateKey}" is the anchor target for the date strip's
-          chip-tap jumps. aria-current='date' flags today for assistive
-          tech. Existing flex+wrap layout fits cleanly on 375 (per F-010
-          fix, commit 48dd7f6); do NOT add a vertical-stack mobile rule. */}
-      <h2
-        id={`dia-${day.dateKey}`}
-        aria-current={day.isToday ? 'date' : undefined}
-        className="mb-4 flex flex-wrap items-baseline justify-between gap-3 border-t border-black py-3 font-normal"
-      >
-        <span
-          className={`tracking-eyebrow font-mono text-[11px] text-balance uppercase ${
-            day.isToday ? 'text-carmine font-bold' : 'text-ink'
-          }`}
-        >
-          {day.label}
-          {day.isToday && (
-            <span className="bg-carmine text-cream ml-2 px-1.5 py-0.5 no-underline">
-              HOY
-            </span>
-          )}
-        </span>
-        <span className="tracking-eyebrow text-ink-gray font-mono text-[11px] uppercase">
-          {total} {total === 1 ? 'función' : 'funciones'}
-          {expiredCount > 0 &&
-            (isAllExpired ? ' · todas ya pasaron' : ` · ${expiredCount} ya pasaron`)}
-        </span>
-      </h2>
-      {isEmpty ? (
-        <p className="text-ink-gray font-serif text-base italic">Las salas descansan.</p>
-      ) : isAllExpired ? (
-        <p className="text-ink-gray font-serif text-base italic">
-          No más funciones por hoy.
-        </p>
-      ) : (
-        <div className="space-y-5">
-          {upcoming.map((s, idx) => (
-            <ScreeningCard
-              key={s.id}
-              s={s}
-              isAboveFold={(day.isToday || isFirstDay) && idx < 3}
-              isLastFunction={
-                lastScreeningPerFilm.get(s.film.id) === s.startsAtUtc.getTime()
-              }
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Screening card — full-density layout used for every day in the 14-day
-// rolling window. Chain cards stay visually de-emphasized via the card
-// shell (border-neutral + muted text). The compact variant for week 2
-// was retired 2026-05 when the date strip replaced scroll-skim with
-// tap-jump (no UX justification remaining for visual demotion of
-// not-this-week days).
-// ---------------------------------------------------------------------------
-function ScreeningCard({
-  s,
-  isAboveFold,
-  isLastFunction,
-}: {
-  s: ScreeningRow;
-  isAboveFold: boolean;
-  // True when this screening is the LAST upcoming screening of its
-  // film across the entire BA cartelera (computed unbounded, NOT
-  // limited to cartelera tier horizons). Renders a carmine ÚLTIMA
-  // FUNCIÓN pill in the tag strip — visual urgency signal for "catch
-  // it now or wait years."
-  isLastFunction: boolean;
-}) {
-  // DESIGN.md display-md spec: tracking -0.01em (not Tailwind's tracking-tight
-  // = -0.025em). Looser tracking is more legible at 24–30px card-title sizes.
-  const titleClass =
-    'font-serif text-2xl sm:text-3xl leading-tight tracking-[-0.01em] text-balance';
-  const timeClass =
-    'font-serif italic text-4xl leading-none text-carmine tabular-nums md:mt-2';
-
-  // Filter out 'cycle' — it's on every Lugones card (inferTags pushes it
-  // unconditionally), so universal ≠ signal. Only meaningful tags like
-  // 'retrospective' / 'restored' / actual festival names render. When the
-  // only tag was the bare cycle, the tag row disappears entirely.
-  const visibleTags = s.tags.filter((t) => t !== 'cycle');
-  const showTagStrip = visibleTags.length > 0 || s.programName !== null || isLastFunction;
-
-  const cardBody = (
-    <>
-      {/* Tag strip — full variant only. Renders when there are visible
-          tags (RESTAURADA, RETROSPECTIVA, etc.) OR a program name. The
-          ProgramPill sits in this strip per design-review D2: it slots
-          where CICLO used to live, restoring the strip's curatorial
-          purpose without inventing a new card region. Compact +
-          Próximamente skip the strip entirely to reduce visual chatter. */}
-      {showTagStrip && (
-        <div className="mb-2 flex flex-wrap gap-2">
-          {isLastFunction && (
-            <span className="tracking-card bg-carmine text-cream px-2 py-0.5 font-mono text-[11px] uppercase">
-              Última función
-            </span>
-          )}
-          {visibleTags.map((t) => (
-            <span
-              key={t}
-              className="tracking-card bg-carmine text-cream px-2 py-0.5 font-mono text-[11px] uppercase"
-            >
-              {TAG_LABELS_ES[t]}
-            </span>
-          ))}
-          {s.programName && <ProgramPill name={s.programName} />}
-        </div>
-      )}
-
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
-        {/* Top section: poster + film info.
-            On mobile this is row 1. On desktop it's the left
-            side of the card with the meta block on the right. */}
-        <div className="flex min-w-0 gap-4 md:flex-1">
-          {/* Poster thumbnail or typographic fallback (indie only).
-              Outer tile is cream so lazy-loading images reveal on paper
-              rather than flashing solid black; the black bg is scoped to
-              the true no-poster fallback span per DESIGN.md. */}
-          {s.cinema.type === 'indie' && (
-            <div className="bg-cream flex h-28 w-20 shrink-0 items-center justify-center overflow-hidden border border-black shadow-[4px_4px_0_var(--color-carmine)]">
-              {s.film.posterUrl ? (
-                // Next 16: `priority` is deprecated. Use explicit
-                // loading + fetchPriority so the LCP poster is announced
-                // to the browser preload scanner. The prod console on
-                // afiche.vercel.app was emitting the 'add loading=eager'
-                // warning because priority was silently a no-op here.
-                <Image
-                  src={s.film.posterUrl}
-                  alt={s.film.title}
-                  width={80}
-                  height={112}
-                  sizes="80px"
-                  loading={isAboveFold ? 'eager' : 'lazy'}
-                  fetchPriority={isAboveFold ? 'high' : 'auto'}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                // Branded fallback: carmine "A" + "SIN AFICHE" wordmark.
-                // Replaces an earlier text-on-black fallback that broke the
-                // visual register (italic film title squeezed into a 80x112
-                // box, often clipped on long titles). The SVG fills the
-                // container and matches the favicon's brand mark — see
-                // public/no-poster.svg. Plain <img> rather than next/image
-                // because vectors don't benefit from optimization.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src="/no-poster.svg"
-                  alt=""
-                  width={80}
-                  height={112}
-                  className="h-full w-full object-cover"
-                />
-              )}
-            </div>
-          )}
-          <div className="min-w-0 flex-1">
-            {s.cinema.type === 'indie' ? (
-              <h3 className={titleClass}>{s.film.title}</h3>
-            ) : (
-              <h3 className="font-sans text-lg leading-tight font-medium text-balance">
-                {s.film.title}
-              </h3>
-            )}
-            {s.film.titleOriginal &&
-              s.film.titleOriginal.toLowerCase() !== s.film.title.toLowerCase() && (
-                <p className="text-ink-gray mt-0.5 font-serif text-base italic sm:text-lg">
-                  «{s.film.titleOriginal}»
-                </p>
-              )}
-            {s.film.director && (
-              <p className="text-ink-gray mt-1 text-sm">
-                {s.film.director}
-                {s.film.year && ` · ${s.film.year}`}
-                {s.film.country && (
-                  <span className="hidden sm:inline"> · {s.film.country}</span>
-                )}
-                {s.film.runtimeMin && ` · ${s.film.runtimeMin} min`}
-              </p>
-            )}
-            {/* Synopsis — display guard keeps mid-sentence-truncated legacy
-                DB rows out. line-clamp-3 caps at three lines; the bottom-fade
-                mask signals "there's more" without a "leer más" link, which
-                will land when the film-detail page integration deepens.
-
-                Visibility (hidden md:block) lives on the *wrapper* div, not
-                the line-clamped <p>. Reason: line-clamp-N sets
-                `display: -webkit-box`; co-locating `md:block` on the same
-                element overrides display at the breakpoint and silently
-                defeats the clamp (cards then render at content height, 2/4/
-                6+ lines depending on synopsis length). See layout-invariants
-                test for the regression guard. */}
-            {s.film.synopsisEs &&
-              s.cinema.type === 'indie' &&
-              isCompleteSynopsis(s.film.synopsisEs) && (
-                <div className="mt-3 hidden md:block">
-                  <p
-                    className="border-carmine line-clamp-3 max-w-prose border-l-2 pl-3 text-sm"
-                    style={{
-                      maskImage:
-                        'linear-gradient(to bottom, black 70%, transparent 100%)',
-                      WebkitMaskImage:
-                        'linear-gradient(to bottom, black 70%, transparent 100%)',
-                    }}
-                  >
-                    {s.film.synopsisEs}
-                  </p>
-                </div>
-              )}
-          </div>
-        </div>
-
-        {/* Meta block: cinema + time.
-            Mobile: new row beneath, with cinema left / time right.
-            Desktop: rightmost column of the card, stacked vertically. */}
-        <div className="flex items-end justify-between gap-4 md:shrink-0 md:flex-col md:items-end md:gap-0 md:text-right">
-          <div>
-            {/* Cinema name — carmine bold for indie, grey for chain.
-                The ★ prefix was dropped when the cartelera went all-indie:
-                a curation signal with nothing to contrast against just
-                adds noise. The color difference is the differentiator
-                when chain content returns. */}
-            <p
-              className={`tracking-card font-mono text-xs uppercase ${
-                s.cinema.type === 'indie' ? 'text-carmine font-bold' : 'text-ink-gray'
-              }`}
-            >
-              {s.cinema.name}
-            </p>
-            {s.cinema.neighborhood && (
-              <p className="text-ink-gray mt-1 font-mono text-[11px] tracking-wider uppercase">
-                {s.cinema.neighborhood}
-              </p>
-            )}
-          </div>
-          <time dateTime={s.startsAtUtc.toISOString()} className={timeClass}>
-            {formatTimeBA(s.startsAtUtc)}
-          </time>
-        </div>
-      </div>
-    </>
-  );
-
-  const cardClasses = `block p-4 sm:p-5 border transition-[background-color,box-shadow] active:translate-y-[1px] ${
-    s.cinema.type === 'indie'
-      ? 'border-carmine bg-carmine/5 border-l-4 hover:bg-carmine/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-carmine'
-      : 'border-neutral-300 bg-black/[0.02] hover:bg-black/[0.04] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black'
-  }`;
-
-  // Outer card link target: /pelicula/<slug>. Tap-anywhere takes the user
-  // to the film-detail page where they see ALL upcoming screenings across
-  // BA + film context. The cinema's own ticketing page is reachable from
-  // each row on /pelicula/, so the source URL hasn't disappeared — it's
-  // moved to the destination that gives the user the cross-venue picture
-  // FIRST. Per design doc 2026-04-25 + design-review 2026-04-26.
-  //
-  // When slug is null (defensive — shouldn't happen post-backfill), fall
-  // back to a non-interactive <article> so the card still renders.
-  const ariaLabel = `${s.film.title} — ${s.cinema.name} — ${formatTimeBA(s.startsAtUtc)}`;
-  return s.film.slug ? (
-    <Link
-      href={`/pelicula/${s.film.slug}`}
-      data-screening-card
-      className={cardClasses}
-      aria-label={ariaLabel}
-    >
-      {cardBody}
-    </Link>
-  ) : (
-    <article className={cardClasses}>{cardBody}</article>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// ProgramPill — curatorial-context badge in the card tag strip
-// ---------------------------------------------------------------------------
-//
-// Renders the program/cycle title (e.g., "Retrospectiva David Lynch",
-// "Olivera-Aries") on screening cards from venues that organize their
-// programming into curated programs. Per design-review 2026-04-25 D2 +
-// design doc:
-//
-//   - Placement: card tag strip (where CICLO used to live), alongside
-//     other tags like RESTAURADA / RETROSPECTIVA / ESTRENO. Same visual
-//     weight, same scan position.
-//   - Tokens: same as existing tag pill (`bg-carmine text-cream` +
-//     mono caps + sharp corners) — pattern consistency over differentiation.
-//   - Truncation: max-w-[40ch] truncate, `title` attr carries the full
-//     program name for screen readers + tooltip. Long Lugones cycle
-//     names ("Cine y Filosofía: la lógica de la imagen") truncate
-//     gracefully without breaking card layout.
-//   - Render rule: parent `<ScreeningCard>` only renders this when
-//     `s.programName` is non-null. Cosmos screenings (no curatorial
-//     program) skip it entirely; MALBA S2 single-event paths and the
-//     ingest no-echo filter ensure the pill never just repeats the film
-//     title.
-function ProgramPill({ name }: { name: string }) {
-  return (
-    <span
-      title={name}
-      className="tracking-card bg-carmine text-cream max-w-[40ch] truncate px-2 py-0.5 font-mono text-[11px] uppercase"
-    >
-      {name}
-    </span>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Próximamente index — Tier 2. Week-grouped text index. One banner per
@@ -674,29 +319,29 @@ function UpcomingIndex({
                   </div>
 
                   {/* Cinema (right — its own row on mobile). */}
-                  <div
-                    className={`tracking-card col-span-2 font-mono text-[11px] whitespace-nowrap uppercase md:col-span-1 ${
+                  <Link
+                    href={`/sala/${s.cinema.id}`}
+                    className={`relative z-10 tracking-card col-span-2 font-mono text-[11px] whitespace-nowrap uppercase md:col-span-1 ${
                       isIndie ? 'text-carmine font-bold' : 'text-ink-gray'
                     }`}
                   >
                     {s.cinema.name}
-                  </div>
+                  </Link>
                 </div>
               );
               return (
                 <li key={s.id}>
-                  {s.film.slug ? (
-                    <Link
-                      href={`/pelicula/${s.film.slug}`}
-                      data-screening-card
-                      className="hover:bg-carmine/5 focus-visible:outline-carmine block transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
-                      aria-label={`${s.film.title} — ${s.cinema.name} — ${formatTimeBA(s.startsAtUtc)}`}
-                    >
-                      {rowBody}
-                    </Link>
-                  ) : (
-                    rowBody
-                  )}
+                  <div className="relative hover:bg-carmine/5 transition-colors">
+                    {s.film.slug && (
+                      <Link
+                        href={`/pelicula/${s.film.slug}`}
+                        data-screening-card
+                        className="absolute inset-0 focus-visible:outline-carmine focus-visible:outline-2 focus-visible:outline-offset-2"
+                        aria-label={`${s.film.title} — ${s.cinema.name} — ${formatTimeBA(s.startsAtUtc)}`}
+                      />
+                    )}
+                    {rowBody}
+                  </div>
                 </li>
               );
             })}
@@ -790,18 +435,6 @@ function SectionSubtitle({ parts }: { parts: SectionSubtitleParts }) {
       <span className="hidden md:inline">{parts.counts}</span>
     </>
   );
-}
-
-// ---------------------------------------------------------------------------
-// Display guard: is this synopsis worth rendering?
-// Kept from F-011: ~100-140 char Lumiton tile-preview synopses trail off
-// mid-sentence with dangling commas. Heuristic: needs min length AND must
-// end with terminal punctuation.
-// ---------------------------------------------------------------------------
-function isCompleteSynopsis(text: string): boolean {
-  const trimmed = text.trim();
-  if (trimmed.length < 60) return false;
-  return /[.!?…»"']$/.test(trimmed);
 }
 
 // ---------------------------------------------------------------------------
