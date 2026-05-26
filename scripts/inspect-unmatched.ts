@@ -32,7 +32,9 @@ interface PendingRow {
 }
 
 async function main() {
-  console.log(`🔎 Unmatched-films inspection · ${process.env.DATABASE_URL ?? '(unset)'}\n`);
+  console.log(
+    `🔎 Unmatched-films inspection · ${process.env.DATABASE_URL ?? '(unset)'}\n`,
+  );
 
   // -------------------------------------------------------------------------
   // Overall match-source distribution
@@ -46,7 +48,9 @@ async function main() {
   console.log('— Films by match_source:');
   for (const r of dist) console.log(`  ${String(r.n).padStart(4)}  ${r.match_source}`);
 
-  const [{ total }] = await db.all<{ total: number }>(sql`SELECT COUNT(*) AS total FROM films`);
+  const [{ total }] = await db.all<{ total: number }>(
+    sql`SELECT COUNT(*) AS total FROM films`,
+  );
   const [{ missing }] = await db.all<{ missing: number }>(sql`
     SELECT COUNT(*) AS missing FROM films WHERE tmdb_id IS NULL
   `);
@@ -124,7 +128,9 @@ async function main() {
   const activePending = pending.filter((r) => isActive(r.id));
   const stalePending = pending.filter((r) => !isActive(r.id));
 
-  console.log(`— Pending pool — ACTIVE (${activePending.length} films with future screenings):\n`);
+  console.log(
+    `— Pending pool — ACTIVE (${activePending.length} films with future screenings):\n`,
+  );
   if (activePending.length === 0) {
     console.log('  (none — nothing currently scheduled needs TMDB attention)\n');
   } else {
@@ -176,9 +182,15 @@ async function main() {
     SELECT COUNT(*) AS n FROM films WHERE skip_tmdb = 1
   `);
   console.log('— Sanity panel (not pending pool, but worth knowing):');
-  console.log(`  ${String(skipped[0].n).padStart(4)}  rows marked skip_tmdb=true  (excluded from pending pool by design)`);
-  console.log(`  ${String(orphans[0].n).padStart(4)}  rows with tmdb_id but match_source ∈ (none, none-attempted)`);
-  console.log(`  ${String(lowConf[0].n).padStart(4)}  'auto' matches with confidence < 0.92  (wrong-match candidates)`);
+  console.log(
+    `  ${String(skipped[0].n).padStart(4)}  rows marked skip_tmdb=true  (excluded from pending pool by design)`,
+  );
+  console.log(
+    `  ${String(orphans[0].n).padStart(4)}  rows with tmdb_id but match_source ∈ (none, none-attempted)`,
+  );
+  console.log(
+    `  ${String(lowConf[0].n).padStart(4)}  'auto' matches with confidence < 0.92  (wrong-match candidates)`,
+  );
 
   // -------------------------------------------------------------------------
   // Cinema id → name resolution for the venue codes above

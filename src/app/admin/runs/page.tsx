@@ -113,7 +113,9 @@ export default async function RunsPage({ searchParams }: PageProps) {
         <p className="text-sm text-neutral-500">{runs.length} cinemas</p>
       </header>
 
-      {sp.result ? <ResultBanner result={sp.result} counts={sp.counts} errors={sp.errors} /> : null}
+      {sp.result ? (
+        <ResultBanner result={sp.result} counts={sp.counts} errors={sp.errors} />
+      ) : null}
 
       <div className="flex flex-col gap-3 rounded border border-neutral-200 bg-neutral-50 p-4">
         <p className="text-sm text-neutral-700">
@@ -134,8 +136,9 @@ export default async function RunsPage({ searchParams }: PageProps) {
           <RefreshButton />
         </div>
         <p className="text-xs text-neutral-500">
-          Scrape triggers are deferred — Vercel egress IPs are blocked by some venues (notably
-          MALBA). See TODO #27 for the residential-egress daemon that unblocks them.
+          Scrape triggers are deferred — Vercel egress IPs are blocked by some venues
+          (notably MALBA). See TODO #27 for the residential-egress daemon that unblocks
+          them.
         </p>
       </div>
 
@@ -145,27 +148,32 @@ export default async function RunsPage({ searchParams }: PageProps) {
             <div className="flex items-baseline justify-between gap-4">
               <div className="flex items-baseline gap-2">
                 <h2 className="text-base font-medium">{r.cinemaName}</h2>
-                <span className="text-xs uppercase tracking-wide text-neutral-400">
+                <span className="text-xs tracking-wide text-neutral-400 uppercase">
                   {r.cinemaId}
                 </span>
               </div>
               <StatusBadge status={r.status} />
             </div>
             {r.runId === null ? (
-              <p className="mt-1 text-sm italic text-neutral-500">never scraped</p>
+              <p className="mt-1 text-sm text-neutral-500 italic">never scraped</p>
             ) : (
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-neutral-600">
                 <span>
-                  {r.finishedAt ? formatDateTime(r.finishedAt) : formatDateTime(r.startedAt!)}
+                  {r.finishedAt
+                    ? formatDateTime(r.finishedAt)
+                    : formatDateTime(r.startedAt!)}
                 </span>
-                {r.durationMs !== null ? <span>· {formatDuration(r.durationMs)}</span> : null}
+                {r.durationMs !== null ? (
+                  <span>· {formatDuration(r.durationMs)}</span>
+                ) : null}
                 {r.status === 'success' ? (
                   <>
                     <span>· scraped {r.screeningsScraped ?? 0}</span>
                     <span>· inserted {r.screeningsInserted ?? 0}</span>
                     <span>· films {r.filmsUpserted ?? 0}</span>
                     <span>
-                      · enriched {r.filmsEnriched ?? 0}/{(r.filmsEnriched ?? 0) + (r.enrichSkipped ?? 0)}
+                      · enriched {r.filmsEnriched ?? 0}/
+                      {(r.filmsEnriched ?? 0) + (r.enrichSkipped ?? 0)}
                     </span>
                   </>
                 ) : null}
@@ -202,7 +210,7 @@ export default async function RunsPage({ searchParams }: PageProps) {
 
 function StatusBadge({ status }: { status: CinemaRunRow['status'] }) {
   if (status === null) {
-    return <span className="text-xs uppercase tracking-wide text-neutral-400">—</span>;
+    return <span className="text-xs tracking-wide text-neutral-400 uppercase">—</span>;
   }
   const styles: Record<NonNullable<CinemaRunRow['status']>, string> = {
     'in-progress': 'bg-amber-100 text-amber-900',
@@ -211,7 +219,7 @@ function StatusBadge({ status }: { status: CinemaRunRow['status'] }) {
   };
   return (
     <span
-      className={`rounded px-2 py-0.5 text-xs font-medium uppercase tracking-wide ${styles[status]}`}
+      className={`rounded px-2 py-0.5 text-xs font-medium tracking-wide uppercase ${styles[status]}`}
     >
       {status}
     </span>

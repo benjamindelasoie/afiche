@@ -3,11 +3,7 @@ import { notFound } from 'next/navigation';
 import { and, eq, sql } from 'drizzle-orm';
 import { db, films, screenings, cinemas } from '@/db';
 import { verifySession } from '@/lib/admin-dal';
-import {
-  posterImageUrl,
-  searchMovies,
-  type TmdbMovieSummary,
-} from '@/tmdb/client';
+import { posterImageUrl, searchMovies, type TmdbMovieSummary } from '@/tmdb/client';
 import { assignTmdbIdAction } from './actions';
 
 export const metadata = {
@@ -104,7 +100,10 @@ export default async function UnmatchedDetailPage({ params, searchParams }: Page
   return (
     <section className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <Link href="/admin/unmatched" className="text-sm text-neutral-500 hover:underline">
+        <Link
+          href="/admin/unmatched"
+          className="text-sm text-neutral-500 hover:underline"
+        >
           ← Unmatched
         </Link>
         <h1 className="text-xl font-semibold">{film.scrapedTitle}</h1>
@@ -113,7 +112,7 @@ export default async function UnmatchedDetailPage({ params, searchParams }: Page
           {film.director ? <span> · {film.director}</span> : null}
           {film.titleOriginal ? <span> · {film.titleOriginal}</span> : null}
           <span> · </span>
-          <span className="text-xs uppercase tracking-wide text-neutral-400">
+          <span className="text-xs tracking-wide text-neutral-400 uppercase">
             {film.matchSource}
           </span>
         </p>
@@ -121,14 +120,21 @@ export default async function UnmatchedDetailPage({ params, searchParams }: Page
 
       {/* Error banners from the assign action redirect. */}
       {error === 'already-patched' ? (
-        <div role="alert" className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-          This film was already patched (probably by another tab). Refresh the list to see the
-          updated state.
+        <div
+          role="alert"
+          className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+        >
+          This film was already patched (probably by another tab). Refresh the list to see
+          the updated state.
         </div>
       ) : null}
       {error === 'tmdb-fetch-failed' ? (
-        <div role="alert" className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-900">
-          TMDB rejected the lookup. The id might be wrong, or TMDB might be down. Try again.
+        <div
+          role="alert"
+          className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-900"
+        >
+          TMDB rejected the lookup. The id might be wrong, or TMDB might be down. Try
+          again.
         </div>
       ) : null}
 
@@ -139,12 +145,17 @@ export default async function UnmatchedDetailPage({ params, searchParams }: Page
       <SearchFormBlock filmId={film.id} defaultQ={defaultQ} defaultY={defaultY} />
 
       {searchError ? (
-        <div role="alert" className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-900">
+        <div
+          role="alert"
+          className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-900"
+        >
           {searchError}
         </div>
       ) : null}
 
-      {results !== null ? <SearchResultsBlock filmId={film.id} results={results} /> : null}
+      {results !== null ? (
+        <SearchResultsBlock filmId={film.id} results={results} />
+      ) : null}
 
       <PasteIdEscapeHatch filmId={film.id} />
     </section>
@@ -153,7 +164,7 @@ export default async function UnmatchedDetailPage({ params, searchParams }: Page
 
 function FutureScreeningsBlock({ screenings }: { screenings: ScreeningRow[] }) {
   if (screenings.length === 0) {
-    return <p className="text-sm italic text-neutral-500">No future screenings.</p>;
+    return <p className="text-sm text-neutral-500 italic">No future screenings.</p>;
   }
   const fmt = new Intl.DateTimeFormat('es-AR', {
     timeZone: 'America/Argentina/Buenos_Aires',
@@ -244,8 +255,9 @@ function SearchResultsBlock({
 }) {
   if (results.length === 0) {
     return (
-      <p className="text-sm italic text-neutral-500">
-        No TMDB matches. Try different search terms, or use the paste-id escape hatch below.
+      <p className="text-sm text-neutral-500 italic">
+        No TMDB matches. Try different search terms, or use the paste-id escape hatch
+        below.
       </p>
     );
   }
@@ -293,10 +305,7 @@ function SearchResultsBlock({
               >
                 tmdb #{r.id} ↗
               </a>
-              <form
-                action={assignTmdbIdAction}
-                className="mt-1 flex"
-              >
+              <form action={assignTmdbIdAction} className="mt-1 flex">
                 <input type="hidden" name="filmId" value={filmId} />
                 <input type="hidden" name="tmdbId" value={r.id} />
                 <button

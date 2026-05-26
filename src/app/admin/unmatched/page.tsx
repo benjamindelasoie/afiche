@@ -35,7 +35,9 @@ async function fetchPendingFilms(): Promise<PendingRow[]> {
       director: films.director,
       matchSource: films.matchSource,
       futureCount: sql<number>`COUNT(${screenings.id})`.as('future_count'),
-      venues: sql<string>`COALESCE(GROUP_CONCAT(DISTINCT ${cinemas.name}), '')`.as('venues'),
+      venues: sql<string>`COALESCE(GROUP_CONCAT(DISTINCT ${cinemas.name}), '')`.as(
+        'venues',
+      ),
     })
     .from(films)
     .innerJoin(screenings, eq(screenings.filmId, films.id))
@@ -89,7 +91,11 @@ export default async function UnmatchedPage() {
                     ) : null}
                   </div>
                   <div className="text-sm text-neutral-500">
-                    {r.director ? <span>{r.director}</span> : <span className="italic">no director</span>}
+                    {r.director ? (
+                      <span>{r.director}</span>
+                    ) : (
+                      <span className="italic">no director</span>
+                    )}
                     <span className="mx-2">·</span>
                     <span>{r.venues}</span>
                     <span className="mx-2">·</span>
@@ -97,7 +103,7 @@ export default async function UnmatchedPage() {
                       {r.futureCount} future screening{r.futureCount === 1 ? '' : 's'}
                     </span>
                     <span className="mx-2">·</span>
-                    <span className="text-xs uppercase tracking-wide text-neutral-400">
+                    <span className="text-xs tracking-wide text-neutral-400 uppercase">
                       {r.matchSource}
                     </span>
                   </div>
