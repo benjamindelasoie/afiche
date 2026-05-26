@@ -36,11 +36,16 @@ export function ScreeningCard({
   // FUNCIÓN pill in the tag strip.
   isLastFunction: boolean;
 }) {
+  // DESIGN.md display-md spec: tracking -0.01em (NOT Tailwind's tracking-tight
+  // = -0.025em). Looser tracking is more legible at 24–30px card-title sizes.
   const titleClass =
     'font-serif text-2xl sm:text-3xl leading-tight tracking-[-0.01em] text-balance';
   const timeClass =
     'font-serif italic text-4xl leading-none text-carmine tabular-nums md:mt-2';
 
+  // Filter out 'cycle' — inferTags pushes it onto every cycle-venue card, so
+  // universal ≠ signal. Only meaningful tags (RESTAURADA / RETROSPECTIVA /
+  // festival names) render; the ProgramPill carries the cycle name instead.
   const visibleTags = s.tags.filter((t) => t !== 'cycle');
   const showTagStrip = visibleTags.length > 0 || s.programName !== null || isLastFunction;
 
@@ -140,7 +145,7 @@ export function ScreeningCard({
           <div>
             <Link
               href={`/sala/${s.cinema.id}`}
-              className={`relative z-10 tracking-card font-mono text-xs uppercase ${
+              className={`tracking-card relative z-10 font-mono text-xs uppercase ${
                 s.cinema.type === 'indie' ? 'text-carmine font-bold' : 'text-ink-gray'
               }`}
             >

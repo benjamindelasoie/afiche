@@ -298,9 +298,18 @@ function FilmScreeningRow({ s, isPast }: { s: ScreeningRow; isPast: boolean }) {
   // signal: "you're not making this one."
   const timeColor = isPast ? 'text-ink-gray' : 'text-carmine';
   const cinemaColor = isPast ? 'text-ink-gray' : 'text-carmine';
+  // Hybrid stretched-link: the whole row is the ticketing link (big tap target
+  // Benjamin didn't want shrunk), and the cinema name sits ABOVE it via
+  // `relative z-10` as a /sala link — no nested <a>. Same pattern ScreeningCard
+  // uses for its film link, with two differences that matter: the stretched
+  // anchor here is EXTERNAL (ticketing), so it needs target=_blank + rel +
+  // its own focus ring + the visited fade (data-screening-card). And tickets
+  // only make sense for attendable screenings — a past show's ticketing page
+  // is dead, so past rows aren't stretched (cinema name still links to /sala).
+  const showTicketLink = s.sourceUrl !== null && !isPast;
 
   const rowBody = (
-    <div className="grid grid-cols-[auto_1fr_auto] items-baseline gap-x-4 gap-y-1 px-1 py-4 hover:bg-carmine/5 transition-colors md:gap-x-6">
+    <div className="grid grid-cols-[auto_1fr_auto] items-baseline gap-x-4 gap-y-1 px-1 py-4 md:gap-x-6">
       {/* Date + time — left column. Date in mono caps, time in italic
           serif (carmine for attendable, ink-gray for past). */}
       <div className="flex items-baseline gap-3">
@@ -315,14 +324,13 @@ function FilmScreeningRow({ s, isPast }: { s: ScreeningRow; isPast: boolean }) {
         </time>
       </div>
 
-      {/* Cinema + program context — middle column. The program name pill
-          renders here when the screening has a programName (different
-          visual scale than the cartelera tag strip; this column is
-          wider). */}
+      {/* Cinema + program context — middle column. Cinema name is a /sala link
+          lifted above the stretched ticket anchor via relative z-10. The
+          program name + tag pills render here (this column is wider). */}
       <div className="min-w-0">
         <Link
           href={`/sala/${s.cinema.id}`}
-          className={`relative tracking-card ${cinemaColor} font-mono text-xs font-bold uppercase focus-visible:outline-2 focus-visible:outline-carmine focus-visible:outline-offset-2`}
+          className={`tracking-card relative z-10 ${cinemaColor} focus-visible:outline-carmine font-mono text-xs font-bold uppercase focus-visible:outline-2 focus-visible:outline-offset-2`}
         >
           {s.cinema.name}
         </Link>
@@ -350,25 +358,38 @@ function FilmScreeningRow({ s, isPast }: { s: ScreeningRow; isPast: boolean }) {
         )}
       </div>
 
-      {/* Ticketing link — right column. Previously the whole row was the
-          link; now it's a discrete element so the cinema name can be its
-          own link without nesting <a> inside <a>. */}
-      {s.sourceUrl ? (
-        <a
-          href={s.sourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          data-screening-card
-          className="tracking-eyebrow text-ink-gray hover:text-carmine self-center font-mono text-[10px] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-carmine focus-visible:outline-offset-2"
-          aria-label={`Entradas — ${s.cinema.name} ${timeLabel}`}
-        >
+      {/* Ticketing affordance — right column. Visual only: the whole row IS the
+          ticket link, so this is a label, not an <a> (avoids a second anchor).
+          Absent when there's no ticket link (no sourceUrl, or past). */}
+      {showTicketLink ? (
+        <span className="tracking-eyebrow text-ink-gray group-hover:text-carmine self-center font-mono text-[10px] uppercase transition-colors">
           Entradas →
-        </a>
+        </span>
       ) : (
         <span />
       )}
     </div>
   );
 
-  return <li>{rowBody}</li>;
+  // Stretched-link wrapper. The external ticket anchor covers the row; the
+  // z-10 cinema link above it stays independently clickable. When there's no
+  // ticket link the row simply isn't stretched — cinema name remains the only
+  // interactive element.
+  return (
+    <li>
+      <div className="group hover:bg-carmine/5 relative transition-colors [&:has(a:active)]:translate-y-[1px]">
+        {showTicketLink && (
+          <a
+            href={s.sourceUrl!}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-screening-card
+            className="focus-visible:outline-carmine absolute inset-0 focus-visible:outline-2 focus-visible:outline-offset-2"
+            aria-label={`Entradas — ${s.cinema.name} ${dayLabel} ${timeLabel}`}
+          />
+        )}
+        {rowBody}
+      </div>
+    </li>
+  );
 }

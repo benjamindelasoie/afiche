@@ -2,10 +2,27 @@ import { type DayGroup } from '@/db/queries';
 import { isScreeningExpired } from '@/lib/date-ranges';
 import { ScreeningCard } from './ScreeningCard';
 
+// ---------------------------------------------------------------------------
+// Day section — homepage Tier 1. Banner (anchored as #dia-${dateKey} for the
+// date strip's chip-jumps) + screening cards. Renders for EVERY day in the
+// 14-day rolling window, including empty days, which surface an editorial
+// "Las salas descansan" line in place of the card list.
+//
+// (The /sala/<id> venue page does NOT use this — it has its own VenueAgenda
+// that drops empty days entirely. This component is homepage-only.)
+// ---------------------------------------------------------------------------
 export function DaySection({
   day,
+  // First day of the rolling window (always today). Drives Next/Image priority
+  // on the top cards so the LCP poster loads eagerly even when today has no
+  // screenings — without it, day.isToday is never true and no card gets
+  // priority, which was the prod console warning on afiche.vercel.app.
   isFirstDay = false,
+  // Per-film MAX(startsAtUtc) over all upcoming screenings — ScreeningCard
+  // uses it to flag the ÚLTIMA FUNCIÓN pill where this screening is a film's max.
   lastScreeningPerFilm,
+  // BA-now anchor for the expired filter below. Only matters for today; later
+  // days in the rolling window are entirely future by construction.
   now,
 }: {
   day: DayGroup;
@@ -13,6 +30,10 @@ export function DaySection({
   lastScreeningPerFilm: Map<number, number>;
   now: Date;
 }) {
+  // Hide expired screenings from today (already-started + 15-min grace): the
+  // dominant evening intent is "what's still seeable tonight", and past-start
+  // cards otherwise dominate the page's most valuable real estate. The dropped
+  // count still surfaces in the banner subhead ("12 funciones · 4 ya pasaron").
   const upcoming = day.isToday
     ? day.screenings.filter((s) => !isScreeningExpired(s.startsAtUtc, now))
     : day.screenings;

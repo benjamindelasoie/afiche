@@ -6,18 +6,11 @@ import {
   getLastScreeningPerFilm,
   formatTimeBA,
   formatDayShortBA,
-  type DayGroup,
   type WeekGroup,
-  type ScreeningRow,
 } from '@/db/queries';
-import { TAG_LABELS_ES } from '@/db';
 import { DaySection } from './_components/DaySection';
 import { getEditionNumber, editionFullSentence } from '@/lib/iso-week';
-import {
-  getIsoWeekStartBA,
-  getIsoWeekEndBA,
-  BA_TZ,
-} from '@/lib/date-ranges';
+import { getIsoWeekStartBA, getIsoWeekEndBA, BA_TZ } from '@/lib/date-ranges';
 import { JsonLd, buildHomepageJsonLd } from '@/lib/json-ld';
 import { DateStrip } from '@/app/_components/DateStrip';
 
@@ -257,7 +250,6 @@ function SectionHeader({
   );
 }
 
-
 // ---------------------------------------------------------------------------
 // Próximamente index — Tier 2. Week-grouped text index. One banner per
 // ISO week ("Semana del 19 al 25 de mayo") + chronological rows beneath.
@@ -321,7 +313,7 @@ function UpcomingIndex({
                   {/* Cinema (right — its own row on mobile). */}
                   <Link
                     href={`/sala/${s.cinema.id}`}
-                    className={`relative z-10 tracking-card col-span-2 font-mono text-[11px] whitespace-nowrap uppercase md:col-span-1 ${
+                    className={`tracking-card relative z-10 col-span-2 font-mono text-[11px] whitespace-nowrap uppercase md:col-span-1 ${
                       isIndie ? 'text-carmine font-bold' : 'text-ink-gray'
                     }`}
                   >
@@ -331,12 +323,12 @@ function UpcomingIndex({
               );
               return (
                 <li key={s.id}>
-                  <div className="relative hover:bg-carmine/5 transition-colors">
+                  <div className="hover:bg-carmine/5 relative transition-colors">
                     {s.film.slug && (
                       <Link
                         href={`/pelicula/${s.film.slug}`}
                         data-screening-card
-                        className="absolute inset-0 focus-visible:outline-carmine focus-visible:outline-2 focus-visible:outline-offset-2"
+                        className="focus-visible:outline-carmine absolute inset-0 focus-visible:outline-2 focus-visible:outline-offset-2"
                         aria-label={`${s.film.title} — ${s.cinema.name} — ${formatTimeBA(s.startsAtUtc)}`}
                       />
                     )}

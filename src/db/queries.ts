@@ -31,9 +31,11 @@ import {
   getTodayStartBA,
   getEndOfTwoWeeksBA,
   getIsoWeekStartBA,
+  isScreeningExpired,
   BA_TZ,
 } from '@/lib/date-ranges';
 import { displayFilmTitle } from '@/lib/title-case';
+import { slugify } from '@/lib/slug';
 
 export interface ScreeningRow {
   id: number;
@@ -541,4 +543,122 @@ export async function getUpcomingScreeningsByCinema(
   const lower = getEndOfTwoWeeksBA(now);
   const rows = await fetchRows({ lower, cinemaId });
   return groupByWeek(rows);
+}
+
+// ---------------------------------------------------------------------------
+// Venue-page agenda helpers — used by /sala/<id>
+// ---------------------------------------------------------------------------
+
+/**
+ * Apply the venue-agenda visibility rule to fetched day groups:
+ *   1. drop expired screenings (already-started + 15-min grace), and
+ *   2. drop any day left with zero screenings.
+ *
+ * `getTwoWeeksScreeningsByCinema`'s lower bound is BA midnight, so TODAY's
+ * group still carries already-started screenings, and `fillTwoWeeks` inserts
+ * empty days for the homepage's per-day banners. The venue agenda wants
+ * neither: dark days simply don't appear. Extracted from the page so this
+ * contract is unit-tested — a regression here (filtering on raw rows, or
+ * forgetting the expiry pass) silently renders dead rows or an empty agenda
+ * past the empty-state guard.
+ */
+export function visibleAgendaDays(days: DayGroup[], now: Date): DayGroup[] {
+  return days
+    .map((d) => ({
+      ...d,
+      screenings: d.screenings.filter((s) => !isScreeningExpired(s.startsAtUtc, now)),
+    }))
+    .filter((d) => d.screenings.length > 0);
+}
+
+/**
+ * Day-rail label parts for the venue agenda — { dow: 'Dom', day: '25',
+ * month: 'May' }. Centralizes the BA-tz Intl formatting (one home for the
+ * timezone + capitalization fixes) so VenueAgenda stays presentational.
+ */
+export function formatAgendaDayBA(d: Date): {
+  dow: string;
+  day: string;
+  month: string;
+} {
+  const parts = new Intl.DateTimeFormat('es-AR', {
+    timeZone: BA_TZ,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+  const cap = (s: string) => {
+    const trimmed = s.replace(/\.$/, '');
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+  };
+  return { dow: cap(get('weekday')), day: get('day'), month: cap(get('month')) };
+}
+
+/**
+ * A curatorial program/cycle running at a venue, summarized for the
+ * "Ciclos en curso" block on /sala/<id>.
+ */
+export interface Ciclo {
+  /** URL-safe id, unique within one venue's ciclo list. Anchor target is
+   *  `#programa-<slug>`, placed on `anchorScreeningId`'s agenda row. */
+  slug: string;
+  /** Display label — the program's verbatim name (first occurrence). */
+  name: string;
+  /** DISTINCT films in the program (a film screened 3× counts once). */
+  filmCount: number;
+  /** id of the EARLIEST visible screening — where the anchor `id` lands. */
+  anchorScreeningId: number;
+  firstStartsAt: Date;
+  lastStartsAt: Date;
+}
+
+/**
+ * Group a flat list of (already expiry-filtered, visible) screenings into
+ * ciclos by `programName`.
+ *
+ * Grouping key is `slugify(programName)`, NOT the raw string: accent / case /
+ * whitespace / punctuation drift in provider copy would otherwise fragment a
+ * single cycle into several pills. The slug is the group key, so it is unique
+ * by construction — no duplicate `#programa-<slug>` DOM ids. A program whose
+ * name slugifies to empty (all-punctuation) collapses to the `ciclo` key.
+ *
+ * v1 scope: fed ONLY the visible agenda rows, so every returned ciclo has an
+ * anchor inside the agenda (no future-only / Próximamente-fallback case).
+ *
+ *   screenings ──group by slugify(programName)──▶ Map<slug, rows[]>
+ *        │  (programName == null → skipped)
+ *        ▼
+ *   per group: distinct film count · min/max startsAt · earliest screening id
+ *        │
+ *        ▼  sorted by firstStartsAt
+ *   Ciclo[]
+ */
+export function groupCiclos(rows: ScreeningRow[]): Ciclo[] {
+  const byKey = new Map<string, ScreeningRow[]>();
+  for (const s of rows) {
+    const name = s.programName?.trim();
+    if (!name) continue;
+    const key = slugify(name) || 'ciclo';
+    const list = byKey.get(key);
+    if (list) list.push(s);
+    else byKey.set(key, [s]);
+  }
+
+  const ciclos: Ciclo[] = [];
+  for (const [slug, list] of byKey) {
+    const sorted = [...list].sort(
+      (a, b) => a.startsAtUtc.getTime() - b.startsAtUtc.getTime(),
+    );
+    const first = sorted[0];
+    ciclos.push({
+      slug,
+      name: first.programName!.trim(),
+      filmCount: new Set(sorted.map((s) => s.film.id)).size,
+      anchorScreeningId: first.id,
+      firstStartsAt: first.startsAtUtc,
+      lastStartsAt: sorted[sorted.length - 1].startsAtUtc,
+    });
+  }
+  return ciclos.sort((a, b) => a.firstStartsAt.getTime() - b.firstStartsAt.getTime());
 }
