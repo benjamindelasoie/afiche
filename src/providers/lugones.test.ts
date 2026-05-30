@@ -22,6 +22,14 @@ function fixture(name: string): string {
   return readFileSync(resolve(__dirname, '../../test/fixtures/lugones', name), 'utf8');
 }
 
+// Fixed reference "now" for every fixture-based parse below. All fixtures in
+// this file were captured Apr–Jun 2026 and assert absolute 2026 dates; the
+// parser's year inference keys off `now`, so without a fixed anchor these
+// tests silently mis-date to the following year once wall-clock time passes
+// ~30 days after each program's start (the failure that surfaced 2026-05-30).
+// April 1 2026 sits before every fixture's start date, so all resolve to 2026.
+const FIXED_NOW = new Date(Date.UTC(2026, 3, 1));
+
 describe('parseDateRange', () => {
   it('anchors on the START month when the range spans two months', () => {
     // Regression: before the fix this returned { startMonth: 4 /* May */ }.
@@ -86,14 +94,14 @@ describe('parseDetailPage (Boris Karloff Parte 2 fixture)', () => {
 
   it('emits all 18 screenings across the 7-day cycle', () => {
     const warnings: string[] = [];
-    const screenings = parseDetailPage(html, program, warnings);
+    const screenings = parseDetailPage(html, program, warnings, FIXED_NOW);
     expect(warnings).toEqual([]);
     expect(screenings).toHaveLength(18);
   });
 
   it('places Martes 28 screenings on April 28, not May 28', () => {
     const warnings: string[] = [];
-    const screenings = parseDetailPage(html, program, warnings);
+    const screenings = parseDetailPage(html, program, warnings, FIXED_NOW);
 
     // Martes 28 = April 28 local BA. 15h BA and 18h BA stay on April 28 UTC.
     // 21h BA rolls to April 29 00:00 UTC — but NOT to May.
@@ -114,7 +122,7 @@ describe('parseDetailPage (Boris Karloff Parte 2 fixture)', () => {
 
   it('does not place any screening on May 28-30 (the old bug manifestation)', () => {
     const warnings: string[] = [];
-    const screenings = parseDetailPage(html, program, warnings);
+    const screenings = parseDetailPage(html, program, warnings, FIXED_NOW);
 
     const mayMisdated = screenings.filter((s) => {
       const d = s.startsAtUtc;
@@ -128,7 +136,7 @@ describe('parseDetailPage (Boris Karloff Parte 2 fixture)', () => {
 
   it('emits "El hijo de Frankenstein" at both 15h and 21h on April 28', () => {
     const warnings: string[] = [];
-    const screenings = parseDetailPage(html, program, warnings);
+    const screenings = parseDetailPage(html, program, warnings, FIXED_NOW);
 
     const elHijo = screenings.filter((s) => s.filmTitle === 'El hijo de Frankenstein');
     // Cycle has: Apr 28 (15+21), Apr 30 (18). 3 total.
@@ -276,7 +284,7 @@ describe('parseDetailPage S2 fallback (Ojos extraños fixture)', () => {
 
   it('emits 7 screenings (May 7, 8, 9, 10, 12, 13, 14) with no warnings', () => {
     const warnings: string[] = [];
-    const screenings = parseDetailPage(html, program, warnings);
+    const screenings = parseDetailPage(html, program, warnings, FIXED_NOW);
     expect(warnings).toEqual([]);
     expect(screenings).toHaveLength(7);
 
@@ -296,7 +304,7 @@ describe('parseDetailPage S2 fallback (Ojos extraños fixture)', () => {
 
   it('places "Viernes 8 y sábado 9, 20.30 horas" at 20:30 BA on both days', () => {
     const warnings: string[] = [];
-    const screenings = parseDetailPage(html, program, warnings);
+    const screenings = parseDetailPage(html, program, warnings, FIXED_NOW);
     const friAndSat = screenings
       .filter((s) => {
         const baLocal = new Date(s.startsAtUtc.getTime() - 3 * 3600 * 1000);
@@ -313,7 +321,7 @@ describe('parseDetailPage S2 fallback (Ojos extraños fixture)', () => {
   });
 
   it('extracts the editorial synopsis from the SINOPSIS section', () => {
-    const screenings = parseDetailPage(html, program, []);
+    const screenings = parseDetailPage(html, program, [], FIXED_NOW);
     const s = screenings[0];
     expect(s.synopsisEs).toBeDefined();
     expect(s.synopsisEs!.startsWith('Tras la misteriosa desaparición')).toBe(true);
@@ -323,7 +331,7 @@ describe('parseDetailPage S2 fallback (Ojos extraños fixture)', () => {
   });
 
   it('extracts FICHA TÉCNICA fields (year, director, country, runtime, original title)', () => {
-    const s = parseDetailPage(html, program, [])[0];
+    const s = parseDetailPage(html, program, [], FIXED_NOW)[0];
     expect(s.year).toBe(2024);
     expect(s.director).toBe('Yeo Siew Hua');
     expect(s.country).toBe('Singapur, Taiwán, Francia, Estados Unidos');
@@ -332,7 +340,7 @@ describe('parseDetailPage S2 fallback (Ojos extraños fixture)', () => {
   });
 
   it('uses the on_view <h2> title (stripping the "(YEAR)" suffix)', () => {
-    const s = parseDetailPage(html, program, [])[0];
+    const s = parseDetailPage(html, program, [], FIXED_NOW)[0];
     expect(s.filmTitle).toBe('Ojos extraños');
   });
 });
@@ -363,7 +371,7 @@ describe('parseDetailPage single-day one-off (Chabrol bis fixture)', () => {
 
   it('extracts the 15h Bodas sangrientas screening on May 28', () => {
     const warnings: string[] = [];
-    const screenings = parseDetailPage(html, program, warnings);
+    const screenings = parseDetailPage(html, program, warnings, FIXED_NOW);
 
     // No "could not parse date range" warning — the regression itself.
     expect(warnings.find((w) => /could not parse date range/i.test(w))).toBeUndefined();
@@ -407,13 +415,13 @@ describe('parseDetailPage Justa-class prose schedule (Justa fixture, captured 20
 
   it('emits all 7 announced funciones with no parser warnings', () => {
     const warnings: string[] = [];
-    const screenings = parseDetailPage(html, program, warnings);
+    const screenings = parseDetailPage(html, program, warnings, FIXED_NOW);
     expect(warnings).toEqual([]);
     expect(screenings).toHaveLength(7);
   });
 
   it('produces the announced (date, BA-local-hour, BA-local-minute) tuples exactly', () => {
-    const screenings = parseDetailPage(html, program, []);
+    const screenings = parseDetailPage(html, program, [], FIXED_NOW);
     // Convert to (month, day, hourBA, minuteBA) tuples for legible asserts.
     // BA is UTC-3 year-round (no DST), so UTC time minus 3h = BA local.
     const tuples = screenings
@@ -441,7 +449,7 @@ describe('parseDetailPage Justa-class prose schedule (Justa fixture, captured 20
   });
 
   it('attaches the film metadata across every screening (single-film page invariant)', () => {
-    const screenings = parseDetailPage(html, program, []);
+    const screenings = parseDetailPage(html, program, [], FIXED_NOW);
     for (const s of screenings) {
       expect(s.filmTitle).toBe('Justa');
       expect(s.year).toBe(2025); // FICHA TÉCNICA section: "Portugal/Francia, 2025"
@@ -456,7 +464,7 @@ describe('parseDetailPage Justa-class prose schedule (Justa fixture, captured 20
     // That's the regression guard against the matchSingleFilmShowtime regex
     // tightening back up to comma-only.
     const warnings: string[] = [];
-    parseDetailPage(html, program, warnings);
+    parseDetailPage(html, program, warnings, FIXED_NOW);
     expect(warnings.find((w) => /0 screenings parsed/i.test(w))).toBeUndefined();
   });
 });
