@@ -4,6 +4,31 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 28. Narrow `fetchRows` SELECT + bound the open-ended upcoming tier (PERF — deferred 2026-05-26)
+
+**What:** `fetchRows` in `src/db/queries.ts` selects the full `films` row (including
+cast / genres / backdrop / synopsis) for every screening, and
+`getUpcomingScreeningsByCinema` / the homepage Próximamente query are open-ended (no
+upper bound). Narrow the SELECT to the columns actually rendered, and cap the upcoming
+horizon.
+
+**Why:** Surfaced by Codex during the /sala/[id] eng review (2026-05-26) as the real
+scaling risk — bigger than the `getLastScreeningPerFilm` scan we already dropped from
+the venue page. Every card/agenda/index row hydrates film metadata it never shows.
+
+**Pros:** smaller payloads + faster queries as the catalog grows. **Cons:** touches
+shared query code (`fetchRows`) → affects the homepage too, needs homepage re-test;
+against right-sized-diff if bundled into an unrelated PR.
+
+**Context:** Pre-existing; NOT introduced by the venue page. Out of scope for the
+venue-page PR (would expand blast radius to the homepage). At current traffic (low,
+`force-dynamic`, small DB) it's harmless — revisit when the catalog or traffic grows.
+
+**Effort:** S (~1-2 hrs CC). **Priority:** P3. **Depends on / blocked by:** nothing;
+do it as its own small PR with homepage regression coverage.
+
+---
+
 ## 26. `/admin/runs` — scrape status + enrich-trigger panel (FEATURE — Path A scope, in flight 2026-05-23)
 
 **Scope reshape 2026-05-23:** original spec included per-cinema and page-level **Scrape** buttons. Dropped from this cycle. **Why:** Vercel functions egress from AWS datacenter IPs; MALBA has IP-banned datacenter ranges persistently (per TODO #9 — "rate limit is IP-scoped"). Scrape triggers from Vercel would either fail outright on blocked venues or earn fresh bans. Full scrape-trigger surface depends on the residential-egress daemon — see TODO #27 below.

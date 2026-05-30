@@ -57,7 +57,12 @@ export async function refreshAllEnrichment(
   onProgress?: (done: number, total: number) => void,
 ): Promise<RefreshResult> {
   if (!hasTmdbToken()) {
-    return { refreshed: 0, errors: 0, errorDetails: ['TMDB_API_TOKEN not set'], scanned: 0 };
+    return {
+      refreshed: 0,
+      errors: 0,
+      errorDetails: ['TMDB_API_TOKEN not set'],
+      scanned: 0,
+    };
   }
 
   const rows = await db

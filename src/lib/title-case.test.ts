@@ -33,15 +33,13 @@ describe('displayFilmTitle — gating', () => {
   });
 
   it('re-cases titles with match_source = none', () => {
-    expect(displayFilmTitle({ title: 'EL DESPRECIO', ...never })).toBe(
-      'El desprecio',
-    );
+    expect(displayFilmTitle({ title: 'EL DESPRECIO', ...never })).toBe('El desprecio');
   });
 
   it('re-cases titles with skip_tmdb = true (non-film labels)', () => {
-    expect(
-      displayFilmTitle({ title: 'EL LADO MUTANTE DE LA FUERZA', ...skipped }),
-    ).toBe('El lado mutante de la fuerza');
+    expect(displayFilmTitle({ title: 'EL LADO MUTANTE DE LA FUERZA', ...skipped })).toBe(
+      'El lado mutante de la fuerza',
+    );
   });
 });
 
@@ -56,9 +54,9 @@ describe('displayFilmTitle — sentence case', () => {
   });
 
   it('capitalizes after period, exclamation, question mark', () => {
-    expect(
-      displayFilmTitle({ title: 'PARTE I. PARTE II', ...unmatched }),
-    ).toBe('Parte i. Parte ii');
+    expect(displayFilmTitle({ title: 'PARTE I. PARTE II', ...unmatched })).toBe(
+      'Parte i. Parte ii',
+    );
     expect(displayFilmTitle({ title: '¿QUIÉN? ¡SÍ!', ...unmatched })).toBe(
       '¿Quién? ¡Sí!',
     );
@@ -74,9 +72,7 @@ describe('displayFilmTitle — sentence case', () => {
   });
 
   it('handles leading punctuation by capitalizing the first letter', () => {
-    expect(displayFilmTitle({ title: '«PELÍCULA»', ...unmatched })).toBe(
-      '«Película»',
-    );
+    expect(displayFilmTitle({ title: '«PELÍCULA»', ...unmatched })).toBe('«Película»');
   });
 
   it('accepts proper-noun degradation', () => {
@@ -88,9 +84,9 @@ describe('displayFilmTitle — sentence case', () => {
 
 describe('displayFilmTitle — no-op paths', () => {
   it('leaves mixed-case titles untouched even when unmatched', () => {
-    expect(
-      displayFilmTitle({ title: 'El último capítulo', ...unmatched }),
-    ).toBe('El último capítulo');
+    expect(displayFilmTitle({ title: 'El último capítulo', ...unmatched })).toBe(
+      'El último capítulo',
+    );
   });
 
   it('leaves single-letter and empty-ish strings untouched', () => {
@@ -99,9 +95,7 @@ describe('displayFilmTitle — no-op paths', () => {
   });
 
   it('leaves no-letter strings untouched', () => {
-    expect(displayFilmTitle({ title: '12 + 34', ...unmatched })).toBe(
-      '12 + 34',
-    );
+    expect(displayFilmTitle({ title: '12 + 34', ...unmatched })).toBe('12 + 34');
   });
 
   it('leaves non-cased scripts untouched', () => {

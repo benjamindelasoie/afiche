@@ -44,7 +44,9 @@ describe('admin-auth — signed-cookie session helpers', () => {
 
     it('rejects a length-different submission (constant-time path returns false on length mismatch)', () => {
       expect(isValidAdminPassword('short')).toBe(false);
-      expect(isValidAdminPassword('much-longer-than-the-actual-secret-value')).toBe(false);
+      expect(isValidAdminPassword('much-longer-than-the-actual-secret-value')).toBe(
+        false,
+      );
     });
 
     it('throws when ADMIN_SECRET is unset', () => {

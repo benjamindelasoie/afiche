@@ -1844,8 +1844,16 @@ describe('ingest — re-scrape preserves enrichment on manual/auto/override rows
     // transient-error result leaves match_source untouched and produces
     // no DB writes — the regression tests below are concerned with the
     // upsert path, not the enrichment path.
-    enrichFilmMock.mockResolvedValue({ delta: null, reason: 'error', error: 'no-op-mock' });
-    enrichByTmdbIdMock.mockResolvedValue({ delta: null, reason: 'error', error: 'no-op-mock' });
+    enrichFilmMock.mockResolvedValue({
+      delta: null,
+      reason: 'error',
+      error: 'no-op-mock',
+    });
+    enrichByTmdbIdMock.mockResolvedValue({
+      delta: null,
+      reason: 'error',
+      error: 'no-op-mock',
+    });
     await testDb
       .insert(cinemas)
       .values({ id: 'lugones', name: 'Sala Lugones', type: 'indie' });
@@ -1866,7 +1874,8 @@ describe('ingest — re-scrape preserves enrichment on manual/auto/override rows
         year: 1926,
         titleOriginal: 'Мать',
         director: 'Vsevolod Pudovkin', // <- enrichment-canonical
-        synopsisEs: 'Una madre intenta salvar a su hijo durante la Revolución rusa de 1905.',
+        synopsisEs:
+          'Una madre intenta salvar a su hijo durante la Revolución rusa de 1905.',
         runtimeMin: 89,
         tmdbId: 53472,
         imdbId: 'tt0017217',
@@ -1899,10 +1908,7 @@ describe('ingest — re-scrape preserves enrichment on manual/auto/override rows
       ],
     });
 
-    const [after] = await testDb
-      .select()
-      .from(films)
-      .where(eq(films.id, seeded.id));
+    const [after] = await testDb.select().from(films).where(eq(films.id, seeded.id));
 
     // The enrichment-curated director MUST survive the rescrape.
     expect(after.director).toBe('Vsevolod Pudovkin');

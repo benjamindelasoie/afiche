@@ -200,7 +200,9 @@ describe('assignTmdbIdAction', () => {
 
     await expect(
       assignTmdbIdAction(form({ filmId: String(filmId), tmdbId: '12345' })),
-    ).rejects.toThrow(new RegExp(`REDIRECT:/admin/unmatched/${filmId}\\?error=already-patched`));
+    ).rejects.toThrow(
+      new RegExp(`REDIRECT:/admin/unmatched/${filmId}\\?error=already-patched`),
+    );
 
     // No DB mutation — tmdbId stays at 99999, matchSource stays auto.
     const [after] = await testDb.select().from(films).where(eq(films.id, filmId));
@@ -242,9 +244,7 @@ describe('assignTmdbIdAction', () => {
 
     await expect(
       assignTmdbIdAction(form({ filmId: String(currentId), tmdbId: '12345' })),
-    ).rejects.toThrow(
-      new RegExp(`REDIRECT:/admin/unmatched/${currentId}\\?collision=`),
-    );
+    ).rejects.toThrow(new RegExp(`REDIRECT:/admin/unmatched/${currentId}\\?collision=`));
 
     // No mutation on either row.
     const [current] = await testDb.select().from(films).where(eq(films.id, currentId));

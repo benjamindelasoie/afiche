@@ -157,4 +157,3 @@ describe('isScreeningExpired — 15-min grace past startsAtUtc', () => {
     expect(isScreeningExpired(startsAt, now)).toBe(true);
   });
 });
-

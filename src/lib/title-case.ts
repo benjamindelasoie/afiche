@@ -30,9 +30,7 @@ export interface FilmTitleInputs {
 
 export function displayFilmTitle(film: FilmTitleInputs): string {
   const unmatched =
-    film.skipTmdb ||
-    film.matchSource === 'none' ||
-    film.matchSource === 'none-attempted';
+    film.skipTmdb || film.matchSource === 'none' || film.matchSource === 'none-attempted';
   if (!unmatched) return film.title;
   if (!isAllCaps(film.title)) return film.title;
   return toSentenceCase(film.title);
@@ -50,8 +48,7 @@ function isAllCaps(s: string): boolean {
   const letters = s.match(/\p{L}/gu);
   if (!letters || letters.length < 2) return false;
   return letters.every(
-    (c) =>
-      c === c.toLocaleUpperCase('es') && c !== c.toLocaleLowerCase('es'),
+    (c) => c === c.toLocaleUpperCase('es') && c !== c.toLocaleLowerCase('es'),
   );
 }
 
@@ -68,7 +65,6 @@ function toSentenceCase(s: string): string {
   // ("¿Quién? ¡Sí!" — both clauses get capitalized). Excludes ":" by design.
   return leading.replace(
     /([.!?])([^\p{L}]+)(\p{L})/gu,
-    (_, p: string, gap: string, ch: string) =>
-      p + gap + ch.toLocaleUpperCase('es'),
+    (_, p: string, gap: string, ch: string) => p + gap + ch.toLocaleUpperCase('es'),
   );
 }
