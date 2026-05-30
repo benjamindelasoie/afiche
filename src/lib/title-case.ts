@@ -1,29 +1,47 @@
+import { slugify } from './slug';
+
 /**
- * Display-layer smart-casing for films that have not been TMDB-matched.
+ * Display-layer resolution of the title afiche should SHOW for a film.
  *
- * Background: scrapers store `films.title` as the venue rendered it. Some
- * venues (notably Cine Lorca) use all-caps; others occasionally emit
- * curator-prefixed shouting ("FUNCIÓN ESPECIAL: …"). Once a film matches
- * TMDB, `films.title` gets overwritten with the canonical casing, so this
- * problem self-resolves for the majority of rows. But for the unmatched
- * tail (`match_source ∈ ('none', 'none-attempted')`, or `skip_tmdb=true`)
- * the cartelera would otherwise shout the title in the user's face.
+ * Two columns are in play. `films.scraped_title` is the title exactly as the
+ * venue rendered it (the audit trail of "what the scraper saw"); `films.title`
+ * starts equal to it but gets overwritten with TMDB's canonical title once the
+ * film matches. The product rule: **honor the venue's title**, because a
+ * cartelera's job is to get someone to the right box office — if afiche says
+ * "El arquitecto" but Cine Lorca's marquee says "El gran arco", the tool
+ * failed at the last step. TMDB stays the source of truth for everything else
+ * (poster, synopsis, director, year, original title) and for *casing*.
  *
- * Per the matcher-normalization decision (session 2026-05-19), we do NOT
- * re-case `scraped_title` at scrape time — it's the audit trail of "what
- * the scraper saw". This helper is render-only.
+ * Resolution:
+ *   - Unmatched (`match_source ∈ ('none','none-attempted')` or `skip_tmdb`):
+ *     `title` === `scraped_title` (TMDB never wrote), so render the venue
+ *     title, sentence-cased when it's all-caps.
+ *   - Matched, venue title == TMDB title (modulo case/accents/punctuation):
+ *     a pure casing/diacritic drift — prefer TMDB's clean form. This keeps
+ *     proper nouns ("La reina Margot") that sentence-casing an all-caps venue
+ *     title would destroy ("La reina margot").
+ *   - Matched, venue title genuinely DIFFERS (a different translation, e.g.
+ *     "El gran arco" vs TMDB "El arquitecto"): honor the venue title,
+ *     sentence-cased when all-caps.
  *
- * Trigger: the row is unmatched AND the title is detectably all-caps.
- * Strategy: sentence case (capitalize first letter + first letter after a
- * sentence terminator). Colon ":" is intentionally NOT a sentence
+ * We do NOT re-case `scraped_title` at scrape time — it stays raw (matcher
+ * normalization decision, 2026-05-19). This helper is render-only.
+ *
+ * Sentence-casing strategy: capitalize the first letter + the first letter
+ * after a sentence terminator (.!?). Colon ":" is intentionally NOT a
  * terminator — Spanish typography keeps the post-colon word lowercase
- * ("Función especial: un buen día"). Acronym + proper-noun preservation
- * is out of scope; titles like "BLADE RUNNER" → "Blade runner" are an
- * acceptable degradation since matched rows take TMDB's canonical form.
+ * ("Función especial: un buen día"). Proper-noun preservation inside an
+ * all-caps *differing* title is out of scope (rare; "EL ÚLTIMO TANGO EN
+ * PARÍS" → "…en parís"). For Cine Lorca — the one venue whose titles arrive
+ * all-caps from a vision model — that residual is reduced upstream by the
+ * prompt asking for natural casing (see src/providers/cine-lorca.ts).
  */
 
 export interface FilmTitleInputs {
+  /** `films.title` — TMDB's canonical title once matched; else == scrapedTitle. */
   title: string;
+  /** `films.scraped_title` — the title exactly as the venue rendered it. */
+  scrapedTitle: string;
   matchSource: 'auto' | 'override' | 'manual' | 'none' | 'none-attempted';
   skipTmdb: boolean;
 }
@@ -31,9 +49,29 @@ export interface FilmTitleInputs {
 export function displayFilmTitle(film: FilmTitleInputs): string {
   const unmatched =
     film.skipTmdb || film.matchSource === 'none' || film.matchSource === 'none-attempted';
-  if (!unmatched) return film.title;
-  if (!isAllCaps(film.title)) return film.title;
-  return toSentenceCase(film.title);
+  // Unmatched → films.title was never overwritten, so it equals the scraped
+  // venue title. Matched-but-the-venue-named-it-differently → honor the venue.
+  if (unmatched || !sameTitle(film.scrapedTitle, film.title)) {
+    return caseIfAllCaps(film.scrapedTitle);
+  }
+  // Matched and the venue agrees on the title — take TMDB's clean casing.
+  return film.title;
+}
+
+/** Sentence-case the string only when it's detectably all-caps; else verbatim. */
+function caseIfAllCaps(s: string): string {
+  return isAllCaps(s) ? toSentenceCase(s) : s;
+}
+
+/**
+ * True when two titles are the same film name modulo cosmetic drift — casing,
+ * accents, punctuation, whitespace. Implemented as slug equality so "EL
+ * DESPRECIO" ≈ "El desprecio" but "El gran arco" ≠ "El arquitecto". A real
+ * word-level difference means the venue deliberately named the film
+ * differently, which we honor.
+ */
+function sameTitle(a: string, b: string): boolean {
+  return slugify(a) === slugify(b);
 }
 
 /**

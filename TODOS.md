@@ -4,6 +4,18 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 30. Proper-noun casing for Cine Lorca's all-caps tail (SHELVED — found 2026-05-30 while shipping venue-title display)
+
+**Context:** `displayFilmTitle` now honors the venue's title when it genuinely differs from TMDB (shipped 2026-05-30). For matched films whose venue title only differs in case (Lorca's all-caps "EL CONFORMISTA" vs TMDB "El conformista"), we take TMDB's clean casing — so most Lorca titles render correctly. The residual: a Lorca title that's all-caps AND genuinely differs from TMDB AND contains a proper noun (e.g. "EL ÚLTIMO TANGO EN PARÍS" with no TMDB match) gets sentence-cased to "El último tango en parís" (proper noun lowercased). Rare; only Lorca hits it (its schedule is an image read by a vision model, so titles arrive in the poster's all-caps styling; every other venue comes from HTML with real casing).
+
+**Idea considered + rejected:** instruct the Lorca vision prompt (`src/providers/cine-lorca.ts`, `VISION_PROMPT`/`VISION_SYSTEM_PROMPT`, bump `PROMPT_VERSION`) to emit natural title casing instead of verbatim all-caps, so the model's world knowledge ("París", "Gardel") fixes proper nouns at the source.
+
+**Why rejected (the trap):** `films.scraped_title` is the **immutable upsert key** `(scraped_title, scraped_year)` — case-sensitive, "what the scraper saw, never touched on update." Changing the VLM's emitted casing mutates the key value, so the next Lorca scrape INSERTs new film rows instead of updating existing ones. Consequences: every Lorca film re-enriches from scratch, **manual admin patches on Lorca films are lost** (new row doesn't inherit `tmdb_id`/overrides), orphaned all-caps rows linger, and it violates the scraped_title-is-raw-audit invariant. This is the mutable-key class from [[project_afiche_mutable_key_upsert_bug]]. Not worth it for a rare cosmetic.
+
+**If ever revisited:** the correct shape is to decouple display casing from the upsert key — e.g. a derived `display_title` column populated at scrape/enrich time (VLM natural casing for Lorca, TMDB for matched), used only for rendering, while `scraped_title` stays the raw immutable key. That's real scope (schema + ingest + plumbing) for a small, admin-patchable benefit. **Priority: P4.** Trigger: a real Lorca title visibly mis-cased on prod that an operator can't tolerate patching by hand.
+
+---
+
 ## 29. MALBA prose-schedule title contamination when director lacks "de" prefix (SCRAPER BUG — found 2026-05-30 during venue QA)
 
 **What:** On MALBA cycle pages whose schedule is prose (e.g. `https://malba.org.ar/evento/semana-de-cine-portugues/`), a showtime line formatted `"HH:MM Title, Director (runtime). Note"` — i.e. with the director introduced by a bare comma, NOT `", de Director"` — has the **entire line (minus the time) stored as the film title**. The director/runtime/note never split off.
