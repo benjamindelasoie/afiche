@@ -4,6 +4,25 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 29. MALBA prose-schedule title contamination when director lacks "de" prefix (SCRAPER BUG — found 2026-05-30 during venue QA)
+
+**What:** On MALBA cycle pages whose schedule is prose (e.g. `https://malba.org.ar/evento/semana-de-cine-portugues/`), a showtime line formatted `"HH:MM Title, Director (runtime). Note"` — i.e. with the director introduced by a bare comma, NOT `", de Director"` — has the **entire line (minus the time) stored as the film title**. The director/runtime/note never split off.
+
+**Live evidence (Semana de Cine Portugués, 13ª ed., cycle ends 4 Jun):**
+- DOM 31, 20:00 — MALBA source: `"20:00 A Vida Luminosa, João Rosas (99'). Con presentación del director"`. Afiche stored title = that whole string. Correct title is **"A Vida Luminosa"** (João Rosas, 2025, PT).
+- The *same film* on VIE 29 21:30 is written `"21:30 A Vida Luminosa, de João Rosas (99′)…"` — WITH "de" — and would split correctly. So the bug is specifically the missing-"de" variant.
+- Two shorts-compilation sessions also stored contaminated: `"Sesión Peliculinhas: O Peculiar Crime do Estranho Sr. Jacinto"` and `"Sesión especial MOTELX: Arroio Negro"` (these are multi-short programs; arguably the "Sesión X:" label IS the right display name, so lower priority than the feature-film case).
+
+**Why it's display-visible:** the contaminated string never matches TMDB (garbage title), so the row stays `match_source ∈ ('none','none-attempted')` and renders the raw scraped title on `/sala/malba` + the homepage. `displayFilmTitle()` smart-casing does not (and cannot) fix contamination — this is a scrape-layer split, per [[feedback_afiche_scraper_iteration]].
+
+**Fix shape:** in `src/providers/malba.ts`, the showtime/title splitter currently keys on `", de <Director>"`. Extend it to also recognize `", <Capitalized Name> (<runtime>')"` as a director boundary when "de" is absent — i.e. split the title at the first `", "` that is followed by a person-name-shaped token and a `(NN')` runtime marker. Guard against false positives (films with commas in the title) by requiring the trailing `(runtime')` shape. Capture a fixture of the Semana page first (`test/fixtures/malba/evento-semana-de-cine-portugues.html`) and add a regression test asserting `filmTitle === "A Vida Luminosa"` for the missing-"de" line.
+
+**Why deferred (not fixed inline during the 2026-05-30 QA session):** the MALBA parser is multi-strategy (S1 linked-title, S2 single-event prose) and the change touches shared title-extraction; doing it correctly needs the fixture + careful regression coverage so it doesn't break the working `", de Director"` path. Low impact (3 unmatched entries in a cycle ending 4 Jun) did not justify a rushed blind parser change while unsupervised. **Coverage itself is correct** — the screenings appear at the right dates/times; only the title text is contaminated.
+
+**Priority:** P3 (data-quality cosmetic on unmatched rows; recurs whenever a MALBA cycle uses the bare-comma director format). **Effort:** S (~2-3 hrs incl. fixture + tests). **Depends on:** nothing; MALBA is reachable from a residential IP (verified 2026-05-30).
+
+---
+
 ## 28. Narrow `fetchRows` SELECT + bound the open-ended upcoming tier (PERF — deferred 2026-05-26)
 
 **What:** `fetchRows` in `src/db/queries.ts` selects the full `films` row (including
