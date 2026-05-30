@@ -177,6 +177,7 @@ export function parseDetailPage(
   html: string,
   program: ProgramLink,
   warnings: string[],
+  now: Date = new Date(),
 ): ScrapedScreening[] {
   const $ = cheerio.load(html);
 
@@ -186,7 +187,7 @@ export function parseDetailPage(
     return [];
   }
 
-  const rangeInfo = parseDateRange(program.dateRangeText);
+  const rangeInfo = parseDateRange(program.dateRangeText, now);
   if (!rangeInfo) {
     warnings.push(
       `program "${program.slug}": could not parse date range "${program.dateRangeText}"`,
@@ -780,6 +781,7 @@ function matchTimeMarker(text: string): Array<{ hour: number; minute: number }> 
  */
 export function parseDateRange(
   text: string,
+  now: Date = new Date(),
 ): { startMonth: number; startYear: number } | null {
   const cleaned = text.toLowerCase().replace(/[°º]/g, '').trim();
 
@@ -820,8 +822,9 @@ export function parseDateRange(
   if (startMonth === undefined) return null;
 
   // Year inference: pick the year where the start date is closest to now,
-  // preferring the future but tolerating up to ~30 days in the past.
-  const now = new Date();
+  // preferring the future but tolerating up to ~30 days in the past. `now`
+  // is injectable so fixture-based tests stay deterministic as wall-clock
+  // time advances past the fixture's capture date (default = real now in prod).
   const thisYear = now.getUTCFullYear();
   const candidateThis = new Date(Date.UTC(thisYear, startMonth, startDay));
   const thirtyDays = 30 * 24 * 60 * 60 * 1000;
