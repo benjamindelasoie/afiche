@@ -358,13 +358,28 @@ function FilmScreeningRow({ s, isPast }: { s: ScreeningRow; isPast: boolean }) {
         )}
       </div>
 
-      {/* Ticketing affordance — right column. Visual only: the whole row IS the
-          ticket link, so this is a label, not an <a> (avoids a second anchor).
-          Absent when there's no ticket link (no sourceUrl, or past). */}
-      {showTicketLink ? (
-        <span className="tracking-eyebrow text-ink-gray group-hover:text-carmine self-center font-mono text-[10px] uppercase transition-colors">
-          Entradas →
-        </span>
+      {/* Right column. "Entradas →" is visual-only (the whole row is the
+          ticket anchor; this is a label, not an <a>). "Agendar" IS a real
+          link to the .ics download — it needs `relative z-10` to sit above
+          the stretched-link, otherwise the row anchor would swallow the
+          tap. Both are hidden for past screenings: dead ticket pages help
+          nobody, and calendaring a finished show is nonsense. */}
+      {!isPast ? (
+        <div className="flex flex-col items-end gap-1 self-center">
+          {showTicketLink && (
+            <span className="tracking-eyebrow text-ink-gray group-hover:text-carmine font-mono text-[10px] uppercase transition-colors">
+              Entradas →
+            </span>
+          )}
+          <a
+            href={`/api/screening/${s.id}/ics`}
+            download
+            className="tracking-eyebrow text-ink-gray hover:text-carmine focus-visible:outline-carmine relative z-10 font-mono text-[10px] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+            aria-label={`Agendar ${dayLabel} ${timeLabel} en ${s.cinema.name}`}
+          >
+            Agendar ⤓
+          </a>
+        </div>
       ) : (
         <span />
       )}

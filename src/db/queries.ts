@@ -406,6 +406,57 @@ export async function getUpcomingScreeningsByFilm(
   };
 }
 
+/**
+ * Single-screening lookup by primary key. Returns the joined Screening +
+ * Film + Cinema shape so callers (currently the .ics route) can render
+ * title/director/runtime/venue from one DB hit. Returns null for unknown
+ * IDs — the caller maps that to 404.
+ */
+export async function getScreeningById(id: number): Promise<ScreeningRow | null> {
+  const rows = await db
+    .select({
+      screening: screenings,
+      film: films,
+      cinema: cinemas,
+    })
+    .from(screenings)
+    .innerJoin(films, eq(screenings.filmId, films.id))
+    .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
+    .where(eq(screenings.id, id))
+    .limit(1);
+  if (rows.length === 0) return null;
+  const row = rows[0];
+  return {
+    id: row.screening.id,
+    startsAtUtc: row.screening.startsAtUtc,
+    tags: row.screening.tags,
+    sourceUrl: row.screening.sourceUrl,
+    programName: row.screening.programName ?? null,
+    film: {
+      id: row.film.id,
+      title: displayFilmTitle(row.film),
+      titleOriginal: row.film.titleOriginal,
+      director: row.film.director,
+      year: row.film.year,
+      country: row.film.country,
+      runtimeMin: row.film.runtimeMin,
+      synopsisEs: row.film.synopsisEs,
+      posterUrl: row.film.posterUrl,
+      backdropUrl: row.film.backdropUrl,
+      slug: row.film.slug ?? null,
+      cast: row.film.cast ?? null,
+      genres: row.film.genres ?? null,
+    },
+    cinema: {
+      id: row.cinema.id,
+      name: row.cinema.name,
+      neighborhood: row.cinema.neighborhood,
+      address: row.cinema.address,
+      type: row.cinema.type,
+    },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Date formatting helpers — always in America/Argentina/Buenos_Aires.
 // BA_TZ is imported from @/lib/date-ranges (canonical home for the constant).
