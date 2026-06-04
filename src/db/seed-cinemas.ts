@@ -54,7 +54,7 @@ const CINEMAS: CinemaInsert[] = [
     name: 'Cine York',
     neighborhood: 'Olivos',
     type: 'indie',
-    address: 'Alberdi 895, Olivos',
+    address: 'Juan Bautista Alberdi 895, Olivos',
     ticketingBaseUrl: 'https://lumiton.ar',
   },
   {
@@ -62,15 +62,15 @@ const CINEMAS: CinemaInsert[] = [
     name: 'Centro Cultural Munro',
     neighborhood: 'Munro',
     type: 'indie',
-    address: 'Av. Mitre 4155, Munro',
+    address: 'Vélez Sarsfield 4650, Munro',
     ticketingBaseUrl: 'https://lumiton.ar',
   },
   {
     id: 'lumiton',
     name: 'Lumiton',
-    neighborhood: 'Vicente López',
+    neighborhood: 'Munro',
     type: 'indie',
-    address: 'Av. del Libertador 800, Vicente López',
+    address: 'Sargento Juan Bautista Cabral 2354, Munro',
     ticketingBaseUrl: 'https://lumiton.ar',
   },
   {

@@ -18,6 +18,8 @@
     "db:push": "dotenv -e .env.local -- drizzle-kit push",
     "db:seed-cinemas": "dotenv -e .env.local -- tsx src/db/seed-cinemas.ts",
     "db:seed-cinemas:prod": "dotenv -e .env.prod -- tsx src/db/seed-cinemas.ts",
+    "db:fix-cinema-addresses": "dotenv -e .env.local -- tsx src/db/fix-cinema-addresses.ts",
+    "db:fix-cinema-addresses:prod": "dotenv -e .env.prod -- tsx src/db/fix-cinema-addresses.ts",
     "db:reset-programming": "dotenv -e .env.local -- tsx src/db/reset-programming.ts",
     "db:reset-programming:prod": "dotenv -e .env.prod -- tsx src/db/reset-programming.ts",
     "db:scrape": "dotenv -e .env.local -- tsx src/scrapers/run.ts",

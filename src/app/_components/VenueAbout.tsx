@@ -3,16 +3,17 @@ import type { VenueInfo } from '@/data/venue-info';
 // ---------------------------------------------------------------------------
 // VenueAbout — the "sobre la sala" block on /sala/[id]: a one-line editorial
 // identity plus the practical datos a repertory-goer checks before going
-// (precio, cómo llegar). Fed by the static venue-info registry; the page only
+// (precio, cómo se entra). Fed by the static venue-info registry; the page only
 // mounts it when hasVenueInfo() is true, and each field is independently
-// optional, so partial entries render cleanly.
+// optional, so partial entries render cleanly. There's no "cómo llegar" row —
+// the page header already shows the address as a Google Maps link.
 //
 // Labels/values use a <dl> — the correct semantics for label/value pairs, and
-// it lets screen readers announce "Precio: …" / "Cómo llegar: …". Mono caps
+// it lets screen readers announce "Precio: …" / "Entradas: …". Mono caps
 // label + Geist value follows DESIGN.md's data-micro-caps role.
 // ---------------------------------------------------------------------------
 export function VenueAbout({ info }: { info: VenueInfo }) {
-  const hasData = !!info.price || !!info.transit;
+  const hasData = !!info.price || !!info.ticketing;
   return (
     <section aria-label="Sobre la sala" className="mb-10">
       {info.blurb && (
@@ -30,12 +31,12 @@ export function VenueAbout({ info }: { info: VenueInfo }) {
               <dd className="text-ink text-sm">{info.price}</dd>
             </>
           )}
-          {info.transit && (
+          {info.ticketing && (
             <>
               <dt className="tracking-card text-ink-gray pt-0.5 font-mono text-[10px] uppercase">
-                Cómo llegar
+                Entradas
               </dt>
-              <dd className="text-ink text-sm">{info.transit}</dd>
+              <dd className="text-ink text-sm">{info.ticketing}</dd>
             </>
           )}
         </dl>

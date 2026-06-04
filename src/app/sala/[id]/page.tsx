@@ -112,9 +112,16 @@ export default async function SalaPage({ params }: { params: Promise<Params> }) 
                 href={mapsHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-ink-gray hover:text-carmine inline-flex min-h-[44px] items-center font-mono text-[11px] tracking-wider uppercase transition-colors"
-                aria-label={`Cómo llegar — ${cinema.address}`}
+                className="text-ink-gray hover:text-carmine inline-flex min-h-[44px] items-center gap-1.5 font-mono text-[11px] tracking-wider uppercase transition-colors"
+                aria-label={`Ver en Google Maps — ${cinema.address}`}
               >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  className="h-3.5 w-3.5 shrink-0 fill-current"
+                >
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" />
+                </svg>
                 <span className="border-ink-gray/40 border-b pb-0.5">
                   {cinema.address}
                 </span>
