@@ -85,9 +85,9 @@ export default async function SalaPage({ params }: { params: Promise<Params> }) 
     <main className="mx-auto w-full max-w-5xl min-w-0 px-4 py-8 sm:px-6 md:py-16">
       <Link
         href="/"
-        className="tracking-eyebrow text-carmine border-carmine mb-8 inline-block border-b font-mono text-[11px] uppercase"
+        className="tracking-eyebrow text-carmine mb-6 inline-flex min-h-[44px] items-center font-mono text-[11px] uppercase"
       >
-        ← Cartelera
+        <span className="border-carmine border-b">← Cartelera</span>
       </Link>
 
       {/* Utility header: identity + how-to-get-there + official site. The venue
@@ -108,10 +108,12 @@ export default async function SalaPage({ params }: { params: Promise<Params> }) 
                 href={mapsHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-ink-gray hover:text-carmine border-ink-gray/40 border-b pb-0.5 font-mono text-[11px] tracking-wider uppercase transition-colors"
+                className="text-ink-gray hover:text-carmine inline-flex min-h-[44px] items-center font-mono text-[11px] tracking-wider uppercase transition-colors"
                 aria-label={`Cómo llegar — ${cinema.address}`}
               >
-                {cinema.address}
+                <span className="border-ink-gray/40 border-b pb-0.5">
+                  {cinema.address}
+                </span>
               </a>
             )}
             {cinema.ticketingBaseUrl && (
@@ -119,7 +121,7 @@ export default async function SalaPage({ params }: { params: Promise<Params> }) 
                 href={cinema.ticketingBaseUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="tracking-card bg-carmine text-cream focus-visible:outline-carmine px-2.5 py-1 font-mono text-[11px] uppercase focus-visible:outline-2 focus-visible:outline-offset-2"
+                className="tracking-card bg-carmine text-cream focus-visible:outline-carmine inline-flex min-h-[44px] items-center px-3 font-mono text-[11px] uppercase focus-visible:outline-2 focus-visible:outline-offset-2"
                 aria-label={`Sitio oficial de ${cinema.name}`}
               >
                 Sitio oficial →
