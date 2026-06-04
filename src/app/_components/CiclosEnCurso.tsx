@@ -19,9 +19,9 @@ export function CiclosEnCurso({ ciclos }: { ciclos: Ciclo[] }) {
   if (ciclos.length === 0) return null;
   return (
     <section className="border-ink border-y-[3px] border-double py-4">
-      <p className="tracking-eyebrow text-ink-gray mb-2 font-mono text-[11px] uppercase">
+      <h2 className="tracking-eyebrow text-ink-gray mb-2 font-mono text-[11px] uppercase">
         Ciclos en curso
-      </p>
+      </h2>
       <div className="-mx-2">
         {ciclos.map((c) => (
           <Link

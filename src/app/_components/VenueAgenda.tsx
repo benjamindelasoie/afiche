@@ -3,6 +3,7 @@ import Link from 'next/link';
 import {
   formatTimeBA,
   formatAgendaDayBA,
+  formatAgendaDayLongBA,
   type DayGroup,
   type ScreeningRow,
 } from '@/db/queries';
@@ -39,28 +40,44 @@ export function VenueAgenda({
           day: dayNum,
           month,
         } = formatAgendaDayBA(day.screenings[0].startsAtUtc);
+        const longLabel = formatAgendaDayLongBA(day.screenings[0].startsAtUtc);
         return (
           <div
             key={day.dateKey}
             className="grid grid-cols-[3.25rem_1fr] gap-4 md:grid-cols-[5rem_1fr] md:gap-6"
           >
-            {/* Date rail. aria-current flags today for assistive tech (parity
-                with the homepage day banners). */}
-            <div aria-current={day.isToday ? 'date' : undefined}>
-              <span className="tracking-card text-ink-gray block font-mono text-[10px] uppercase">
+            {/* Date rail, promoted to the day group's <h2> so heading
+                navigation has a per-day landmark (films below are <h3>).
+                Tailwind preflight resets h2 font/margin to inherit, so the
+                three-line visual stack is unchanged. The verbose date is the
+                screen-reader name; the abbreviated spans are aria-hidden to
+                avoid double-announcing. aria-current flags today (parity with
+                the homepage day banners). */}
+            <h2 aria-current={day.isToday ? 'date' : undefined}>
+              <span className="sr-only">
+                {day.isToday ? `Hoy, ${longLabel}` : longLabel}
+              </span>
+              <span
+                aria-hidden="true"
+                className="tracking-card text-ink-gray block font-mono text-[10px] uppercase"
+              >
                 {dow}
               </span>
               <span
+                aria-hidden="true"
                 className={`block font-serif text-4xl leading-none tabular-nums md:text-5xl ${
                   day.isToday ? 'text-carmine font-bold' : 'text-ink'
                 }`}
               >
                 {dayNum}
               </span>
-              <span className="tracking-card text-ink-gray block font-mono text-[10px] uppercase">
+              <span
+                aria-hidden="true"
+                className="tracking-card text-ink-gray block font-mono text-[10px] uppercase"
+              >
                 {month}
               </span>
-            </div>
+            </h2>
 
             <div className="min-w-0 divide-y divide-black/10">
               {day.screenings.map((s) => (

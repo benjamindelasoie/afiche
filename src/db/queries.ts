@@ -647,6 +647,24 @@ export function formatAgendaDayBA(d: Date): {
 }
 
 /**
+ * Verbose BA day label for assistive tech — "Jueves 4 de junio". The agenda's
+ * visual date rail is an abbreviated three-line stack ("Jue / 4 / Jun"); this
+ * is the screen-reader name for the day's <h2> so heading navigation announces
+ * a real date, not "Jue 4 Jun".
+ */
+export function formatAgendaDayLongBA(d: Date): string {
+  const parts = new Intl.DateTimeFormat('es-AR', {
+    timeZone: BA_TZ,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+  const wd = get('weekday');
+  return `${wd.charAt(0).toUpperCase()}${wd.slice(1)} ${get('day')} de ${get('month')}`;
+}
+
+/**
  * A curatorial program/cycle running at a venue, summarized for the
  * "Ciclos en curso" block on /sala/<id>.
  */
