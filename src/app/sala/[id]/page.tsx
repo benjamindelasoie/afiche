@@ -14,6 +14,8 @@ import {
 } from '@/db/queries';
 import { VenueAgenda } from '@/app/_components/VenueAgenda';
 import { CiclosEnCurso } from '@/app/_components/CiclosEnCurso';
+import { VenueAbout } from '@/app/_components/VenueAbout';
+import { getVenueInfo, hasVenueInfo } from '@/data/venue-info';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +77,8 @@ export default async function SalaPage({ params }: { params: Promise<Params> }) 
   const hasUpcoming = upcoming.length > 0;
   const hasAny = hasAgenda || hasUpcoming;
 
+  const venueInfo = getVenueInfo(id);
+
   const mapsHref = cinema.address
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
         `${cinema.name} ${cinema.address} Buenos Aires Argentina`,
@@ -130,6 +134,8 @@ export default async function SalaPage({ params }: { params: Promise<Params> }) 
           </div>
         )}
       </header>
+
+      {hasVenueInfo(venueInfo) && <VenueAbout info={venueInfo} />}
 
       {!hasAny ? (
         <p className="text-ink-gray py-12 text-center font-serif text-lg italic">
