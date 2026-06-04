@@ -130,14 +130,14 @@ function AgendaRow({ s, anchorSlug }: { s: ScreeningRow; anchorSlug?: string }) 
         {formatTimeBA(s.startsAtUtc)}
       </time>
 
-      <div className="bg-cream flex h-[62px] w-11 shrink-0 items-center justify-center overflow-hidden border border-black shadow-[3px_3px_0_var(--color-carmine)]">
+      <div className="bg-cream flex h-[70px] w-12 shrink-0 items-center justify-center overflow-hidden border border-black shadow-[3px_3px_0_var(--color-carmine)] sm:h-24 sm:w-16 sm:shadow-[4px_4px_0_var(--color-carmine)]">
         {s.film.posterUrl ? (
           <Image
             src={s.film.posterUrl}
             alt={s.film.title}
-            width={44}
-            height={62}
-            sizes="44px"
+            width={64}
+            height={96}
+            sizes="(min-width: 640px) 64px, 48px"
             loading="lazy"
             className="h-full w-full object-cover"
           />
@@ -146,8 +146,8 @@ function AgendaRow({ s, anchorSlug }: { s: ScreeningRow; anchorSlug?: string }) 
           <img
             src="/no-poster.svg"
             alt=""
-            width={44}
-            height={62}
+            width={64}
+            height={96}
             className="h-full w-full object-cover"
           />
         )}
@@ -190,7 +190,36 @@ function AgendaRow({ s, anchorSlug }: { s: ScreeningRow; anchorSlug?: string }) 
             {s.film.runtimeMin && ` · ${s.film.runtimeMin} min`}
           </p>
         )}
+
+        {/* Add-to-calendar, mobile placement: its own line below the meta so
+            the title column keeps full width on 375px. Hidden on sm+, where
+            the row-level column below takes over. `display:none` drops the
+            inactive twin from the a11y tree, so only one Agendar is announced
+            at any viewport. */}
+        <a
+          href={`/api/screening/${s.id}/ics`}
+          download
+          className="tracking-eyebrow text-ink-gray hover:text-carmine focus-visible:outline-carmine relative z-10 mt-2 inline-flex min-h-[40px] items-center font-mono text-[10px] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 sm:hidden"
+          aria-label={`Agendar ${s.film.title} a las ${formatTimeBA(s.startsAtUtc)} (.ics)`}
+        >
+          Agendar ⤓
+        </a>
       </div>
+
+      {/* Add-to-calendar, desktop placement: vertically centered in the
+          right column — fills what used to be the redundant "where" slot, and
+          matches /pelicula's "Agendar ⤓". Real <a> to the .ics download, so
+          it needs `relative z-10` to sit above the stretched film-page link.
+          Every row here is future (expired-today rows are pre-filtered), so
+          no isPast guard. */}
+      <a
+        href={`/api/screening/${s.id}/ics`}
+        download
+        className="tracking-eyebrow text-ink-gray hover:text-carmine focus-visible:outline-carmine relative z-10 hidden min-h-[44px] shrink-0 items-center self-center font-mono text-[10px] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 sm:inline-flex"
+        aria-label={`Agendar ${s.film.title} a las ${formatTimeBA(s.startsAtUtc)} (.ics)`}
+      >
+        Agendar ⤓
+      </a>
     </article>
   );
 }
