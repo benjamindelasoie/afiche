@@ -21,7 +21,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { makeInMemoryDb, type TestDb } from '../../../../../test/helpers/in-memory-db';
+import { makeInMemoryDb, type TestDb } from '../../../../../../test/helpers/in-memory-db';
 import { films, cinemas, screenings } from '@/db/schema';
 import type { EnrichmentDelta } from '@/tmdb/enrich';
 
