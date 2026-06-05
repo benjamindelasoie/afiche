@@ -68,6 +68,15 @@ export const VENUE_INFO: Record<string, VenueInfo> = {
     price: 'Gratis',
     ticketing: 'Por orden de llegada, sin reserva. Capacidad limitada.',
   },
+  cacodelphia: {
+    // BORRADOR (reescribir): el sitio no trae un "sobre la sala"; esto es de
+    // su cartelera (estrenos de cine argentino e internacional de autor).
+    blurb:
+      'Sala de estrenos en pleno centro, sobre Diagonal Norte. Cine argentino e internacional de autor, con foco en los estrenos que sostienen su semana en cartel.',
+    // Precio omitido a propósito: link a "Sitio oficial" en el header.
+    ticketing:
+      'Online o en boletería. La venta online cierra 45 minutos antes de cada función.',
+  },
 };
 
 /** Editorial info for a venue, or null if none is curated yet. */
