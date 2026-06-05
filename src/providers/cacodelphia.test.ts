@@ -61,8 +61,8 @@ describe('parseMovie — BACKROOMS (estreno, subtitulada)', () => {
     expect(out[0].startsAtUtc.toISOString()).toBe('2026-06-07T00:00:00.000Z');
   });
 
-  it('tags premiere (release=1) and vos (Subt)', () => {
-    expect([...out[0].tags].sort()).toEqual(['premiere', 'vos']);
+  it('tags premiere (release=1) and no language tag (VOS is universal-noise here)', () => {
+    expect(out[0].tags).toEqual(['premiere']);
   });
 
   it('carries runtime and synopsis from the movie record', () => {
@@ -92,7 +92,7 @@ describe('parseMovie — ENCUENTRO COLEMAN (no estreno, castellano)', () => {
     expect(out).toHaveLength(2);
   });
 
-  it('tags nothing (release=0, lenguaje Cast is ambiguous so no vos/dubbed)', () => {
+  it('tags nothing (release=0; no language tag)', () => {
     expect(out[0].tags).toEqual([]);
   });
 

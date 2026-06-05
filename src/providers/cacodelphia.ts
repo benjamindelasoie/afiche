@@ -142,9 +142,11 @@ export function parseMovie(
     }
     const tags: ScreeningTag[] = [];
     if (isPremiere) tags.push('premiere');
-    // "Subt" = subtitled foreign film. "Cast" is ambiguous (original-Spanish AR
-    // film vs dubbed foreign), so we don't tag it rather than risk 'dubbed'.
-    if ((st.lenguaje ?? '').toLowerCase().startsWith('subt')) tags.push('vos');
+    // No language tag. The API's `lenguaje` is "Subt" | "Cast", but in an
+    // all-indie cartelera every foreign film is subtitled, so 'vos' would be
+    // universal-noise (no other provider emits it). 'dubbed' WOULD carry signal,
+    // but "Cast" can't distinguish an Argentine original-Spanish film from a
+    // dubbed foreign one, so we leave it untagged rather than mislabel.
 
     out.push({
       cinemaId: CINEMA_ID,
