@@ -81,6 +81,14 @@ const CINEMAS: CinemaInsert[] = [
     address: 'Av. Corrientes 2046',
     ticketingBaseUrl: 'https://www.cinecosmos.uba.ar',
   },
+  {
+    id: 'cacodelphia',
+    name: 'CineArte Cacodelphia',
+    neighborhood: 'San Nicolás',
+    type: 'indie',
+    address: 'Roque Sáenz Peña 1150',
+    ticketingBaseUrl: 'https://cineartecacodelphia.com.ar',
+  },
 ];
 
 async function seedCinemas() {

@@ -4,6 +4,23 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 31. Smarter cross-language enrichment for foreign release titles (UPGRADE — found 2026-06-05 adding CineArte Cacodelphia)
+
+**Context:** Onboarding Cacodelphia (`src/providers/cacodelphia.ts`, adro.studio JSON API) surfaced 7/12 films not auto-matching TMDB. Root cause, found by replaying the matcher: the source exposes ONLY the Spanish AR-release title — no original title, no year. When the local distributor's title differs from TMDB's stored title (the norm for foreign arthouse), `searchMovies(spanishTitle)` returns **0 candidates**, so there is nothing to score. Real examples that ARE on TMDB but missed: "MADRES JÓVENES" → *Recién nacidas / Jeunes Mères* (1242015), "SUEÑOS DE OSLO" → *Sueños en Oslo / Drømmer* (1228682), "LA CHICA DE COLONIA" → *Köln 75* (1171153), "EL GRAN ARCO" → *El arquitecto / L'Inconnu de la Grande Arche* (1290424). One was merely ambiguous ("EL PARTIDO" — many same-titled films tie at 1.0; a year disambiguates → 1666712). Two genuinely aren't on TMDB yet. This is the residual cross-language case [[feedback_afiche_scraper_iteration]] says to solve with world knowledge, not more scraping — the provider already extracts everything the API offers.
+
+**Why provider-level fixes don't suffice:** the missing lever is the original title, absent from this API. A `year` hint (from `FechaEstreno`) rescues only the *ambiguous* case, never the 0-candidate ones, and `FechaEstreno` is the AR *release* year (wrong for re-released classics), so it can't be passed blindly.
+
+**Proposed upgrade (enrichment layer — benefits every venue; `src/scrapers/ingest/enrichment.ts` + `src/tmdb/enrich.ts`):** when `enrichFilm` returns `no-candidates`/`low-confidence` for a film that has a runtime:
+1. **World-knowledge title resolution.** Ask a cheap LLM (Haiku) to map the Spanish release title → `{ originalTitle, year }`. Fires only on misses (small fraction of films), so cost is bounded; cache by `scraped_title` to avoid re-querying.
+2. **Re-search** TMDB with the proposed original title (+ year), back through the existing `scoreCandidates`/`pickBestMatch`.
+3. **Deterministic guard against hallucination — runtime corroboration.** Accept the LLM-routed candidate ONLY if its TMDB runtime matches the scraped `runtimeMin` within ±3 min (and/or year within ±1). This is exactly the check that confirmed all four manual matches during the Cacodelphia debug (104≈106, 112≈110, 115≈116, 106≈104). The runtime guard converts an unreliable LLM suggestion into a safe, verifiable match; if it doesn't corroborate, leave the film for manual matching.
+
+**Cheaper complement (no LLM, optional first step):** many adro `/movie` records carry a `urlTrailer` (YouTube). The video title (via `https://www.youtube.com/oembed?url=…&format=json`) usually contains the real/original title — extract it as a `filmTitleOriginal` hint before any LLM step. Messy but free; helps a subset.
+
+**Why not now:** it's a cross-cutting enrichment change (all providers + an LLM dependency + caching), not a per-venue scraper edit — deserves its own PR, fixtures, and a guard-rail test (a known Spanish title routes to the right TMDB id ONLY when runtime corroborates). **Priority: P2.** Trigger: it just paid for itself on Cacodelphia (7/12 misses); the next foreign-title-heavy venue hits the same wall.
+
+---
+
 ## 30. Proper-noun casing for Cine Lorca's all-caps tail (SHELVED — found 2026-05-30 while shipping venue-title display)
 
 **Context:** `displayFilmTitle` now honors the venue's title when it genuinely differs from TMDB (shipped 2026-05-30). For matched films whose venue title only differs in case (Lorca's all-caps "EL CONFORMISTA" vs TMDB "El conformista"), we take TMDB's clean casing — so most Lorca titles render correctly. The residual: a Lorca title that's all-caps AND genuinely differs from TMDB AND contains a proper noun (e.g. "EL ÚLTIMO TANGO EN PARÍS" with no TMDB match) gets sentence-cased to "El último tango en parís" (proper noun lowercased). Rare; only Lorca hits it (its schedule is an image read by a vision model, so titles arrive in the poster's all-caps styling; every other venue comes from HTML with real casing).
