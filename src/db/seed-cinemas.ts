@@ -89,6 +89,14 @@ const CINEMAS: CinemaInsert[] = [
     address: 'Roque Sáenz Peña 1150',
     ticketingBaseUrl: 'https://cineartecacodelphia.com.ar',
   },
+  {
+    id: 'cine-gaumont',
+    name: 'Cine Gaumont',
+    neighborhood: 'San Nicolás',
+    type: 'indie',
+    address: 'Av. Rivadavia 1635',
+    ticketingBaseUrl: 'https://www.cinegaumont.ar',
+  },
 ];
 
 async function seedCinemas() {

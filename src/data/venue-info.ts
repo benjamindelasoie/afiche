@@ -77,6 +77,17 @@ export const VENUE_INFO: Record<string, VenueInfo> = {
     ticketing:
       'Online o en boletería. La venta online cierra 45 minutos antes de cada función.',
   },
+  'cine-gaumont': {
+    // BORRADOR (reescribir): datos del INCAA / sitio del cine; el voice final
+    // es de Benjamin. Espacio INCAA Km 0 desde 2003; edificio frente a Plaza
+    // del Congreso. Entrada subsidiada (la más barata de la ciudad) — precio
+    // omitido igual, según la postura: linkear "Sitio oficial".
+    blurb:
+      'El Espacio INCAA Km 0, frente a Plaza del Congreso: la sala insignia del Estado para el cine argentino. Estrenos nacionales, documentales y ciclos que casi no tienen lugar en el circuito comercial, a precio popular.',
+    // Precio omitido a propósito: link a "Sitio oficial" en el header.
+    ticketing:
+      'Online o en boletería del cine. Para estrenos y funciones de ciclo conviene llegar con tiempo.',
+  },
 };
 
 /** Editorial info for a venue, or null if none is curated yet. */

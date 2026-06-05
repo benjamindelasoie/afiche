@@ -1,0 +1,82 @@
+{
+  "id": 868,
+  "name": "El mago del Kremlin",
+  "days": {
+    "2026-06-06": [
+      {
+        "id": 503,
+        "name": "Cine Gaumont",
+        "ewaveId": 503,
+        "formats": [
+          {
+            "formatDescription": "2D-Subtitulado",
+            "showId": "64260108",
+            "performances": [
+              {
+                "performanceId": 155229,
+                "showTime": "17:15"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "2026-06-07": [
+      {
+        "id": 503,
+        "name": "Cine Gaumont",
+        "ewaveId": 503,
+        "formats": [
+          {
+            "formatDescription": "2D-Subtitulado",
+            "showId": "64260108",
+            "performances": [
+              {
+                "performanceId": 155244,
+                "showTime": "17:15"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "2026-06-08": [
+      {
+        "id": 503,
+        "name": "Cine Gaumont",
+        "ewaveId": 503,
+        "formats": [
+          {
+            "formatDescription": "2D-Subtitulado",
+            "showId": "64260108",
+            "performances": [
+              {
+                "performanceId": 155259,
+                "showTime": "17:15"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "2026-06-10": [
+      {
+        "id": 503,
+        "name": "Cine Gaumont",
+        "ewaveId": 503,
+        "formats": [
+          {
+            "formatDescription": "2D-Subtitulado",
+            "showId": "64260108",
+            "performances": [
+              {
+                "performanceId": 155289,
+                "showTime": "17:15"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
