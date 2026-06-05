@@ -18,6 +18,7 @@ import { lumitonProvider } from '@/providers/lumiton';
 import { cineCosmosProvider } from '@/providers/cine-cosmos';
 import { cineLorcaProvider } from '@/providers/cine-lorca';
 import { cacodelphiaProvider } from '@/providers/cacodelphia';
+import { cineGaumontProvider } from '@/providers/cine-gaumont';
 import type { Provider } from '@/providers/types';
 import { db, films } from '@/db';
 import { ingest, type IngestSummary } from './ingest';
@@ -32,6 +33,7 @@ const providers: Provider[] = [
   cineCosmosProvider,
   cineLorcaProvider,
   cacodelphiaProvider,
+  cineGaumontProvider,
 ];
 
 async function main() {
