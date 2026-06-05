@@ -25,6 +25,7 @@ Key routing rules:
 - Architecture review → invoke plan-eng-review
 - Save progress → invoke context-save; resume → invoke context-restore
 - Code quality, health check → invoke health
+- Add a new cinema/venue/sala, write a scraper provider → invoke add-venue (project skill in `.claude/skills/`)
 
 ## Design System
 

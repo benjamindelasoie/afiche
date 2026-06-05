@@ -49,7 +49,9 @@ next-env.d.ts
 .gstack/
 
 # claude code internal session state (settings, scheduled tasks, etc.)
-.claude/
+.claude/*
+# ...but DO version-control project skills (shareable, checked-in workflows)
+!.claude/skills/
 
 # gstack /retro JSON snapshots — local trend tracking only
 .context/
