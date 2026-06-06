@@ -88,6 +88,16 @@ export const VENUE_INFO: Record<string, VenueInfo> = {
     ticketing:
       'Online o en boletería del cine. Para estrenos y funciones de ciclo conviene llegar con tiempo.',
   },
+  'centro-cultural-borges': {
+    // BORRADOR (reescribir): datos del sitio del Borges; voice final de Benjamin.
+    // En las Galerías Pacífico (Viamonte 525). Entrada libre confirmada en el
+    // sitio ("Free entry"). Programación de cine de autor argentino, retros y
+    // ciclos de animación.
+    blurb:
+      'El centro cultural en las Galerías Pacífico. Su sala de cine programa autoras y autores argentinos, retrospectivas y ciclos de animación, con entrada libre y gratuita.',
+    price: 'Gratis',
+    ticketing: 'Entrada libre y gratuita, por orden de llegada. Miércoles a domingos.',
+  },
 };
 
 /** Editorial info for a venue, or null if none is curated yet. */
