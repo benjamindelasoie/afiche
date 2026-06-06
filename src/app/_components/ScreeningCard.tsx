@@ -118,7 +118,7 @@ export function ScreeningCard({
                 {s.film.country && (
                   <span className="hidden sm:inline"> · {s.film.country}</span>
                 )}
-                {s.film.runtimeMin && ` · ${s.film.runtimeMin} min`}
+                {s.film.runtimeMin ? ` · ${s.film.runtimeMin} min` : null}
               </p>
             )}
             {s.film.synopsisEs &&

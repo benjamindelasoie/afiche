@@ -62,7 +62,9 @@ export function buildScreeningIcs(
   now: Date = new Date(),
 ): string {
   const { id, startsAtUtc, film, cinema, sourceUrl } = input;
-  const runtimeMin = film.runtimeMin ?? DEFAULT_RUNTIME_MIN;
+  // `|| DEFAULT` not `?? DEFAULT`: a 0 runtime (TMDB has no runtime for some
+  // brand-new films) is "unknown", not "zero-length event" — fall back too.
+  const runtimeMin = film.runtimeMin || DEFAULT_RUNTIME_MIN;
   const endsAtUtc = new Date(startsAtUtc.getTime() + runtimeMin * 60_000);
 
   const summary = escapeText(film.title);

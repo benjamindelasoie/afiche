@@ -187,7 +187,7 @@ function AgendaRow({ s, anchorSlug }: { s: ScreeningRow; anchorSlug?: string }) 
           <p className="text-ink-gray mt-0.5 text-sm">
             {s.film.director}
             {s.film.year && ` · ${s.film.year}`}
-            {s.film.runtimeMin && ` · ${s.film.runtimeMin} min`}
+            {s.film.runtimeMin ? ` · ${s.film.runtimeMin} min` : null}
           </p>
         )}
 
