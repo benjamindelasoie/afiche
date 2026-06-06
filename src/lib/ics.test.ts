@@ -113,6 +113,17 @@ describe('buildScreeningIcs', () => {
     expect(ics).toContain('DTEND:20260616T010000Z');
   });
 
+  // Regression: ISSUE-001 — a 0 runtime (TMDB has none for some brand-new films)
+  // must fall back to the default, not produce a zero-length event (`?? DEFAULT`
+  // kept the 0; `|| DEFAULT` fixes it).
+  // Found by /qa on 2026-06-06 (prod, Las Mantis at Cine Gaumont).
+  it('falls back to a 120-minute DTEND when runtimeMin is 0', () => {
+    const input = baseInput();
+    input.film.runtimeMin = 0;
+    const ics = buildScreeningIcs(input, FIXED_NOW);
+    expect(ics).toContain('DTEND:20260616T010000Z');
+  });
+
   it('uses the supplied `now` for DTSTAMP', () => {
     const ics = buildScreeningIcs(baseInput(), FIXED_NOW);
     expect(ics).toContain('DTSTAMP:20260530T120000Z');

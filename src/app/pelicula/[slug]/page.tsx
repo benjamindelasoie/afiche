@@ -169,7 +169,7 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
             {film.director}
             {film.year && ` · ${film.year}`}
             {film.country && ` · ${film.country}`}
-            {film.runtimeMin && ` · ${film.runtimeMin} min`}
+            {film.runtimeMin ? ` · ${film.runtimeMin} min` : null}
           </p>
         )}
         {genreLabels.length > 0 && (
