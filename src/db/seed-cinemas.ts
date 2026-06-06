@@ -97,6 +97,14 @@ const CINEMAS: CinemaInsert[] = [
     address: 'Av. Rivadavia 1635',
     ticketingBaseUrl: 'https://www.cinegaumont.ar',
   },
+  {
+    id: 'centro-cultural-borges',
+    name: 'Centro Cultural Borges',
+    neighborhood: 'San Nicolás',
+    type: 'indie',
+    address: 'Viamonte 525',
+    ticketingBaseUrl: 'https://centroculturalborges.gob.ar',
+  },
 ];
 
 async function seedCinemas() {
