@@ -10,6 +10,7 @@ import {
 } from '@/db/queries';
 import { DaySection } from '@/app/_components/DaySection';
 import { DateStrip } from '@/app/_components/DateStrip';
+import { Masthead } from '@/app/_components/Masthead';
 import { computeEdition, formatRangeLabel, formatLastScrape } from '@/lib/edition';
 
 // `/cartelera` — the exhaustive, day-by-day cartelera. This is the view the
@@ -57,30 +58,12 @@ export default async function CarteleraPage() {
   return (
     <>
       <main className="mx-auto w-full max-w-5xl min-w-0 px-4 py-8 sm:px-6 md:py-16">
-        <header className="py-8 text-center md:py-10">
-          <div className="bg-carmine/80 mx-auto mb-2 h-[2px] w-[36%] max-w-[260px] md:mb-3 md:w-[44%]" />
-          <Link
-            href="/"
-            className="text-carmine mb-3 inline-block font-mono text-[11px] tracking-[0.2em] uppercase md:mb-3"
-          >
-            ← Afiche · cartelera completa
-          </Link>
-          <h1
-            className="font-serif leading-[0.9] tracking-[-0.02em] text-balance"
-            style={{
-              fontSize: 'clamp(4.5rem, 12vw, 8rem)',
-              fontKerning: 'normal',
-              fontFeatureSettings: '"liga", "kern"',
-            }}
-          >
-            Afiche
-          </h1>
-          <div className="mx-auto mt-4 flex max-w-[28rem] flex-col items-center gap-y-1 border-t border-black px-1 pt-3 font-mono text-[11px] tracking-[0.15em] uppercase md:mt-4 md:flex-row md:justify-between md:gap-x-6 md:pt-2">
-            <span className="text-carmine font-bold">Edición Nº {edition.editionNumber}</span>
-            <span className="text-ink-gray">{edition.weekRangeShort}</span>
-          </div>
-          <p className="sr-only">{edition.fullSentence}</p>
-        </header>
+        <Masthead
+          edition={edition}
+          funcionesTotal={twoWeeksTotal}
+          salasTotal={twoWeeksCinemas}
+          wordmarkHref="/"
+        />
 
         {!hasAny ? (
           <EmptyStateAll />

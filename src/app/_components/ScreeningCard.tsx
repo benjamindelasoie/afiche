@@ -73,7 +73,7 @@ export function ScreeningCard({
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="flex min-w-0 gap-4 md:flex-1">
           {s.cinema.type === 'indie' && (
-            <div className="bg-cream flex h-28 w-20 shrink-0 items-center justify-center overflow-hidden border border-black shadow-[4px_4px_0_var(--color-carmine)]">
+            <div className="bg-cream flex h-28 w-20 shrink-0 items-center justify-center overflow-hidden border border-black shadow-[4px_4px_0_var(--color-carmine)] transition-[box-shadow,transform] duration-150 group-hover:translate-x-px group-hover:translate-y-px group-hover:shadow-[2px_2px_0_var(--color-carmine)]">
               {s.film.posterUrl ? (
                 <Image
                   src={s.film.posterUrl}
@@ -126,7 +126,7 @@ export function ScreeningCard({
               isCompleteSynopsis(s.film.synopsisEs) && (
                 <div className="mt-3 hidden md:block">
                   <p
-                    className="border-carmine line-clamp-3 max-w-prose border-l-2 pl-3 text-sm"
+                    className="line-clamp-3 max-w-prose text-sm"
                     style={{
                       maskImage:
                         'linear-gradient(to bottom, black 70%, transparent 100%)',
@@ -168,15 +168,15 @@ export function ScreeningCard({
   // Stretched-link pattern: article is the visual card; invisible absolute
   // <Link> covers it for the film-page tap target. Cinema name sits above
   // via relative z-10 — avoids nesting <a> inside <a>.
-  const cardClasses = `block p-4 sm:p-5 border relative transition-[background-color,box-shadow] [&:has(a:active)]:translate-y-[1px] ${
-    s.cinema.type === 'indie'
-      ? 'border-carmine bg-carmine/5 border-l-4 hover:bg-carmine/10'
-      : 'border-neutral-300 bg-black/[0.02] hover:bg-black/[0.04]'
-  }`;
+  // De-tinted hairline row, aligned with the homepage FilmRow: no card fill,
+  // no carmine left-bar — carmine lives on the time + a hover left-tick. The
+  // carmine offset-shadow poster (the site's visual fingerprint) stays.
+  const cardClasses =
+    'group relative isolate block border-b border-black/10 px-1 py-4 transition-colors last:border-b-0 ' +
+    'before:bg-carmine before:absolute before:top-5 before:bottom-5 before:left-0 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 ' +
+    'hover:bg-black/[0.025] hover:before:scale-y-100 [&:has(a:active)]:translate-y-[1px]';
   const focusClasses =
-    s.cinema.type === 'indie'
-      ? 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-carmine'
-      : 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black';
+    'focus-visible:outline-carmine focus-visible:outline-2 focus-visible:outline-offset-2';
 
   const ariaLabel = `${s.film.title} — ${s.cinema.name} — ${formatTimeBA(s.startsAtUtc)}`;
   return (

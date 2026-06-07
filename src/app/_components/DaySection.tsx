@@ -73,7 +73,7 @@ export function DaySection({
           No más funciones por hoy.
         </p>
       ) : (
-        <div className="space-y-5">
+        <div>
           {upcoming.map((s, idx) => (
             <ScreeningCard
               key={s.id}
