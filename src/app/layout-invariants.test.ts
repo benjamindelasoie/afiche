@@ -42,6 +42,7 @@ async function collectTsxFiles(dir: string): Promise<string[]> {
 // default that pulls main to its content's natural width on mobile.
 const MAIN_FILES = [
   'src/app/page.tsx',
+  'src/app/cartelera/page.tsx',
   'src/app/pelicula/[slug]/page.tsx',
   'src/app/pelicula/[slug]/not-found.tsx',
 ];

@@ -150,6 +150,31 @@ export function getStartOfWeekAfterNextBA(now: Date): Date {
 }
 
 /**
+ * "Este finde" bounds (BA tz): the coming Friday 00:00 → the following
+ * Monday 00:00 (exclusive). The weekend window the homepage `?ventana=finde`
+ * view scopes to.
+ *
+ * If today is Mon–Thu, the lower bound is the COMING Friday. If today is
+ * already Fri/Sat/Sun, the weekend is underway, so the lower bound clamps
+ * to today's BA-midnight — a Sunday user shouldn't see the now-dead Friday
+ * (eng-review correction: `finde` lower = max(todayStart, comingFri)). The
+ * upper bound is always the next Monday 00:00 BA (`getNextIsoMondayBA`),
+ * which lands correctly for every weekday:
+ *   Mon→+7, Thu→+4, Fri→+3, Sat→+2, Sun→+1.
+ */
+export function getWeekendBoundsBA(now: Date): { lower: Date; upper: Date } {
+  const p = baParts(now);
+  const todayStart = baMidnightToUtc(p.year, p.month, p.day);
+  // Mon(1)–Thu(4): coming Friday is (5 - weekday) days ahead.
+  // Fri(5)–Sun(7): weekend already started — clamp lower to today.
+  const lower =
+    p.weekday <= 4
+      ? new Date(todayStart.getTime() + (5 - p.weekday) * 86_400_000)
+      : todayStart;
+  return { lower, upper: getNextIsoMondayBA(now) };
+}
+
+/**
  * Grace window applied to "has this screening already started?" checks.
  * A user arriving 0–15 min after a posted start time can typically still
  * walk into a BA indie cinema; treating those screenings as expired and

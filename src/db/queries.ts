@@ -34,6 +34,7 @@ import {
   isScreeningExpired,
   BA_TZ,
 } from '@/lib/date-ranges';
+import { getWindowDef, type WindowKey } from '@/lib/windows';
 import { displayFilmTitle } from '@/lib/title-case';
 import { slugify } from '@/lib/slug';
 
@@ -458,11 +459,217 @@ export async function getScreeningById(id: number): Promise<ScreeningRow | null>
 }
 
 // ---------------------------------------------------------------------------
+// Group-by-film homepage queries (window-scoped redesign, 2026-06-06).
+//
+// The redesigned `/` renders ONE row per film for a selected time window,
+// instead of one card per showtime (which produced a 50-70 card scroll wall
+// on busy weekends). 64% of films have a single showtime; 95% play a single
+// venue — so the common row is clean, and only the heavy tail (a handful of
+// films with 11-25 showtimes) collapses behind a disclosure.
+// ---------------------------------------------------------------------------
+
+/** A film's showtimes at one venue, sorted ascending by start time. */
+export interface VenueShowtimes {
+  cinema: ScreeningRow['cinema'];
+  screenings: ScreeningRow[];
+}
+
+/**
+ * One film's full presence within a window: its venues (each with that
+ * venue's showtimes), the flat showtime list, and the sort key.
+ *
+ * `nextCatchableUtc` is the soonest NOT-yet-expired showtime (15-min grace),
+ * in epoch-ms — the film-ordering key. Null when every showtime in the window
+ * has already passed; such films sink to the bottom, ordered by their last
+ * showtime (see `sortFilmGroups`). Past showtimes still render (struck) in the
+ * row — they're just not the sort anchor.
+ */
+export interface FilmGroup {
+  film: ScreeningRow['film'];
+  byVenue: VenueShowtimes[];
+  /** All showtimes flat, ascending — fed to the disclosure's day/venue grouping. */
+  screenings: ScreeningRow[];
+  nextCatchableUtc: number | null;
+  totalCount: number;
+}
+
+/**
+ * Transform a flat (ascending) ScreeningRow list into FilmGroups: group by
+ * film, then by venue within each film. Both groupings preserve first-seen
+ * order, which — because `fetchRows` orders by `startsAtUtc ASC` — is
+ * chronological. Sorted by `sortFilmGroups` before returning.
+ *
+ * Exported (pure) so the group transform is unit-tested without a DB.
+ */
+export function groupByFilm(rows: ScreeningRow[], now: Date): FilmGroup[] {
+  const byFilm = new Map<number, ScreeningRow[]>();
+  for (const s of rows) {
+    const list = byFilm.get(s.film.id);
+    if (list) list.push(s);
+    else byFilm.set(s.film.id, [s]);
+  }
+
+  const groups: FilmGroup[] = [];
+  for (const screeningList of byFilm.values()) {
+    const byVenueMap = new Map<string, ScreeningRow[]>();
+    for (const s of screeningList) {
+      const v = byVenueMap.get(s.cinema.id);
+      if (v) v.push(s);
+      else byVenueMap.set(s.cinema.id, [s]);
+    }
+    const byVenue: VenueShowtimes[] = Array.from(byVenueMap.values()).map((list) => ({
+      cinema: list[0].cinema,
+      screenings: list,
+    }));
+    // Earliest NOT-yet-expired showtime drives ordering. screeningList is
+    // already ascending, so the first non-expired entry is the soonest.
+    const nextCatchable = screeningList.find((s) => !isScreeningExpired(s.startsAtUtc, now));
+    groups.push({
+      film: screeningList[0].film,
+      byVenue,
+      screenings: screeningList,
+      nextCatchableUtc: nextCatchable ? nextCatchable.startsAtUtc.getTime() : null,
+      totalCount: screeningList.length,
+    });
+  }
+  return sortFilmGroups(groups);
+}
+
+/**
+ * Order films by next catchable showtime ascending. Films whose showtimes
+ * have all passed (within the window) sink below every still-catchable film,
+ * ordered among themselves by their LAST showtime (so the most-recently-ended
+ * sits just under the catchable set). Mutates + returns the input array.
+ */
+function sortFilmGroups(groups: FilmGroup[]): FilmGroup[] {
+  return groups.sort((a, b) => {
+    const aSunk = a.nextCatchableUtc === null;
+    const bSunk = b.nextCatchableUtc === null;
+    if (aSunk !== bSunk) return aSunk ? 1 : -1;
+    if (!aSunk && !bSunk) return a.nextCatchableUtc! - b.nextCatchableUtc!;
+    // Both sunk: order by last (max) showtime ascending.
+    const aLast = a.screenings[a.screenings.length - 1].startsAtUtc.getTime();
+    const bLast = b.screenings[b.screenings.length - 1].startsAtUtc.getTime();
+    return aLast - bLast;
+  });
+}
+
+/**
+ * Window-scoped, group-by-film cartelera for the homepage. Fetches the
+ * window's bounded rows (one query, ≤~250 rows at BA scale) and groups them.
+ */
+export async function getWindowScreeningsByFilm(
+  windowKey: WindowKey,
+  now: Date = new Date(),
+): Promise<FilmGroup[]> {
+  const { lower, upper } = getWindowDef(windowKey).bounds(now);
+  const rows = await fetchRows({ lower, upper });
+  return groupByFilm(rows, now);
+}
+
+// ---------------------------------------------------------------------------
+// Curated "Esta semana" band — derived (v1).
+// ---------------------------------------------------------------------------
+
+export type FeaturedReason = 'estreno' | 'ultima' | 'ciclo';
+
+export interface FeaturedPick {
+  film: ScreeningRow['film'];
+  reason: FeaturedReason;
+  /** Display WHY tag: "Estreno" | "Última función" | "Ciclo {name}". */
+  reasonLabel: string;
+}
+
+/** Priority order for the band: Estreno > Última función > Ciclo. */
+const FEATURED_REASON_ORDER: Record<FeaturedReason, number> = {
+  estreno: 0,
+  ultima: 1,
+  ciclo: 2,
+};
+
+/**
+ * Derive the curated band from the `semana` window's rows. Pure + exported so
+ * the selection rules are unit-tested without a DB.
+ *
+ * Rules (one pick per film, highest-priority reason wins):
+ *   - `premiere` tag present                          → Estreno
+ *   - film's FUTURE last screening (unbounded MAX, via `lastPerFilm`) falls
+ *     inside the window                               → Última función
+ *   - non-null `programName`                          → Ciclo {name}
+ *
+ * The última check uses the UNBOUNDED per-film MAX (not a within-window
+ * count) — a film with one showtime this week AND another in three weeks is
+ * NOT última (eng-review correction #4). Picks are sorted by reason priority,
+ * deduped by film (the per-film grouping guarantees one entry each), capped at
+ * 4. Returns `[]` when nothing qualifies — the caller omits the band entirely.
+ */
+export function deriveFeatured(
+  rows: ScreeningRow[],
+  lastPerFilm: Map<number, number>,
+  windowUpper: Date,
+): FeaturedPick[] {
+  const byFilm = new Map<number, ScreeningRow[]>();
+  for (const s of rows) {
+    const list = byFilm.get(s.film.id);
+    if (list) list.push(s);
+    else byFilm.set(s.film.id, [s]);
+  }
+
+  const picks: FeaturedPick[] = [];
+  for (const [filmId, list] of byFilm) {
+    const film = list[0].film;
+    const hasPremiere = list.some((s) => s.tags.includes('premiere'));
+    const lastUtc = lastPerFilm.get(filmId);
+    // TODO #32: operator-pin seam — manual picks would slot in ahead of these
+    // derived ones before the cap is applied.
+    const isUltima = lastUtc !== undefined && lastUtc < windowUpper.getTime();
+    const ciclo = list.find((s) => s.programName)?.programName ?? null;
+
+    let pick: FeaturedPick | null = null;
+    if (hasPremiere) pick = { film, reason: 'estreno', reasonLabel: 'Estreno' };
+    else if (isUltima) pick = { film, reason: 'ultima', reasonLabel: 'Última función' };
+    else if (ciclo) pick = { film, reason: 'ciclo', reasonLabel: `Ciclo ${ciclo}` };
+    if (pick) picks.push(pick);
+  }
+
+  picks.sort((a, b) => FEATURED_REASON_ORDER[a.reason] - FEATURED_REASON_ORDER[b.reason]);
+  return picks.slice(0, 4);
+}
+
+/**
+ * Curated band for the homepage. Always derives from the `semana` window
+ * (reuses the same bounded query + the unbounded `getLastScreeningPerFilm`),
+ * regardless of which window the visitor is viewing — the band is "Esta
+ * semana" by definition. Returns `[]` when nothing qualifies.
+ */
+export async function getFeaturedFilms(now: Date = new Date()): Promise<FeaturedPick[]> {
+  const { lower, upper } = getWindowDef('semana').bounds(now);
+  const [rows, lastPerFilm] = await Promise.all([
+    fetchRows({ lower, upper }),
+    getLastScreeningPerFilm(now),
+  ]);
+  return deriveFeatured(rows, lastPerFilm, upper);
+}
+
+/**
+ * Flat 7-day screening list for the homepage JSON-LD (`buildHomepageJsonLd`
+ * trims to today + next 6 days internally). Decoupled from the visible
+ * `?ventana=` window so the structured-data horizon stays a stable 7 days no
+ * matter which window the visitor selected — preserves the SEO surface the old
+ * day-grouped homepage emitted (don't regress json-ld.tsx's 7-day window).
+ */
+export async function getJsonLdScreenings(now: Date = new Date()): Promise<ScreeningRow[]> {
+  const lower = getTodayStartBA(now);
+  const upper = new Date(lower.getTime() + 7 * 86_400_000);
+  return fetchRows({ lower, upper });
+}
+
+// ---------------------------------------------------------------------------
 // Date formatting helpers — always in America/Argentina/Buenos_Aires.
 // BA_TZ is imported from @/lib/date-ranges (canonical home for the constant).
 // ---------------------------------------------------------------------------
 
-function formatDateKeyBA(d: Date): string {
+export function formatDateKeyBA(d: Date): string {
   // Returns 'YYYY-MM-DD' as seen in Buenos Aires (stable grouping key)
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: BA_TZ,
@@ -520,6 +727,25 @@ export function formatDayShortBA(d: Date): string {
   month = month.replace(/\.$/, '');
   month = month.charAt(0).toUpperCase() + month.slice(1);
   return `${day} ${month}`;
+}
+
+/**
+ * Compact day chip for multi-day homepage windows — "Hoy" when the showtime
+ * is today (BA), else "Vie 6" (capitalized short weekday + day-of-month).
+ * Used to prefix single-showtime rows and disclosure day groups in the
+ * `finde` / `semana` / `prox` views, where a showtime can land on any day.
+ */
+export function formatDayChipBA(d: Date, now: Date): string {
+  if (formatDateKeyBA(d) === formatDateKeyBA(now)) return 'Hoy';
+  const parts = new Intl.DateTimeFormat('es-AR', {
+    timeZone: BA_TZ,
+    weekday: 'short',
+    day: 'numeric',
+  }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+  let dow = get('weekday').replace(/\.$/, '');
+  dow = dow.charAt(0).toUpperCase() + dow.slice(1);
+  return `${dow} ${get('day')}`;
 }
 
 /**

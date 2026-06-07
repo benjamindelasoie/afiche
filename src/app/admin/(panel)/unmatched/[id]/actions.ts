@@ -125,6 +125,7 @@ export async function assignTmdbIdAction(formData: FormData): Promise<void> {
   // both the merge case (loser slug now 404s; winner slug now updated)
   // and the no-merge case (current slug now enriched).
   revalidatePath('/');
+  revalidatePath('/cartelera');
   revalidatePath('/pelicula/[slug]', 'page');
   revalidatePath('/admin/unmatched');
 

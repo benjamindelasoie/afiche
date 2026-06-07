@@ -21,6 +21,7 @@ export async function enrichPendingAction(): Promise<void> {
   revalidatePath('/admin/runs');
   revalidatePath('/admin/unmatched');
   revalidatePath('/');
+  revalidatePath('/cartelera');
 
   const params = new URLSearchParams({
     result: 'Enrich pending complete',
@@ -44,6 +45,7 @@ export async function refreshEnrichmentAction(): Promise<void> {
 
   revalidatePath('/admin/runs');
   revalidatePath('/');
+  revalidatePath('/cartelera');
   revalidatePath('/pelicula/[slug]', 'page');
 
   const params = new URLSearchParams({
