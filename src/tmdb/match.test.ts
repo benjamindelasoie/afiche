@@ -32,6 +32,7 @@ function candidate(overrides: Partial<TmdbMovieSummary>): TmdbMovieSummary {
     backdrop_path: null,
     popularity: 0,
     vote_count: 0,
+    vote_average: 0,
     ...overrides,
   };
 }

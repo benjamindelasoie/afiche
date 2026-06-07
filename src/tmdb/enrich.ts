@@ -76,6 +76,14 @@ export interface EnrichmentDelta {
    * GENRE_LABELS_ES in @/db/schema.
    */
   genres: number[];
+  /** TMDB popularity (recency/buzz-weighted). Ranks premiere + AR band slots. */
+  popularity: number | null;
+  /** TMDB vote average (0-10). Quality signal. */
+  voteAverage: number | null;
+  /** TMDB vote count (notability proxy). Ranks the classic band slot. */
+  voteCount: number | null;
+  /** TMDB tagline; null when blank. */
+  tagline: string | null;
   matchConfidence: number | null;
   matchSource: 'auto' | 'override' | 'manual';
 }
@@ -305,6 +313,10 @@ async function buildDelta(
     synopsisEs,
     cast: extractTopCast(details),
     genres: extractGenreIds(details),
+    popularity: details.popularity ?? null,
+    voteAverage: details.vote_average ?? null,
+    voteCount: details.vote_count ?? null,
+    tagline: details.tagline?.trim() ? details.tagline.trim() : null,
     matchConfidence: confidence,
     matchSource,
   };

@@ -48,6 +48,7 @@ function summary(overrides: Partial<TmdbMovieSummary>): TmdbMovieSummary {
     backdrop_path: null,
     popularity: 0,
     vote_count: 0,
+    vote_average: 0,
     ...overrides,
   };
 }
@@ -64,6 +65,7 @@ function details(overrides: Partial<TmdbMovieDetails>): TmdbMovieDetails {
     backdrop_path: null,
     popularity: 0,
     vote_count: 0,
+    vote_average: 0,
     imdb_id: null,
     runtime: null,
     genres: [],
@@ -107,6 +109,35 @@ describe('enrichFilm — token + override gates', () => {
     expect(r.reason).toBe('ok');
     expect(r.delta!.matchSource).toBe('override');
     expect(searchMock).not.toHaveBeenCalled();
+  });
+
+  it('captures popularity / vote_average / vote_count / tagline from TMDB', async () => {
+    findOverrideMock.mockResolvedValue(5648);
+    getMovieMock.mockResolvedValue(
+      details({
+        id: 5648,
+        title: 'Nosferatu, fantasma de la noche',
+        popularity: 31.4,
+        vote_average: 7.6,
+        vote_count: 1820,
+        tagline: '  El terror clásico  ',
+      }),
+    );
+
+    const r = await enrichFilm('Nosferatu', 1979);
+
+    expect(r.reason).toBe('ok');
+    expect(r.delta!.popularity).toBe(31.4);
+    expect(r.delta!.voteAverage).toBe(7.6);
+    expect(r.delta!.voteCount).toBe(1820);
+    expect(r.delta!.tagline).toBe('El terror clásico'); // trimmed
+  });
+
+  it('maps a blank tagline to null', async () => {
+    findOverrideMock.mockResolvedValue(1);
+    getMovieMock.mockResolvedValue(details({ id: 1, title: 'X', tagline: '   ' }));
+    const r = await enrichFilm('X', 2000);
+    expect(r.delta!.tagline).toBeNull();
   });
 });
 
