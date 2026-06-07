@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.0.1] - 2026-06-06
+
+### Fixed
+
+- **The "Esta semana" featured band can no longer show a poster-less film.** An unenriched / unmatched film (no TMDB poster) was eligible for the curated band and rendered the "SIN AFICHE" placeholder in the hero row — which reads as broken, since the band is the page's editorial showcase. `deriveFeatured` now excludes any film without a `posterUrl` outright, no matter how strong its reason (premiere / última / ciclo). Such films still appear in the exhaustive `/cartelera` list, where a placeholder poster is acceptable.
+
 ## [0.3.0.0] - 2026-06-06
 
 ### Changed
