@@ -53,6 +53,7 @@ function mkRow(opts: {
   programName?: string | null;
   sourceUrl?: string | null;
   slug?: string | null;
+  posterUrl?: string | null;
 }): ScreeningRow {
   return {
     id: nextId++,
@@ -69,7 +70,10 @@ function mkRow(opts: {
       country: null,
       runtimeMin: null,
       synopsisEs: null,
-      posterUrl: null,
+      // Default to an enriched poster — featured-band selection now requires
+      // one. Pass `posterUrl: null` to exercise the unenriched-exclusion path.
+      posterUrl:
+        opts.posterUrl === undefined ? 'https://image.tmdb.org/t/p/w342/x.jpg' : opts.posterUrl,
       backdropUrl: null,
       slug: opts.slug === undefined ? `film-${opts.filmId}` : opts.slug,
       cast: null,
@@ -293,6 +297,25 @@ describe('deriveFeatured — selection rules', () => {
     );
     expect(picks).toEqual([]);
   });
+
+  it('drops an unenriched film (no poster) even with a premiere tag', () => {
+    // The hero band must never render the SIN AFICHE placeholder — a posterless
+    // film is excluded outright, no matter how strong its reason.
+    const picks = deriveFeatured(
+      [
+        mkRow({
+          filmId: 1,
+          cinemaId: 'malba',
+          startsAtUtc: at('2026-06-05T23:00:00Z'),
+          tags: ['premiere'],
+          posterUrl: null,
+        }),
+      ],
+      new Map([[1, beyond]]),
+      windowUpper,
+    );
+    expect(picks).toEqual([]);
+  });
 });
 
 describe('formatDayChipBA', () => {
@@ -314,10 +337,13 @@ async function seedCinema(id: string): Promise<void> {
   await testDb.insert(cinemas).values({ id, name: id.toUpperCase(), type: 'indie' });
 }
 
-async function seedFilm(title: string): Promise<number> {
+async function seedFilm(
+  title: string,
+  posterUrl: string | null = 'https://image.tmdb.org/t/p/w342/x.jpg',
+): Promise<number> {
   const [row] = await testDb
     .insert(films)
-    .values({ title, scrapedTitle: title, matchSource: 'none' })
+    .values({ title, scrapedTitle: title, matchSource: 'none', posterUrl })
     .returning({ id: films.id });
   return row.id;
 }
@@ -396,6 +422,16 @@ describe('getFeaturedFilms — integration', () => {
     expect(byId.get(estreno)).toBe('estreno');
     expect(byId.get(ultima)).toBe('ultima');
     expect(byId.has(notLast)).toBe(false);
+  });
+
+  it('excludes an unenriched (posterless) film even with a premiere tag', async () => {
+    await seedCinema('malba');
+    const now = new Date(Date.UTC(2026, 5, 4, 15));
+    const noPoster = await seedFilm('Las Mantis', null);
+    await seedScreening(noPoster, 'malba', new Date(Date.UTC(2026, 5, 6, 23)), {
+      tags: ['premiere'],
+    });
+    expect(await getFeaturedFilms(now)).toEqual([]);
   });
 
   it('returns [] when nothing qualifies', async () => {

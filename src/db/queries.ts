@@ -615,6 +615,11 @@ export function deriveFeatured(
   const picks: FeaturedPick[] = [];
   for (const [filmId, list] of byFilm) {
     const film = list[0].film;
+    // The featured band is the editorial showcase — it MUST have a poster. An
+    // unenriched / unmatched film (null posterUrl) renders the "SIN AFICHE"
+    // placeholder, which reads as broken in the hero band. Exclude it from the
+    // band entirely; the exhaustive /cartelera list still carries it.
+    if (!film.posterUrl) continue;
     // The band only features films you can still CATCH this week: require a
     // future screening (lastPerFilm is the unbounded per-film MAX over
     // startsAt > now). A film whose only showtimes have already passed — even
