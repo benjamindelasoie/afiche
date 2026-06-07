@@ -112,7 +112,7 @@ function AgendaRow({ s, anchorSlug }: { s: ScreeningRow; anchorSlug?: string }) 
       // scrollport (globals.css) supplies the landing offset — no scroll-mt
       // here or the two would compound into a large dead gap.
       id={anchorSlug ? `programa-${anchorSlug}` : undefined}
-      className="hover:bg-carmine/5 relative flex gap-3 py-4 transition-colors sm:gap-4 [&:has(a:active)]:translate-y-[1px]"
+      className="group before:bg-carmine relative flex gap-3 py-4 transition-colors before:absolute before:top-4 before:bottom-4 before:-left-1.5 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 hover:bg-black/[0.025] hover:before:scale-y-100 sm:gap-4 [&:has(a:active)]:translate-y-[1px]"
     >
       {s.film.slug && (
         <Link
@@ -130,7 +130,7 @@ function AgendaRow({ s, anchorSlug }: { s: ScreeningRow; anchorSlug?: string }) 
         {formatTimeBA(s.startsAtUtc)}
       </time>
 
-      <div className="bg-cream flex h-[70px] w-12 shrink-0 items-center justify-center overflow-hidden border border-black shadow-[3px_3px_0_var(--color-carmine)] sm:h-24 sm:w-16 sm:shadow-[4px_4px_0_var(--color-carmine)]">
+      <div className="bg-cream flex h-[70px] w-12 shrink-0 items-center justify-center overflow-hidden border border-black shadow-[3px_3px_0_var(--color-carmine)] transition-[box-shadow,transform] duration-150 group-hover:translate-x-px group-hover:translate-y-px group-hover:shadow-[2px_2px_0_var(--color-carmine)] sm:h-24 sm:w-16 sm:shadow-[4px_4px_0_var(--color-carmine)] sm:group-hover:shadow-[3px_3px_0_var(--color-carmine)]">
         {s.film.posterUrl ? (
           <Image
             src={s.film.posterUrl}
