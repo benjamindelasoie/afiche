@@ -2,6 +2,24 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.0.0] - 2026-06-06
+
+### Changed
+
+- **The homepage is now a window-scoped, one-row-per-FILM cartelera instead of one card per showtime.** On a busy weekend the old day-grouped view was a 50-70 card scroll wall with heavy duplication — the same film repeated once per showtime, per venue, per day. Prod data says that wall is a heavy tail: 64% of films have a single showtime all week and 95% play a single venue, so the common film is one clean line. The new homepage groups by film and scopes to a relative time window — **Hoy** (default) / **Este finde** / **Esta semana** / **Próximamente** — selected via `?ventana=hoy|finde|semana|prox` (server-rendered and shareable; an unknown value falls back to `hoy`). A single-showtime film renders an inline `time · venue`; a multi-showtime film collapses to a `{n} funciones · {venue}` summary and tap-expands to its times (grouped by venue in `hoy`, by day in the multi-day windows, capped with a "ver todas →" link). Films sort by their next still-catchable showtime; a film whose showtimes have all passed sinks to the bottom (most-recently-ended first) with past times struck in place. The window registry (`src/lib/windows.ts`) is the single source for the nav, the `?ventana=` validation, and the bounded query, so re-labelling or re-defaulting a window is a one-line change.
+- **Desktop now uses the full width** — a full-bleed "Esta semana" curated hero band over a 2-column film grid, with the masthead split (wordmark hard-left, edition dateline right-aligned). Mobile stays a single column. The always-on per-row carmine left-bar and the `bg-carmine/5` card tint were retired (carmine now lives on the showtime and a hover left-tick); synopsis no longer appears in the list (it stays on `/pelicula`).
+
+### Added
+
+- **Curated "Esta semana" band.** A static (never auto-rotating) row of 0-4 poster cards with a WHY tag — `Estreno` (premiere tag), `Última función` (the film's last future screening falls within the week, computed against the unbounded per-film maximum so a film also screening weeks out is never falsely flagged), or `Ciclo {name}` (program). The band features only films you can still catch, dedupes by film, caps at 4, and is omitted entirely when nothing qualifies. Operator-pinned picks and a diversity-weighted default sort remain deferred (TODO #32).
+- **`/cartelera` — the exhaustive day-by-day view.** The previous homepage (14-day rolling window, sticky date strip, "Próximamente" week index) moved here verbatim, reachable from the homepage's **"Ver todo →"**. It reassures against the illusion-of-completeness risk of the windowed front door: everything is one tap away. The scrape webhook and the admin enrich/refresh/match actions now revalidate `/cartelera` alongside `/`.
+
+### Fixed
+
+- **Ticketing time-links inside an expanded multi-showtime film now open ticketing, not the film page.** The row's stretched card-link overlay sat above the expanded showtime links, silently stealing their taps; the links are now raised above it (and the disclosure toggle meets the 44px touch-target minimum).
+- **The "0" runtime trap** stays guarded — the film metadata line drops a `0`/null runtime cleanly rather than rendering a stray "0 min" (regression ISSUE-001 class).
+- **The curated band's first poster is eager-loaded** as the page LCP (it sits above the film grid); the film-grid poster only leads when the band is omitted.
+
 ## [0.2.3.9] - 2026-05-20
 
 ### Fixed
