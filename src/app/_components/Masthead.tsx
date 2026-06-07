@@ -12,6 +12,12 @@ import type { EditionInfo } from '@/lib/edition';
 // On `/` the wordmark is the page `<h1>`. On `/cartelera` it's a link home
 // (`wordmarkHref="/"`), so the secondary view carries a back-to-main
 // affordance while reading as the same product.
+//
+// The wordmark is the lowercase logotype `afiche` — deliberate (quiet,
+// editorial, leans into "afiche" being a common noun; see DESIGN.md). The
+// NAME stays "Afiche" everywhere it's prose, not logo: the `aria-label`
+// below, the metadata `title` / og:title, and the JSON-LD. Don't "fix" the
+// casing of the visible wordmark.
 // ---------------------------------------------------------------------------
 
 const WORDMARK_CLASS = 'font-serif leading-[0.85] tracking-[-0.02em]';
@@ -42,11 +48,11 @@ export function Masthead({
           className={WORDMARK_CLASS}
           style={WORDMARK_STYLE}
         >
-          Afiche
+          afiche
         </Link>
       ) : (
         <h1 className={WORDMARK_CLASS} style={WORDMARK_STYLE}>
-          Afiche
+          afiche
         </h1>
       )}
       <div className="mt-3 md:mt-0 md:pb-2 md:text-right">

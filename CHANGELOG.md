@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.4.2] - 2026-06-07
+
+### Changed
+
+- **The masthead wordmark is now lowercase — `afiche`.** A quieter, more editorial logotype that leans into "afiche" being the everyday word for a poster. The name is still "Afiche" everywhere it's written as a name (the browser tab title, social share text, accessibility label) — only the logo itself is lowercase.
+
 ## [0.3.4.1] - 2026-06-07
 
 ### Changed
