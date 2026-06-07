@@ -41,9 +41,9 @@ const LIST_HEADING: Record<WindowKey, string> = {
 };
 
 const EMPTY_COPY: Record<WindowKey, string> = {
-  hoy: 'Hoy las salas descansan.',
-  finde: 'Este finde todavía no hay funciones cargadas.',
-  semana: 'Esta semana las salas descansan.',
+  hoy: 'No quedan funciones por hoy. Mirá lo que viene este finde o esta semana.',
+  finde: 'Este finde no quedan funciones por ver.',
+  semana: 'Esta semana no quedan funciones por ver.',
   prox: 'Todavía no hay funciones próximas cargadas.',
 };
 
