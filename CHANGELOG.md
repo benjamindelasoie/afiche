@@ -2,7 +2,11 @@
 
 All notable changes to Afiche are documented here.
 
-## [0.3.2.1] - 2026-06-07
+## [0.3.3.0] - 2026-06-07
+
+### Changed
+
+- **`/cartelera` now reads as a secondary view of the homepage** instead of carrying its own look. The two pages share one `Masthead` component (split layout: wordmark hard-left, edition right-aligned, hairline rule under) — on `/cartelera` the wordmark links home. The day-grouped cards are de-tinted to match the homepage rows: dropped the `bg-carmine/5` fill, the `border-l-4 border-carmine` left-bar, and the synopsis carmine left-rule; they're now de-tinted hairline rows (flush, hairline separators) with the same hover carmine left-tick and the carmine offset-shadow poster (tightening 4→2px on hover). The carmine left-bar + card tint are now retired everywhere. `/cartelera` keeps its job (exhaustive day-by-day with the date strip + Próximamente) and its single-column width — only the visual language aligns.
 
 ### Fixed
 
