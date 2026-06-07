@@ -569,7 +569,15 @@ function sortFilmGroups(groups: FilmGroup[]): FilmGroup[] {
 
 /**
  * Window-scoped, group-by-film cartelera for the homepage. Fetches the
- * window's bounded rows (one query, ≤~250 rows at BA scale) and groups them.
+ * window's bounded rows (one query, ≤~250 rows at BA scale), groups them, and
+ * drops films with NO catchable showtime left in the window (`nextCatchableUtc
+ * === null`).
+ *
+ * The homepage answers "what can I still see?" — a film whose every showtime in
+ * the window has already passed is noise (and late at night it's ALL of "Hoy":
+ * a wall of struck cards). Partially-catchable films are kept, with their past
+ * times struck in place. The exhaustive `/cartelera` day view is where the full
+ * day (incl. what already played) lives.
  */
 export async function getWindowScreeningsByFilm(
   windowKey: WindowKey,
@@ -577,7 +585,7 @@ export async function getWindowScreeningsByFilm(
 ): Promise<FilmGroup[]> {
   const { lower, upper } = getWindowDef(windowKey).bounds(now);
   const rows = await fetchRows({ lower, upper });
-  return groupByFilm(rows, now);
+  return groupByFilm(rows, now).filter((g) => g.nextCatchableUtc !== null);
 }
 
 // ---------------------------------------------------------------------------

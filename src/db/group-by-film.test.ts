@@ -438,6 +438,30 @@ describe('getWindowScreeningsByFilm — integration', () => {
     expect(await getWindowScreeningsByFilm('hoy', now)).toHaveLength(0);
     expect(await getWindowScreeningsByFilm('semana', now)).toHaveLength(1);
   });
+
+  it('drops films whose every showtime in the window has already passed', async () => {
+    await seedCinema('malba');
+    const now = new Date(Date.UTC(2026, 5, 4, 15)); // 12:00 BA
+    const past = await seedFilm('Ya pasó');
+    await seedScreening(past, 'malba', new Date(Date.UTC(2026, 5, 4, 10))); // 07:00 BA — expired
+    const live = await seedFilm('Todavía dan');
+    await seedScreening(live, 'malba', new Date(Date.UTC(2026, 5, 4, 23))); // 20:00 BA — catchable
+
+    const groups = await getWindowScreeningsByFilm('hoy', now);
+    expect(groups.map((g) => g.film.id)).toEqual([live]); // the all-past film is gone
+  });
+
+  it('keeps a partially-expired film and retains its past showtimes (struck in UI)', async () => {
+    await seedCinema('malba');
+    const now = new Date(Date.UTC(2026, 5, 4, 15));
+    const f = await seedFilm('Mixta');
+    await seedScreening(f, 'malba', new Date(Date.UTC(2026, 5, 4, 10))); // past
+    await seedScreening(f, 'malba', new Date(Date.UTC(2026, 5, 4, 23))); // catchable
+
+    const groups = await getWindowScreeningsByFilm('hoy', now);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].totalCount).toBe(2);
+  });
 });
 
 describe('getFeaturedFilms — integration', () => {
