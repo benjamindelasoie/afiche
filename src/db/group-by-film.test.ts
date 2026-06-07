@@ -54,6 +54,11 @@ function mkRow(opts: {
   sourceUrl?: string | null;
   slug?: string | null;
   posterUrl?: string | null;
+  year?: number | null;
+  country?: string | null;
+  popularity?: number | null;
+  voteCount?: number | null;
+  createdAt?: Date;
 }): ScreeningRow {
   return {
     id: nextId++,
@@ -66,8 +71,8 @@ function mkRow(opts: {
       title: opts.title ?? `Film ${opts.filmId}`,
       titleOriginal: null,
       director: null,
-      year: null,
-      country: null,
+      year: opts.year ?? null,
+      country: opts.country ?? null,
       runtimeMin: null,
       synopsisEs: null,
       // Default to an enriched poster — featured-band selection now requires
@@ -78,6 +83,10 @@ function mkRow(opts: {
       slug: opts.slug === undefined ? `film-${opts.filmId}` : opts.slug,
       cast: null,
       genres: null,
+      popularity: opts.popularity ?? null,
+      voteAverage: null,
+      voteCount: opts.voteCount ?? null,
+      createdAt: opts.createdAt ?? new Date('2026-01-01T00:00:00Z'),
     },
     cinema: {
       id: opts.cinemaId,
@@ -181,138 +190,154 @@ describe('groupByFilm — transform', () => {
   });
 });
 
-describe('deriveFeatured — selection rules', () => {
-  // semana window upper for these tests.
+describe('deriveFeatured — four-slot band', () => {
   const windowUpper = at('2026-06-11T03:00:00Z');
-
-  // Last screening 3 weeks out → film is catchable (passes the future-screening
-  // gate) but NOT última, isolating the premiere/ciclo reasons.
+  // Last screening 3 weeks out → catchable (passes the gate) but NOT última.
   const beyond = at('2026-06-25T23:00:00Z').getTime();
+  // createdAt long before NOW (2026-06-04) → NOT "nuevo".
+  const old = at('2026-01-01T00:00:00Z');
+  const mk = (id: number, extra: Partial<Parameters<typeof mkRow>[0]> = {}) =>
+    mkRow({
+      filmId: id,
+      cinemaId: 'malba',
+      startsAtUtc: at('2026-06-05T23:00:00Z'),
+      createdAt: old,
+      ...extra,
+    });
+  const lpf = (...ids: number[]) => new Map(ids.map((id) => [id, beyond] as const));
 
-  it('premiere tag → Estreno', () => {
-    const picks = deriveFeatured(
-      [mkRow({ filmId: 1, cinemaId: 'malba', startsAtUtc: at('2026-06-05T23:00:00Z'), tags: ['premiere'] })],
-      new Map([[1, beyond]]),
-      windowUpper,
-    );
-    expect(picks).toHaveLength(1);
-    expect(picks[0].reason).toBe('estreno');
-    expect(picks[0].reasonLabel).toBe('Estreno');
+  it('Argentinian film fills the AR slot', () => {
+    const picks = deriveFeatured([mk(1, { country: 'AR' })], lpf(1), windowUpper, NOW);
+    expect(picks[0].reason).toBe('argentina');
+    expect(picks[0].reasonLabel).toBe('Cine argentino');
   });
 
-  it('última only when the unbounded last screening falls inside the window', () => {
-    const inside = deriveFeatured(
-      [mkRow({ filmId: 1, cinemaId: 'malba', startsAtUtc: at('2026-06-05T23:00:00Z') })],
-      new Map([[1, at('2026-06-06T23:00:00Z').getTime()]]), // last is within window
-      windowUpper,
-    );
-    expect(inside[0]?.reason).toBe('ultima');
-
-    const beyond = deriveFeatured(
-      [mkRow({ filmId: 1, cinemaId: 'malba', startsAtUtc: at('2026-06-05T23:00:00Z') })],
-      new Map([[1, at('2026-06-25T23:00:00Z').getTime()]]), // last is 3 weeks out → NOT última
-      windowUpper,
-    );
-    expect(beyond).toEqual([]);
+  it('premiere = this-year OR premiere tag → Estreno', () => {
+    const byYear = deriveFeatured([mk(1, { year: 2026 })], lpf(1), windowUpper, NOW);
+    expect(byYear[0].reason).toBe('estreno');
+    const byTag = deriveFeatured([mk(2, { tags: ['premiere'] })], lpf(2), windowUpper, NOW);
+    expect(byTag[0].reason).toBe('estreno');
   });
 
-  it('programName → "Ciclo {name}"', () => {
-    const picks = deriveFeatured(
-      [mkRow({ filmId: 1, cinemaId: 'malba', startsAtUtc: at('2026-06-05T23:00:00Z'), programName: 'Retrospectiva Wenders' })],
-      new Map([[1, beyond]]),
+  it('classic = old + enough votes; the vote floor excludes obscure-old', () => {
+    const classic = deriveFeatured(
+      [mk(1, { year: 1965, voteCount: 5000 })],
+      lpf(1),
       windowUpper,
+      NOW,
     );
-    expect(picks[0].reason).toBe('ciclo');
-    expect(picks[0].reasonLabel).toBe('Ciclo Retrospectiva Wenders');
+    expect(classic[0].reason).toBe('clasico');
+    expect(classic[0].reasonLabel).toBe('Clásico');
+    // Old but barely-voted → NOT classic; falls through (here, to destacada).
+    const obscure = deriveFeatured(
+      [mk(2, { year: 1965, voteCount: 12 })],
+      lpf(2),
+      windowUpper,
+      NOW,
+    );
+    expect(obscure[0].reason).not.toBe('clasico');
   });
 
-  it('priority Estreno > Última > Ciclo for a single film', () => {
-    // Film qualifies for all three; estreno must win.
+  it('wildcard chain: última > nuevo > mundo', () => {
+    // última: last screening within the window
+    const ultima = deriveFeatured([mk(1)], new Map([[1, windowUpper.getTime() - 1]]), windowUpper, NOW);
+    expect(ultima[0].reason).toBe('ultima');
+    // nuevo: created recently, not última, no fixed-slot fit
+    const nuevo = deriveFeatured([mk(2, { createdAt: at('2026-06-02T00:00:00Z') })], lpf(2), windowUpper, NOW);
+    expect(nuevo[0].reason).toBe('nuevo');
+    // mundo: non-AR/US country, not última/nuevo/fixed
+    const mundo = deriveFeatured([mk(3, { country: 'FR' })], lpf(3), windowUpper, NOW);
+    expect(mundo[0].reason).toBe('mundo');
+  });
+
+  it('fills four distinct slots when one film matches each axis', () => {
     const picks = deriveFeatured(
       [
-        mkRow({
-          filmId: 1,
-          cinemaId: 'malba',
-          startsAtUtc: at('2026-06-05T23:00:00Z'),
-          tags: ['premiere'],
-          programName: 'Ciclo X',
-        }),
+        mk(1, { country: 'AR' }),
+        mk(2, { year: 2026 }),
+        mk(3, { year: 1970, voteCount: 8000 }),
+        mk(4, { country: 'FR' }),
       ],
-      new Map([[1, at('2026-06-06T23:00:00Z').getTime()]]),
+      lpf(1, 2, 3, 4),
       windowUpper,
+      NOW,
     );
-    expect(picks).toHaveLength(1);
-    expect(picks[0].reason).toBe('estreno');
-  });
-
-  it('caps at 4 picks, estrenos sorted ahead', () => {
-    const rows = [
-      ...[1, 2, 3].map((id) =>
-        mkRow({ filmId: id, cinemaId: 'malba', startsAtUtc: at('2026-06-05T23:00:00Z'), programName: 'Ciclo' }),
-      ),
-      ...[4, 5, 6].map((id) =>
-        mkRow({ filmId: id, cinemaId: 'malba', startsAtUtc: at('2026-06-05T23:00:00Z'), tags: ['premiere'] }),
-      ),
-    ];
-    const lastPerFilm = new Map([1, 2, 3, 4, 5, 6].map((id) => [id, beyond] as const));
-    const picks = deriveFeatured(rows, lastPerFilm, windowUpper);
     expect(picks).toHaveLength(4);
-    // The three estrenos sort before any ciclo.
-    expect(picks.slice(0, 3).every((p) => p.reason === 'estreno')).toBe(true);
+    expect(new Set(picks.map((p) => p.reason))).toEqual(
+      new Set(['argentina', 'estreno', 'clasico', 'mundo']),
+    );
   });
 
-  it('returns [] when nothing qualifies (band omitted)', () => {
+  it('an empty AR slot falls back to the wildcard chain (band still fills, no argentina)', () => {
     const picks = deriveFeatured(
-      [mkRow({ filmId: 1, cinemaId: 'malba', startsAtUtc: at('2026-06-05T23:00:00Z') })],
-      new Map([[1, at('2026-06-25T23:00:00Z').getTime()]]),
+      [
+        mk(2, { year: 2026 }),
+        mk(3, { year: 1970, voteCount: 8000 }),
+        mk(4, { country: 'FR', popularity: 10 }),
+        mk(5, { country: 'BR', popularity: 90 }),
+      ],
+      lpf(2, 3, 4, 5),
       windowUpper,
+      NOW,
     );
-    expect(picks).toEqual([]);
+    expect(picks).toHaveLength(4);
+    expect(picks.some((p) => p.reason === 'argentina')).toBe(false);
+  });
+
+  it('assign-once: an AR premiere fills the AR slot; the premiere slot takes a different film', () => {
+    const picks = deriveFeatured(
+      [
+        mk(1, { country: 'AR', year: 2026 }), // eligible for both AR + estreno
+        mk(2, { year: 2026 }), // estreno only
+      ],
+      lpf(1, 2),
+      windowUpper,
+      NOW,
+    );
+    const f1 = picks.find((p) => p.film.id === 1)!;
+    const f2 = picks.find((p) => p.film.id === 2)!;
+    expect(f1.reason).toBe('argentina'); // slot 1 wins the overlap
+    expect(f2.reason).toBe('estreno');
+  });
+
+  it('a slot picks the highest-ranked eligible film (AR by popularity, classic by votes)', () => {
+    const ar = deriveFeatured(
+      [mk(1, { country: 'AR', popularity: 10 }), mk(2, { country: 'AR', popularity: 90 })],
+      lpf(1, 2),
+      windowUpper,
+      NOW,
+    );
+    expect(ar.find((p) => p.reason === 'argentina')!.film.id).toBe(2);
+    const classic = deriveFeatured(
+      [mk(1, { year: 1970, voteCount: 2000 }), mk(2, { year: 1970, voteCount: 9000 })],
+      lpf(1, 2),
+      windowUpper,
+      NOW,
+    );
+    expect(classic.find((p) => p.reason === 'clasico')!.film.id).toBe(2);
+  });
+
+  it('caps at 4 even with more qualifying films', () => {
+    const rows = [1, 2, 3, 4, 5, 6].map((id) => mk(id, { country: 'FR' }));
+    const picks = deriveFeatured(rows, lpf(1, 2, 3, 4, 5, 6), windowUpper, NOW);
+    expect(picks).toHaveLength(4);
   });
 
   it('returns [] for empty rows', () => {
-    expect(deriveFeatured([], new Map(), windowUpper)).toEqual([]);
+    expect(deriveFeatured([], new Map(), windowUpper, NOW)).toEqual([]);
   });
 
-  it('última is exclusive at the window upper bound', () => {
-    const row = [mkRow({ filmId: 1, cinemaId: 'malba', startsAtUtc: at('2026-06-05T23:00:00Z') })];
-    // Last screening exactly AT the exclusive upper → NOT última.
-    expect(deriveFeatured(row, new Map([[1, windowUpper.getTime()]]), windowUpper)).toEqual([]);
-    // One ms before the upper → última.
-    const justInside = deriveFeatured(
-      row,
-      new Map([[1, windowUpper.getTime() - 1]]),
-      windowUpper,
-    );
-    expect(justInside[0]?.reason).toBe('ultima');
-  });
-
-  it('drops a film with no FUTURE screening even if it has a premiere tag', () => {
-    // Premiere tag present, but absent from lastPerFilm (every showtime passed)
-    // → not catchable → excluded from the band.
-    const picks = deriveFeatured(
-      [mkRow({ filmId: 1, cinemaId: 'malba', startsAtUtc: at('2026-06-04T10:00:00Z'), tags: ['premiere'] })],
-      new Map(),
-      windowUpper,
-    );
+  it('drops a film with no future screening (not catchable)', () => {
+    const picks = deriveFeatured([mk(1, { country: 'AR' })], new Map(), windowUpper, NOW);
     expect(picks).toEqual([]);
   });
 
-  it('drops an unenriched film (no poster) even with a premiere tag', () => {
-    // The hero band must never render the SIN AFICHE placeholder — a posterless
-    // film is excluded outright, no matter how strong its reason.
+  it('drops an unenriched film (no poster) — never SIN AFICHE in the band', () => {
     const picks = deriveFeatured(
-      [
-        mkRow({
-          filmId: 1,
-          cinemaId: 'malba',
-          startsAtUtc: at('2026-06-05T23:00:00Z'),
-          tags: ['premiere'],
-          posterUrl: null,
-        }),
-      ],
-      new Map([[1, beyond]]),
+      [mk(1, { country: 'AR', posterUrl: null })],
+      lpf(1),
       windowUpper,
+      NOW,
     );
     expect(picks).toEqual([]);
   });
@@ -339,11 +364,30 @@ async function seedCinema(id: string): Promise<void> {
 
 async function seedFilm(
   title: string,
-  posterUrl: string | null = 'https://image.tmdb.org/t/p/w342/x.jpg',
+  opts: {
+    posterUrl?: string | null;
+    country?: string | null;
+    year?: number | null;
+    popularity?: number | null;
+    voteCount?: number | null;
+    createdAt?: Date;
+  } = {},
 ): Promise<number> {
   const [row] = await testDb
     .insert(films)
-    .values({ title, scrapedTitle: title, matchSource: 'none', posterUrl })
+    .values({
+      title,
+      scrapedTitle: title,
+      matchSource: 'none',
+      posterUrl:
+        opts.posterUrl === undefined ? 'https://image.tmdb.org/t/p/w342/x.jpg' : opts.posterUrl,
+      country: opts.country ?? null,
+      year: opts.year ?? null,
+      popularity: opts.popularity ?? null,
+      voteCount: opts.voteCount ?? null,
+      // Default OLD so seeded films aren't "nuevo" against a past fixture now.
+      createdAt: opts.createdAt ?? new Date('2026-01-01T00:00:00Z'),
+    })
     .returning({ id: films.id });
   return row.id;
 }
@@ -401,46 +445,50 @@ describe('getFeaturedFilms — integration', () => {
     testDb = await makeInMemoryDb();
   });
 
-  it('flags a premiere this week as Estreno, and última only when truly last', async () => {
+  it('fills the band from real data: AR / premiere / classic slots', async () => {
     await seedCinema('malba');
     const now = new Date(Date.UTC(2026, 5, 4, 15)); // Thu 12:00 BA
 
-    const estreno = await seedFilm('El Jockey');
-    await seedScreening(estreno, 'malba', new Date(Date.UTC(2026, 5, 6, 23)), { tags: ['premiere'] });
-
-    // Única: only screening is this week → última.
-    const ultima = await seedFilm('La Quimera');
-    await seedScreening(ultima, 'malba', new Date(Date.UTC(2026, 5, 6, 22)));
-
-    // Has a screening this week AND one 3 weeks out → NOT última, no other reason.
-    const notLast = await seedFilm('Los delincuentes');
-    await seedScreening(notLast, 'malba', new Date(Date.UTC(2026, 5, 5, 23)));
-    await seedScreening(notLast, 'malba', new Date(Date.UTC(2026, 5, 25, 23)));
+    const ar = await seedFilm('El Jockey', { country: 'AR' });
+    const premiere = await seedFilm('Estreno X', { year: 2026 });
+    const classic = await seedFilm('Stalker', { year: 1979, voteCount: 6000 });
+    for (const id of [ar, premiere, classic]) {
+      await seedScreening(id, 'malba', new Date(Date.UTC(2026, 5, 6, 23))); // this week
+    }
 
     const picks = await getFeaturedFilms(now);
     const byId = new Map(picks.map((p) => [p.film.id, p.reason]));
-    expect(byId.get(estreno)).toBe('estreno');
-    expect(byId.get(ultima)).toBe('ultima');
-    expect(byId.has(notLast)).toBe(false);
+    expect(byId.get(ar)).toBe('argentina');
+    expect(byId.get(premiere)).toBe('estreno');
+    expect(byId.get(classic)).toBe('clasico');
+  });
+
+  it('a single-this-week film with no other signal → última (wildcard)', async () => {
+    await seedCinema('malba');
+    const now = new Date(Date.UTC(2026, 5, 4, 15));
+    const f = await seedFilm('La Quimera'); // null country/year, old createdAt
+    await seedScreening(f, 'malba', new Date(Date.UTC(2026, 5, 6, 22))); // only this week
+    const picks = await getFeaturedFilms(now);
+    expect(picks).toHaveLength(1);
+    expect(picks[0].reason).toBe('ultima');
   });
 
   it('excludes an unenriched (posterless) film even with a premiere tag', async () => {
     await seedCinema('malba');
     const now = new Date(Date.UTC(2026, 5, 4, 15));
-    const noPoster = await seedFilm('Las Mantis', null);
+    const noPoster = await seedFilm('Las Mantis', { posterUrl: null, country: 'AR' });
     await seedScreening(noPoster, 'malba', new Date(Date.UTC(2026, 5, 6, 23)), {
       tags: ['premiere'],
     });
     expect(await getFeaturedFilms(now)).toEqual([]);
   });
 
-  it('returns [] when nothing qualifies', async () => {
+  it('returns [] when no film passes the gates', async () => {
     await seedCinema('malba');
     const now = new Date(Date.UTC(2026, 5, 4, 15));
-    const f = await seedFilm('Ordinary Film');
-    // This week + 3 weeks out, no tags, no program → no reason.
-    await seedScreening(f, 'malba', new Date(Date.UTC(2026, 5, 5, 23)));
-    await seedScreening(f, 'malba', new Date(Date.UTC(2026, 5, 25, 23)));
+    // Poster-less + only a past screening → fails both gates.
+    const f = await seedFilm('Ghost', { posterUrl: null });
+    await seedScreening(f, 'malba', new Date(Date.UTC(2026, 5, 4, 10))); // already passed
     expect(await getFeaturedFilms(now)).toEqual([]);
   });
 });

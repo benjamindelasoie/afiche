@@ -56,12 +56,6 @@ export default async function CarteleraPage() {
 
   return (
     <>
-      <a
-        href="#cartelera"
-        className="focus:text-cream focus:tracking-card sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-black focus:px-3 focus:py-2 focus:font-mono focus:text-sm focus:uppercase"
-      >
-        Saltar al contenido
-      </a>
       <main className="mx-auto w-full max-w-5xl min-w-0 px-4 py-8 sm:px-6 md:py-16">
         <header className="py-8 text-center md:py-10">
           <div className="bg-carmine/80 mx-auto mb-2 h-[2px] w-[36%] max-w-[260px] md:mb-3 md:w-[44%]" />

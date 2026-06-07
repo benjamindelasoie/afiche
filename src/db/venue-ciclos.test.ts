@@ -52,6 +52,10 @@ function screening(over: {
       slug: `film-${over.filmId}`,
       cast: null,
       genres: null,
+      popularity: null,
+      voteAverage: null,
+      voteCount: null,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
     },
     cinema: {
       id: 'malba',
