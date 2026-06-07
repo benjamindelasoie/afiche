@@ -102,9 +102,9 @@ Sticky horizontal day-chip nav above the cartelera. Single primitive, 15 cells (
 - **Accessibility:** `@media (prefers-reduced-motion: reduce)` kills all transitions — wired in `globals.css`.
 
 ## Signature Flourishes
-- **Carmine offset shadow** on indie cinema posters: `4px 4px 0 var(--color-carmine)`. Non-negotiable — the site's visual fingerprint.
-- **Carmine left-bar on indie cards** (`border-l-4 border-carmine`). Curation signal visible at a glance.
-- **Carmine left-rule on synopsis** (`border-l-2 border-carmine pl-3`). Subtle echo of the card's left-bar.
+- **Carmine offset shadow** on indie cinema posters: `4px 4px 0 var(--color-carmine)`, tightening to `2px 2px 0` on hover. Non-negotiable — the site's visual fingerprint. Survived the redesign.
+- ~~**Carmine left-bar on indie cards** (`border-l-4 border-carmine`)~~ **RETIRED 2026-06-06/07** (homepage, then `/cartelera`). Replaced by a hover-only carmine left-tick (`before:` 3px bar, `scale-y-0 → 1` on hover) on de-tinted hairline rows. Carmine now lives on the time + the hover tick. See Decisions Log.
+- ~~**Carmine left-rule on synopsis**~~ Retired with the card left-bar; synopsis (on `/pelicula` + `/cartelera` cards) no longer carries the carmine rule.
 - **Tap feedback** `active:translate-y-[1px]` on cards. 1px downward press emulates a newsprint card flip.
 - **`text-balance`** on masthead, day labels, and film titles. Eliminates awkward single-word line endings.
 - **`line-clamp-3`** on synopsis. Consistent truncation across variable-length descriptions.
@@ -183,8 +183,7 @@ The step-down is intentional: the 14-day Tier 1 is decision territory (where use
 | **Partial card — no poster (indie)** | Indie cinema, film not matched on TMDB, no custom poster | Typographic fallback (implemented in `page.tsx`): `<span class="italic text-center">{title}</span>` inside the poster tile, black bg + cream text. Carmine offset shadow still applies. |
 | **Font loading flash** | Instrument Serif hasn't loaded yet | `font-display: swap` with Georgia as serif fallback. Brief FOUT acceptable; FOIT (invisible text) is worse. No layout shift — `next/font` auto-generates size-adjust. |
 | **Visited card** | User has tapped through | `opacity: 0.75` via `a[data-screening-card]:visited` (wired). Persistent across sessions. |
-| **Hover (indie)** | Pointer over card | `bg-carmine/10` (wired). No motion. |
-| **Hover (chain)** | Pointer over card | `bg-black/[0.04]` (wired). |
+| **Hover (row)** | Pointer over a film / screening row | `bg-black/[0.025]` + carmine left-tick (`before:` 3px bar, `scale-y-0 → 1`, 150ms) + poster shadow 4→2px. Replaced the `bg-carmine/10` fill (2026-06-06/07). |
 | **Active tap** | Card pressed | `translate-y-[1px]` (wired). Newsprint-press feedback. |
 | **Focus (keyboard)** | Tab navigation | `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-carmine` (indie) or `outline-black` (chain). Wired. |
 
@@ -203,9 +202,9 @@ The step-down is intentional: the 14-day Tier 1 is decision territory (where use
 The curation stance is made visible through typography and density, not through a hidden/visible toggle. Both appear on the site; indie wins visual weight.
 
 **Indie cinemas** (Lugones, MALBA, Lumiton, Cine York, Centro Cultural Munro):
-- Full card: `border-l-4 border-carmine`, poster thumb + carmine offset shadow, Instrument Serif title, italic original title, Geist synopsis w/ carmine left-rule, full metadata
-- Card background: `bg-carmine/5`, hover: `bg-carmine/10`
-- Vertical rhythm: `space-y-5` between cards
+- De-tinted hairline row (no card fill, no left-bar; `border-b border-black/10`, `last:border-b-0`), poster thumb + carmine offset shadow (hover tightens 4→2px), Instrument Serif title, italic original title, Geist synopsis (no left-rule), full metadata
+- Hover: `bg-black/[0.025]` + carmine left-tick (`before:` scale-y 0→1)
+- Vertical rhythm: rows stack flush, separated by hairlines (no inter-card gap)
 
 **Chain cinemas** (Cinépolis, Hoyts, Showcase, etc.):
 - Compact card: no poster, no left-bar, body sans-serif, metadata only, full AA contrast kept
@@ -241,3 +240,4 @@ The curation stance is made visible through typography and density, not through 
 | 2026-05-25 | Film-page row → Hybrid stretched-link | `/pelicula/[slug]` rows: the whole row stays the big ticketing tap-target, with the cinema name as a higher-z `/sala` link on top (same stretched-link pattern the homepage card uses for film links, no nested `<a>`). Keeps the ticketing target while making venues navigable. Replaces an earlier split that shrank the ticket target to a small "Entradas →" link. |
 | 2026-05-17 | Date strip: carmine fill moves with scroll, not pinned to today | Old model encoded TWO facts on the strip (today = permanent carmine fill, scroll-position = thin carmine underline). The fill always won the eyeball at quick-glance distance, so users reported thinking they were always viewing HOY regardless of scroll. Collapsed to one signal: the carmine fill IS the scroll-spy affordance. Bootstrap: first-paint seeds active=today so HOY is filled on initial load until the user scrolls. Today is no longer special-cased visually — "HOY" caps still replace the day number (verbal symmetry with the day-banner HOY pill), but the chip renders carmine only when it's the active section. Underline removed entirely. Triggered by a user reporting the exact confusion that was anticipated when the dual-signal model was first specced. |
 | 2026-06-06 | Homepage redesign: window-scoped GROUP-BY-FILM; day-view relocated to /cartelera | The homepage (`/`) becomes one row per FILM (not per showtime) for a selected window (`?ventana=hoy|finde|semana|prox`, default `hoy`), via a sticky `WindowNav` (pills + "Ver todo →"). Prod data: 64% single-showtime, 95% single-venue, so the common row is one clean `time · venue`; the heavy tail (11-25 showtimes) collapses behind a tap-expand `ShowtimesDisclosure`. The old 14-day day-grouped view (DateStrip + DaySection) is MOVED verbatim to `/cartelera` ("Ver todo"); `DateStrip` and the "2 tiers + sticky date strip" model above now describe `/cartelera`, not `/`. Deliberate exceptions to the rules above: homepage desktop widens to `max-w-6xl` (vs the `max-w-5xl` Responsive-table clamp) for the full-width curated hero band + 2-col film grid (`/cartelera` stays `max-w-5xl`); per-row carmine left-bar and `bg-carmine/5` card tint retired (carmine now lives on the time + a hover left-tick); no synopsis in the list (stays on `/pelicula`). GitHub issue #17; locked variant E. |
+| 2026-06-07 | `/cartelera` aligned to the homepage design (secondary-view) | `/cartelera` now reads as a secondary view of `/`, not its own look. Shared `Masthead` component (split: wordmark hard-left + edition right-aligned, hairline rule under) used by both — on `/cartelera` the wordmark links home. The day-grouped `ScreeningCard` was de-tinted to match the homepage `FilmRow`: dropped `bg-carmine/5` fill + `border-l-4 border-carmine` left-bar + the synopsis carmine left-rule; now de-tinted hairline rows (`border-b border-black/10`, `last:border-b-0`, flush, no inter-card gap) with the hover carmine left-tick + poster shadow 4→2px. The carmine offset-shadow poster (the fingerprint) stays. So the carmine left-bar + `bg-carmine/5` tint are now retired EVERYWHERE (homepage + `/cartelera`). `/cartelera` keeps its purpose (exhaustive day-by-day + DateStrip + Próximamente) and its `max-w-5xl` single-column width; only the visual language aligns. |

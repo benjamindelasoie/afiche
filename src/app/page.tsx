@@ -9,6 +9,7 @@ import {
 import { resolveWindowKey, windowRenderMode, type WindowKey } from '@/lib/windows';
 import { computeEdition, formatLastScrape } from '@/lib/edition';
 import { JsonLd, buildHomepageJsonLd } from '@/lib/json-ld';
+import { Masthead } from './_components/Masthead';
 import { WindowNav } from './_components/WindowNav';
 import { CuratedBand } from './_components/CuratedBand';
 import { FilmRow } from './_components/FilmRow';
@@ -87,33 +88,7 @@ export default async function HomePage({
         <JsonLd key={i} payload={event} />
       ))}
       <main className="mx-auto w-full max-w-6xl min-w-0 px-4 pb-12 sm:px-6">
-        {/* Masthead. Mobile = stacked (wordmark, dateline, tagline). Desktop =
-            wordmark hard-left + edition/dateline/tagline right-aligned on the
-            baseline, hairline rule under. */}
-        <header className="border-b border-black pt-8 pb-4 md:flex md:items-end md:justify-between md:pt-12">
-          <h1
-            className="font-serif leading-[0.85] tracking-[-0.02em]"
-            style={{
-              fontSize: 'clamp(3.5rem, 11vw, 6.75rem)',
-              fontKerning: 'normal',
-              fontFeatureSettings: '"liga", "kern"',
-            }}
-          >
-            Afiche
-          </h1>
-          <div className="mt-3 md:mt-0 md:pb-2 md:text-right">
-            <p className="text-ink-gray font-mono text-[9.5px] leading-[1.7] tracking-[0.18em] uppercase md:text-[10.5px]">
-              Edición Nº {edition.editionNumber} · Semana del {edition.weekRangeLabel}
-              <span className="md:hidden"> · </span>
-              <br className="hidden md:inline" />
-              {weekTotal} funciones · {weekCinemas} salas
-            </p>
-            <p className="text-ink-gray mt-1.5 font-serif text-[17px] italic md:text-xl">
-              Cartelera curada de Buenos Aires
-            </p>
-          </div>
-          <p className="sr-only">{edition.fullSentence}</p>
-        </header>
+        <Masthead edition={edition} funcionesTotal={weekTotal} salasTotal={weekCinemas} />
 
         <WindowNav active={windowKey} />
 
