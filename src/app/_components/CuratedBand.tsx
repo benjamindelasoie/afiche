@@ -12,7 +12,7 @@ import type { FeaturedPick } from '@/db/queries';
 // `[]` in that case, and this component returns null defensively too.
 // ---------------------------------------------------------------------------
 
-function CuratedCard({ pick }: { pick: FeaturedPick }) {
+function CuratedCard({ pick, priority }: { pick: FeaturedPick; priority: boolean }) {
   const { film, reasonLabel } = pick;
   const href = film.slug ? `/pelicula/${film.slug}` : undefined;
   const meta = [film.director, film.year ? String(film.year) : null]
@@ -29,6 +29,9 @@ function CuratedCard({ pick }: { pick: FeaturedPick }) {
             width={232}
             height={310}
             sizes="(min-width: 768px) 270px, 116px"
+            // The band sits above the film grid, so its first poster is the
+            // page LCP — eager-load it (ISSUE-001, /qa 2026-06-06).
+            priority={priority}
             className="h-full w-full object-cover"
           />
         ) : (
@@ -69,8 +72,8 @@ export function CuratedBand({ picks }: { picks: FeaturedPick[] }) {
         Esta semana <span className="text-carmine">—</span>
       </h2>
       <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-1.5 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-4 md:gap-[30px] md:overflow-visible md:px-0">
-        {picks.map((p) => (
-          <CuratedCard key={p.film.id} pick={p} />
+        {picks.map((p, i) => (
+          <CuratedCard key={p.film.id} pick={p} priority={i === 0} />
         ))}
       </div>
     </section>
