@@ -30,8 +30,14 @@ vi.mock('@/db', async () => {
   };
 });
 
-const { groupByFilm, deriveFeatured, getWindowScreeningsByFilm, getFeaturedFilms } =
-  await import('./queries');
+const {
+  groupByFilm,
+  deriveFeatured,
+  getWindowScreeningsByFilm,
+  getFeaturedFilms,
+  getJsonLdScreenings,
+  formatDayChipBA,
+} = await import('./queries');
 
 // ---------------------------------------------------------------------------
 // Pure fixtures
@@ -140,8 +146,8 @@ describe('groupByFilm — transform', () => {
       ],
       NOW,
     );
-    // Catchable A first; then sunk films by last time ascending (C@11, B@13).
-    expect(groups.map((g) => g.film.id)).toEqual([10, 11, 12]);
+    // Catchable A first; then sunk films most-recently-ended first (B@13 before C@11).
+    expect(groups.map((g) => g.film.id)).toEqual([10, 12, 11]);
     expect(groups[0].nextCatchableUtc).not.toBeNull();
     expect(groups[1].nextCatchableUtc).toBeNull();
     expect(groups[2].nextCatchableUtc).toBeNull();
@@ -158,16 +164,31 @@ describe('groupByFilm — transform', () => {
     expect(groups[0].totalCount).toBe(2);
     expect(groups[0].nextCatchableUtc).toBe(at('2026-06-04T22:00:00Z').getTime());
   });
+
+  it('keeps first-seen (chronological) order when next-catchable times tie', () => {
+    const groups = groupByFilm(
+      [
+        mkRow({ filmId: 7, cinemaId: 'malba', startsAtUtc: at('2026-06-04T20:00:00Z') }),
+        mkRow({ filmId: 8, cinemaId: 'malba', startsAtUtc: at('2026-06-04T20:00:00Z') }),
+      ],
+      NOW,
+    );
+    expect(groups.map((g) => g.film.id)).toEqual([7, 8]);
+  });
 });
 
 describe('deriveFeatured — selection rules', () => {
   // semana window upper for these tests.
   const windowUpper = at('2026-06-11T03:00:00Z');
 
+  // Last screening 3 weeks out → film is catchable (passes the future-screening
+  // gate) but NOT última, isolating the premiere/ciclo reasons.
+  const beyond = at('2026-06-25T23:00:00Z').getTime();
+
   it('premiere tag → Estreno', () => {
     const picks = deriveFeatured(
       [mkRow({ filmId: 1, cinemaId: 'malba', startsAtUtc: at('2026-06-05T23:00:00Z'), tags: ['premiere'] })],
-      new Map(),
+      new Map([[1, beyond]]),
       windowUpper,
     );
     expect(picks).toHaveLength(1);
@@ -194,7 +215,7 @@ describe('deriveFeatured — selection rules', () => {
   it('programName → "Ciclo {name}"', () => {
     const picks = deriveFeatured(
       [mkRow({ filmId: 1, cinemaId: 'malba', startsAtUtc: at('2026-06-05T23:00:00Z'), programName: 'Retrospectiva Wenders' })],
-      new Map(),
+      new Map([[1, beyond]]),
       windowUpper,
     );
     expect(picks[0].reason).toBe('ciclo');
@@ -229,7 +250,8 @@ describe('deriveFeatured — selection rules', () => {
         mkRow({ filmId: id, cinemaId: 'malba', startsAtUtc: at('2026-06-05T23:00:00Z'), tags: ['premiere'] }),
       ),
     ];
-    const picks = deriveFeatured(rows, new Map(), windowUpper);
+    const lastPerFilm = new Map([1, 2, 3, 4, 5, 6].map((id) => [id, beyond] as const));
+    const picks = deriveFeatured(rows, lastPerFilm, windowUpper);
     expect(picks).toHaveLength(4);
     // The three estrenos sort before any ciclo.
     expect(picks.slice(0, 3).every((p) => p.reason === 'estreno')).toBe(true);
@@ -242,6 +264,46 @@ describe('deriveFeatured — selection rules', () => {
       windowUpper,
     );
     expect(picks).toEqual([]);
+  });
+
+  it('returns [] for empty rows', () => {
+    expect(deriveFeatured([], new Map(), windowUpper)).toEqual([]);
+  });
+
+  it('última is exclusive at the window upper bound', () => {
+    const row = [mkRow({ filmId: 1, cinemaId: 'malba', startsAtUtc: at('2026-06-05T23:00:00Z') })];
+    // Last screening exactly AT the exclusive upper → NOT última.
+    expect(deriveFeatured(row, new Map([[1, windowUpper.getTime()]]), windowUpper)).toEqual([]);
+    // One ms before the upper → última.
+    const justInside = deriveFeatured(
+      row,
+      new Map([[1, windowUpper.getTime() - 1]]),
+      windowUpper,
+    );
+    expect(justInside[0]?.reason).toBe('ultima');
+  });
+
+  it('drops a film with no FUTURE screening even if it has a premiere tag', () => {
+    // Premiere tag present, but absent from lastPerFilm (every showtime passed)
+    // → not catchable → excluded from the band.
+    const picks = deriveFeatured(
+      [mkRow({ filmId: 1, cinemaId: 'malba', startsAtUtc: at('2026-06-04T10:00:00Z'), tags: ['premiere'] })],
+      new Map(),
+      windowUpper,
+    );
+    expect(picks).toEqual([]);
+  });
+});
+
+describe('formatDayChipBA', () => {
+  // now = Thu 2026-06-04 12:00 BA.
+  it('returns "Hoy" for a showtime on the same BA day', () => {
+    expect(formatDayChipBA(at('2026-06-04T23:00:00Z'), NOW)).toBe('Hoy');
+  });
+
+  it('returns capitalized "{Dow} {day}" for another day, no trailing dot', () => {
+    // Fri 2026-06-05 20:00 BA.
+    expect(formatDayChipBA(at('2026-06-05T23:00:00Z'), NOW)).toBe('Vie 5');
   });
 });
 
@@ -344,5 +406,21 @@ describe('getFeaturedFilms — integration', () => {
     await seedScreening(f, 'malba', new Date(Date.UTC(2026, 5, 5, 23)));
     await seedScreening(f, 'malba', new Date(Date.UTC(2026, 5, 25, 23)));
     expect(await getFeaturedFilms(now)).toEqual([]);
+  });
+});
+
+describe('getJsonLdScreenings — integration', () => {
+  beforeEach(async () => {
+    testDb = await makeInMemoryDb();
+  });
+
+  it('returns only the [todayStart, +7d) window regardless of selected ventana', async () => {
+    await seedCinema('malba');
+    const now = new Date(Date.UTC(2026, 5, 4, 15)); // Thu 12:00 BA → upper = 2026-06-11 03:00Z
+    const f = await seedFilm('Film');
+    await seedScreening(f, 'malba', new Date(Date.UTC(2026, 5, 4, 23))); // today — in
+    await seedScreening(f, 'malba', new Date(Date.UTC(2026, 5, 10, 23))); // +6d — in
+    await seedScreening(f, 'malba', new Date(Date.UTC(2026, 5, 11, 12))); // +7d (>= upper) — out
+    expect(await getJsonLdScreenings(now)).toHaveLength(2);
   });
 });

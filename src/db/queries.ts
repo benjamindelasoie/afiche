@@ -1,25 +1,21 @@
 /**
- * Query helpers for the Afiche cartelera view.
+ * Query helpers for the Afiche cartelera views.
  *
- * The home page splits screenings into two chronological tiers:
+ * Two surfaces consume these:
  *
- *   1. 14-day rolling window — today 00:00 BA .. today+14 00:00 BA
- *                              (always 14 days, full cards, navigated
- *                               by the sticky date strip below the masthead)
- *   2. "Próximamente"        — today+14 00:00 BA, open-ended (week-grouped
- *                              text index — the awareness layer)
+ *   1. The HOMEPAGE (`/`) — window-scoped, GROUP-BY-FILM (redesign 2026-06-06).
+ *      `getWindowScreeningsByFilm` returns FilmGroup[] for a selected window
+ *      (hoy/finde/semana/prox); `getFeaturedFilms` derives the curated band;
+ *      `getJsonLdScreenings` feeds the 7-day JSON-LD.
+ *   2. `/cartelera` — the exhaustive DAY-GROUPED view (the old homepage,
+ *      relocated). `getTwoWeeksScreenings` (14-day rolling, grouped by day,
+ *      navigated by the sticky date strip) + `getUpcomingScreenings`
+ *      ("Próximamente", week-grouped, open-ended).
  *
- * History: this used to be a 3-tier model (Esta semana / Próxima semana /
- * Más adelante) anchored to ISO-week boundaries. The 2026-05 nav refactor
- * consolidated to 2 tiers and replaced the editorial-week boundary with a
- * 14-day rolling window for user-first navigation (one-tap jump to any of
- * the next 14 days from any starting weekday). See DESIGN.md Decisions
- * Log 2026-05-02 for the full rationale.
- *
- * Each tier has its own query; the page composes them. Tier 1 returns
- * grouped-by-day; Tier 2 returns grouped-by-week (the editorial weekly-
- * preview voice for the further horizon — denser than per-day banners
- * once you're 4-8 weeks out).
+ * History: the day-grouped model was a 3-tier ISO-week layout, consolidated
+ * 2026-05 to the 14-day rolling window (DESIGN.md Decisions Log 2026-05-02),
+ * then in 2026-06 the homepage moved to the group-by-film view above and the
+ * 14-day day view moved to `/cartelera` (GitHub issue #17).
  *
  * All functions run on the server (Server Components) and return plain data.
  */
@@ -547,10 +543,11 @@ function sortFilmGroups(groups: FilmGroup[]): FilmGroup[] {
     const bSunk = b.nextCatchableUtc === null;
     if (aSunk !== bSunk) return aSunk ? 1 : -1;
     if (!aSunk && !bSunk) return a.nextCatchableUtc! - b.nextCatchableUtc!;
-    // Both sunk: order by last (max) showtime ascending.
+    // Both sunk: most-recently-ended first (descending by last showtime), so
+    // the film you just missed sits directly under the still-catchable set.
     const aLast = a.screenings[a.screenings.length - 1].startsAtUtc.getTime();
     const bLast = b.screenings[b.screenings.length - 1].startsAtUtc.getTime();
-    return aLast - bLast;
+    return bLast - aLast;
   });
 }
 
@@ -618,11 +615,17 @@ export function deriveFeatured(
   const picks: FeaturedPick[] = [];
   for (const [filmId, list] of byFilm) {
     const film = list[0].film;
-    const hasPremiere = list.some((s) => s.tags.includes('premiere'));
+    // The band only features films you can still CATCH this week: require a
+    // future screening (lastPerFilm is the unbounded per-film MAX over
+    // startsAt > now). A film whose only showtimes have already passed — even
+    // a premiere or a ciclo — is dropped, so the band never advertises a dead
+    // screening.
     const lastUtc = lastPerFilm.get(filmId);
+    if (lastUtc === undefined) continue;
+    const hasPremiere = list.some((s) => s.tags.includes('premiere'));
     // TODO #32: operator-pin seam — manual picks would slot in ahead of these
     // derived ones before the cap is applied.
-    const isUltima = lastUtc !== undefined && lastUtc < windowUpper.getTime();
+    const isUltima = lastUtc < windowUpper.getTime();
     const ciclo = list.find((s) => s.programName)?.programName ?? null;
 
     let pick: FeaturedPick | null = null;

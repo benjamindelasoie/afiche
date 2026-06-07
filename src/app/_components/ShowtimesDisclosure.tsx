@@ -83,7 +83,10 @@ function TimeItem({ t }: { t: DisclosureTime }) {
         href={t.href}
         target="_blank"
         rel="noopener noreferrer"
-        className={`${TIME_CLASS} text-carmine focus-visible:outline-carmine focus-visible:outline-2 focus-visible:outline-offset-2`}
+        aria-label={`Comprar entradas — ${t.time}`}
+        // relative z-10: raise above the row's stretched card-link overlay so
+        // the ticket tap reaches the ticketing URL, not /pelicula.
+        className={`${TIME_CLASS} text-carmine focus-visible:outline-carmine relative z-10 focus-visible:outline-2 focus-visible:outline-offset-2`}
       >
         {t.time}
       </a>
@@ -125,7 +128,7 @@ export function ShowtimesDisclosure({
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={`${open ? 'Ocultar' : 'Ver'} funciones de ${filmTitle}`}
-        className="focus-visible:outline-carmine relative z-10 mt-2.5 flex w-full items-center gap-2.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 md:mt-3.5"
+        className="focus-visible:outline-carmine relative z-10 mt-2.5 flex min-h-11 w-full items-center gap-2.5 text-left focus-visible:outline-2 focus-visible:outline-offset-2 md:mt-3.5"
       >
         {!open && leadTime ? (
           <span className="flex items-baseline gap-1.5">

@@ -2,16 +2,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   formatTimeBA,
-  formatDateKeyBA,
   formatDayChipBA,
-  formatAgendaDayBA,
   type FilmGroup,
   type ScreeningRow,
-  type VenueShowtimes,
 } from '@/db/queries';
 import { isScreeningExpired } from '@/lib/date-ranges';
 import { filmMetaLine } from '@/lib/film-meta';
-import { ShowtimesDisclosure, type DisclosureVenue } from './ShowtimesDisclosure';
+import { ShowtimesDisclosure } from './ShowtimesDisclosure';
+import { buildDisclosureVenue, filmRowSummary, filmRowLead } from './film-row-model';
 
 // ---------------------------------------------------------------------------
 // FilmRow — one row per film in the window-scoped homepage cartelera.
@@ -28,54 +26,6 @@ import { ShowtimesDisclosure, type DisclosureVenue } from './ShowtimesDisclosure
 // disclosure toggle are siblings raised with `relative z-10` so they sit above
 // the stretched pseudo-element. All targets are ≥44px and keyboard-focusable.
 // ---------------------------------------------------------------------------
-
-/** Days shown per venue in a multi-day disclosure before "ver todas →". */
-const DISCLOSURE_DAY_CAP = 4;
-
-function toTimeVM(s: ScreeningRow, now: Date) {
-  return {
-    id: s.id,
-    time: formatTimeBA(s.startsAtUtc),
-    iso: s.startsAtUtc.toISOString(),
-    href: s.sourceUrl,
-    isPast: isScreeningExpired(s.startsAtUtc, now),
-  };
-}
-
-/** Build one venue's disclosure view-model: group its showtimes by day, cap. */
-function buildDisclosureVenue(
-  v: VenueShowtimes,
-  now: Date,
-  multiDay: boolean,
-): DisclosureVenue {
-  const dayMap = new Map<string, ScreeningRow[]>();
-  for (const s of v.screenings) {
-    const key = formatDateKeyBA(s.startsAtUtc);
-    const list = dayMap.get(key);
-    if (list) list.push(s);
-    else dayMap.set(key, [s]);
-  }
-
-  let dayEntries = Array.from(dayMap.entries());
-  let omittedDayNames: string[] = [];
-  if (multiDay && dayEntries.length > DISCLOSURE_DAY_CAP) {
-    const omitted = dayEntries.slice(DISCLOSURE_DAY_CAP);
-    omittedDayNames = omitted.map(([, rows]) => formatAgendaDayBA(rows[0].startsAtUtc).dow);
-    dayEntries = dayEntries.slice(0, DISCLOSURE_DAY_CAP);
-  }
-
-  return {
-    cinemaId: v.cinema.id,
-    cinemaName: v.cinema.name,
-    cinemaHref: `/sala/${v.cinema.id}`,
-    days: dayEntries.map(([key, rows]) => ({
-      key,
-      label: formatDayChipBA(rows[0].startsAtUtc, now),
-      times: rows.map((s) => toTimeVM(s, now)),
-    })),
-    omittedDayNames,
-  };
-}
 
 function FilmPoster({
   film,
@@ -151,6 +101,7 @@ function SingleShowtime({
           href={s.sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label={`Comprar entradas — ${time}`}
           className={`${timeCls} text-carmine focus-visible:outline-carmine relative z-10 focus-visible:outline-2 focus-visible:outline-offset-2`}
         >
           {time}
@@ -192,16 +143,14 @@ export function FilmRow({
   const titleClass = 'font-serif text-[25px] leading-[1.04] text-balance md:text-[28px]';
 
   // Multi-showtime summary view-model (only used when isMulti).
-  const nextCatchable =
-    screenings.find((s) => !isScreeningExpired(s.startsAtUtc, now)) ?? screenings[0];
-  const venueLabel =
-    byVenue.length === 1 ? byVenue[0].cinema.name : `${byVenue.length} salas`;
-  const summaryRest = multiDay
-    ? `${totalCount} funciones · ${venueLabel}`
-    : `${totalCount} funciones hoy · ${venueLabel}`;
+  const { summaryRest } = filmRowSummary(group, multiDay);
+  const { leadTime, leadDayHint } = filmRowLead(group, multiDay, now);
 
   return (
-    <article className="group before:bg-carmine relative flex gap-4 border-b border-black/10 py-4 before:absolute before:top-5 before:bottom-5 before:left-0 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 hover:bg-black/[0.025] hover:before:scale-y-100 md:gap-[18px] md:px-3.5 md:py-[22px]">
+    // `isolate` scopes the row's z-10 children (time/venue links, disclosure
+    // toggle) to this article's stacking context so they can't paint over the
+    // sticky WindowNav (also z-10) as the row scrolls under it.
+    <article className="group before:bg-carmine relative isolate flex gap-4 border-b border-black/10 py-4 before:absolute before:top-5 before:bottom-5 before:left-0 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 hover:bg-black/[0.025] hover:before:scale-y-100 md:gap-[18px] md:px-3.5 md:py-[22px]">
       <FilmPoster film={film} priority={priority} />
       <div className="min-w-0 flex-1">
         {titleHref ? (
@@ -228,10 +177,12 @@ export function FilmRow({
             venues={byVenue.map((v) => buildDisclosureVenue(v, now, multiDay))}
             multiDay={multiDay}
             defaultOpen={disclosureDefaultOpen}
-            leadTime={formatTimeBA(nextCatchable.startsAtUtc)}
-            leadDayHint={multiDay ? formatDayChipBA(nextCatchable.startsAtUtc, now) : null}
+            leadTime={leadTime}
+            leadDayHint={leadDayHint}
             summaryRest={summaryRest}
-            verTodasHref={titleHref}
+            // Fall back to /cartelera when the film has no slug, so capped days
+            // ("ver todas →") are never dead-ended.
+            verTodasHref={titleHref ?? '/cartelera'}
             filmTitle={film.title}
           />
         ) : (

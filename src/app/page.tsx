@@ -157,12 +157,17 @@ export default async function HomePage({
             <div className="mt-4 grid grid-cols-1 gap-x-12 md:mt-6 md:grid-cols-2">
               {groups.map((group, i) => (
                 <FilmRow
-                  key={group.film.id}
+                  // Key by window so a film present in two windows remounts on
+                  // switch — otherwise its disclosure keeps stale open-state and
+                  // ignores the new window's default.
+                  key={`${windowKey}-${group.film.id}`}
                   group={group}
                   now={now}
                   multiDay={mode.multiDay}
                   disclosureDefaultOpen={mode.disclosureDefaultOpen}
-                  priority={i < 2}
+                  // The curated band (above the grid) owns the LCP when present;
+                  // only when it's omitted does the first film poster lead.
+                  priority={featured.length === 0 && i === 0}
                 />
               ))}
             </div>
