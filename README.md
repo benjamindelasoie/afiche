@@ -2,7 +2,7 @@
 
 **Cartelera curada de Buenos Aires**
 
-Afiche aggregates the weekly programming of Buenos Aires' independent and repertory cinemas into one clean, editorial-feel cartelera — a 14-day rolling window of full cards (navigated by a sticky date strip that jumps to any day) plus a "Próximamente" text index for the longer tail. Built for people who already know the difference between a Saturday at Lugones and a Saturday at Hoyts.
+Afiche aggregates the weekly programming of Buenos Aires' independent and repertory cinemas into one clean, editorial-feel cartelera. The homepage is a window-scoped, one-row-per-film view (**Hoy** / **Este finde** / **Esta semana** / **Próximamente**, selectable via `?ventana=`) over a "Esta semana" curated band; the exhaustive day-by-day view (14-day rolling window + sticky date strip + "Próximamente" index) lives at `/cartelera`, one tap away via "Ver todo →". Built for people who already know the difference between a Saturday at Lugones and a Saturday at Hoyts.
 
 ![Afiche cartelera, desktop](docs/screenshots/hero-desktop.png)
 
@@ -13,7 +13,8 @@ Afiche aggregates the weekly programming of Buenos Aires' independent and repert
 
 - **Scrapes 7 indie cinemas** every run: Sala Lugones, MALBA (two schedule formats: dense-cycle + single-event prose), Cine York, Centro Cultural Munro, Lumiton, Cine Cosmos, and Cine Lorca (whose programming lives on a single weekly poster image — extracted via a Claude vision call with an image-hash cache).
 - **Enriches each film via TMDB**: poster, backdrop, director, runtime, country, original title, Spanish synopsis (es-AR → es fallback), genres, top-billed cast. Smart merge logic handles the case where the same film surfaces with title drift across cinemas (different localizations, year-null collisions), keyed on `tmdb_id` after enrichment so duplicates collapse deterministically. Title-ambiguity guard + director-verification prevent silent wrong-matches on common-title films (e.g., the *Nosferatu* class: Eggers 2024 vs Herzog 1979 vs Murnau 1922 all share a Spanish title).
-- **Renders a two-tier cartelera** — a server-rendered Next.js 16 page. *Tier 1* is a 14-day rolling window with full cards grouped by day, navigated by a sticky date strip; today is always position 0 and the strip extends 13 more days forward regardless of weekday. *Próximamente* is a flat text index for the longer tail, zine-back-page style. Chain cinemas (when we add them) get a de-emphasized typographic treatment, not a hidden toggle — curation is visible.
+- **Renders a window-scoped group-by-film homepage** — a server-rendered Next.js 16 page (`src/app/page.tsx`). It shows one row per *film* (not per showtime) for a relative time window — **Hoy** (default) / **Este finde** / **Esta semana** / **Próximamente**, selected via `?ventana=hoy|finde|semana|prox` (shareable; an unknown value falls back to `hoy`). A single-showtime film renders an inline `time · venue`; a multi-showtime film collapses to a `{n} funciones · {venue}` summary that tap-expands to its times. A full-bleed "Esta semana" curated band of 0-4 poster cards sits above the film grid. Prod data drives this: 64% of films have a single showtime all week and 95% play a single venue, so the common row is one clean line. The window registry (`src/lib/windows.ts`) is the single source for the nav, the `?ventana=` validation, and the bounded query.
+- **The exhaustive day-by-day view lives at `/cartelera`** (`src/app/cartelera/page.tsx`) — the previous homepage, moved verbatim: a 14-day rolling window with full cards grouped by day, navigated by a sticky date strip (today is position 0, strip extends 13 days forward), plus a *Próximamente* flat text index for the longer tail, zine-back-page style. Reachable from the homepage's "Ver todo →". Chain cinemas (when we add them) get a de-emphasized typographic treatment, not a hidden toggle — curation is visible.
 - **Per-film pages at `/pelicula/<slug>`** — title block, optional 16:9 editorial still (TMDB backdrop, desktop-only), poster + synopsis, top-billed cast, and a cross-venue list of every upcoming screening of that film across BA. The "killer feature" of the page is cross-venue discovery — answers the "when *else* can I catch this?" question that no single venue's site can answer.
 
 ## What it does NOT do (yet)
@@ -31,7 +32,7 @@ Afiche aggregates the weekly programming of Buenos Aires' independent and repert
 - **Geist** (sans, body) + **Geist Mono** (caps, eyebrows) + **Instrument Serif** (display: masthead, day banners, film titles, italic time accents)
 - **Drizzle ORM** + **libSQL** (SQLite locally, Turso in production)
 - **cheerio** for HTML scraping; **Claude vision** (`claude-sonnet-4-6`) for Cine Lorca's image-only weekly poster, with image-hash cache
-- **Vitest** for testing (302 tests across 16 files: date helpers, scraper providers, ingest, run logging, TMDB enrichment, layout invariants)
+- **Vitest** for testing (587 tests across 30 files: date/window helpers, group-by-film grouping, scraper providers, ingest, run logging, TMDB enrichment, layout invariants)
 - **TMDB API** for film enrichment
 
 ## Cinemas covered
@@ -105,14 +106,27 @@ npm run dev
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  Next.js server component (src/app/page.tsx)                    │
+│  Next.js server component (src/app/page.tsx) — homepage         │
+│                                                                 │
+│  getWindowScreeningsByFilm(window, now) → one row per FILM,     │
+│                                  bounded by ?ventana= window    │
+│  getFeaturedFilms(now)         → "Esta semana" curated band     │
+│  getJsonLdScreenings(now)      → structured-data feed           │
+│                                                                 │
+│  Group-by-film: single-showtime → inline time·venue; multi →   │
+│  tap-expand disclosure. Window registry: src/lib/windows.ts.   │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Next.js server component (src/app/cartelera/page.tsx)          │
 │                                                                 │
 │  getTwoWeeksScreenings(now)    → Tier 1 · 14-day rolling window │
 │  getUpcomingScreenings(now)    → Tier 2 · Próximamente          │
 │  getLastScreeningPerFilm(now)  → ÚLTIMA FUNCIÓN pill anchor     │
 │                                                                 │
-│  Two tiered queries, sticky-date-strip navigation, full         │
-│  cards grouped by day in tier 1, text index in tier 2.          │
+│  The exhaustive day-by-day view: sticky-date-strip navigation, │
+│  full cards grouped by day in tier 1, text index in tier 2.    │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -129,7 +143,7 @@ npm run dev
 
 Each provider returns a flat `ScrapedScreening[]`. The ingest layer handles idempotency (unique index on `(scraped_title, scraped_year)`), retry semantics (`match_source='none-attempted'` after a failed TMDB match so we don't re-query forever), and year-resolution merges (if Lumiton scrapes *Lawrence de Arabia* with year=null and Lugones scraped it with year=1962, they reconcile into one row on TMDB enrichment via `tmdb_id` collision).
 
-The view is a 2-tier cartelera — *Tier 1* (full cards in a 14-day rolling window, the decision layer) and *Próximamente* (text index for everything beyond) — anchored to BA "today". See [DESIGN.md](DESIGN.md) for the full visual hierarchy and [CHANGELOG.md](CHANGELOG.md) for the per-release version history.
+The homepage is a window-scoped, one-row-per-film view anchored to BA "today" (default window **Hoy**); `/cartelera` is the exhaustive 2-tier view — *Tier 1* (full cards in a 14-day rolling window, the decision layer) and *Próximamente* (text index for everything beyond). Both read the same DB and revalidate together after a scrape. See [DESIGN.md](DESIGN.md) for the full visual hierarchy and [CHANGELOG.md](CHANGELOG.md) for the per-release version history.
 
 ## Tests
 
@@ -138,7 +152,14 @@ npm test                 # watch mode
 npm run test:coverage    # one-shot with v8 coverage
 ```
 
-302 tests across 16 files:
+587 tests across 30 files. The homepage-redesign suites:
+
+- `src/db/group-by-film.test.ts` — film grouping, next-catchable sort, past-film sink ordering
+- `src/lib/windows.test.ts` — window registry + `?ventana=` resolution (unknown → `hoy`) + render modes
+- `src/app/_components/film-row-model.test.ts` — single vs multi-showtime row model, disclosure summary
+- `src/lib/film-meta.test.ts` — film metadata line (drops 0/null runtime cleanly, ISSUE-001 guard)
+
+The rest:
 
 - `src/app/layout-invariants.test.ts` — flex-item width contracts (mobile-overflow guard) + line-clamp/display-utility co-location guard
 - `src/db/queries.test.ts` — query-layer behavior (visibility windows, deduplication)
