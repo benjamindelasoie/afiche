@@ -2,6 +2,15 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.4.0] - 2026-06-07
+
+### Changed
+
+- **The homepage "Esta semana" band is now "Destacados".** The band is a stable weekly curated selection — it doesn't change when you switch the Hoy / Este finde / Esta semana / Próximamente filter. So its old "Esta semana" title misrepresented that (the content is always the week's picks) and collided with the selector pill of the same name — two different things wearing one label. "Destacados" names what the band actually is: the editorial highlights.
+- **Curated band posters now show the full artwork.** The poster tiles were a 3:4 box holding 2:3 posters, so the image was scaled up to fill and roughly the top and bottom 10% of every poster got cropped off. The tiles are now 2:3, matching the artwork — full posters, nothing clipped.
+- **The venue page (`/sala`) now matches the homepage's visual language.** Its screening rows and the "Próximamente" index dropped their last carmine row-tint for the same hover the homepage uses: a carmine left-tick that wipes in, a faint row shade, and the poster's offset-shadow tightening on hover. Nothing structural changed — the date-rail agenda stays.
+- **The venue header is cleaner.** Dropped the "Cine independiente" tag and the neighborhood line (the address already answers "where", and you already know which venue you're on). The venue name leads, the address sits just under it, and "Sitio oficial" moves to the top-right on desktop (stacked below on mobile).
+
 ## [0.3.3.0] - 2026-06-07
 
 ### Changed
