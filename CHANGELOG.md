@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.1.0] - 2026-06-06
+
+### Added
+
+- **Capture TMDB `popularity`, `vote_average`, `vote_count`, and `tagline` at enrichment.** Four new nullable `films` columns, populated from the same TMDB detail response we already fetch (near-zero marginal cost). No user-facing change yet — this banks the data for the upcoming featured-band redesign (TODO #32): `popularity` ranks the band's premiere / Argentinian slots ("most interesting now"), `vote_count` ranks the classic slot (notability — Godard's thousands of votes beat an obscure contemporary's dozens), `vote_average` is a quality signal, and `tagline` (TODO #33) is banked for future use. Captured in `enrichFilm` and persisted by both write paths (`writeEnrichmentToFilm` + `refresh-enrichment`); existing rows backfill on the next `refresh-enrichment` pass. Additive migration `0009` (nullable columns only — safe).
+
 ## [0.3.0.1] - 2026-06-06
 
 ### Fixed
