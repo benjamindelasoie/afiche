@@ -40,6 +40,26 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    // Client-side Router Cache TTLs, in seconds. The homepage is force-dynamic,
+    // so Next's default (`dynamic: 0`) refetches on EVERY window switch —
+    // including re-selecting a window you just viewed. These let the browser
+    // reuse a recently-fetched window payload so switching feels instant.
+    //   static  — applies to <Link prefetch> targets, i.e. the WindowNav pills
+    //             (see WindowNav.tsx). The four windows are prefetched on load
+    //             and stay reusable for 3 min, so the first click on any window
+    //             is instant and re-clicks within the window don't refetch.
+    //   dynamic — the fallback for a dynamic navigation that wasn't fully
+    //             prefetched (e.g. before a pill's prefetch lands). Kept short
+    //             so data stays fresh.
+    // Only WITHIN-SESSION re-navigation is served from this cache; a full page
+    // load is always server-rendered fresh, so the scrape / midnight-rollover
+    // freshness path (revalidatePath('/')) is unaffected.
+    staleTimes: {
+      dynamic: 30,
+      static: 180,
+    },
+  },
 };
 
 export default nextConfig;

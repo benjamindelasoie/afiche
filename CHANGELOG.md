@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.4.1] - 2026-06-07
+
+### Changed
+
+- **Switching time windows on the homepage is snappier.** The homepage is server-rendered per window, so every `Hoy / Este finde / Esta semana / Próximamente` switch was a full server round-trip — even re-selecting a window you'd just viewed. The four windows now prefetch in the background on load, and their payloads are reused from the browser's router cache for a few minutes, so the first switch is instant and re-clicks don't refetch. Full page loads stay server-rendered fresh, so the listings are unaffected. (Prefetching only kicks in on the deployed site, not local `next dev`.)
+
 ## [0.3.4.0] - 2026-06-07
 
 ### Changed

@@ -13,6 +13,14 @@ import { WINDOWS, DEFAULT_WINDOW, type WindowKey } from '@/lib/windows';
 // Sticky lives on the <nav> itself; the pill rail scrolls horizontally via its
 // own overflow-x-auto (no body-level overflow, no transforms — both compose
 // badly with position: sticky, per CLAUDE.md frontend conventions).
+//
+// The pills are `prefetch`ed: the homepage is force-dynamic, so Next won't
+// prefetch a window's payload by default (dynamic routes need an explicit
+// `prefetch` or a loading boundary). With it, all four windows warm in the
+// background on load, so the FIRST switch is instant instead of a server
+// round-trip. Pairs with `experimental.staleTimes` (next.config.ts), which
+// keeps the prefetched payloads reusable (the `static` bucket). NOTE:
+// prefetching only runs in production builds — `next dev` always round-trips.
 // ---------------------------------------------------------------------------
 
 function pillHref(key: WindowKey): string {
@@ -44,6 +52,7 @@ export function WindowNav({ active }: { active: WindowKey }) {
               <Link
                 key={w.key}
                 href={pillHref(w.key)}
+                prefetch
                 aria-current={isActive ? 'page' : undefined}
                 className={[
                   'tracking-card shrink-0 border px-3 py-1.5 font-mono text-[11px] whitespace-nowrap uppercase transition-colors duration-[50ms] ease-out',
