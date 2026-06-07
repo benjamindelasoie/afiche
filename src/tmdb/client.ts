@@ -27,6 +27,8 @@ export interface TmdbMovieSummary {
   backdrop_path: string | null;
   popularity: number;
   vote_count: number;
+  /** Average rating, 0-10. Present on both search results and detail responses. */
+  vote_average: number;
 }
 
 export interface TmdbMovieDetails extends TmdbMovieSummary {

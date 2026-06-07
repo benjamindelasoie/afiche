@@ -129,6 +129,21 @@ export const films = sqliteTable(
     // the backdrop section entirely when null — the page degrades cleanly to
     // its no-image rhythm.
     backdropUrl: text('backdrop_url'),
+    // TMDB popularity — a recency/buzz-weighted score. Ranks the featured
+    // band's premiere + Argentinian slots ("most interesting right now"). NOT
+    // for classics — popularity decays with age. Null until enriched.
+    popularity: real('popularity'),
+    // TMDB vote average (0-10). Quality signal (the "mejor valorada" angle).
+    // Null until enriched.
+    voteAverage: real('vote_average'),
+    // TMDB vote count — a notability/fame proxy. Ranks the featured band's
+    // classic slot: Godard's thousands of votes beat an obscure contemporary's
+    // dozens. Null until enriched.
+    voteCount: integer('vote_count'),
+    // TMDB tagline (short flavor line). Sparse for arthouse/foreign titles;
+    // banked for future use (OG cards, a band subtitle). Null when TMDB has
+    // none, or until enriched.
+    tagline: text('tagline'),
     // Similarity score at match time; null if override or no match.
     matchConfidence: real('match_confidence'),
     // Provenance of the TMDB link. See schema-level doc comment above.
