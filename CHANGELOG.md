@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.2.1] - 2026-06-07
+
+### Fixed
+
+- **The homepage no longer shows films whose every showtime has already passed.** The group-by-film view sank fully-expired films to the bottom (struck) instead of dropping them — so late at night "Hoy" became a wall of struck cards (37 films, 0 catchable at 23:59 BA). `getWindowScreeningsByFilm` now drops any film with no catchable showtime left in the window (`nextCatchableUtc === null`), matching the "what can I still see?" intent and the old day-view's behavior. Partially-catchable films are kept, with their past times struck in place. When a window has nothing left, the empty state reads "No quedan funciones por hoy. Mirá lo que viene este finde o esta semana." The exhaustive `/cartelera` day view still shows the full day.
+
 ## [0.3.2.0] - 2026-06-06
 
 ### Changed
