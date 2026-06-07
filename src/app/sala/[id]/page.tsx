@@ -94,51 +94,45 @@ export default async function SalaPage({ params }: { params: Promise<Params> }) 
         <span className="border-carmine border-b">← Cartelera</span>
       </Link>
 
-      {/* Utility header: identity + how-to-get-there + official site. The venue
-          name uses DESIGN.md's display-page-title scale (below the AFICHE
-          masthead). */}
-      <header className="mb-8 md:mb-12">
-        <p className="tracking-eyebrow text-carmine mb-2 font-mono text-[11px] uppercase">
-          {cinema.type === 'indie' ? 'Cine independiente' : 'Multiplex'}
-          {cinema.neighborhood && ` · ${cinema.neighborhood}`}
-        </p>
-        <h1 className="font-serif text-[clamp(2.5rem,8vw,4.5rem)] leading-[0.95] tracking-[-0.01em] text-balance">
-          {cinema.name}
-        </h1>
-        {(mapsHref || cinema.ticketingBaseUrl) && (
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-            {mapsHref && (
-              <a
-                href={mapsHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-ink-gray hover:text-carmine inline-flex min-h-[44px] items-center gap-1.5 font-mono text-[11px] tracking-wider uppercase transition-colors"
-                aria-label={`Ver en Google Maps — ${cinema.address}`}
+      {/* Utility header: venue name (display-page-title scale) + address on the
+          left; the official-site action sits top-right on desktop, stacked below
+          on mobile. Type ("Cine independiente") and neighborhood were dropped —
+          redundant on an indie-circuit venue page where the address already
+          answers "where", and the name is the only identity that matters. */}
+      <header className="mb-8 md:mb-12 md:flex md:items-start md:justify-between md:gap-6">
+        <div className="min-w-0">
+          <h1 className="font-serif text-[clamp(2.5rem,8vw,4.5rem)] leading-[0.95] tracking-[-0.01em] text-balance">
+            {cinema.name}
+          </h1>
+          {mapsHref && (
+            <a
+              href={mapsHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-ink-gray hover:text-carmine mt-3 inline-flex min-h-[44px] items-center gap-1.5 font-mono text-[11px] tracking-wider uppercase transition-colors"
+              aria-label={`Ver en Google Maps — ${cinema.address}`}
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-3.5 w-3.5 shrink-0 fill-current"
               >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  className="h-3.5 w-3.5 shrink-0 fill-current"
-                >
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" />
-                </svg>
-                <span className="border-ink-gray/40 border-b pb-0.5">
-                  {cinema.address}
-                </span>
-              </a>
-            )}
-            {cinema.ticketingBaseUrl && (
-              <a
-                href={cinema.ticketingBaseUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="tracking-card bg-carmine text-cream focus-visible:outline-carmine inline-flex min-h-[44px] items-center px-3 font-mono text-[11px] uppercase focus-visible:outline-2 focus-visible:outline-offset-2"
-                aria-label={`Sitio oficial de ${cinema.name}`}
-              >
-                Sitio oficial →
-              </a>
-            )}
-          </div>
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" />
+              </svg>
+              <span className="border-ink-gray/40 border-b pb-0.5">{cinema.address}</span>
+            </a>
+          )}
+        </div>
+        {cinema.ticketingBaseUrl && (
+          <a
+            href={cinema.ticketingBaseUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="tracking-card bg-carmine text-cream focus-visible:outline-carmine mt-4 inline-flex min-h-[44px] shrink-0 items-center px-3 font-mono text-[11px] uppercase focus-visible:outline-2 focus-visible:outline-offset-2 md:mt-2"
+            aria-label={`Sitio oficial de ${cinema.name}`}
+          >
+            Sitio oficial →
+          </a>
         )}
       </header>
 
@@ -235,7 +229,7 @@ function SalaUpcomingIndex({ weeks }: { weeks: WeekGroup[] }) {
               );
               return (
                 <li key={s.id}>
-                  <div className="hover:bg-carmine/5 relative transition-colors">
+                  <div className="before:bg-carmine relative transition-colors before:absolute before:top-3 before:bottom-3 before:left-0 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 hover:bg-black/[0.025] hover:before:scale-y-100">
                     {s.film.slug && (
                       <Link
                         href={`/pelicula/${s.film.slug}`}
