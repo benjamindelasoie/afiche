@@ -22,7 +22,7 @@ Afiche aggregates the weekly programming of Buenos Aires' independent and repert
 - No filters or search — the cartelera *is* the index right now. Search (by title or director) is queued behind /pelicula/ usage data.
 - No cinema-specific pages — `/pelicula/<slug>` exists, but per-cinema pages don't.
 - No `/programa/<slug>` pages for curated cycles (Lugones Olivera-Aries, MALBA Cineclub Nocturna, etc.). Programs are denormalized text on screenings right now. Promotion to a first-class entity is queued behind a killer-feature trigger.
-- **Cinépolis Recoleta is not yet supported** — their entire infrastructure is behind Cloudflare bot protection. Adding them requires Playwright + stealth. Tracked in [TODOS.md](TODOS.md#1).
+- **Chains are out of scope** — Afiche covers the indie / repertory circuit only; Cinépolis and other multiplexes are intentionally excluded. This is the indie-circuit cartelera, not all of BA cinema.
 - No dark mode — the editorial cream + carmine palette is the brand.
 
 ## Stack
