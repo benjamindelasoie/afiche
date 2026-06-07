@@ -1,6 +1,6 @@
 {
   "name": "afiche",
-  "version": "0.2.3.1",
+  "version": "0.3.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -32,6 +32,8 @@
     "db:dedupe-films:prod": "dotenv -e .env.prod -- tsx scripts/dedupe-films.ts",
     "db:inspect-unmatched": "dotenv -e .env.local -- tsx scripts/inspect-unmatched.ts",
     "db:inspect-unmatched:prod": "dotenv -e .env.prod -- tsx scripts/inspect-unmatched.ts",
+    "db:ia-stats": "dotenv -e .env.local -- tsx scripts/ia-stats.ts",
+    "db:ia-stats:prod": "dotenv -e .env.prod -- tsx scripts/ia-stats.ts",
     "scrape:prod": "./scripts/scrape-prod.sh",
     "test": "vitest",
     "test:ui": "vitest --ui",

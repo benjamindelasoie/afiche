@@ -187,6 +187,7 @@ describe('assignTmdbIdAction', () => {
 
     expect(enrichByTmdbIdMock).toHaveBeenCalledWith(12345);
     expect(revalidatePathMock).toHaveBeenCalledWith('/');
+    expect(revalidatePathMock).toHaveBeenCalledWith('/cartelera');
     expect(revalidatePathMock).toHaveBeenCalledWith('/pelicula/[slug]', 'page');
     expect(revalidatePathMock).toHaveBeenCalledWith('/admin/unmatched');
   });

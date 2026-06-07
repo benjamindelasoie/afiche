@@ -1,9 +1,12 @@
 /**
  * Prod-safe cinema seed.
  *
- * Inserts (idempotently) the 7 cinemas the scraper needs as foreign-key
- * targets. Does NOT touch films or screenings. Safe to run against Turso
- * or any environment without wiping real data.
+ * Inserts (idempotently) the 10 indie cinemas the scraper needs as
+ * foreign-key targets. Does NOT touch films or screenings. Safe to run
+ * against Turso or any environment without wiping real data.
+ *
+ * Scope: indie circuit only. Chains (Cinépolis et al.) are deliberately
+ * out — see the project scope note in CLAUDE.md / DESIGN.md.
  *
  * Run with:  npx tsx src/db/seed-cinemas.ts
  *            (or npm run db:seed-cinemas for local dev)
@@ -40,14 +43,6 @@ const CINEMAS: CinemaInsert[] = [
     type: 'indie',
     address: 'Av. Corrientes 1428',
     ticketingBaseUrl: 'https://cinelorca.wixsite.com/cine-lorca',
-  },
-  {
-    id: 'cinepolis-recoleta',
-    name: 'Cinépolis Recoleta',
-    neighborhood: 'Recoleta',
-    type: 'chain',
-    address: 'Arenales 2400',
-    ticketingBaseUrl: 'https://cinepolis.com.ar',
   },
   {
     id: 'cine-york',

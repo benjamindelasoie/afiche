@@ -4,6 +4,29 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 33. Capture TMDB `tagline` into a new column (found 2026-06-06, homepage IA redesign)
+
+**Context:** Homepage redesign removes synopsis from the main list (reserved for `/pelicula`). Separately, we want film **taglines** for possible future use (a short flavor line, social/OG cards, etc.). We currently store only `films.synopsisEs` (the full overview); no tagline.
+
+**What:** Add `films.tagline` (text, nullable). Capture TMDB's `tagline` field during the enrichment pass that already fetches overview/cast/genres (`src/tmdb/enrich.ts`) — it's one more field off the same response, near-zero marginal cost. Expect **many nulls** for our arthouse/foreign-heavy catalog (TMDB taglines skew English/commercial); that's fine, it's opt-in flavor. No display use yet — just start banking the data.
+
+**Why not now:** schema migration → branch + PR per the ship workflow; not part of the visual design pass. **Priority: P3.** Trigger: any feature that wants a one-liner (OG cards, a featured-band subtitle).
+
+---
+
+## 32. Homepage main-view content logic — featured band + default sort (found 2026-06-06, homepage IA redesign)
+
+**Context:** The redesigned homepage (variant E, mockups in `~/.gstack/projects/benjamindelasoie-afiche/designs/homepage-ia-20260606/`) defaults to a window-scoped list ("Hoy" / "Este finde" / "Esta semana") plus a static "Esta semana" curated band and a default sort. The **layout** is being settled; the **content-selection logic** is deliberately deferred. Two open product questions:
+
+- **(a) Featured-band selection** — what fills "Esta semana": estrenos / últimas funciones / ciclos. Operator-chosen picks, derived rules, or both? Needs a source of truth (a manual `featured` flag? derived from tags + showtime-count?).
+- **(b) Default list sort** — the research's "diversity-weighted" idea so the top ~10 span genres/origins/venues instead of clumping by venue. Avoids the "looks like a database" failure mode.
+
+Data context that constrains this: [[project_afiche_cartelera_multiplicity]] — 95% single-venue, 64% single-showtime, scroll-wall is a heavy tail. "Última función" can be **derived** from showtime-count in window (the `unique` tag is unreliable at 1.6%).
+
+**Why not now:** product/algorithm work, separate from layout. Tackle via `/spec` or `/office-hours` once the layout locks. **Priority: P1 — blocks the redesign's content behavior (the layout is inert without it).**
+
+---
+
 ## 31. Smarter cross-language enrichment for foreign release titles (UPGRADE — found 2026-06-05 adding CineArte Cacodelphia)
 
 **Context:** Onboarding Cacodelphia (`src/providers/cacodelphia.ts`, adro.studio JSON API) surfaced 7/12 films not auto-matching TMDB. Root cause, found by replaying the matcher: the source exposes ONLY the Spanish AR-release title — no original title, no year. When the local distributor's title differs from TMDB's stored title (the norm for foreign arthouse), `searchMovies(spanishTitle)` returns **0 candidates**, so there is nothing to score. Real examples that ARE on TMDB but missed: "MADRES JÓVENES" → *Recién nacidas / Jeunes Mères* (1242015), "SUEÑOS DE OSLO" → *Sueños en Oslo / Drømmer* (1228682), "LA CHICA DE COLONIA" → *Köln 75* (1171153), "EL GRAN ARCO" → *El arquitecto / L'Inconnu de la Grande Arche* (1290424). One was merely ambiguous ("EL PARTIDO" — many same-titled films tie at 1.0; a year disambiguates → 1666712). Two genuinely aren't on TMDB yet. This is the residual cross-language case [[feedback_afiche_scraper_iteration]] says to solve with world knowledge, not more scraping — the provider already extracts everything the API offers.

@@ -38,5 +38,8 @@ export async function POST(req: Request) {
   }
 
   revalidatePath('/');
-  return NextResponse.json({ revalidated: true, path: '/' });
+  // `/cartelera` is the relocated day-by-day view; it reads the same DB and
+  // must invalidate together with the homepage after a fresh scrape.
+  revalidatePath('/cartelera');
+  return NextResponse.json({ revalidated: true, paths: ['/', '/cartelera'] });
 }
