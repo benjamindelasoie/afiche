@@ -2,6 +2,16 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.2.0] - 2026-06-06
+
+### Changed
+
+- **The "Esta semana" band is now a four-slot, diversity-by-construction showcase** (TODO #32). Instead of a single priority chain (which could return four films of the same kind), the band fills four distinct editorial axes: **🇦🇷 Cine argentino** (the local slot, ranked by popularity), **✨ Estreno** (a this-year release or premiere-tagged film), **🏛 Clásico** (a pre-2000 title with enough TMDB votes to be genuinely notable — Godard's thousands beat an obscure contemporary's dozens, ranked by `vote_count` not popularity since popularity buries old films), and a **🎲 wildcard** that tries, in order, *Última función* (last screening this week — catch it before it's gone), *Nuevo en cartelera* (first seen in our catalog recently), and *Cine del mundo* (a non-AR/US country, surfacing the global tail). Each film fills at most one slot; any slot that can't fill that week falls back to the same wildcard chain, so the band stays full whenever four films qualify and is omitted entirely when none do. Every pick still requires a real poster (no SIN AFICHE) and a future screening (still catchable). Ranking uses the TMDB signals captured in v0.3.1.0; thresholds (`year ≤ 2000`, `vote_count ≥ 1000`, "nuevo" within 14 days) are tunable as real numbers come in.
+
+### Removed
+
+- **The "Saltar al contenido" skip link.** It was wired with `focus:` (not `focus-visible:`), so any incidental or programmatic focus — e.g. after a window-switch navigation — revealed it on screen unexpectedly. Removed from `/` and `/cartelera`.
+
 ## [0.3.1.0] - 2026-06-06
 
 ### Added
