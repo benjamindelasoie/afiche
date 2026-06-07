@@ -49,6 +49,10 @@ function makeFilm(overrides: Partial<ScreeningRow['film']> = {}): ScreeningRow['
     slug: 'mulholland-drive',
     cast: null,
     genres: null,
+    popularity: null,
+    voteAverage: null,
+    voteCount: null,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
     ...overrides,
   };
 }

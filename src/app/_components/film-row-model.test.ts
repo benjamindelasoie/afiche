@@ -53,6 +53,10 @@ function mkRow(opts: {
       slug: `film-${opts.filmId}`,
       cast: null,
       genres: null,
+      popularity: null,
+      voteAverage: null,
+      voteCount: null,
+      createdAt: new Date('2026-01-01T00:00:00Z'),
     },
     cinema: {
       id: opts.cinemaId,

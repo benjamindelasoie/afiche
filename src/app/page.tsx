@@ -83,14 +83,6 @@ export default async function HomePage({
 
   return (
     <>
-      {/* Skip link — keyboard users tab onto this first, jumping past the
-          masthead + window nav to the film list. */}
-      <a
-        href="#cartelera"
-        className="focus:text-cream focus:tracking-card sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-black focus:px-3 focus:py-2 focus:font-mono focus:text-sm focus:uppercase"
-      >
-        Saltar al contenido
-      </a>
       {jsonLdEvents.map((event, i) => (
         <JsonLd key={i} payload={event} />
       ))}

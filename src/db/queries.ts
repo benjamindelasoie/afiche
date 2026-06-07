@@ -65,6 +65,14 @@ export interface ScreeningRow {
     cast: CastMember[] | null;
     /** TMDB genre IDs. Null pre-enrichment, [] when TMDB had no genres. Resolve to labels via GENRE_LABELS_ES. */
     genres: number[] | null;
+    /** TMDB popularity (recency/buzz). Null pre-enrichment. Ranks featured slots. */
+    popularity: number | null;
+    /** TMDB vote average (0-10). Null pre-enrichment. */
+    voteAverage: number | null;
+    /** TMDB vote count (notability). Null pre-enrichment. Ranks the classic slot. */
+    voteCount: number | null;
+    /** When the film row first entered the DB (first-seen). Drives "nuevo en cartelera". */
+    createdAt: Date;
   };
   cinema: {
     id: string;
@@ -155,6 +163,10 @@ async function fetchRows({
       slug: row.film.slug ?? null,
       cast: row.film.cast ?? null,
       genres: row.film.genres ?? null,
+      popularity: row.film.popularity ?? null,
+      voteAverage: row.film.voteAverage ?? null,
+      voteCount: row.film.voteCount ?? null,
+      createdAt: row.film.createdAt,
     },
     cinema: {
       id: row.cinema.id,
@@ -443,6 +455,10 @@ export async function getScreeningById(id: number): Promise<ScreeningRow | null>
       slug: row.film.slug ?? null,
       cast: row.film.cast ?? null,
       genres: row.film.genres ?? null,
+      popularity: row.film.popularity ?? null,
+      voteAverage: row.film.voteAverage ?? null,
+      voteCount: row.film.voteCount ?? null,
+      createdAt: row.film.createdAt,
     },
     cinema: {
       id: row.cinema.id,
@@ -565,83 +581,230 @@ export async function getWindowScreeningsByFilm(
 }
 
 // ---------------------------------------------------------------------------
-// Curated "Esta semana" band — derived (v1).
+// Curated "Esta semana" band — diversity-by-construction (4 fixed slots).
+//
+// Four axes a thoughtful programmer would showcase: 🇦🇷 local · ✨ new ·
+// 🏛 canon · 🎲 wildcard. Each slot takes the best ELIGIBLE film by its own
+// rank metric; a film fills at most one slot. Any fixed slot that can't fill
+// that week falls back to the SAME wildcard chain the 4th slot uses, so the
+// band fills to 4 whenever ≥4 films qualify and is omitted when 0 do.
+//
+// Every candidate clears two gates: a real poster (no SIN AFICHE in the
+// showcase) and a future screening (still catchable). Ranking uses the TMDB
+// signals captured on `films` — popularity for buzz, vote_count for notability
+// (a recency-weighted metric would bury classics). Thresholds below are
+// deliberately tunable against backfilled prod data (TODO #32).
 // ---------------------------------------------------------------------------
 
-export type FeaturedReason = 'estreno' | 'ultima' | 'ciclo';
+export type FeaturedReason =
+  | 'argentina'
+  | 'estreno'
+  | 'clasico'
+  | 'ultima'
+  | 'nuevo'
+  | 'mundo'
+  | 'destacada';
 
 export interface FeaturedPick {
   film: ScreeningRow['film'];
   reason: FeaturedReason;
-  /** Display WHY tag: "Estreno" | "Última función" | "Ciclo {name}". */
+  /** Display WHY tag, e.g. "Cine argentino" | "Estreno" | "Clásico". */
   reasonLabel: string;
 }
 
-/** Priority order for the band: Estreno > Última función > Ciclo. */
-const FEATURED_REASON_ORDER: Record<FeaturedReason, number> = {
-  estreno: 0,
-  ultima: 1,
-  ciclo: 2,
-};
+// --- Tunable thresholds (revisit against real backfilled numbers) ----------
+/** A film at/under this year counts as "classic"/repertory. */
+const CLASSIC_MAX_YEAR = 2000;
+/** Min TMDB votes for the classic slot — keeps "Clásico" to genuinely notable
+ *  titles (Godard's thousands beat an obscure contemporary's dozens). */
+const CLASSIC_MIN_VOTE_COUNT = 1000;
+/** "Nuevo en cartelera" = first seen in our DB within this many days. */
+const NUEVO_MAX_AGE_DAYS = 14;
+/** Countries excluded from "Cine del mundo" (local + mainstream). */
+const WORLD_EXCLUDE_COUNTRIES = new Set(['AR', 'US']);
+
+/** A featured candidate: one film + whether any of its screenings is a premiere. */
+interface FeaturedCandidate {
+  film: ScreeningRow['film'];
+  hasPremiereTag: boolean;
+}
+
+interface FeaturedCtx {
+  now: Date;
+  currentYear: number;
+  windowUpper: Date;
+  lastPerFilm: Map<number, number>;
+}
+
+/** Default rank metric: TMDB popularity (null → 0). */
+const byPopularity = (c: FeaturedCandidate): number => c.film.popularity ?? 0;
+
+/**
+ * A slot rule: can a candidate fill it, and how good a fit (higher = picked
+ * first)? Used for both the fixed slots and the wildcard chain.
+ */
+interface FeaturedSlot {
+  reason: FeaturedReason;
+  label: string;
+  eligible: (c: FeaturedCandidate, ctx: FeaturedCtx) => boolean;
+  rank: (c: FeaturedCandidate) => number;
+}
+
+/** Slots 1-3, picked in order (assign-once). */
+const FIXED_SLOTS: FeaturedSlot[] = [
+  {
+    reason: 'argentina',
+    label: 'Cine argentino',
+    eligible: (c) => c.film.country === 'AR',
+    rank: byPopularity,
+  },
+  {
+    reason: 'estreno',
+    label: 'Estreno',
+    eligible: (c, ctx) => c.hasPremiereTag || c.film.year === ctx.currentYear,
+    rank: byPopularity,
+  },
+  {
+    reason: 'clasico',
+    label: 'Clásico',
+    eligible: (c) =>
+      c.film.year !== null &&
+      c.film.year <= CLASSIC_MAX_YEAR &&
+      (c.film.voteCount ?? 0) >= CLASSIC_MIN_VOTE_COUNT,
+    rank: (c) => c.film.voteCount ?? 0,
+  },
+];
+
+/**
+ * The wildcard chain — also the shared fallback for any empty fixed slot.
+ * Tries sub-reasons in priority order; the first with an eligible candidate
+ * wins (best by popularity). The final `destacada` rule matches anything, so
+ * the band fills to 4 whenever candidates remain.
+ */
+const WILDCARD_RULES: FeaturedSlot[] = [
+  {
+    reason: 'ultima',
+    label: 'Última función',
+    // The film's last FUTURE screening falls within the window → leaving soon.
+    eligible: (c, ctx) => {
+      const last = ctx.lastPerFilm.get(c.film.id);
+      return last !== undefined && last < ctx.windowUpper.getTime();
+    },
+    rank: byPopularity,
+  },
+  {
+    reason: 'nuevo',
+    label: 'Nuevo en cartelera',
+    eligible: (c, ctx) =>
+      ctx.now.getTime() - c.film.createdAt.getTime() < NUEVO_MAX_AGE_DAYS * 86_400_000,
+    rank: byPopularity,
+  },
+  {
+    reason: 'mundo',
+    label: 'Cine del mundo',
+    eligible: (c) =>
+      c.film.country !== null && !WORLD_EXCLUDE_COUNTRIES.has(c.film.country),
+    rank: byPopularity,
+  },
+  {
+    reason: 'destacada',
+    label: 'Destacada',
+    eligible: () => true,
+    rank: byPopularity,
+  },
+];
+
+/** Best eligible candidate in `pool` for `slot`, or null. */
+function pickBestForSlot(
+  pool: FeaturedCandidate[],
+  slot: FeaturedSlot,
+  ctx: FeaturedCtx,
+): FeaturedCandidate | null {
+  let best: FeaturedCandidate | null = null;
+  let bestRank = -Infinity;
+  for (const c of pool) {
+    if (!slot.eligible(c, ctx)) continue;
+    const r = slot.rank(c);
+    if (r > bestRank) {
+      best = c;
+      bestRank = r;
+    }
+  }
+  return best;
+}
+
+/** Best wildcard pick (first matching rule in WILDCARD_RULES), or null. */
+function pickWildcard(
+  pool: FeaturedCandidate[],
+  ctx: FeaturedCtx,
+): { candidate: FeaturedCandidate; reason: FeaturedReason; label: string } | null {
+  for (const rule of WILDCARD_RULES) {
+    const best = pickBestForSlot(pool, rule, ctx);
+    if (best) return { candidate: best, reason: rule.reason, label: rule.label };
+  }
+  return null;
+}
 
 /**
  * Derive the curated band from the `semana` window's rows. Pure + exported so
- * the selection rules are unit-tested without a DB.
+ * the slot rules are unit-tested without a DB.
  *
- * Rules (one pick per film, highest-priority reason wins):
- *   - `premiere` tag present                          → Estreno
- *   - film's FUTURE last screening (unbounded MAX, via `lastPerFilm`) falls
- *     inside the window                               → Última función
- *   - non-null `programName`                          → Ciclo {name}
- *
- * The última check uses the UNBOUNDED per-film MAX (not a within-window
- * count) — a film with one showtime this week AND another in three weeks is
- * NOT última (eng-review correction #4). Picks are sorted by reason priority,
- * deduped by film (the per-film grouping guarantees one entry each), capped at
- * 4. Returns `[]` when nothing qualifies — the caller omits the band entirely.
+ * Gates each candidate (poster + future screening via the unbounded
+ * `lastPerFilm` MAX), then the three fixed slots (Argentina, Estreno, Clásico)
+ * each take their best eligible unpicked film. The remaining positions (up to
+ * 4 total) — the 4th slot AND any empty fixed slot — are filled by the wildcard
+ * chain. Returns `[]` when nothing qualifies; the caller omits the band.
  */
 export function deriveFeatured(
   rows: ScreeningRow[],
   lastPerFilm: Map<number, number>,
   windowUpper: Date,
+  now: Date = new Date(),
 ): FeaturedPick[] {
+  const ctx: FeaturedCtx = {
+    now,
+    currentYear: Number(formatDateKeyBA(now).slice(0, 4)),
+    windowUpper,
+    lastPerFilm,
+  };
+
+  // One gated candidate per film.
   const byFilm = new Map<number, ScreeningRow[]>();
   for (const s of rows) {
     const list = byFilm.get(s.film.id);
     if (list) list.push(s);
     else byFilm.set(s.film.id, [s]);
   }
-
-  const picks: FeaturedPick[] = [];
+  const remaining: FeaturedCandidate[] = [];
   for (const [filmId, list] of byFilm) {
     const film = list[0].film;
-    // The featured band is the editorial showcase — it MUST have a poster. An
-    // unenriched / unmatched film (null posterUrl) renders the "SIN AFICHE"
-    // placeholder, which reads as broken in the hero band. Exclude it from the
-    // band entirely; the exhaustive /cartelera list still carries it.
-    if (!film.posterUrl) continue;
-    // The band only features films you can still CATCH this week: require a
-    // future screening (lastPerFilm is the unbounded per-film MAX over
-    // startsAt > now). A film whose only showtimes have already passed — even
-    // a premiere or a ciclo — is dropped, so the band never advertises a dead
-    // screening.
-    const lastUtc = lastPerFilm.get(filmId);
-    if (lastUtc === undefined) continue;
-    const hasPremiere = list.some((s) => s.tags.includes('premiere'));
-    // TODO #32: operator-pin seam — manual picks would slot in ahead of these
-    // derived ones before the cap is applied.
-    const isUltima = lastUtc < windowUpper.getTime();
-    const ciclo = list.find((s) => s.programName)?.programName ?? null;
-
-    let pick: FeaturedPick | null = null;
-    if (hasPremiere) pick = { film, reason: 'estreno', reasonLabel: 'Estreno' };
-    else if (isUltima) pick = { film, reason: 'ultima', reasonLabel: 'Última función' };
-    else if (ciclo) pick = { film, reason: 'ciclo', reasonLabel: `Ciclo ${ciclo}` };
-    if (pick) picks.push(pick);
+    if (!film.posterUrl) continue; // no SIN AFICHE in the showcase
+    if (lastPerFilm.get(filmId) === undefined) continue; // must be catchable
+    remaining.push({ film, hasPremiereTag: list.some((s) => s.tags.includes('premiere')) });
   }
 
-  picks.sort((a, b) => FEATURED_REASON_ORDER[a.reason] - FEATURED_REASON_ORDER[b.reason]);
-  return picks.slice(0, 4);
+  const picks: FeaturedPick[] = [];
+  const take = (c: FeaturedCandidate) => {
+    const i = remaining.indexOf(c);
+    if (i >= 0) remaining.splice(i, 1);
+  };
+
+  // Slots 1-3: each fixed slot takes its best eligible film (assign-once).
+  for (const slot of FIXED_SLOTS) {
+    const best = pickBestForSlot(remaining, slot, ctx);
+    if (best) {
+      picks.push({ film: best.film, reason: slot.reason, reasonLabel: slot.label });
+      take(best);
+    }
+  }
+  // Fill the rest (slot 4 + any empty fixed slot) via the shared wildcard chain.
+  while (picks.length < 4) {
+    const w = pickWildcard(remaining, ctx);
+    if (!w) break;
+    picks.push({ film: w.candidate.film, reason: w.reason, reasonLabel: w.label });
+    take(w.candidate);
+  }
+  return picks;
 }
 
 /**
@@ -656,7 +819,7 @@ export async function getFeaturedFilms(now: Date = new Date()): Promise<Featured
     fetchRows({ lower, upper }),
     getLastScreeningPerFilm(now),
   ]);
-  return deriveFeatured(rows, lastPerFilm, upper);
+  return deriveFeatured(rows, lastPerFilm, upper, now);
 }
 
 /**
