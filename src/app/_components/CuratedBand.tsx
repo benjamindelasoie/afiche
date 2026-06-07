@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { FeaturedPick } from '@/db/queries';
 
 // ---------------------------------------------------------------------------
-// CuratedBand — the static "Esta semana" hero band.
+// CuratedBand — the static "Destacados" hero band.
 //
 // 0–4 derived picks (Estreno / Última función / Ciclo …), never auto-rotating.
 // Mobile = horizontal scroll of compact poster cards; desktop = a full-width
@@ -21,13 +21,13 @@ function CuratedCard({ pick, priority }: { pick: FeaturedPick; priority: boolean
 
   const inner = (
     <>
-      <div className="bg-cream relative aspect-[3/4] w-full overflow-hidden border border-black shadow-[4px_4px_0_var(--color-carmine)] transition-[box-shadow,transform] duration-150 group-hover:translate-x-px group-hover:translate-y-px group-hover:shadow-[2px_2px_0_var(--color-carmine)] md:shadow-[6px_6px_0_var(--color-carmine)] md:group-hover:shadow-[3px_3px_0_var(--color-carmine)]">
+      <div className="bg-cream relative aspect-[2/3] w-full overflow-hidden border border-black shadow-[4px_4px_0_var(--color-carmine)] transition-[box-shadow,transform] duration-150 group-hover:translate-x-px group-hover:translate-y-px group-hover:shadow-[2px_2px_0_var(--color-carmine)] md:shadow-[6px_6px_0_var(--color-carmine)] md:group-hover:shadow-[3px_3px_0_var(--color-carmine)]">
         {film.posterUrl ? (
           <Image
             src={film.posterUrl}
             alt={film.title}
             width={232}
-            height={310}
+            height={348}
             sizes="(min-width: 768px) 250px, 116px"
             // The band sits above the film grid, so its first poster is the
             // page LCP — eager-load it (ISSUE-001, /qa 2026-06-06).
@@ -40,7 +40,7 @@ function CuratedCard({ pick, priority }: { pick: FeaturedPick; priority: boolean
             src="/no-poster.svg"
             alt=""
             width={232}
-            height={310}
+            height={348}
             className="h-full w-full object-cover"
           />
         )}
@@ -67,9 +67,9 @@ function CuratedCard({ pick, priority }: { pick: FeaturedPick; priority: boolean
 export function CuratedBand({ picks }: { picks: FeaturedPick[] }) {
   if (picks.length === 0) return null;
   return (
-    <section aria-label="Esta semana" className="mt-5 md:mt-8">
+    <section aria-label="Destacados" className="mt-5 md:mt-8">
       <h2 className="mb-3 font-serif text-[23px] italic md:mb-4 md:text-[30px]">
-        Esta semana <span className="text-carmine">—</span>
+        Destacados <span className="text-carmine">—</span>
       </h2>
       <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-1.5 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-4 md:gap-[30px] md:overflow-visible md:px-0">
         {picks.map((p, i) => (
