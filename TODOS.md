@@ -4,6 +4,16 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 36. Real logo / brand mark for Afiche (found 2026-06-08, adding the home-screen app icon)
+
+**Context:** Adding "Add to Home Screen" support (apple-touch-icon + web manifest) forced us to ship a home-screen icon *now*. What we shipped is a **typographic monogram** — the lowercase Instrument Serif "a" (the wordmark's own letterform) in cream on a full-bleed carmine field. It's brand-consistent (matches the masthead wordmark + the carmine favicon language) and renders cleanly at every size, but it is the wordmark glyph reused as a mark, **not a designed logo**. Source of truth: `scripts/app-icon.html` → `scripts/build-app-icons.sh` emits `src/app/apple-icon.png` (180), `public/icon-192.png`, `public/icon-512.png`; the favicon (`src/app/icon.svg`, Times "a") and OG card (`src/app/opengraph-image.png`) are separate brand assets that would also adopt a real mark.
+
+**What:** A proper Afiche logo / brand mark — something beyond "the letter a on a square." Could stay typographic (a refined custom wordmark lockup) or introduce an actual symbol (a poster/afiche motif — a torn-paste poster corner, a marquee, a frame). Whatever lands should then propagate to the **full asset set** so they stop drifting independently: favicon (`icon.svg`), apple-touch-icon + manifest icons (the `build-app-icons.sh` set), and the OG image (`og-image.html`). Keep the DESIGN.md distinction: lowercase "afiche" is the LOGOTYPE; the NAME stays capitalized "Afiche" in prose.
+
+**Why not now:** a real mark is a `/design-consultation`-scale creative effort with operator (BDFL) taste at the center, not a same-PR follow-on to "make the icon exist." The monogram is a good-enough placeholder that ships the home-screen feature today. **Priority: P3.** Trigger: a brand/identity design pass, or operator dissatisfaction with the monogram. Related: DESIGN.md 2026-06-07 (lowercase logotype decision); [[project_afiche_brand_ba]].
+
+---
+
 ## 35. Festival-of-shorts / program-block representation (found 2026-06-08, Syncro Film Fest investigation)
 
 **Context:** Lugones runs ad-hoc festivals (e.g. "Syncro Film Fest") and double-bill days that bundle several films into ONE timed "program" block — marked by "Duración total del programa" on the showtime line, shorts joined by standalone `<p><strong>+</strong></p>` separators. As of v0.3.4.8 the parser is **tolerant**: it skips these program blocks per-block (in `parseS1Cycle`, `src/providers/lugones.ts`, via the `isProgramBlock` flag) with a `scrape_runs` warning, so they don't pollute the cartelera as garbage; the normal single-film days on the same page still parse (e.g. "Tres tardes con Gardel" keeps its 2 single-film days, skips the 1 double-bill block). **But the festival's real screenings are not shown on Afiche — they're skipped.** This TODO is the deferred decision on how to *represent* them.
