@@ -1,6 +1,6 @@
 {
   "name": "afiche",
-  "version": "0.3.4.5",
+  "version": "0.3.4.6",
   "private": true,
   "scripts": {
     "dev": "next dev",
