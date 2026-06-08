@@ -27,8 +27,19 @@ for c in google-chrome chromium chromium-browser; do
     break
   fi
 done
+# Fallback: macOS ships Chrome as an app bundle, not on PATH under those names.
 if [[ -z "$chrome" ]]; then
-  echo "no chrome/chromium binary found in PATH" >&2
+  for p in \
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+    "/Applications/Chromium.app/Contents/MacOS/Chromium"; do
+    if [[ -x "$p" ]]; then
+      chrome="$p"
+      break
+    fi
+  done
+fi
+if [[ -z "$chrome" ]]; then
+  echo "no chrome/chromium binary found (PATH or macOS app bundle)" >&2
   exit 1
 fi
 

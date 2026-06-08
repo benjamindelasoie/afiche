@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.4.3] - 2026-06-07
+
+### Changed
+
+- **The social share card and the favicon now match the lowercase wordmark.** When an afiche.ar link is shared, the preview image reads `afiche`; the browser-tab icon is a lowercase `a` — both consistent with the masthead. The README was also refreshed to the current branding (lowercase title, the live `afiche.ar` link, the "Destacados" band name).
+
 ## [0.3.4.2] - 2026-06-07
 
 ### Changed
