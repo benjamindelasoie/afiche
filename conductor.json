@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "setup": "npm install && git config core.hooksPath .githooks",
+    "run": "npm run dev -- -p ${CONDUCTOR_PORT:-3000}"
+  },
+  "runScriptMode": "concurrent"
+}
