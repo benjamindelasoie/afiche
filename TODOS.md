@@ -4,6 +4,22 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 35. Festival-of-shorts / program-block representation (found 2026-06-08, Syncro Film Fest investigation)
+
+**Context:** Lugones runs ad-hoc festivals (e.g. "Syncro Film Fest") and double-bill days that bundle several films into ONE timed "program" block — marked by "Duración total del programa" on the showtime line, shorts joined by standalone `<p><strong>+</strong></p>` separators. As of v0.3.4.8 the parser is **tolerant**: it skips these program blocks per-block (in `parseS1Cycle`, `src/providers/lugones.ts`, via the `isProgramBlock` flag) with a `scrape_runs` warning, so they don't pollute the cartelera as garbage; the normal single-film days on the same page still parse (e.g. "Tres tardes con Gardel" keeps its 2 single-film days, skips the 1 double-bill block). **But the festival's real screenings are not shown on Afiche — they're skipped.** This TODO is the deferred decision on how to *represent* them.
+
+**The decision — how to model a program-block screening?** Three options discussed 2026-06-08:
+
+- **(a) Per-program (one screening per block) — leaning.** Title = the program name ("Programa de apertura"), a "Syncro Film Fest" program pill, ONE showtime (the block's time), the shorts (title/country/year/director) listed in the synopsis / on the `/pelicula`-style detail. Matches the unit you actually attend + how the venue lists it; ~10 clean rows for a festival.
+- **(b) Per-short (each short its own film).** Surfaces the actual films, but the shorts share ONE showtime (no individual times — "Duración total del programa" is the *block* total), so it renders N rows all reading "21:00 · Lugones" — misrepresents "you attend the block, not a short" — AND festival shorts are obscure (mostly not on TMDB) → ~40-50 poster-less SIN AFICHE rows flooding Próximamente during a festival.
+- **(c) Hybrid.** Per-program rows (correct single showtime + attend-unit) with the shorts listed inside the program detail — best of both: clean grid + shorts discoverable, no faked showtimes. A "program" is arguably a new data-model unit, not a `film`.
+
+**Key facts:** shorts share the block's single showtime; festival shorts rarely TMDB-match (poster-less); the source (complejoteatral.gob.ar) lists by program with shorts nested. Double-bill days (Gardel Viernes-19) are the same class, currently skipped too.
+
+**Why not now:** product + data-model call (festivals recur — BAFICI etc.); the tolerant skip prevents garbage in the meantime. **Priority: P3.** Trigger: a festival worth listing, or a `/office-hours` on the festival/program model. Related: [[project_afiche_cartelera_multiplicity]]; the skip lives in `src/providers/lugones.ts`.
+
+---
+
 ## 34. Venue page (`/sala/[id]`) — SOTA-aligned redesign opportunities (found 2026-06-07, aligning venue page to homepage redesign)
 
 **Context:** While aligning `/sala/[id]` to the post-redesign visual language we did the *surgical* part — retired the last `bg-carmine/5` row tints (VenueAgenda rows + the Próximamente index) and brought them onto the canonical de-tint + carmine left-tick + poster-shadow-4→2px hover (so `bg-carmine/5` is now genuinely retired everywhere). The agenda *structure* was deliberately kept (date-rail chronological programme, no sticky DateStrip — see DESIGN.md 2026-05-25; a single-screen venue has no overlap so a card stack would be dishonest). The deeper questions below come from the homepage IA/UX investigation (variant E, `~/.gstack/projects/benjamindelasoie-afiche/designs/homepage-ia-20260606/`) and the venue design audit (`~/.gstack/projects/benjamindelasoie-afiche/designs/design-audit-20260603/design-audit-venue.md`). None is a clear win — each needs a decision, two need data first.
