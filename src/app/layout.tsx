@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
+import { SITE_URL } from '@/lib/site';
 import './globals.css';
 
 const geistSans = Geist({
@@ -33,7 +34,7 @@ const instrumentSerif = Instrument_Serif({
 // which Instagram/Slack/etc. won't resolve correctly when a link is
 // shared from a third-party context.
 export const metadata: Metadata = {
-  metadataBase: new URL('https://afiche.vercel.app'),
+  metadataBase: new URL(SITE_URL),
   title: 'Afiche — cartelera curada de Buenos Aires',
   description:
     'Cartelera curada de cine en Buenos Aires. MALBA, Cine Lorca, Sala Lugones, Cosmos, Gaumont, y más.',

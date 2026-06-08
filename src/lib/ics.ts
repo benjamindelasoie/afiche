@@ -17,6 +17,8 @@
  * caller passes long synopses through here, add fold-on-write.
  */
 
+import { SITE_URL, SITE_HOST } from './site';
+
 export interface IcsScreeningInput {
   id: number;
   startsAtUtc: Date;
@@ -34,7 +36,6 @@ export interface IcsScreeningInput {
   sourceUrl: string | null;
 }
 
-const SITE_URL = 'https://afiche.vercel.app';
 const PRODID = '-//Afiche//Cartelera BA//ES';
 // Runtime fallback for films TMDB hasn't enriched (or shorts/festival
 // titles TMDB doesn't carry). Two hours is the common feature length;
@@ -94,7 +95,7 @@ export function buildScreeningIcs(
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
-    `UID:screening-${id}@afiche.vercel.app`,
+    `UID:screening-${id}@${SITE_HOST}`,
     `DTSTAMP:${formatUtcDateTime(now)}`,
     `DTSTART:${formatUtcDateTime(startsAtUtc)}`,
     `DTEND:${formatUtcDateTime(endsAtUtc)}`,

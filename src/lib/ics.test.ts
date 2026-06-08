@@ -147,7 +147,7 @@ describe('buildScreeningIcs', () => {
 
   it('URL property points to /pelicula/<slug> when slug present', () => {
     const ics = buildScreeningIcs(baseInput(), FIXED_NOW);
-    expect(ics).toContain('URL:https://afiche.vercel.app/pelicula/mulholland-drive');
+    expect(ics).toContain('URL:https://afiche.ar/pelicula/mulholland-drive');
   });
 
   it('URL property falls back to sourceUrl when slug is null', () => {
@@ -168,7 +168,7 @@ describe('buildScreeningIcs', () => {
   it('DESCRIPTION carries director · year and the source URL', () => {
     const ics = buildScreeningIcs(baseInput(), FIXED_NOW);
     // Newlines in DESCRIPTION are escaped to literal \n.
-    expect(ics).toContain('DESCRIPTION:David Lynch · 2001\\n\\nhttps://afiche.vercel.app/pelicula/mulholland-drive\\n\\nEntradas: https://example.org/tickets');
+    expect(ics).toContain('DESCRIPTION:David Lynch · 2001\\n\\nhttps://afiche.ar/pelicula/mulholland-drive\\n\\nEntradas: https://example.org/tickets');
   });
 
   it('LOCATION omits the address suffix when cinema.address is null', () => {
@@ -180,6 +180,6 @@ describe('buildScreeningIcs', () => {
 
   it('UID is stable per screening id and globally scoped', () => {
     const ics = buildScreeningIcs(baseInput(), FIXED_NOW);
-    expect(ics).toContain('UID:screening-42@afiche.vercel.app');
+    expect(ics).toContain('UID:screening-42@afiche.ar');
   });
 });
