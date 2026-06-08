@@ -2,7 +2,7 @@
 #
 # scrape-prod.sh — run the Afiche scraper from this (residential-IP) machine
 # against the production Turso DB, then revalidate the Vercel deployment so
-# fresh data lands on afiche.vercel.app.
+# fresh data lands on afiche.ar.
 #
 # Why this exists: lumiton.ar and complejoteatral.gob.ar block GitHub Actions
 # runner IPs (datacenter reputation). Scraping from a residential IP sidesteps
@@ -18,7 +18,10 @@
 
 set -euo pipefail
 
-SITE_URL='https://afiche.vercel.app'
+# Apex canonical host. NOT the vercel.app alias: POSTing the revalidate to
+# afiche.vercel.app 307-redirects to afiche.ar, curl (no -L) doesn't follow,
+# and `-f` treats the 3xx as success — so revalidate would silently no-op.
+SITE_URL='https://afiche.ar'
 
 # ---------------------------------------------------------------------------
 # Load prod environment from .env.prod
@@ -82,4 +85,4 @@ else
 fi
 
 echo
-echo "Done. Check https://afiche.vercel.app to verify."
+echo "Done. Check https://afiche.ar to verify."
