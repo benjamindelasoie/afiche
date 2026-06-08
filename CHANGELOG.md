@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.4.8] - 2026-06-08
+
+### Fixed
+
+- **Lugones cycles that include a double-bill day are no longer dropped.** The v0.3.4.7 festival guard was too blunt — it skipped a whole Lugones page if it contained *any* multi-short "program" marker, which wrongly dropped legit cycles like "Tres tardes con Gardel" (two normal single-film days + one double-bill). The skip is now **per-block**: the parser keeps the normal single-film days and skips only the multi-short program blocks (those marked "Duración total del programa" — e.g. every block of Syncro Film Fest). A standalone `+` is also never mistaken for a film title.
+
 ## [0.3.4.7] - 2026-06-08
 
 ### Fixed
