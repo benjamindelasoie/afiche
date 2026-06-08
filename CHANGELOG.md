@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.4.6] - 2026-06-07
+
+### Added
+
+- **Automated, scheduled prod scrape (macOS).** `scripts/scrape-cron.sh` + `scripts/install-scrape-launchd.sh` install a LaunchAgent that runs the scrape twice a day from the dev machine — it has to run from a residential IP, since datacenter IPs get blocked by the venues' Cloudflare. It catches up when the Mac wakes from sleep, skips if the data is already fresh (<12h), logs to `.scrape-cron.log`, and on failure fires a macOS notification plus an optional Telegram message (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` in `.env.prod`). No user-facing change — it keeps the cartelera current without anyone remembering to run the scrape by hand.
+
 ## [0.3.4.5] - 2026-06-07
 
 ### Fixed

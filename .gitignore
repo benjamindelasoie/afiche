@@ -40,6 +40,11 @@ local.db-journal
 local.db-wal
 local.db-shm
 
+# scheduled-scrape runtime artifacts (scripts/scrape-cron.sh)
+.scrape-cron.log
+.scrape-cron.out.log
+.scrape-last-success
+
 # vercel
 .vercel
 

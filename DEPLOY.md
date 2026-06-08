@@ -108,12 +108,24 @@ Two files, strictly separated. Both are gitignored.
 | `TMDB_API_TOKEN`       | your v4 Read Access Token                                      |
 | `REVALIDATE_SECRET`    | same 32-byte hex as Vercel (must match)                        |
 | `ANTHROPIC_API_KEY`    | optional — see `.env.local` row above. Same value is fine in both files. |
+| `TELEGRAM_BOT_TOKEN`   | optional — for the scheduled-scrape failure alert (`scripts/scrape-cron.sh`). Create a bot via @BotFather → it gives you the token. Empty = no Telegram ping (the local macOS notification still fires). |
+| `TELEGRAM_CHAT_ID`     | optional — your Telegram numeric chat id (message @userinfobot to get it, or read it from `https://api.telegram.org/bot<token>/getUpdates` after you DM your bot once). Needed alongside the token. |
 
 The split exists so you cannot accidentally point `db:studio` or `db:scrape` at prod, and so prod operations (`:prod` suffix) are explicit and self-documenting in `package.json`.
 
 > **Note on the Anthropic key.** Vercel does NOT need this — vision is called from the dev-machine scrape script (`npm run scrape:prod`), not from any runtime route. Add to `.env.local` for local dev scrapes, `.env.prod` for the prod scrape. Vercel env vars stay at the original four.
 
-`scrape-prod.sh` reads everything from `.env.prod`. The Vercel site URL is the only thing still hardcoded in the script (it's public, so no harm).
+`scrape-prod.sh` reads everything from `.env.prod`. The only hardcoded value is the canonical site URL (`https://afiche.ar` — public, so no harm).
+
+### Scheduled scrape (macOS)
+
+The prod scrape has to run from a residential IP (datacenter IPs get 403'd by Cloudflare at lumiton.ar / complejoteatral.gob.ar), so it runs from your Mac, not CI. To automate it on a laptop that sleeps:
+
+```bash
+bash scripts/install-scrape-launchd.sh   # LaunchAgent: 09:00 + 18:00 local, catches up on wake
+```
+
+`scripts/scrape-cron.sh` is the wrapper it runs — it resolves node via nvm (launchd's env is bare), skips if a scrape already succeeded in the last 12h, logs to `.scrape-cron.log`, and on failure fires a macOS notification plus (if `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` are set in `.env.prod`) a Telegram message. `launchd` replays a missed run when the Mac wakes from sleep; a full *shutdown's* missed run isn't replayed (boot it and the next run catches up). An always-on box (Mac mini) closes that last gap with no changes. Uninstall: `launchctl bootout gui/$(id -u)/ar.afiche.scrape && rm ~/Library/LaunchAgents/ar.afiche.scrape.plist`.
 
 ### GitHub Actions secrets (optional, for the manual-trigger fallback)
 
