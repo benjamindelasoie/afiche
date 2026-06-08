@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.4.9] - 2026-06-08
+
+### Added
+
+- **Home-screen app icon (Add to Home Screen).** Afiche can now be added to an iPhone/Android home screen and shows a real icon: the cream lowercase `a` (the Instrument Serif wordmark letterform) on a full-bleed carmine field, launching fullscreen like an app. New `src/app/apple-icon.png` (180×180 → `apple-touch-icon`), a web manifest (`src/app/manifest.ts`, `display: standalone`, cream theme, 192/512 + maskable icons in `public/`), and `appleWebApp` metadata (short `"Afiche"` label so it doesn't truncate under the icon). The glyph uses real Instrument Serif — not the SVG favicon's Times fallback (SVG favicons can't load web fonts; a rasterized PNG can), so it matches the masthead wordmark exactly. Reproducible via `scripts/build-app-icons.sh` (sibling of `build-og-image.sh`). Brand strings (`SITE_NAME`/`SITE_TITLE`/`SITE_DESCRIPTION`) centralized in `src/lib/site.ts` so the page metadata and manifest can't drift. A real logo/brand mark (beyond the wordmark monogram) is captured as TODO #36.
+
 ## [0.3.4.8] - 2026-06-08
 
 ### Fixed

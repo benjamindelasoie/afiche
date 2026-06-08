@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es-AR">
+  <head>
+    <meta charset="utf-8" />
+    <!-- Brand wordmark glyph. Instrument Serif (the masthead display family)
+         so the home-screen "a" is the SAME letterform as the wordmark — not
+         the Times fallback the SVG favicon uses (SVG favicons can't reliably
+         load web fonts; a rasterized PNG can). Carmine field + cream glyph is
+         the icon treatment (favicon language), full-bleed so iOS applies its
+         own squircle mask. Sized in vmin so any square --window-size renders
+         correctly; render high-res then downscale with sharp. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+      body {
+        background: #c1272d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .glyph {
+        font-family: 'Instrument Serif', Georgia, serif;
+        font-weight: 400;
+        font-size: 72vmin;
+        line-height: 1;
+        letter-spacing: -0.02em;
+        color: #f6efe2;
+        /* Optical centering: the lowercase a sits low in its line box
+           (baseline → x-height), so nudge it up to sit visually centered. */
+        transform: translateY(-3.5vmin);
+      }
+    </style>
+  </head>
+  <body>
+    <span class="glyph">a</span>
+  </body>
+</html>

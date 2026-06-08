@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
-import { SITE_URL } from '@/lib/site';
+import { SITE_URL, SITE_TITLE, SITE_DESCRIPTION } from '@/lib/site';
 import './globals.css';
 
 const geistSans = Geist({
@@ -35,9 +35,20 @@ const instrumentSerif = Instrument_Serif({
 // shared from a third-party context.
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: 'Afiche — cartelera curada de Buenos Aires',
-  description:
-    'Cartelera curada de cine en Buenos Aires. MALBA, Cine Lorca, Sala Lugones, Cosmos, Gaumont, y más.',
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  // Home-screen / standalone behavior on iOS. `capable` opts into the
+  // fullscreen standalone launch (no Safari chrome) so a home-screen tap
+  // feels like an app; `title` is the short label shown under the icon
+  // (the full <title> would truncate to "Afiche — c…"). The home-screen
+  // glyph itself comes from the apple-icon file convention
+  // (src/app/apple-icon.png). Android/Chrome install is driven by
+  // src/app/manifest.ts.
+  appleWebApp: {
+    capable: true,
+    title: 'Afiche',
+    statusBarStyle: 'default',
+  },
 };
 
 export default function RootLayout({
