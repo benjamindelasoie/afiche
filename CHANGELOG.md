@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.4.5] - 2026-06-07
+
+### Fixed
+
+- **The production data refresh now actually revalidates the live site.** The `scrape:prod` step POSTed its cache-revalidation request to the old `afiche.vercel.app` host, which 307-redirects to `afiche.ar` — and because the request didn't follow the redirect, the revalidation silently did nothing (while still printing "✓ Cache revalidated"). Pointed it at the apex `afiche.ar` so the call hits the handler directly. Harmless for the homepage and listings (always server-rendered fresh from the DB), but it matters for any cached route and removes a lie from the scrape output.
+
 ## [0.3.4.4] - 2026-06-07
 
 ### Fixed
