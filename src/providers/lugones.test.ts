@@ -502,3 +502,41 @@ describe('parseDetailPage festival-of-shorts guard (Syncro Film Fest fixture, ca
     expect(warnings.some((w) => /multi-short|festival/i.test(w))).toBe(true);
   });
 });
+
+describe('parseDetailPage mixed cycle + program block (Tres tardes con Gardel fixture, captured 2026-06-08)', () => {
+  // Regression for the festival-guard over-skip (2026-06-08): this is a NORMAL
+  // Gardel cycle — Miércoles 17 "El día que me quieras", Jueves 18 "Tango Bar"
+  // — plus ONE double-bill day (Viernes 19) carrying "Duración total del
+  // programa". An over-blunt whole-page guard dropped the two real single-film
+  // days; the parser must keep them and skip ONLY the program block.
+  const program: ProgramLink = {
+    slug: 'Tres-tardes-con-Gardel',
+    title: 'Tres tardes con Gardel',
+    dateRangeText: 'Del 17 al 19 de junio',
+    detailUrl: 'https://complejoteatral.gob.ar/ver/Tres-tardes-con-Gardel',
+  };
+
+  it('keeps the 2 single-film days and skips only the program block', () => {
+    const warnings: string[] = [];
+    const screenings = parseDetailPage(
+      fixture('tres-tardes-con-gardel.html'),
+      program,
+      warnings,
+      FIXED_NOW,
+    );
+    const titles = screenings.map((s) => s.filmTitle);
+    expect(titles).toContain('El día que me quieras');
+    expect(titles).toContain('Tango Bar');
+    // The Viernes-19 double-bill is a program block — skipped, never emitted as
+    // a "+" entry or a garbage film.
+    expect(titles).not.toContain('+');
+    expect(titles).not.toContain('Así cantaba Carlos Gardel');
+    expect(screenings).toHaveLength(2);
+  });
+
+  it('warns about the skipped program block', () => {
+    const warnings: string[] = [];
+    parseDetailPage(fixture('tres-tardes-con-gardel.html'), program, warnings, FIXED_NOW);
+    expect(warnings.some((w) => /program block/i.test(w))).toBe(true);
+  });
+});

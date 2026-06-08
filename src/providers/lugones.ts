@@ -160,6 +160,10 @@ type ParseState =
       kind: 'with-time';
       times: Array<{ hour: number; minute: number }>;
       film: FilmContext;
+      // True when the showtime line carried "Duración total del programa" — a
+      // multi-short PROGRAM block (festival / double-bill). emit() skips these:
+      // the cycle parser can't represent a shorts block as individual films.
+      isProgramBlock: boolean;
     }
   | { kind: 'without-time'; film: FilmContext };
 
@@ -187,32 +191,6 @@ export function parseDetailPage(
     return [];
   }
 
-  // Festival-of-shorts guard (tolerance, not perfect parsing). Some Lugones
-  // programs group several short films into ONE timed "program" block, marking
-  // the shorts with standalone <p><strong>+</strong></p> separators (e.g.
-  // Syncro Film Fest, 2026-06). The S1 cycle state machine can't represent
-  // this: it latches the program-name header as the "film", never completes it
-  // (the shorts' "(Country, Year)" metadata isn't a shape it parses), drops the
-  // real shorts as duplicates, and attaches the first short's director — so it
-  // emits garbage (program names as poster-less fake films). Lugones festivals
-  // are recurrently ad-hoc and the next one will use yet another format; rather
-  // than chase each, detect THIS structure and skip the page with a visible
-  // warning (operator surfaces it via /admin) instead of polluting the
-  // cartelera. See investigation 2026-06-08.
-  const shortSeparators = $block
-    .children('p')
-    .toArray()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .filter((p: any) => $(p).text().trim() === '+').length;
-  if (shortSeparators > 0) {
-    warnings.push(
-      `program "${program.slug}": multi-short / festival format ` +
-        `(${shortSeparators} "+"-separated shorts) — the parser can't represent it ` +
-        `faithfully; skipped to avoid garbage entries. Add manually via /admin if needed.`,
-    );
-    return [];
-  }
-
   const rangeInfo = parseDateRange(program.dateRangeText, now);
   if (!rangeInfo) {
     warnings.push(
@@ -221,7 +199,7 @@ export function parseDetailPage(
     return [];
   }
 
-  const s1 = parseS1Cycle($, $block, program, rangeInfo);
+  const s1 = parseS1Cycle($, $block, program, rangeInfo, warnings);
   if (s1.length > 0) return s1;
 
   const s2 = parseS2SingleFilm($, $block, program, rangeInfo);
@@ -247,6 +225,7 @@ function parseS1Cycle(
   $block: any,
   program: ProgramLink,
   rangeInfo: { startMonth: number; startYear: number },
+  warnings: string[],
 ): ScrapedScreening[] {
   const screenings: ScrapedScreening[] = [];
 
@@ -254,10 +233,19 @@ function parseS1Cycle(
   let currentMonth = rangeInfo.startMonth;
   let currentYear = rangeInfo.startYear;
   let state: ParseState = { kind: 'idle' };
+  let skippedProgramBlocks = 0;
 
   /** Emit screenings for the current time-bound film, if any. */
   const emit = (s: ParseState) => {
     if (s.kind !== 'with-time') return;
+    // Multi-short program block (festival / double-bill): the cycle parser
+    // can't represent a shorts block as individual films, so skip it. Normal
+    // single-film days on the same page still emit. A summary warning is
+    // pushed at the end; the operator can add the block via /admin.
+    if (s.isProgramBlock) {
+      skippedProgramBlocks++;
+      return;
+    }
     if (!s.film.title || !currentDay) return;
     for (const { hour, minute } of s.times) {
       screenings.push({
@@ -313,14 +301,19 @@ function parseS1Cycle(
     // --- Time marker? ---
     const times = matchTimeMarker(text);
     if (times) {
+      // "(Duración total del programa: NN')" on the showtime line marks a
+      // multi-short PROGRAM block (festival / double-bill) the cycle parser
+      // can't represent — flag it so emit() skips this block while normal
+      // single-film days on the same page still parse.
+      const isProgramBlock = /duraci[oó]n total del programa/i.test(text);
       if (state.kind === 'with-time') {
         emit(state);
-        state = { kind: 'with-time', times, film: { title: '', synopsis: '' } };
+        state = { kind: 'with-time', times, film: { title: '', synopsis: '' }, isProgramBlock };
       } else if (state.kind === 'without-time') {
         // Film already had title+metadata; now we know its times.
-        state = { kind: 'with-time', times, film: state.film };
+        state = { kind: 'with-time', times, film: state.film, isProgramBlock };
       } else {
-        state = { kind: 'with-time', times, film: { title: '', synopsis: '' } };
+        state = { kind: 'with-time', times, film: { title: '', synopsis: '' }, isProgramBlock };
       }
       // A time marker line might also contain a trailing runtime "(73'; DM)."
       const inlineRuntime = text.match(/\((\d+)\s*[′'´]\s*;\s*[A-Z]+\)/);
@@ -405,6 +398,14 @@ function parseS1Cycle(
 
   // End of block — emit any trailing film.
   emit(state);
+
+  if (skippedProgramBlocks > 0) {
+    warnings.push(
+      `program "${program.slug}": ${skippedProgramBlocks} multi-short / festival program ` +
+        `block(s) ("Duración total del programa") skipped — a shorts block can't be ` +
+        `represented as individual films; add via /admin if needed.`,
+    );
+  }
 
   return screenings;
 }
@@ -747,6 +748,10 @@ function extractTitleIfFullStrong($p: any): string | null {
   const pText = $p.text().trim().replace(/\s+/g, ' ');
   const strongText = $strong.text().trim().replace(/\s+/g, ' ');
   if (!strongText) return null;
+  // A standalone "+" separates the two films of a double-bill (e.g. one day of
+  // an otherwise-normal cycle). It's a separator, never a film title — don't
+  // let it become a screening called "+".
+  if (strongText === '+') return null;
   return pText === strongText ? strongText : null;
 }
 
