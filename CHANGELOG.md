@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.4.7] - 2026-06-08
+
+### Fixed
+
+- **Sala Lugones film festivals no longer pollute the cartelera with garbage entries.** A festival-of-shorts page (e.g. "Syncro Film Fest") groups many short films into single timed "program" blocks — a structure the Lugones parser couldn't represent, so it emitted ~10 poster-less fake "films" named after the blocks ("Programa de apertura", "Competencia Internacional – Programa 1") with mismatched directors. The parser now detects this format (the standalone `+` short-separators) and skips the page with a logged warning instead of emitting bad data. Lugones programming is recurrently ad-hoc, so this is a *tolerance* guard — when a page is a structure it can't faithfully represent, it skips gracefully rather than chasing every one-off festival layout.
+
 ## [0.3.4.6] - 2026-06-07
 
 ### Added

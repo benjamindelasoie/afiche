@@ -468,3 +468,37 @@ describe('parseDetailPage Justa-class prose schedule (Justa fixture, captured 20
     expect(warnings.find((w) => /0 screenings parsed/i.test(w))).toBeUndefined();
   });
 });
+
+describe('parseDetailPage festival-of-shorts guard (Syncro Film Fest fixture, captured 2026-06-08)', () => {
+  // Syncro Film Fest groups multiple short films into single timed "program"
+  // blocks (Programa de apertura, Competencia Internacional – Programa N),
+  // marking the shorts with standalone <p><strong>+</strong></p> separators.
+  // Before the guard, the S1 cycle state machine emitted ~10 garbage entries
+  // titled by the program names, each with the first short's director attached
+  // and no poster — polluting the cartelera. The parser now detects the
+  // "+"-separator structure and skips the page with a warning. See the
+  // 2026-06-08 investigation.
+  const program: ProgramLink = {
+    slug: 'Syncro-Film-Fest',
+    title: 'Syncro Film Fest',
+    dateRangeText: 'Del 25 al 29 de junio',
+    detailUrl: 'https://complejoteatral.gob.ar/ver/Syncro-Film-Fest',
+  };
+
+  it('emits 0 screenings instead of garbage program-name "films"', () => {
+    const warnings: string[] = [];
+    const screenings = parseDetailPage(
+      fixture('syncro-film-fest.html'),
+      program,
+      warnings,
+      FIXED_NOW,
+    );
+    expect(screenings).toHaveLength(0);
+  });
+
+  it('logs a multi-short/festival warning so the skip is visible in scrape_runs', () => {
+    const warnings: string[] = [];
+    parseDetailPage(fixture('syncro-film-fest.html'), program, warnings, FIXED_NOW);
+    expect(warnings.some((w) => /multi-short|festival/i.test(w))).toBe(true);
+  });
+});

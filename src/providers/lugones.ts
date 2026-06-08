@@ -187,6 +187,32 @@ export function parseDetailPage(
     return [];
   }
 
+  // Festival-of-shorts guard (tolerance, not perfect parsing). Some Lugones
+  // programs group several short films into ONE timed "program" block, marking
+  // the shorts with standalone <p><strong>+</strong></p> separators (e.g.
+  // Syncro Film Fest, 2026-06). The S1 cycle state machine can't represent
+  // this: it latches the program-name header as the "film", never completes it
+  // (the shorts' "(Country, Year)" metadata isn't a shape it parses), drops the
+  // real shorts as duplicates, and attaches the first short's director — so it
+  // emits garbage (program names as poster-less fake films). Lugones festivals
+  // are recurrently ad-hoc and the next one will use yet another format; rather
+  // than chase each, detect THIS structure and skip the page with a visible
+  // warning (operator surfaces it via /admin) instead of polluting the
+  // cartelera. See investigation 2026-06-08.
+  const shortSeparators = $block
+    .children('p')
+    .toArray()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((p: any) => $(p).text().trim() === '+').length;
+  if (shortSeparators > 0) {
+    warnings.push(
+      `program "${program.slug}": multi-short / festival format ` +
+        `(${shortSeparators} "+"-separated shorts) — the parser can't represent it ` +
+        `faithfully; skipped to avoid garbage entries. Add manually via /admin if needed.`,
+    );
+    return [];
+  }
+
   const rangeInfo = parseDateRange(program.dateRangeText, now);
   if (!rangeInfo) {
     warnings.push(
