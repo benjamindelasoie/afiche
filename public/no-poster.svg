@@ -5,7 +5,7 @@
 
     Brand language:
       - Carmine background  (#c1272d, DESIGN.md accent)
-      - Cream serif "A"     (#f6efe2, matches favicon at src/app/icon.svg)
+      - Cream serif "a"     (#f6efe2, matches favicon at src/app/icon.svg)
       - Cream editorial rule + mono caps "SIN AFICHE" wordmark below
         (plays on the brand name — "afiche" means "poster" in Spanish,
          so this fallback says "no poster" AND winks at the site name)
@@ -18,19 +18,20 @@
   -->
   <rect width="500" height="750" fill="#c1272d"/>
 
-  <!-- Big "A" — same font-family fallback chain as the favicon so the
+  <!-- Big "a" — same font-family fallback chain as the favicon so the
        mark renders consistently across SVG rasterizers / OS font sets.
-       Vertically positioned slightly above visual center to leave room
-       for the wordmark below. -->
+       Larger than the old cap "A" (lowercase x-height is ~half of cap
+       height) so the mark keeps its visual weight; baseline unchanged so
+       it still leaves room for the wordmark below. -->
   <text
     x="250"
     y="430"
     text-anchor="middle"
     font-family="Times, Georgia, 'Instrument Serif', serif"
-    font-size="360"
+    font-size="480"
     font-weight="400"
     fill="#f6efe2"
-  >A</text>
+  >a</text>
 
   <!-- Thin editorial rule. Echoes the cream-on-carmine register and
        gives the wordmark a visual anchor without a heavy frame. -->

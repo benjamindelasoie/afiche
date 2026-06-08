@@ -134,7 +134,7 @@ describe('buildMovie', () => {
     // rich-result eligibility requires it, and the fallback matches the
     // branded UI fallback in homepage + /pelicula. See public/no-poster.svg.
     const m = buildMovie(makeFilm({ posterUrl: null }));
-    expect(m.image).toBe('https://afiche.vercel.app/no-poster.svg');
+    expect(m.image).toBe('https://afiche.ar/no-poster.svg');
   });
 
   it('uses the real TMDB poster when present, not the fallback', () => {

@@ -2,6 +2,16 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.4.4] - 2026-06-07
+
+### Fixed
+
+- **Canonical links now resolve to `afiche.ar`, not the old `afiche.vercel.app`.** The social share image, the structured-data (JSON-LD) image, and the calendar (`.ics`) event links all still pointed at the pre-cutover Vercel host — which only 307-redirected to `afiche.ar`, so a strict link unfurler could miss the share preview. They now build from a single canonical `SITE_URL` (`src/lib/site.ts`); the host is defined in one place and can't drift across files again (which is how it broke).
+
+### Changed
+
+- **The "SIN AFICHE" fallback poster now shows a lowercase `a`**, matching the lowercase wordmark and favicon.
+
 ## [0.3.4.3] - 2026-06-07
 
 ### Changed

@@ -23,6 +23,7 @@
  * their own <script> tags.
  */
 import { BA_TZ } from './date-ranges';
+import { SITE_URL } from './site';
 import type { ScreeningRow } from '@/db/queries';
 
 /** Schema.org @context value emitted at the root of every top-level JSON-LD payload. */
@@ -152,10 +153,10 @@ const CINEMA_URN_PREFIX = 'urn:afiche:cine:';
  * Schema.org ScreeningEvent still satisfies Google's image-required
  * rich-result eligibility check. The asset lives at `public/no-poster.svg`
  * (carmine field, cream serif "A", "SIN AFICHE" wordmark — matches the
- * favicon's brand mark). Base URL must match `metadataBase` in
- * src/app/layout.tsx.
+ * favicon's brand mark). Built from the canonical SITE_URL (src/lib/site.ts),
+ * the same origin as the OG `metadataBase`.
  */
-const NO_POSTER_URL = 'https://afiche.vercel.app/no-poster.svg';
+const NO_POSTER_URL = `${SITE_URL}/no-poster.svg`;
 
 export interface ScreeningEventJsonLd {
   '@type': 'ScreeningEvent';
