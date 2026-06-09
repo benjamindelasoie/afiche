@@ -13,9 +13,12 @@ import {
   type WeekGroup,
 } from '@/db/queries';
 import { VenueAgenda } from '@/app/_components/VenueAgenda';
+import { VenueRuns } from '@/app/_components/VenueRuns';
 import { CiclosEnCurso } from '@/app/_components/CiclosEnCurso';
 import { VenueAbout } from '@/app/_components/VenueAbout';
 import { getVenueInfo, hasVenueInfo } from '@/data/venue-info';
+import { isWeeklyRunVenue } from '@/lib/venue-agenda-style';
+import { groupScreeningRuns } from '@/lib/screening-runs';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,11 +52,18 @@ export async function generateMetadata({
   };
 }
 
-export default async function SalaPage({ params }: { params: Promise<Params> }) {
+export default async function SalaPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<Params>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { id } = await params;
   const cinema = await lookupCinema(id);
   if (!cinema) notFound();
 
+  const sp = await searchParams;
   const now = new Date();
   const [twoWeeks, upcoming] = await Promise.all([
     getTwoWeeksScreeningsByCinema(id, now),
@@ -76,6 +86,13 @@ export default async function SalaPage({ params }: { params: Promise<Params> }) 
   const hasAgenda = visibleDays.length > 0;
   const hasUpcoming = upcoming.length > 0;
   const hasAny = hasAgenda || hasUpcoming;
+
+  // Weekly-run venues (Lorca, Cosmos) default to the film-first VenueRuns
+  // shape; `?vista=dia` reveals the chronological VenueAgenda. Degenerate
+  // guard: if grouping yields nothing, fall through to the agenda.
+  const weeklyRun = isWeeklyRunVenue(id);
+  const runs = weeklyRun ? groupScreeningRuns(visibleDays.flatMap((d) => d.screenings)) : [];
+  const showRuns = weeklyRun && sp.vista !== 'dia' && runs.length > 0;
 
   const venueInfo = getVenueInfo(id);
 
@@ -152,10 +169,19 @@ export default async function SalaPage({ params }: { params: Promise<Params> }) 
 
           <section id="cartelera">
             {hasAgenda ? (
-              <VenueAgenda
-                days={visibleDays}
-                anchorSlugByScreeningId={anchorSlugByScreeningId}
-              />
+              <>
+                {weeklyRun && (
+                  <CarteleraToggle id={id} sp={sp} active={showRuns ? 'pelicula' : 'dia'} />
+                )}
+                {showRuns ? (
+                  <VenueRuns runs={runs} />
+                ) : (
+                  <VenueAgenda
+                    days={visibleDays}
+                    anchorSlugByScreeningId={anchorSlugByScreeningId}
+                  />
+                )}
+              </>
             ) : (
               <p className="text-ink-gray py-8 font-serif text-lg italic">
                 Esta quincena, la sala descansa.{' '}
@@ -184,6 +210,60 @@ export default async function SalaPage({ params }: { params: Promise<Params> }) 
         </>
       )}
     </main>
+  );
+}
+
+// Build a /sala/<id> href that toggles ONLY the `vista` param, preserving any
+// others (today there are none, but don't hard-code the bare path).
+function buildVistaHref(
+  id: string,
+  sp: Record<string, string | string[] | undefined>,
+  vista?: 'dia',
+): string {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(sp)) {
+    if (k === 'vista') continue;
+    if (typeof v === 'string') params.set(k, v);
+    else if (Array.isArray(v)) v.forEach((x) => params.append(k, x));
+  }
+  if (vista) params.set('vista', vista);
+  const qs = params.toString();
+  return `/sala/${id}${qs ? `?${qs}` : ''}`;
+}
+
+// View switch for weekly-run venues. Active pill = carmine fill (Afiche's
+// learned "you are here" signal), ≥44px hit area, aria-current. Server-rendered
+// <a>s — no client JS, matches the homepage's ?ventana= idiom.
+function CarteleraToggle({
+  id,
+  sp,
+  active,
+}: {
+  id: string;
+  sp: Record<string, string | string[] | undefined>;
+  active: 'pelicula' | 'dia';
+}) {
+  const base =
+    'tracking-card focus-visible:outline-carmine inline-flex min-h-[44px] items-center px-3 font-mono text-[11px] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2';
+  const on = 'bg-carmine text-cream';
+  const off = 'text-ink-gray hover:text-ink';
+  return (
+    <nav aria-label="Vista de cartelera" className="border-carmine mb-8 inline-flex border">
+      <a
+        href={buildVistaHref(id, sp)}
+        aria-current={active === 'pelicula' ? 'page' : undefined}
+        className={`${base} ${active === 'pelicula' ? on : off}`}
+      >
+        Por película
+      </a>
+      <a
+        href={buildVistaHref(id, sp, 'dia')}
+        aria-current={active === 'dia' ? 'page' : undefined}
+        className={`${base} ${active === 'dia' ? on : off}`}
+      >
+        Por día
+      </a>
+    </nav>
   );
 }
 
