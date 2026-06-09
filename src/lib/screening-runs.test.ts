@@ -99,6 +99,18 @@ describe('groupScreeningRuns', () => {
     expect(formatWeekdaySet(r.weekdays)).toBe('Los sábados');
   });
 
+  it('sorts trasnoche (post-midnight) times to the END, not lexically first', () => {
+    // Times across the film's screenings: 23:30, 14:00, 00:30 (BA). Lexical sort
+    // would put 00:30 first; cinema-day order keeps the trasnoche show last.
+    const [r] = groupScreeningRuns([
+      row('2026-06-13T02:30:00Z', 1, 'Trasnoche'), // 23:30 BA (Jun 12)
+      row('2026-06-13T17:00:00Z', 1, 'Trasnoche'), // 14:00 BA (Jun 13)
+      row('2026-06-13T03:30:00Z', 1, 'Trasnoche'), // 00:30 BA (Jun 13)
+    ]);
+    expect(r.times).toEqual(['14:00', '23:30', '00:30']);
+    expect(r.times[r.times.length - 1]).toBe('00:30'); // trasnoche last, not first
+  });
+
   it('carries programName from the first screening that has one', () => {
     const [r] = groupScreeningRuns([
       row(D.jue9_1400, 1, 'X', null),

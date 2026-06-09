@@ -91,8 +91,21 @@ export default async function SalaPage({
   // shape; `?vista=dia` reveals the chronological VenueAgenda. Degenerate
   // guard: if grouping yields nothing, fall through to the agenda.
   const weeklyRun = isWeeklyRunVenue(id);
-  const runs = weeklyRun ? groupScreeningRuns(visibleDays.flatMap((d) => d.screenings)) : [];
-  const showRuns = weeklyRun && sp.vista !== 'dia' && runs.length > 0;
+  // Normalize: a duplicated `?vista=dia&vista=x` arrives as an array (parity
+  // with the homepage's resolveWindowKey). Take the first value.
+  const vista = Array.isArray(sp.vista) ? sp.vista[0] : sp.vista;
+  // Group runs from the UNFILTERED two-week rows, not expiry-filtered
+  // visibleDays: the run view shows the weekly PATTERN (e.g. "todos los días
+  // 14:00·16:00·20:10"), so today's already-passed showtimes must stay in the
+  // signature or a uniform run splits into a bogus partial-today line. ("What's
+  // still catchable today" is the job of the chronological ?vista=dia view.)
+  // Then drop films whose last screening has already passed.
+  const runs = weeklyRun
+    ? groupScreeningRuns(twoWeeks.flatMap((d) => d.screenings)).filter(
+        (r) => r.lastUtc.getTime() > now.getTime(),
+      )
+    : [];
+  const showRuns = weeklyRun && vista !== 'dia' && runs.length > 0;
 
   const venueInfo = getVenueInfo(id);
 
@@ -176,9 +189,14 @@ export default async function SalaPage({
                 {showRuns ? (
                   <VenueRuns runs={runs} />
                 ) : (
+                  // within-day collapse only at weekly-run venues' "Por día"
+                  // view (where a film repeats daily). Chronological-default
+                  // venues (MALBA, …) render uncollapsed — byte-identical to
+                  // before this feature.
                   <VenueAgenda
                     days={visibleDays}
                     anchorSlugByScreeningId={anchorSlugByScreeningId}
+                    collapse={weeklyRun}
                   />
                 )}
               </>

@@ -39,6 +39,18 @@ function weekdayOfKey(key: string): number {
   return new Date(`${key}T12:00:00Z`).getUTCDay();
 }
 
+/**
+ * Sort 'HH:MM' by cinema-day clock, not lexically: a trasnoche 00:30 belongs at
+ * the END of the night's listing (after 23:xx), not the start. So 00:00–04:59
+ * map past 24:00. Without this, a midnight show renders/groups as the day's
+ * first time. (Lexical sort of zero-padded 24h is otherwise fine.)
+ */
+function clockMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number);
+  return (h < 5 ? h + 24 : h) * 60 + m;
+}
+const byClock = (a: string, b: string) => clockMinutes(a) - clockMinutes(b);
+
 // Spanish weekday names indexed 0=Sun … 6=Sat.
 const WD_SINGULAR = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const WD_PLURAL = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados'];
@@ -99,7 +111,7 @@ export function groupScreeningRuns(rows: ScreeningRow[]): ScreeningRun[] {
     // Group days by identical time-signature → one RunSignature each.
     const bySig = new Map<string, { weekdays: number[]; times: string[] }>();
     for (const [key, set] of dayTimes) {
-      const times = [...set].sort();
+      const times = [...set].sort(byClock);
       const sigKey = times.join('|');
       const sig = bySig.get(sigKey);
       if (sig) sig.weekdays.push(weekdayOfKey(key));
@@ -108,9 +120,9 @@ export function groupScreeningRuns(rows: ScreeningRow[]): ScreeningRun[] {
 
     const signatures: RunSignature[] = [...bySig.values()]
       .map((s) => ({ weekdays: sortWeekdaysForDisplay(s.weekdays), times: s.times }))
-      .sort((a, b) => a.times[0].localeCompare(b.times[0]));
+      .sort((a, b) => byClock(a.times[0], b.times[0]));
 
-    const allTimes = [...new Set(screenings.map((s) => timeBA(s.startsAtUtc)))].sort();
+    const allTimes = [...new Set(screenings.map((s) => timeBA(s.startsAtUtc)))].sort(byClock);
     const allWeekdays = sortWeekdaysForDisplay([...dayTimes.keys()].map(weekdayOfKey));
     const utcs = screenings.map((s) => s.startsAtUtc.getTime());
 
@@ -134,9 +146,10 @@ export function groupScreeningRuns(rows: ScreeningRow[]): ScreeningRun[] {
 export interface DayFilmGroup {
   film: ScreeningRow['film'];
   programName: string | null;
+  tags: ScreeningRow['tags']; // union across the day's showtimes (render filters 'cycle')
   times: string[]; // ascending 'HH:MM'
   firstUtc: Date; // ordering key within the day
-  screenings: ScreeningRow[]; // raw rows (carry ids for anchor lookup)
+  screenings: ScreeningRow[]; // raw rows, time-sorted (carry ids + startsAtUtc for <time>/anchor)
 }
 
 /**
@@ -159,6 +172,7 @@ export function collapseDayByFilm(day: DayGroup): DayFilmGroup[] {
     return {
       film: sorted[0].film,
       programName: sorted.find((s) => s.programName)?.programName ?? null,
+      tags: [...new Set(sorted.flatMap((s) => s.tags))],
       times: sorted.map((s) => timeBA(s.startsAtUtc)),
       firstUtc: sorted[0].startsAtUtc,
       screenings: sorted,

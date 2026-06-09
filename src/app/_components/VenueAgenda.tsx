@@ -29,9 +29,14 @@ export function VenueAgenda({
   // screening. That row gets id="programa-<slug>" so the Ciclos block can
   // anchor-jump to it. Built by the page from groupCiclos().
   anchorSlugByScreeningId,
+  // Within-day collapse (one row per film, same-day showtimes as chips). Only
+  // weekly-run venues' "Por día" view passes true; chronological-default venues
+  // render the original per-screening rows untouched.
+  collapse = false,
 }: {
   days: DayGroup[];
   anchorSlugByScreeningId: Map<number, string>;
+  collapse?: boolean;
 }) {
   return (
     <div className="space-y-8 md:space-y-10">
@@ -81,21 +86,29 @@ export function VenueAgenda({
             </h2>
 
             <div className="min-w-0 divide-y divide-black/10">
-              {collapseDayByFilm(day).map((g) => {
-                // The program anchor lives on a specific screening; surface it
-                // if any of this film's same-day screenings carries it.
-                const anchorSlug = g.screenings
-                  .map((s) => anchorSlugByScreeningId.get(s.id))
-                  .find(Boolean);
-                // Single showtime → the unchanged AgendaRow (so repertory
-                // venues like MALBA render exactly as before — collapse is a
-                // no-op there). Multiple same-day showtimes → one collapsed row.
-                return g.screenings.length === 1 ? (
-                  <AgendaRow key={g.screenings[0].id} s={g.screenings[0]} anchorSlug={anchorSlug} />
-                ) : (
-                  <CollapsedRow key={g.film.id} group={g} anchorSlug={anchorSlug} />
-                );
-              })}
+              {collapse
+                ? collapseDayByFilm(day).map((g) => {
+                    // The program anchor lives on a specific screening; surface
+                    // it if any of this film's same-day screenings carries it.
+                    const anchorSlug = g.screenings
+                      .map((s) => anchorSlugByScreeningId.get(s.id))
+                      .find(Boolean);
+                    // Single showtime → the unchanged AgendaRow (keeps the
+                    // left-time column + .ics). Multiple same-day showtimes →
+                    // one collapsed row with time-chips.
+                    return g.screenings.length === 1 ? (
+                      <AgendaRow key={g.screenings[0].id} s={g.screenings[0]} anchorSlug={anchorSlug} />
+                    ) : (
+                      <CollapsedRow key={g.film.id} group={g} anchorSlug={anchorSlug} />
+                    );
+                  })
+                : day.screenings.map((s) => (
+                    <AgendaRow
+                      key={s.id}
+                      s={s}
+                      anchorSlug={anchorSlugByScreeningId.get(s.id)}
+                    />
+                  ))}
             </div>
           </div>
         );
@@ -239,7 +252,11 @@ function AgendaRow({ s, anchorSlug }: { s: ScreeningRow; anchorSlug?: string }) 
 // repeat a film within a day (Lorca/Cosmos in the "Por día" view); repertory
 // venues never reach here. The whole row stays the stretched /pelicula link.
 function CollapsedRow({ group, anchorSlug }: { group: DayFilmGroup; anchorSlug?: string }) {
-  const { film, programName, times } = group;
+  const { film, programName, tags, times, screenings } = group;
+  // Same tag-strip rule as AgendaRow: 'cycle' is universal noise, the
+  // ProgramPill carries the curatorial signal instead.
+  const visibleTags = tags.filter((t) => t !== 'cycle');
+  const showTagStrip = visibleTags.length > 0 || programName !== null;
   return (
     <article
       id={anchorSlug ? `programa-${anchorSlug}` : undefined}
@@ -272,19 +289,35 @@ function CollapsedRow({ group, anchorSlug }: { group: DayFilmGroup; anchorSlug?:
       </div>
 
       <div className="min-w-0 flex-1">
-        {programName && (
+        {showTagStrip && (
           <div className="mb-1 flex flex-wrap gap-1.5">
-            <span
-              title={programName}
-              className="tracking-card text-carmine border-carmine/40 max-w-[28ch] truncate border px-1.5 py-0.5 font-mono text-[10px] uppercase"
-            >
-              {programName}
-            </span>
+            {visibleTags.map((t) => (
+              <span
+                key={t}
+                className="tracking-card bg-carmine text-cream px-1.5 py-0.5 font-mono text-[10px] uppercase"
+              >
+                {TAG_LABELS_ES[t]}
+              </span>
+            ))}
+            {programName && (
+              <span
+                title={programName}
+                className="tracking-card text-carmine border-carmine/40 max-w-[28ch] truncate border px-1.5 py-0.5 font-mono text-[10px] uppercase"
+              >
+                {programName}
+              </span>
+            )}
           </div>
         )}
         <h3 className="font-serif text-xl leading-tight tracking-[-0.01em] text-balance sm:text-2xl">
           {film.title}
         </h3>
+        {film.titleOriginal &&
+          film.titleOriginal.toLowerCase() !== film.title.toLowerCase() && (
+            <p className="text-ink-gray mt-0.5 font-serif text-sm italic">
+              «{film.titleOriginal}»
+            </p>
+          )}
         {film.director && (
           <p className="text-ink-gray mt-0.5 text-sm">
             {film.director}
@@ -295,7 +328,7 @@ function CollapsedRow({ group, anchorSlug }: { group: DayFilmGroup; anchorSlug?:
         <p className="mt-2 flex flex-wrap items-baseline font-serif text-lg text-carmine italic tabular-nums sm:text-xl">
           {times.map((t, i) => (
             <span key={t} className="whitespace-nowrap">
-              {t}
+              <time dateTime={screenings[i].startsAtUtc.toISOString()}>{t}</time>
               {i < times.length - 1 && (
                 <span aria-hidden="true" className="text-carmine/40 mx-2">
                   ·
