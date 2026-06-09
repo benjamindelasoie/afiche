@@ -4,6 +4,22 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 38. Run-block add-to-calendar — revisit if users miss the one-tap save (found 2026-06-09, weekly-run design review)
+
+**Context:** The new `weekly-run` venue display (spec: `~/.gstack/projects/benjamindelasoie-afiche/specs/*-venue-weekly-run-display.md`, TODO #34b) deliberately **drops the per-screening `.ics` "Agendar ⤓"** from the film-first run block — a uniform run has 3-6 showtimes, so a per-time `.ics` set is noise. The whole block links to `/pelicula`, where per-screening `.ics` is unambiguous. **Acknowledged UX cost:** a Lorca/Cosmos visitor's default view loses one-tap add-to-calendar (now one tap deeper). The design review accepted this rather than papering it with an ambiguous control.
+
+**What:** if signal emerges that the missing one-tap "save" is real friction (cinephile chat, feature request, or analytics showing `/sala/[run-venue]` → `/pelicula` drop-off), add a lightweight affordance to the run block — candidates: a single "Ver funciones →" text link (utility-small, secondary), or a per-day `.ics` only when a film has one showtime that day. **Why not now:** speculative; the block-to-`/pelicula` link already carries the action. **Priority: P4.** Trigger: user-reported friction. **Depends on:** weekly-run shipped.
+
+---
+
+## 37. Route-local `loading.tsx` / `error.tsx` for `/sala/[id]` (found 2026-06-09, weekly-run design review)
+
+**Context:** The design review of the weekly-run spec surfaced that `src/app/sala/[id]/` has **no route-local `loading.tsx` or `error.tsx`** — a render error bubbles to a higher boundary, and there's no skeleton during the (force-dynamic) server fetch. DESIGN.md's Interaction-States section mandates an Error copy (`"La cartelera está rehaciéndose…"`). The weekly-run PR mitigates the immediate risk with a hard "`VenueRuns` must never throw on malformed/partial rows" requirement, but the route-level boundary gap is pre-existing and applies to the whole `/sala/[id]` surface, not just the new component.
+
+**What:** add `src/app/sala/[id]/error.tsx` (editorial Spanish error copy per DESIGN.md, prod-only; dev shows stack) and optionally `loading.tsx` (a quiet skeleton matching the date-rail / run-block rhythm). **Why not now:** out of scope for the display-shape PR; pre-existing and low-frequency (small DB, stable scrape). **Priority: P3.** Trigger: a real `/sala` error observed in prod, or the next `/sala` cycle. **Depends on:** nothing.
+
+---
+
 ## 36. Real logo / brand mark for Afiche (found 2026-06-08, adding the home-screen app icon)
 
 **Context:** Adding "Add to Home Screen" support (apple-touch-icon + web manifest) forced us to ship a home-screen icon *now*. What we shipped is a **typographic monogram** — the lowercase Instrument Serif "a" (the wordmark's own letterform) in cream on a full-bleed carmine field. It's brand-consistent (matches the masthead wordmark + the carmine favicon language) and renders cleanly at every size, but it is the wordmark glyph reused as a mark, **not a designed logo**. Source of truth: `scripts/app-icon.html` → `scripts/build-app-icons.sh` emits `src/app/apple-icon.png` (180), `public/icon-192.png`, `public/icon-512.png`; the favicon (`src/app/icon.svg`, Times "a") and OG card (`src/app/opengraph-image.png`) are separate brand assets that would also adopt a real mark.
@@ -36,7 +52,12 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 - **(a) Desktop uses the width — P2, strongest.** The homepage redesign's load-bearing SOTA principle was "desktop uses the width" (full-bleed hero band + 2-col grid, `max-w-6xl`). The venue page never got that pass — the audit flagged it directly: *"Desktop is fine but conservative — single 1024px column… it tolerates the width rather than using it"* (and F3: schedule poster undersized at 64×96 vs the Tier-1 80×112 spec). Opportunity: a desktop layout that earns the width without breaking the agenda's chronological honesty — e.g. a **sticky left identity + Ciclos-en-curso rail** beside a scrolling agenda, larger posters on desktop, or 2-up day columns. Constraint: must stay one responsive layout (the agenda was chosen over a calendar grid precisely because the grid breaks at 375px) and must not reorder days. **Trigger:** a desktop design pass; pairs naturally with a `/design-review` of `/sala`.
 
-- **(b) Group-by-film duplication at regular-release venues — P2, DATA FIRST.** The homepage's defining insight was per-showtime → group-by-film (cut the list ~64%; [[project_afiche_cartelera_multiplicity]]). The venue agenda is still per-showtime within each day. For a true **repertory** house (each retrospective film screens once) that's correct and clean. For a venue that plays one film **daily for two weeks**, the same title repeats ~14× down the agenda — the exact scroll-wall group-by-film was invented to kill. Whether this actually bites depends on per-venue multiplicity we have not measured. **Do first:** extend `scripts/ia-stats.ts` to a per-venue cut (distinct films vs screenings, max repeats-per-film, within-venue). If duplication is high for some venues, consider a film-first toggle or collapsing a repeated title into a row with its showtime chips; if low everywhere (likely for the indie-circuit repertory profile), leave the agenda as-is and close this. **Don't assume — measure.**
+- **(b) Group-by-film duplication at regular-release venues — P2, MEASURED 2026-06-08.** The homepage's defining insight was per-showtime → group-by-film (cut the list ~64%; [[project_afiche_cartelera_multiplicity]]). The venue agenda is still per-showtime within each day. **The per-venue cut now exists** (`scripts/ia-stats.ts` `perVenueReport`, 14-day agenda window). Prod result: duplication is **bimodal, not low-everywhere** —
+  - **Repertory (leave as-is):** malba, cine-york, centro-cultural-munro, lumiton all ratio **1.00** (each film once); centro-cultural-borges 1.13. The per-showtime agenda is correct + honest here.
+  - **Run/commercial venues (scroll-wall is real):** **lorca ratio 6.0** (Amarga Navidad **9 rows / 3 days** — ~3 showtimes/day), **cine-cosmos 4.0**, **cacodelphia 3.38** (El día de la revelación **14 rows / 7 days** — plays daily, multiple/day — the exact "daily for two weeks" case the TODO predicted), **cine-gaumont 2.14**, **lugones 1.82**.
+  - **Read:** the worst noise is **same-film, same-DAY repeated rows** (lorca/cosmos: identical poster+title, only the time differs). Cross-day repetition (a film under 7 day-headers) is arguably honest ("plays every day"). **Recommended fix: within-day same-film collapse** — one row per film per day with its showtimes as time-chips. Universal-safe (repertory venues have 1 showtime/day → 1 chip, unaffected); kills the lorca/cosmos triple-row wall. A full film-first toggle (homepage-style) is heavier and only adds value for cross-day runs — defer unless within-day collapse proves insufficient. **(b) is confirmed worth doing; (c) below is now better justified too since agendas can be long.**
+
+  **SPEC WRITTEN 2026-06-09 (local, no GH issue):** the design converged via mock-driven discussion into a **`weekly-run` venue-page shape** (Variant B compact line) for fixed-weekly venues {lorca, cine-cosmos}, vs the chronological date-rail default for everyone else. Pure display layer — a `lib/screening-runs.ts` grouping fn (powers both the run view and a universal within-day collapse), a `VenueRuns` component, a `WEEKLY_RUN_CINEMAS` constant (no schema), and a `?vista=dia` toggle. Full spec: `~/.gstack/projects/benjamindelasoie-afiche/specs/20260609-*-venue-weekly-run-display.md` (+ working copy `.context/spec-weekly-run.md`); mock `.context/run-display-mock.html`. Next: optional `/plan-design-review`, then implement.
 
 - **(c) Window-scoped front door (WindowNav parity) — P3, weakest.** The homepage front door is now a relative-window nav (Hoy / Este finde / Esta semana / Próximamente) that also scopes the list. The venue page instead shows a full ~2-week agenda followed by a separate "Próximamente" section. A scoped nav could unify those two into one control. But venue pages are sparse (single venue), and the sticky DateStrip was deliberately dropped here for that reason (DESIGN.md 2026-05-25: "sparse weeks make 11+ muted chips look desolate"). So this only earns its chrome if (b) shows agendas are genuinely long. Revisit *after* (b), not before.
 
@@ -46,7 +67,9 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ## 33. Capture TMDB `tagline` into a new column (found 2026-06-06, homepage IA redesign)
 
-**Context:** Homepage redesign removes synopsis from the main list (reserved for `/pelicula`). Separately, we want film **taglines** for possible future use (a short flavor line, social/OG cards, etc.). We currently store only `films.synopsisEs` (the full overview); no tagline.
+**✅ RESOLVED 2026-06-08 (code audit): data capture SHIPPED.** `films.tagline` (`text`, nullable) exists in `src/db/schema.ts:146`; captured during enrichment in `src/tmdb/enrich.ts:319` (`details.tagline?.trim() ?? null`) and carried on `EnrichmentDelta`. **No display use yet** — exactly as scoped ("just start banking the data"). If a surface ever wants to render it (OG card subtitle, featured-band one-liner), that's a separate display task; the column is live.
+
+**Original context (preserved):** Homepage redesign removes synopsis from the main list (reserved for `/pelicula`). Separately, we want film **taglines** for possible future use (a short flavor line, social/OG cards, etc.). We currently store only `films.synopsisEs` (the full overview); no tagline.
 
 **What:** Add `films.tagline` (text, nullable). Capture TMDB's `tagline` field during the enrichment pass that already fetches overview/cast/genres (`src/tmdb/enrich.ts`) — it's one more field off the same response, near-zero marginal cost. Expect **many nulls** for our arthouse/foreign-heavy catalog (TMDB taglines skew English/commercial); that's fine, it's opt-in flavor. No display use yet — just start banking the data.
 
@@ -56,14 +79,14 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ## 32. Homepage main-view content logic — featured band + default sort (found 2026-06-06, homepage IA redesign)
 
-**Context:** The redesigned homepage (variant E, mockups in `~/.gstack/projects/benjamindelasoie-afiche/designs/homepage-ia-20260606/`) defaults to a window-scoped list ("Hoy" / "Este finde" / "Esta semana") plus a static "Esta semana" curated band and a default sort. The **layout** is being settled; the **content-selection logic** is deliberately deferred. Two open product questions:
+**✅ STATUS UPDATE 2026-06-08 (code audit): layout SHIPPED, featured band SHIPPED. Only the diversity-weighted sort (b) remains open.**
+- **Layout** — DONE. `src/app/page.tsx` renders the window-scoped (`WindowNav`, `src/lib/windows.ts`) group-by-film cartelera at `max-w-6xl` / `md:grid-cols-2`. Query: `getWindowScreeningsByFilm` in `src/db/queries.ts`.
+- **(a) Featured band** — DONE. `CuratedBand` (`src/app/_components/CuratedBand.tsx`) fed by `getFeaturedFilms(now)` → `deriveFeatured()` (`src/db/queries.ts` ~592-831): a slot system (fixed slots Argentina/Estreno/Clásico + a wildcard chain Última-función/Nuevo/Cine-del-mundo/Destacada), gated on poster + catchable showtime. **Derived rules, no manual `featured` flag** — answers the (a) source-of-truth question.
+- **(b) Default sort** — NOT DONE. `sortFilmGroups` (`src/db/queries.ts` ~556-568) sorts purely by `nextCatchableUtc` ascending; no genre/origin/venue diversity weighting. The data (genres, country, byVenue) is available at sort time; the interleaving logic is just unimplemented.
 
-- **(a) Featured-band selection** — what fills "Esta semana": estrenos / últimas funciones / ciclos. Operator-chosen picks, derived rules, or both? Needs a source of truth (a manual `featured` flag? derived from tags + showtime-count?).
-- **(b) Default list sort** — the research's "diversity-weighted" idea so the top ~10 span genres/origins/venues instead of clumping by venue. Avoids the "looks like a database" failure mode.
+**Remaining (b):** the "diversity-weighted" sort so the top ~10 span genres/origins/venues instead of clumping by venue. Product/algorithm decision — `/spec` or `/office-hours`. Data context: [[project_afiche_cartelera_multiplicity]] (95% single-venue, 64% single-showtime). **Priority: P2** (downgraded from P1 — no longer blocks the redesign; the redesign shipped with a time-based sort that works, this is a refinement).
 
-Data context that constrains this: [[project_afiche_cartelera_multiplicity]] — 95% single-venue, 64% single-showtime, scroll-wall is a heavy tail. "Última función" can be **derived** from showtime-count in window (the `unique` tag is unreliable at 1.6%).
-
-**Why not now:** product/algorithm work, separate from layout. Tackle via `/spec` or `/office-hours` once the layout locks. **Priority: P1 — blocks the redesign's content behavior (the layout is inert without it).**
+**Original framing (preserved):** Two open product questions were (a) featured-band selection and (b) default list sort. (a) is now answered by `deriveFeatured`'s derived-rules approach.
 
 ---
 
@@ -141,6 +164,8 @@ do it as its own small PR with homepage regression coverage.
 ---
 
 ## 26. `/admin/runs` — scrape status + enrich-trigger panel (FEATURE — Path A scope, in flight 2026-05-23)
+
+**✅ RESOLVED 2026-06-08 (code audit): SHIPPED — full Path-A scope.** Route at `src/app/admin/(panel)/runs/page.tsx` (`export const maxDuration = 300`). Helper `fetchLatestRunPerCinema()` server-renders one row per cinema with latest `scrape_runs` status / `finished_at` / `duration_ms` / counts (scraped/inserted/upserted/enriched/skipped) / warnings (collapsible `<details>`). Server actions in `src/app/admin/(panel)/runs/actions.ts`: `enrichPendingAction()` (wraps `enrichPendingFilms`) + `refreshEnrichmentAction()` (wraps `refreshAllEnrichment`), with a pending-count badge via `fetchPendingEnrichmentCount()`. Scrape-trigger buttons remain deferred to #27 (residential-egress daemon), as scoped. Folds in #4 (log query UI) — also closed.
 
 **Scope reshape 2026-05-23:** original spec included per-cinema and page-level **Scrape** buttons. Dropped from this cycle. **Why:** Vercel functions egress from AWS datacenter IPs; MALBA has IP-banned datacenter ranges persistently (per TODO #9 — "rate limit is IP-scoped"). Scrape triggers from Vercel would either fail outright on blocked venues or earn fresh bans. Full scrape-trigger surface depends on the residential-egress daemon — see TODO #27 below.
 
@@ -573,6 +598,8 @@ If the heuristic fails on real-page shape, refine the selector (e.g. scope to a 
 
 ## 4. Log persistence query UI / admin
 
+**✅ RESOLVED 2026-06-08 (code audit): closed by #26.** The `/admin/(panel)/runs` page (shipped, see #26) lists the latest run per cinema with match stats and warnings — exactly the "stop SQLing it manually" need. Closed.
+
 **What:** With `scrape_runs` populated after each run, build a minimal `/admin/runs` page (or CLI) that lists recent runs, their match stats, and warnings.
 
 **Why:** The data is in the DB now, but you still need to SQL it manually. A 30-minute page that shows the last 20 runs per cinema, miss rate trend, and warning clusters would make every subsequent debugging session faster.
@@ -628,7 +655,9 @@ If the heuristic fails on real-page shape, refine the selector (e.g. scope to a 
 
 ## 11. Add-to-calendar (.ics) per screening on /pelicula/
 
-**What:** Per-screening add-to-calendar action on /pelicula/<slug>. A small "agendar ⤵" link on each row downloads a `.ics` (VCALENDAR) file the user opens in Google Calendar / Apple Calendar / Outlook. Pure server-rendered: a route at `src/app/api/screening/[id].ics/route.ts` returns a VCALENDAR string with the screening time, film title, cinema, and source URL.
+**✅ RESOLVED 2026-06-08 (code audit): SHIPPED — backend AND UI.** Route `src/app/api/screening/[id]/ics/route.ts` returns VCALENDAR built by `buildScreeningIcs()` in `src/lib/ics.ts` (RFC 5545), fed by `getScreeningById()` (`src/db/queries.ts`). The "Agendar ⤓" link is wired into **both** `/pelicula/[slug]/page.tsx:375` and the venue agenda (`VenueAgenda.tsx:200/216`, with separate mobile/desktop placements + a11y dedup). Fully done.
+
+**Original context (preserved):** Per-screening add-to-calendar action on /pelicula/<slug>. A small "agendar ⤵" link on each row downloads a `.ics` (VCALENDAR) file the user opens in Google Calendar / Apple Calendar / Outlook. Pure server-rendered: a route at `src/app/api/screening/[id].ics/route.ts` returns a VCALENDAR string with the screening time, film title, cinema, and source URL.
 
 **Why:** The cinephile workflow on /pelicula/ ends with "remind myself of this." Today: screenshot the date, manually add to calendar. With .ics: one tap, all major calendar tools eat it. Distinctive aggregator-shaped feature — no individual cinema's site can offer this for the FULL BA cartelera (they only know about their own screenings).
 
@@ -651,7 +680,12 @@ If the heuristic fails on real-page shape, refine the selector (e.g. scope to a 
 
 ## 12. Expand TMDB enrichment beyond synopsis (cast, prizes, tagline)
 
-**What:** Three TMDB enrichment additions for /pelicula/, deferred from the programs+/pelicula/ cycle:
+**✅ STATUS UPDATE 2026-06-08 (code audit): cast SHIPPED, tagline captured (see #33). Only PRIZES/awards remains open.**
+- **(1) Cast** — DONE. `films.cast` JSON column (`schema.ts:112`, `$type<CastMember[]|null>`), populated via `extractTopCast(details)` (top 8) in `src/tmdb/enrich.ts:314`, rendered as the "Reparto" block on `/pelicula/[slug]/page.tsx:243-265`.
+- **(3) Tagline** — captured (see #33: `films.tagline`), not displayed. The synopsis-fallback use described below was not wired (tagline is banked, not used as a synopsis fallback).
+- **(2) Prizes/awards** — NOT DONE. No awards column, no extraction, no UI. Still **L effort** (needs Wikipedia/Wikidata/external scraping — TMDB awards data is thin). This is the only remaining piece of #12.
+
+**Original context (preserved):** Three TMDB enrichment additions for /pelicula/, deferred from the programs+/pelicula/ cycle:
 
 1. **Cast block**: top 5-10 names per film via TMDB `/movie/{id}/credits`. Schema: new `cast JSON` field on `films` (or normalized `film_cast` table). UI: small block on /pelicula/ between metadata and screenings.
 2. **Prizes/awards block**: TMDB has thin awards data; real coverage requires Wikipedia/Wikidata scraping, IMDB (no public API), or Rotten Tomatoes/Letterboxd (also scraping). UI: small "Galardones" block ("Cannes 2001, Premio del Jurado", etc.).

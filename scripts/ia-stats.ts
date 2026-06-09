@@ -123,10 +123,81 @@ async function windowReport(label: string, lo: number, hi: number) {
   console.log('');
 }
 
+// ---------------------------------------------------------------------------
+// PER-VENUE cut (TODO #34b). The /sala/<id> agenda is per-showtime within each
+// day, so a film that runs daily for two weeks becomes a wall of repeated rows
+// — the exact scroll-wall the homepage group-by-film redesign killed. Whether
+// that actually bites depends on per-venue multiplicity we hadn't measured.
+// This answers, per venue, over the agenda's 14-day window: distinct films vs
+// screenings (the redundancy ratio), the worst single-film repeat (rows AND
+// distinct days — days≈14 means "plays daily all fortnight"), and how many
+// films run on 3+ days. High ratio / high maxDays ⇒ a film-first toggle earns
+// its keep; low everywhere ⇒ leave the chronological agenda as-is and close #34b.
+// ---------------------------------------------------------------------------
+async function perVenueReport(label: string, lo: number, hi: number) {
+  const rs = await client.execute({
+    sql: `SELECT s.film_id, s.cinema_id, s.starts_at_utc,
+                 c.name AS cinema_name, f.title AS film_title
+          FROM screenings s
+          JOIN cinemas c ON c.id = s.cinema_id
+          JOIN films f ON f.id = s.film_id
+          WHERE s.starts_at_utc >= ? AND s.starts_at_utc < ?`,
+    args: [lo, hi],
+  });
+  const rows = rs.rows as unknown as {
+    film_id: number;
+    cinema_id: string;
+    starts_at_utc: number;
+    cinema_name: string;
+    film_title: string;
+  }[];
+
+  type FilmStat = { title: string; showtimes: number; days: Set<string> };
+  type VenueStat = { name: string; screenings: number; films: Map<number, FilmStat> };
+  const venues = new Map<string, VenueStat>();
+
+  for (const r of rows) {
+    let v = venues.get(r.cinema_id);
+    if (!v) { v = { name: r.cinema_name, screenings: 0, films: new Map() }; venues.set(r.cinema_id, v); }
+    v.screenings += 1;
+    let f = v.films.get(r.film_id);
+    if (!f) { f = { title: r.film_title, showtimes: 0, days: new Set() }; v.films.set(r.film_id, f); }
+    f.showtimes += 1;
+    f.days.add(baDay(r.starts_at_utc));
+  }
+
+  console.log(`════════ PER-VENUE — ${label} ════════`);
+  console.log(`window: ${new Date(lo * 1000).toISOString().slice(0, 16)}Z → ${new Date(hi * 1000).toISOString().slice(0, 16)}Z\n`);
+  console.log(
+    `${'venue'.padEnd(22)} ${'scr'.padStart(4)} ${'films'.padStart(5)} ${'ratio'.padStart(5)} ${'maxRows'.padStart(7)} ${'maxDays'.padStart(7)} ${'≥3days'.padStart(6)}   worst-repeated film`,
+  );
+  const summary = [...venues.entries()].map(([id, v]) => {
+    const fs = [...v.films.values()];
+    const ratio = v.screenings / (fs.length || 1);
+    const worst = fs.reduce((a, b) => (b.showtimes > a.showtimes ? b : a), fs[0]);
+    const maxDays = Math.max(0, ...fs.map((f) => f.days.size));
+    const films3plus = fs.filter((f) => f.days.size >= 3).length;
+    return { id, name: v.name, screenings: v.screenings, films: fs.length, ratio, worstRows: worst.showtimes, worstTitle: worst.title, maxDays, films3plus };
+  });
+  // sort by redundancy ratio descending — the venues most likely to bite first.
+  summary.sort((a, b) => b.ratio - a.ratio);
+  for (const s of summary) {
+    console.log(
+      `${s.id.padEnd(22)} ${String(s.screenings).padStart(4)} ${String(s.films).padStart(5)} ${s.ratio.toFixed(2).padStart(5)} ${String(s.worstRows).padStart(7)} ${String(s.maxDays).padStart(7)} ${String(s.films3plus).padStart(6)}   ${s.worstTitle} (${s.worstRows}× / ${summary.find((x) => x.id === s.id)!.maxDays}d)`,
+    );
+  }
+  console.log('');
+  console.log('legend: ratio = screenings/distinct-films (1.0 = zero repeats; high = scroll-wall risk).');
+  console.log('        maxRows/maxDays = the single most-repeated film at that venue (rows in the agenda / distinct days it runs).');
+  console.log('        ≥3days = films that screen on 3+ distinct days (the "daily run" pattern group-by-film would collapse).');
+  console.log('');
+}
+
 (async () => {
   const startToday = Math.floor((nowSec - ((nowSec - 3 * 3600) % DAY)) ); // today 00:00 BA in UTC secs
   await windowReport('NEXT 7 DAYS', nowSec, nowSec + 7 * DAY);
   await windowReport('NEXT 14 DAYS (homepage Tier-1 window)', startToday, startToday + 14 * DAY);
   await windowReport('ALL UPCOMING (now → ∞)', nowSec, nowSec + 365 * DAY);
+  await perVenueReport('NEXT 14 DAYS (the /sala agenda window)', startToday, startToday + 14 * DAY);
   process.exit(0);
 })();
