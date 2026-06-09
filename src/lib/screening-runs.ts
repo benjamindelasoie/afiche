@@ -52,8 +52,24 @@ function clockMinutes(hhmm: string): number {
 const byClock = (a: string, b: string) => clockMinutes(a) - clockMinutes(b);
 
 // Spanish weekday names indexed 0=Sun … 6=Sat.
-const WD_SINGULAR = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
-const WD_PLURAL = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados'];
+const WD_SINGULAR = [
+  'domingo',
+  'lunes',
+  'martes',
+  'miércoles',
+  'jueves',
+  'viernes',
+  'sábado',
+];
+const WD_PLURAL = [
+  'domingos',
+  'lunes',
+  'martes',
+  'miércoles',
+  'jueves',
+  'viernes',
+  'sábados',
+];
 const MON_FIRST = [1, 2, 3, 4, 5, 6, 0]; // display order: lunes … domingo
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -122,7 +138,9 @@ export function groupScreeningRuns(rows: ScreeningRow[]): ScreeningRun[] {
       .map((s) => ({ weekdays: sortWeekdaysForDisplay(s.weekdays), times: s.times }))
       .sort((a, b) => byClock(a.times[0], b.times[0]));
 
-    const allTimes = [...new Set(screenings.map((s) => timeBA(s.startsAtUtc)))].sort(byClock);
+    const allTimes = [...new Set(screenings.map((s) => timeBA(s.startsAtUtc)))].sort(
+      byClock,
+    );
     const allWeekdays = sortWeekdaysForDisplay([...dayTimes.keys()].map(weekdayOfKey));
     const utcs = screenings.map((s) => s.startsAtUtc.getTime());
 
@@ -206,7 +224,9 @@ export function formatWeekdaySet(weekdays: number[]): string {
 
 /** Lowercase 3-letter BA month, no trailing dot. */
 function shortMonthBA(d: Date): string {
-  const m = new Intl.DateTimeFormat('es-AR', { timeZone: BA_TZ, month: 'short' }).format(d);
+  const m = new Intl.DateTimeFormat('es-AR', { timeZone: BA_TZ, month: 'short' }).format(
+    d,
+  );
   return m.replace(/\.$/, '').toLowerCase();
 }
 function dayNumBA(d: Date): string {

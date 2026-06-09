@@ -53,7 +53,13 @@ function RunBlock({ run }: { run: ScreeningRun }) {
           />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src="/no-poster.svg" alt="" width={74} height={108} className="h-full w-full object-cover" />
+          <img
+            src="/no-poster.svg"
+            alt=""
+            width={74}
+            height={108}
+            className="h-full w-full object-cover"
+          />
         )}
       </div>
 
@@ -73,7 +79,9 @@ function RunBlock({ run }: { run: ScreeningRun }) {
         </h3>
         {film.titleOriginal &&
           film.titleOriginal.toLowerCase() !== film.title.toLowerCase() && (
-            <p className="text-ink-gray mt-0.5 font-serif text-sm italic">«{film.titleOriginal}»</p>
+            <p className="text-ink-gray mt-0.5 font-serif text-sm italic">
+              «{film.titleOriginal}»
+            </p>
           )}
         {film.director && (
           <p className="text-ink-gray mt-0.5 text-sm">
@@ -106,8 +114,14 @@ function RunBlock({ run }: { run: ScreeningRun }) {
 function DaysLine({ label, range }: { label: string; range?: string }) {
   return (
     <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-      <span className="tracking-card text-ink font-mono text-[10px] uppercase">{label}</span>
-      {range && <span className="tracking-card text-ink-gray font-mono text-[10px] uppercase">{range}</span>}
+      <span className="tracking-card text-ink font-mono text-[10px] uppercase">
+        {label}
+      </span>
+      {range && (
+        <span className="tracking-card text-ink-gray font-mono text-[10px] uppercase">
+          {range}
+        </span>
+      )}
     </p>
   );
 }
@@ -125,7 +139,7 @@ function SignatureLine({ sig }: { sig: RunSignature }) {
 // wrapped line), so the row wraps cleanly at 375px with many showtimes.
 function Times({ times }: { times: string[] }) {
   return (
-    <p className="mt-1 flex flex-wrap items-baseline font-serif text-xl text-carmine italic tabular-nums sm:text-2xl">
+    <p className="text-carmine mt-1 flex flex-wrap items-baseline font-serif text-xl italic tabular-nums sm:text-2xl">
       {times.map((t, i) => (
         <span key={t} className="whitespace-nowrap">
           {t}

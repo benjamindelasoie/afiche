@@ -97,7 +97,11 @@ export function VenueAgenda({
                     // left-time column + .ics). Multiple same-day showtimes →
                     // one collapsed row with time-chips.
                     return g.screenings.length === 1 ? (
-                      <AgendaRow key={g.screenings[0].id} s={g.screenings[0]} anchorSlug={anchorSlug} />
+                      <AgendaRow
+                        key={g.screenings[0].id}
+                        s={g.screenings[0]}
+                        anchorSlug={anchorSlug}
+                      />
                     ) : (
                       <CollapsedRow key={g.film.id} group={g} anchorSlug={anchorSlug} />
                     );
@@ -251,7 +255,13 @@ function AgendaRow({ s, anchorSlug }: { s: ScreeningRow; anchorSlug?: string }) 
 // per-row .ics since "which time" is ambiguous). Only fires at venues that
 // repeat a film within a day (Lorca/Cosmos in the "Por día" view); repertory
 // venues never reach here. The whole row stays the stretched /pelicula link.
-function CollapsedRow({ group, anchorSlug }: { group: DayFilmGroup; anchorSlug?: string }) {
+function CollapsedRow({
+  group,
+  anchorSlug,
+}: {
+  group: DayFilmGroup;
+  anchorSlug?: string;
+}) {
   const { film, programName, tags, times, screenings } = group;
   // Same tag-strip rule as AgendaRow: 'cycle' is universal noise, the
   // ProgramPill carries the curatorial signal instead.
@@ -284,7 +294,13 @@ function CollapsedRow({ group, anchorSlug }: { group: DayFilmGroup; anchorSlug?:
           />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src="/no-poster.svg" alt="" width={64} height={96} className="h-full w-full object-cover" />
+          <img
+            src="/no-poster.svg"
+            alt=""
+            width={64}
+            height={96}
+            className="h-full w-full object-cover"
+          />
         )}
       </div>
 
@@ -325,7 +341,7 @@ function CollapsedRow({ group, anchorSlug }: { group: DayFilmGroup; anchorSlug?:
             {film.runtimeMin ? ` · ${film.runtimeMin} min` : null}
           </p>
         )}
-        <p className="mt-2 flex flex-wrap items-baseline font-serif text-lg text-carmine italic tabular-nums sm:text-xl">
+        <p className="text-carmine mt-2 flex flex-wrap items-baseline font-serif text-lg italic tabular-nums sm:text-xl">
           {times.map((t, i) => (
             <span key={t} className="whitespace-nowrap">
               <time dateTime={screenings[i].startsAtUtc.toISOString()}>{t}</time>

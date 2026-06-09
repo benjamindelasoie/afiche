@@ -56,7 +56,10 @@ async function windowReport(label: string, lo: number, hi: number) {
   }[];
 
   const totalScreenings = rows.length;
-  const films = new Map<number, { venues: Set<string>; showtimes: number; days: Set<string> }>();
+  const films = new Map<
+    number,
+    { venues: Set<string>; showtimes: number; days: Set<string> }
+  >();
   const venuesAll = new Set<string>();
   const fcDay = new Map<string, number>(); // film|cinema|day -> showtimes that day
   let uniqueTagged = 0;
@@ -64,7 +67,10 @@ async function windowReport(label: string, lo: number, hi: number) {
   for (const r of rows) {
     venuesAll.add(r.cinema_id);
     let f = films.get(r.film_id);
-    if (!f) { f = { venues: new Set(), showtimes: 0, days: new Set() }; films.set(r.film_id, f); }
+    if (!f) {
+      f = { venues: new Set(), showtimes: 0, days: new Set() };
+      films.set(r.film_id, f);
+    }
     const day = baDay(r.starts_at_utc);
     f.venues.add(r.cinema_id);
     f.showtimes += 1;
@@ -87,7 +93,13 @@ async function windowReport(label: string, lo: number, hi: number) {
   const venueHist = new Map<number, number>();
   for (const v of venueCounts) venueHist.set(v, (venueHist.get(v) ?? 0) + 1);
   // showtime buckets
-  const buckets: Record<string, number> = { '1': 0, '2-3': 0, '4-6': 0, '7-10': 0, '11+': 0 };
+  const buckets: Record<string, number> = {
+    '1': 0,
+    '2-3': 0,
+    '4-6': 0,
+    '7-10': 0,
+    '11+': 0,
+  };
   for (const s of showtimeCounts) {
     if (s === 1) buckets['1']++;
     else if (s <= 3) buckets['2-3']++;
@@ -101,25 +113,51 @@ async function windowReport(label: string, lo: number, hi: number) {
   const fcDayMulti = fcDayVals.length - fcDaySingle;
 
   console.log(`════════ ${label} ════════`);
-  console.log(`window: ${new Date(lo * 1000).toISOString().slice(0, 16)}Z → ${new Date(hi * 1000).toISOString().slice(0, 16)}Z`);
-  console.log(`screenings: ${totalScreenings}   distinct films: ${F}   distinct venues with content: ${venuesAll.size}`);
+  console.log(
+    `window: ${new Date(lo * 1000).toISOString().slice(0, 16)}Z → ${new Date(hi * 1000).toISOString().slice(0, 16)}Z`,
+  );
+  console.log(
+    `screenings: ${totalScreenings}   distinct films: ${F}   distinct venues with content: ${venuesAll.size}`,
+  );
   console.log('');
   console.log(`Films at a SINGLE venue:   ${films1Venue}/${F}  (${pct(films1Venue, F)})`);
-  console.log(`Films at 2+ venues:        ${filmsMultiVenue}/${F}  (${pct(filmsMultiVenue, F)})`);
-  console.log(`Films with a SINGLE showtime (1 function all week): ${films1Showtime}/${F}  (${pct(films1Showtime, F)})`);
-  console.log(`Films with 2+ showtimes:   ${filmsMultiShowtime}/${F}  (${pct(filmsMultiShowtime, F)})`);
-  console.log(`avg showtimes/film: ${(showtimeCounts.reduce((a, b) => a + b, 0) / (F || 1)).toFixed(2)}   median: ${median(showtimeCounts)}   max: ${Math.max(0, ...showtimeCounts)}`);
-  console.log(`avg venues/film:    ${(venueCounts.reduce((a, b) => a + b, 0) / (F || 1)).toFixed(2)}   median: ${median(venueCounts)}   max: ${Math.max(0, ...venueCounts)}`);
+  console.log(
+    `Films at 2+ venues:        ${filmsMultiVenue}/${F}  (${pct(filmsMultiVenue, F)})`,
+  );
+  console.log(
+    `Films with a SINGLE showtime (1 function all week): ${films1Showtime}/${F}  (${pct(films1Showtime, F)})`,
+  );
+  console.log(
+    `Films with 2+ showtimes:   ${filmsMultiShowtime}/${F}  (${pct(filmsMultiShowtime, F)})`,
+  );
+  console.log(
+    `avg showtimes/film: ${(showtimeCounts.reduce((a, b) => a + b, 0) / (F || 1)).toFixed(2)}   median: ${median(showtimeCounts)}   max: ${Math.max(0, ...showtimeCounts)}`,
+  );
+  console.log(
+    `avg venues/film:    ${(venueCounts.reduce((a, b) => a + b, 0) / (F || 1)).toFixed(2)}   median: ${median(venueCounts)}   max: ${Math.max(0, ...venueCounts)}`,
+  );
   console.log('');
   console.log('venues-per-film histogram:');
-  [...venueHist.entries()].sort((a, b) => a[0] - b[0]).forEach(([v, n]) => console.log(`   ${v} venue${v > 1 ? 's' : ' '}: ${n} films  (${pct(n, F)})`));
+  [...venueHist.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .forEach(([v, n]) =>
+      console.log(`   ${v} venue${v > 1 ? 's' : ' '}: ${n} films  (${pct(n, F)})`),
+    );
   console.log('showtimes-per-film buckets:');
-  Object.entries(buckets).forEach(([b, n]) => console.log(`   ${b.padStart(4)} showtimes: ${n} films  (${pct(n, F)})`));
+  Object.entries(buckets).forEach(([b, n]) =>
+    console.log(`   ${b.padStart(4)} showtimes: ${n} films  (${pct(n, F)})`),
+  );
   console.log('');
   console.log(`(film,venue,day) cells: ${fcDayVals.length}`);
-  console.log(`   same film+venue plays ONCE that day:  ${fcDaySingle}  (${pct(fcDaySingle, fcDayVals.length)})`);
-  console.log(`   same film+venue plays 2+ times a day: ${fcDayMulti}  (${pct(fcDayMulti, fcDayVals.length)})  ← variant-D within-day dedup payoff`);
-  console.log(`screenings tagged ÚNICA FUNCIÓN ('unique'): ${uniqueTagged}  (${pct(uniqueTagged, totalScreenings)} of screenings)`);
+  console.log(
+    `   same film+venue plays ONCE that day:  ${fcDaySingle}  (${pct(fcDaySingle, fcDayVals.length)})`,
+  );
+  console.log(
+    `   same film+venue plays 2+ times a day: ${fcDayMulti}  (${pct(fcDayMulti, fcDayVals.length)})  ← variant-D within-day dedup payoff`,
+  );
+  console.log(
+    `screenings tagged ÚNICA FUNCIÓN ('unique'): ${uniqueTagged}  (${pct(uniqueTagged, totalScreenings)} of screenings)`,
+  );
   console.log('');
 }
 
@@ -158,16 +196,24 @@ async function perVenueReport(label: string, lo: number, hi: number) {
 
   for (const r of rows) {
     let v = venues.get(r.cinema_id);
-    if (!v) { v = { name: r.cinema_name, screenings: 0, films: new Map() }; venues.set(r.cinema_id, v); }
+    if (!v) {
+      v = { name: r.cinema_name, screenings: 0, films: new Map() };
+      venues.set(r.cinema_id, v);
+    }
     v.screenings += 1;
     let f = v.films.get(r.film_id);
-    if (!f) { f = { title: r.film_title, showtimes: 0, days: new Set() }; v.films.set(r.film_id, f); }
+    if (!f) {
+      f = { title: r.film_title, showtimes: 0, days: new Set() };
+      v.films.set(r.film_id, f);
+    }
     f.showtimes += 1;
     f.days.add(baDay(r.starts_at_utc));
   }
 
   console.log(`════════ PER-VENUE — ${label} ════════`);
-  console.log(`window: ${new Date(lo * 1000).toISOString().slice(0, 16)}Z → ${new Date(hi * 1000).toISOString().slice(0, 16)}Z\n`);
+  console.log(
+    `window: ${new Date(lo * 1000).toISOString().slice(0, 16)}Z → ${new Date(hi * 1000).toISOString().slice(0, 16)}Z\n`,
+  );
   console.log(
     `${'venue'.padEnd(22)} ${'scr'.padStart(4)} ${'films'.padStart(5)} ${'ratio'.padStart(5)} ${'maxRows'.padStart(7)} ${'maxDays'.padStart(7)} ${'≥3days'.padStart(6)}   worst-repeated film`,
   );
@@ -177,7 +223,17 @@ async function perVenueReport(label: string, lo: number, hi: number) {
     const worst = fs.reduce((a, b) => (b.showtimes > a.showtimes ? b : a), fs[0]);
     const maxDays = Math.max(0, ...fs.map((f) => f.days.size));
     const films3plus = fs.filter((f) => f.days.size >= 3).length;
-    return { id, name: v.name, screenings: v.screenings, films: fs.length, ratio, worstRows: worst.showtimes, worstTitle: worst.title, maxDays, films3plus };
+    return {
+      id,
+      name: v.name,
+      screenings: v.screenings,
+      films: fs.length,
+      ratio,
+      worstRows: worst.showtimes,
+      worstTitle: worst.title,
+      maxDays,
+      films3plus,
+    };
   });
   // sort by redundancy ratio descending — the venues most likely to bite first.
   summary.sort((a, b) => b.ratio - a.ratio);
@@ -187,17 +243,31 @@ async function perVenueReport(label: string, lo: number, hi: number) {
     );
   }
   console.log('');
-  console.log('legend: ratio = screenings/distinct-films (1.0 = zero repeats; high = scroll-wall risk).');
-  console.log('        maxRows/maxDays = the single most-repeated film at that venue (rows in the agenda / distinct days it runs).');
-  console.log('        ≥3days = films that screen on 3+ distinct days (the "daily run" pattern group-by-film would collapse).');
+  console.log(
+    'legend: ratio = screenings/distinct-films (1.0 = zero repeats; high = scroll-wall risk).',
+  );
+  console.log(
+    '        maxRows/maxDays = the single most-repeated film at that venue (rows in the agenda / distinct days it runs).',
+  );
+  console.log(
+    '        ≥3days = films that screen on 3+ distinct days (the "daily run" pattern group-by-film would collapse).',
+  );
   console.log('');
 }
 
 (async () => {
-  const startToday = Math.floor((nowSec - ((nowSec - 3 * 3600) % DAY)) ); // today 00:00 BA in UTC secs
+  const startToday = Math.floor(nowSec - ((nowSec - 3 * 3600) % DAY)); // today 00:00 BA in UTC secs
   await windowReport('NEXT 7 DAYS', nowSec, nowSec + 7 * DAY);
-  await windowReport('NEXT 14 DAYS (homepage Tier-1 window)', startToday, startToday + 14 * DAY);
+  await windowReport(
+    'NEXT 14 DAYS (homepage Tier-1 window)',
+    startToday,
+    startToday + 14 * DAY,
+  );
   await windowReport('ALL UPCOMING (now → ∞)', nowSec, nowSec + 365 * DAY);
-  await perVenueReport('NEXT 14 DAYS (the /sala agenda window)', startToday, startToday + 14 * DAY);
+  await perVenueReport(
+    'NEXT 14 DAYS (the /sala agenda window)',
+    startToday,
+    startToday + 14 * DAY,
+  );
   process.exit(0);
 })();

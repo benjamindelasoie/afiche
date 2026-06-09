@@ -184,7 +184,11 @@ export default async function SalaPage({
             {hasAgenda ? (
               <>
                 {weeklyRun && (
-                  <CarteleraToggle id={id} sp={sp} active={showRuns ? 'pelicula' : 'dia'} />
+                  <CarteleraToggle
+                    id={id}
+                    sp={sp}
+                    active={showRuns ? 'pelicula' : 'dia'}
+                  />
                 )}
                 {showRuns ? (
                   <VenueRuns runs={runs} />
@@ -266,7 +270,10 @@ function CarteleraToggle({
   const on = 'bg-carmine text-cream';
   const off = 'text-ink-gray hover:text-ink';
   return (
-    <nav aria-label="Vista de cartelera" className="border-carmine mb-8 inline-flex border">
+    <nav
+      aria-label="Vista de cartelera"
+      className="border-carmine mb-8 inline-flex border"
+    >
       <a
         href={buildVistaHref(id, sp)}
         aria-current={active === 'pelicula' ? 'page' : undefined}

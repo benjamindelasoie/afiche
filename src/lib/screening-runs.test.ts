@@ -26,7 +26,13 @@ function row(
     sourceUrl: null,
     programName,
     film: { id: filmId, title },
-    cinema: { id: 'lorca', name: 'Cine Lorca', neighborhood: null, address: null, type: 'indie' },
+    cinema: {
+      id: 'lorca',
+      name: 'Cine Lorca',
+      neighborhood: null,
+      address: null,
+      type: 'indie',
+    },
   } as unknown as ScreeningRow;
 }
 
@@ -136,30 +142,38 @@ describe('formatWeekdaySet (AC #2)', () => {
 
 describe('formatRunDateRange (AC #3)', () => {
   it('same day', () => {
-    expect(formatRunDateRange(new Date(D.jue9_1400), new Date(D.jue9_2010))).toBe('9 jun');
+    expect(formatRunDateRange(new Date(D.jue9_1400), new Date(D.jue9_2010))).toBe(
+      '9 jun',
+    );
   });
   it('same month', () => {
-    expect(formatRunDateRange(new Date(D.jue9_1400), new Date(D.mie10_1400))).toBe('9–10 jun');
+    expect(formatRunDateRange(new Date(D.jue9_1400), new Date(D.mie10_1400))).toBe(
+      '9–10 jun',
+    );
   });
   it('cross month', () => {
     expect(
-      formatRunDateRange(new Date('2026-06-30T17:00:00Z'), new Date('2026-07-02T17:00:00Z')),
+      formatRunDateRange(
+        new Date('2026-06-30T17:00:00Z'),
+        new Date('2026-07-02T17:00:00Z'),
+      ),
     ).toBe('30 jun – 2 jul');
   });
 });
 
 describe('collapseDayByFilm (AC #7)', () => {
   function day(screenings: ScreeningRow[]): DayGroup {
-    return { dateKey: '2026-06-09', label: 'martes 9 de junio', isToday: false, screenings };
+    return {
+      dateKey: '2026-06-09',
+      label: 'martes 9 de junio',
+      isToday: false,
+      screenings,
+    };
   }
 
   it('collapses a same-film, same-day multi-showtime into one group; orders by first showtime', () => {
     const groups = collapseDayByFilm(
-      day([
-        row(D.jue9_1600, 1, 'A'),
-        row(D.jue9_1400, 1, 'A'),
-        row(D.jue9_2010, 2, 'B'),
-      ]),
+      day([row(D.jue9_1600, 1, 'A'), row(D.jue9_1400, 1, 'A'), row(D.jue9_2010, 2, 'B')]),
     );
     expect(groups).toHaveLength(2);
     expect(groups[0].film.title).toBe('A');
