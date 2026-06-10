@@ -87,22 +87,19 @@ export function VenueAgenda({
 
             <div className="min-w-0 divide-y divide-black/10">
               {collapse
-                ? collapseDayByFilm(day).map((g) => {
+                ? // Collapse view (weekly-run venues' "Por día"): EVERY film
+                  // renders as a CollapsedRow so the poster-left column stays
+                  // consistent. A single-showtime film shows one time-chip and
+                  // keeps its Agendar link (one screening ⇒ unambiguous .ics).
+                  // (Using AgendaRow for the single case indented its poster by
+                  // the left-time column and broke the row rhythm.)
+                  collapseDayByFilm(day).map((g) => {
                     // The program anchor lives on a specific screening; surface
                     // it if any of this film's same-day screenings carries it.
                     const anchorSlug = g.screenings
                       .map((s) => anchorSlugByScreeningId.get(s.id))
                       .find(Boolean);
-                    // Single showtime → the unchanged AgendaRow (keeps the
-                    // left-time column + .ics). Multiple same-day showtimes →
-                    // one collapsed row with time-chips.
-                    return g.screenings.length === 1 ? (
-                      <AgendaRow
-                        key={g.screenings[0].id}
-                        s={g.screenings[0]}
-                        anchorSlug={anchorSlug}
-                      />
-                    ) : (
+                    return (
                       <CollapsedRow key={g.film.id} group={g} anchorSlug={anchorSlug} />
                     );
                   })
@@ -353,6 +350,21 @@ function CollapsedRow({
             </span>
           ))}
         </p>
+
+        {/* A single-showtime film has exactly one screening, so its .ics is
+            unambiguous — keep the add-to-calendar action (a real <a> above the
+            stretched /pelicula link, hence relative z-10). Multi-showtime rows
+            omit it: "which time" can't be answered. */}
+        {screenings.length === 1 && (
+          <a
+            href={`/api/screening/${screenings[0].id}/ics`}
+            download
+            className="tracking-eyebrow text-ink-gray hover:text-carmine focus-visible:outline-carmine relative z-10 mt-2 inline-flex min-h-[40px] items-center font-mono text-[10px] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+            aria-label={`Agendar ${film.title} a las ${times[0]} (.ics)`}
+          >
+            Agendar ⤓
+          </a>
+        )}
       </div>
     </article>
   );
