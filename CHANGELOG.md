@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.5.0] - 2026-06-09
+
+### Added
+
+- **Weekly-run venue display for fixed-weekly cinemas (`/sala/[id]`).** Cines that play the same films at the same showtimes every day (Cine Lorca, Cine Cosmos) no longer render a film as a wall of near-identical per-showtime rows. They now default to a **film-first** layout: one block per film with the poster, title, a `días` label derived from the actual weekdays (`Martes y miércoles` / `Todos los días` / `De lunes a viernes`), a date range, and the daily showtimes as carmine times. A `Por película / Por día` toggle (`?vista=dia`) reveals the classic chronological date-rail. Program/repertory venues (MALBA, Lugones, …) are unchanged — the shape is chosen by an explicit per-venue set (`src/lib/venue-agenda-style.ts`), not a heuristic. New pure grouping module `src/lib/screening-runs.ts` (uniform/non-uniform time-signatures, trasnoche-aware ordering) + `VenueRuns` component; the chronological view gained a within-day collapse (same-film-same-day showtimes merge to time-chips) scoped to weekly-run venues so repertory pages render byte-identical. Grounded in per-venue prod data (`scripts/ia-stats.ts`); design-reviewed (7→9) and code-reviewed (codex + Claude). TODO #34(b).
+
 ## [0.3.4.9] - 2026-06-08
 
 ### Added

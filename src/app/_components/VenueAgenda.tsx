@@ -7,6 +7,7 @@ import {
   type DayGroup,
   type ScreeningRow,
 } from '@/db/queries';
+import { collapseDayByFilm, type DayFilmGroup } from '@/lib/screening-runs';
 import { TAG_LABELS_ES } from '@/db';
 
 // ---------------------------------------------------------------------------
@@ -28,9 +29,14 @@ export function VenueAgenda({
   // screening. That row gets id="programa-<slug>" so the Ciclos block can
   // anchor-jump to it. Built by the page from groupCiclos().
   anchorSlugByScreeningId,
+  // Within-day collapse (one row per film, same-day showtimes as chips). Only
+  // weekly-run venues' "Por día" view passes true; chronological-default venues
+  // render the original per-screening rows untouched.
+  collapse = false,
 }: {
   days: DayGroup[];
   anchorSlugByScreeningId: Map<number, string>;
+  collapse?: boolean;
 }) {
   return (
     <div className="space-y-8 md:space-y-10">
@@ -80,13 +86,33 @@ export function VenueAgenda({
             </h2>
 
             <div className="min-w-0 divide-y divide-black/10">
-              {day.screenings.map((s) => (
-                <AgendaRow
-                  key={s.id}
-                  s={s}
-                  anchorSlug={anchorSlugByScreeningId.get(s.id)}
-                />
-              ))}
+              {collapse
+                ? collapseDayByFilm(day).map((g) => {
+                    // The program anchor lives on a specific screening; surface
+                    // it if any of this film's same-day screenings carries it.
+                    const anchorSlug = g.screenings
+                      .map((s) => anchorSlugByScreeningId.get(s.id))
+                      .find(Boolean);
+                    // Single showtime → the unchanged AgendaRow (keeps the
+                    // left-time column + .ics). Multiple same-day showtimes →
+                    // one collapsed row with time-chips.
+                    return g.screenings.length === 1 ? (
+                      <AgendaRow
+                        key={g.screenings[0].id}
+                        s={g.screenings[0]}
+                        anchorSlug={anchorSlug}
+                      />
+                    ) : (
+                      <CollapsedRow key={g.film.id} group={g} anchorSlug={anchorSlug} />
+                    );
+                  })
+                : day.screenings.map((s) => (
+                    <AgendaRow
+                      key={s.id}
+                      s={s}
+                      anchorSlug={anchorSlugByScreeningId.get(s.id)}
+                    />
+                  ))}
             </div>
           </div>
         );
@@ -220,6 +246,114 @@ function AgendaRow({ s, anchorSlug }: { s: ScreeningRow; anchorSlug?: string }) 
       >
         Agendar ⤓
       </a>
+    </article>
+  );
+}
+
+// A film that screens MORE THAN ONCE on the same agenda day — collapsed to one
+// row with its showtimes as carmine chips (no single left-time column, no
+// per-row .ics since "which time" is ambiguous). Only fires at venues that
+// repeat a film within a day (Lorca/Cosmos in the "Por día" view); repertory
+// venues never reach here. The whole row stays the stretched /pelicula link.
+function CollapsedRow({
+  group,
+  anchorSlug,
+}: {
+  group: DayFilmGroup;
+  anchorSlug?: string;
+}) {
+  const { film, programName, tags, times, screenings } = group;
+  // Same tag-strip rule as AgendaRow: 'cycle' is universal noise, the
+  // ProgramPill carries the curatorial signal instead.
+  const visibleTags = tags.filter((t) => t !== 'cycle');
+  const showTagStrip = visibleTags.length > 0 || programName !== null;
+  return (
+    <article
+      id={anchorSlug ? `programa-${anchorSlug}` : undefined}
+      className="group before:bg-carmine relative flex gap-3 py-4 transition-colors before:absolute before:top-4 before:bottom-4 before:-left-1.5 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 hover:bg-black/[0.025] hover:before:scale-y-100 sm:gap-4 [&:has(a:active)]:translate-y-[1px]"
+    >
+      {film.slug && (
+        <Link
+          href={`/pelicula/${film.slug}`}
+          data-screening-card
+          className="focus-visible:outline-carmine absolute inset-0 focus-visible:outline-2 focus-visible:outline-offset-2"
+          aria-label={`${film.title} — ${times.join(', ')}`}
+        />
+      )}
+
+      <div className="bg-cream flex h-[70px] w-12 shrink-0 items-center justify-center overflow-hidden border border-black shadow-[3px_3px_0_var(--color-carmine)] transition-[box-shadow,transform] duration-150 group-hover:translate-x-px group-hover:translate-y-px group-hover:shadow-[2px_2px_0_var(--color-carmine)] sm:h-24 sm:w-16 sm:shadow-[4px_4px_0_var(--color-carmine)] sm:group-hover:shadow-[3px_3px_0_var(--color-carmine)]">
+        {film.posterUrl ? (
+          <Image
+            src={film.posterUrl}
+            alt={film.title}
+            width={64}
+            height={96}
+            sizes="(min-width: 640px) 64px, 48px"
+            loading="lazy"
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src="/no-poster.svg"
+            alt=""
+            width={64}
+            height={96}
+            className="h-full w-full object-cover"
+          />
+        )}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        {showTagStrip && (
+          <div className="mb-1 flex flex-wrap gap-1.5">
+            {visibleTags.map((t) => (
+              <span
+                key={t}
+                className="tracking-card bg-carmine text-cream px-1.5 py-0.5 font-mono text-[10px] uppercase"
+              >
+                {TAG_LABELS_ES[t]}
+              </span>
+            ))}
+            {programName && (
+              <span
+                title={programName}
+                className="tracking-card text-carmine border-carmine/40 max-w-[28ch] truncate border px-1.5 py-0.5 font-mono text-[10px] uppercase"
+              >
+                {programName}
+              </span>
+            )}
+          </div>
+        )}
+        <h3 className="font-serif text-xl leading-tight tracking-[-0.01em] text-balance sm:text-2xl">
+          {film.title}
+        </h3>
+        {film.titleOriginal &&
+          film.titleOriginal.toLowerCase() !== film.title.toLowerCase() && (
+            <p className="text-ink-gray mt-0.5 font-serif text-sm italic">
+              «{film.titleOriginal}»
+            </p>
+          )}
+        {film.director && (
+          <p className="text-ink-gray mt-0.5 text-sm">
+            {film.director}
+            {film.year && ` · ${film.year}`}
+            {film.runtimeMin ? ` · ${film.runtimeMin} min` : null}
+          </p>
+        )}
+        <p className="text-carmine mt-2 flex flex-wrap items-baseline font-serif text-lg italic tabular-nums sm:text-xl">
+          {times.map((t, i) => (
+            <span key={t} className="whitespace-nowrap">
+              <time dateTime={screenings[i].startsAtUtc.toISOString()}>{t}</time>
+              {i < times.length - 1 && (
+                <span aria-hidden="true" className="text-carmine/40 mx-2">
+                  ·
+                </span>
+              )}
+            </span>
+          ))}
+        </p>
+      </div>
     </article>
   );
 }
