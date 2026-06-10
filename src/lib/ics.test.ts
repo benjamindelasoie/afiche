@@ -17,7 +17,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { escapeText, formatUtcDateTime, buildScreeningIcs, type IcsScreeningInput } from './ics';
+import {
+  escapeText,
+  formatUtcDateTime,
+  buildScreeningIcs,
+  type IcsScreeningInput,
+} from './ics';
 
 describe('escapeText', () => {
   it('escapes backslash first to avoid double-escaping later escapes', () => {
@@ -168,7 +173,9 @@ describe('buildScreeningIcs', () => {
   it('DESCRIPTION carries director · year and the source URL', () => {
     const ics = buildScreeningIcs(baseInput(), FIXED_NOW);
     // Newlines in DESCRIPTION are escaped to literal \n.
-    expect(ics).toContain('DESCRIPTION:David Lynch · 2001\\n\\nhttps://afiche.ar/pelicula/mulholland-drive\\n\\nEntradas: https://example.org/tickets');
+    expect(ics).toContain(
+      'DESCRIPTION:David Lynch · 2001\\n\\nhttps://afiche.ar/pelicula/mulholland-drive\\n\\nEntradas: https://example.org/tickets',
+    );
   });
 
   it('LOCATION omits the address suffix when cinema.address is null', () => {

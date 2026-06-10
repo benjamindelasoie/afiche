@@ -95,7 +95,10 @@ export default async function CarteleraPage() {
                   title="Próximamente"
                   subtitle={<SectionSubtitle parts={proximamenteSubtitle(upcoming)} />}
                 />
-                <UpcomingIndex weeks={upcoming} lastScreeningPerFilm={lastScreeningPerFilm} />
+                <UpcomingIndex
+                  weeks={upcoming}
+                  lastScreeningPerFilm={lastScreeningPerFilm}
+                />
               </section>
             )}
           </>
@@ -163,7 +166,9 @@ function UpcomingIndex({
               const rowBody = (
                 <div className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1 px-1 py-3 md:grid-cols-[auto_1fr_auto]">
                   <div className="tracking-eyebrow font-mono text-[11px] whitespace-nowrap uppercase">
-                    <span className="text-ink-gray">{formatDayShortBA(s.startsAtUtc)}</span>
+                    <span className="text-ink-gray">
+                      {formatDayShortBA(s.startsAtUtc)}
+                    </span>
                     <span className="text-ink-gray/60 mx-1">·</span>
                     <span className={isIndie ? 'text-carmine font-bold' : 'text-ink'}>
                       {formatTimeBA(s.startsAtUtc)}

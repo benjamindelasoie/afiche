@@ -78,7 +78,9 @@ function mkRow(opts: {
       // Default to an enriched poster — featured-band selection now requires
       // one. Pass `posterUrl: null` to exercise the unenriched-exclusion path.
       posterUrl:
-        opts.posterUrl === undefined ? 'https://image.tmdb.org/t/p/w342/x.jpg' : opts.posterUrl,
+        opts.posterUrl === undefined
+          ? 'https://image.tmdb.org/t/p/w342/x.jpg'
+          : opts.posterUrl,
       backdropUrl: null,
       slug: opts.slug === undefined ? `film-${opts.filmId}` : opts.slug,
       cast: null,
@@ -104,7 +106,10 @@ const at = (utc: string) => new Date(utc);
 
 describe('groupByFilm — transform', () => {
   it('single-showtime film → one group, one venue, totalCount 1', () => {
-    const groups = groupByFilm([mkRow({ filmId: 1, cinemaId: 'malba', startsAtUtc: at('2026-06-04T23:00:00Z') })], NOW);
+    const groups = groupByFilm(
+      [mkRow({ filmId: 1, cinemaId: 'malba', startsAtUtc: at('2026-06-04T23:00:00Z') })],
+      NOW,
+    );
     expect(groups).toHaveLength(1);
     expect(groups[0].totalCount).toBe(1);
     expect(groups[0].byVenue).toHaveLength(1);
@@ -115,8 +120,16 @@ describe('groupByFilm — transform', () => {
   it('multi-showtime at one venue → one group, one venue, totalCount N', () => {
     const groups = groupByFilm(
       [
-        mkRow({ filmId: 1, cinemaId: 'lugones', startsAtUtc: at('2026-06-04T21:00:00Z') }),
-        mkRow({ filmId: 1, cinemaId: 'lugones', startsAtUtc: at('2026-06-04T23:30:00Z') }),
+        mkRow({
+          filmId: 1,
+          cinemaId: 'lugones',
+          startsAtUtc: at('2026-06-04T21:00:00Z'),
+        }),
+        mkRow({
+          filmId: 1,
+          cinemaId: 'lugones',
+          startsAtUtc: at('2026-06-04T23:30:00Z'),
+        }),
       ],
       NOW,
     );
@@ -128,8 +141,16 @@ describe('groupByFilm — transform', () => {
   it('same film at two venues → one group, two venues', () => {
     const groups = groupByFilm(
       [
-        mkRow({ filmId: 1, cinemaId: 'lugones', startsAtUtc: at('2026-06-04T21:00:00Z') }),
-        mkRow({ filmId: 1, cinemaId: 'gaumont', startsAtUtc: at('2026-06-04T23:00:00Z') }),
+        mkRow({
+          filmId: 1,
+          cinemaId: 'lugones',
+          startsAtUtc: at('2026-06-04T21:00:00Z'),
+        }),
+        mkRow({
+          filmId: 1,
+          cinemaId: 'gaumont',
+          startsAtUtc: at('2026-06-04T23:00:00Z'),
+        }),
       ],
       NOW,
     );
@@ -215,7 +236,12 @@ describe('deriveFeatured — four-slot band', () => {
   it('premiere = this-year OR premiere tag → Estreno', () => {
     const byYear = deriveFeatured([mk(1, { year: 2026 })], lpf(1), windowUpper, NOW);
     expect(byYear[0].reason).toBe('estreno');
-    const byTag = deriveFeatured([mk(2, { tags: ['premiere'] })], lpf(2), windowUpper, NOW);
+    const byTag = deriveFeatured(
+      [mk(2, { tags: ['premiere'] })],
+      lpf(2),
+      windowUpper,
+      NOW,
+    );
     expect(byTag[0].reason).toBe('estreno');
   });
 
@@ -240,10 +266,20 @@ describe('deriveFeatured — four-slot band', () => {
 
   it('wildcard chain: última > nuevo > mundo', () => {
     // última: last screening within the window
-    const ultima = deriveFeatured([mk(1)], new Map([[1, windowUpper.getTime() - 1]]), windowUpper, NOW);
+    const ultima = deriveFeatured(
+      [mk(1)],
+      new Map([[1, windowUpper.getTime() - 1]]),
+      windowUpper,
+      NOW,
+    );
     expect(ultima[0].reason).toBe('ultima');
     // nuevo: created recently, not última, no fixed-slot fit
-    const nuevo = deriveFeatured([mk(2, { createdAt: at('2026-06-02T00:00:00Z') })], lpf(2), windowUpper, NOW);
+    const nuevo = deriveFeatured(
+      [mk(2, { createdAt: at('2026-06-02T00:00:00Z') })],
+      lpf(2),
+      windowUpper,
+      NOW,
+    );
     expect(nuevo[0].reason).toBe('nuevo');
     // mundo: non-AR/US country, not última/nuevo/fixed
     const mundo = deriveFeatured([mk(3, { country: 'FR' })], lpf(3), windowUpper, NOW);
@@ -302,7 +338,10 @@ describe('deriveFeatured — four-slot band', () => {
 
   it('a slot picks the highest-ranked eligible film (AR by popularity, classic by votes)', () => {
     const ar = deriveFeatured(
-      [mk(1, { country: 'AR', popularity: 10 }), mk(2, { country: 'AR', popularity: 90 })],
+      [
+        mk(1, { country: 'AR', popularity: 10 }),
+        mk(2, { country: 'AR', popularity: 90 }),
+      ],
       lpf(1, 2),
       windowUpper,
       NOW,
@@ -380,7 +419,9 @@ async function seedFilm(
       scrapedTitle: title,
       matchSource: 'none',
       posterUrl:
-        opts.posterUrl === undefined ? 'https://image.tmdb.org/t/p/w342/x.jpg' : opts.posterUrl,
+        opts.posterUrl === undefined
+          ? 'https://image.tmdb.org/t/p/w342/x.jpg'
+          : opts.posterUrl,
       country: opts.country ?? null,
       year: opts.year ?? null,
       popularity: opts.popularity ?? null,

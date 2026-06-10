@@ -22,7 +22,8 @@ import {
 } from './centro-cultural-borges';
 
 const DIR = resolve(__dirname, '../../test/fixtures/centro-cultural-borges');
-const json = (name: string) => JSON.parse(readFileSync(resolve(DIR, name), 'utf8')) as unknown;
+const json = (name: string) =>
+  JSON.parse(readFileSync(resolve(DIR, name), 'utf8')) as unknown;
 
 describe('parseEventos', () => {
   const eventos = parseEventos(json('eventos-del-mes.json'));
@@ -76,11 +77,15 @@ describe('parseDetalle', () => {
 
 describe('baLocalToUtc', () => {
   it('shifts BA-local (UTC-3) to true UTC by +3h', () => {
-    expect(baLocalToUtc('2026-06-05', '19:00')?.toISOString()).toBe('2026-06-05T22:00:00.000Z');
+    expect(baLocalToUtc('2026-06-05', '19:00')?.toISOString()).toBe(
+      '2026-06-05T22:00:00.000Z',
+    );
   });
 
   it('rolls a late BA hour into the next UTC day', () => {
-    expect(baLocalToUtc('2026-06-05', '22:30')?.toISOString()).toBe('2026-06-06T01:30:00.000Z');
+    expect(baLocalToUtc('2026-06-05', '22:30')?.toISOString()).toBe(
+      '2026-06-06T01:30:00.000Z',
+    );
   });
 
   it('returns null on garbage', () => {

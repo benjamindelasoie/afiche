@@ -11,11 +11,7 @@ import Link from 'next/link';
  * verifySession() DAL helper handles the check at the top of every page and
  * every server action; that is the boundary, not this layout.
  */
-export default function AdminPanelLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AdminPanelLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen w-full flex-col">
       <header className="border-b border-neutral-200 px-6 py-3">

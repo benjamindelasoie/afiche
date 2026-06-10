@@ -91,7 +91,9 @@ export const centroCulturalBorgesProvider: Provider = {
           cinemaId: CINEMA_ID,
           screenings: [],
           success: true,
-          warnings: ['no Cine events in eventos-del-mes (empty program, or API shape changed)'],
+          warnings: [
+            'no Cine events in eventos-del-mes (empty program, or API shape changed)',
+          ],
         };
       }
 
@@ -99,7 +101,9 @@ export const centroCulturalBorgesProvider: Provider = {
       const detalleById = new Map<number, EventoDetalle>();
       for (const id of [...new Set(eventos.map((e) => e.id))]) {
         try {
-          const d = await fetchJson<EventoDetalleResponse>(`${API_BASE}/evento-detalle?id=${id}`);
+          const d = await fetchJson<EventoDetalleResponse>(
+            `${API_BASE}/evento-detalle?id=${id}`,
+          );
           detalleById.set(id, parseDetalle(d));
         } catch (err) {
           warnings.push(`evento-detalle ${id}: ${msg(err)}`);
@@ -111,7 +115,10 @@ export const centroCulturalBorgesProvider: Provider = {
       for (const ev of eventos) {
         const s = toScreening(ev, detalleById.get(ev.id));
         if (s) screenings.push(s);
-        else warnings.push(`unparseable date/time for "${ev.title}" (${ev.date} ${ev.time})`);
+        else
+          warnings.push(
+            `unparseable date/time for "${ev.title}" (${ev.date} ${ev.time})`,
+          );
       }
 
       return { cinemaId: CINEMA_ID, screenings, success: true, warnings };
@@ -160,7 +167,11 @@ export function parseDetalle(json: EventoDetalleResponse): EventoDetalle {
   const out: EventoDetalle = {};
   const durRaw = json?.duracion;
   const dur =
-    typeof durRaw === 'string' ? parseInt(durRaw, 10) : typeof durRaw === 'number' ? durRaw : NaN;
+    typeof durRaw === 'string'
+      ? parseInt(durRaw, 10)
+      : typeof durRaw === 'number'
+        ? durRaw
+        : NaN;
   if (Number.isFinite(dur) && dur > 0) out.runtimeMin = dur;
   const long = cleanSynopsis(json?.descripcionLarga ?? undefined);
   if (long) out.synopsisLong = long;
@@ -168,7 +179,10 @@ export function parseDetalle(json: EventoDetalleResponse): EventoDetalle {
 }
 
 /** Combine a Cine occurrence with its (optional) detail into a screening. */
-export function toScreening(ev: CineEvento, detalle?: EventoDetalle): ScrapedScreening | null {
+export function toScreening(
+  ev: CineEvento,
+  detalle?: EventoDetalle,
+): ScrapedScreening | null {
   const startsAtUtc = baLocalToUtc(ev.date, ev.time);
   if (!startsAtUtc) return null;
   // Prefer the fuller plot synopsis from evento-detalle; fall back to the short

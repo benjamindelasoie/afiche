@@ -104,7 +104,9 @@ export const cineGaumontProvider: Provider = {
           const showtimes = parseTree(tree);
           if (showtimes.length === 0) continue;
 
-          const detailHtml = await fetchText(`${SITE_BASE}/pelicula?filmid=${film.filmId}`);
+          const detailHtml = await fetchText(
+            `${SITE_BASE}/pelicula?filmid=${film.filmId}`,
+          );
           const meta = parseDetail(detailHtml);
           if (!meta.title) {
             warnings.push(
@@ -181,7 +183,11 @@ export function parseListing(html: string): FilmListing[] {
 }
 
 /** Tags implied by the section a film sits in. No language tags — see note. */
-function sectionTags(isCiclo: boolean, isEstreno: boolean, title: string): ScreeningTag[] {
+function sectionTags(
+  isCiclo: boolean,
+  isEstreno: boolean,
+  title: string,
+): ScreeningTag[] {
   const tags: ScreeningTag[] = [];
   if (isEstreno) tags.push('premiere');
   if (isCiclo) {

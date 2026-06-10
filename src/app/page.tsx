@@ -97,7 +97,9 @@ export default async function HomePage({
 
         <section id="cartelera" className="mt-6 md:mt-10">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <h2 className="font-serif text-[26px] md:text-[30px]">{LIST_HEADING[windowKey]}</h2>
+            <h2 className="font-serif text-[26px] md:text-[30px]">
+              {LIST_HEADING[windowKey]}
+            </h2>
             <span className="tracking-card text-ink-gray ml-auto font-mono text-[9.5px] uppercase md:text-[10.5px]">
               {subtitle}
             </span>

@@ -158,7 +158,11 @@ describe('toScreenings', () => {
     tags: ['cycle'],
   };
   const cycleMeta = parseDetail(text('pelicula-868.html'));
-  const cycleOut = toScreenings(cycleListing, cycleMeta, parseTree(json('film-868-tree.json')));
+  const cycleOut = toScreenings(
+    cycleListing,
+    cycleMeta,
+    parseTree(json('film-868-tree.json')),
+  );
 
   it('emits one screening per showtime, in true UTC', () => {
     expect(cycleOut).toHaveLength(4);
@@ -179,7 +183,11 @@ describe('toScreenings', () => {
   });
 
   it('omits filmTitleOriginal when it equals the display title', () => {
-    const listing: FilmListing = { filmId: 867, listingTitle: 'LAS MANTIS', tags: ['premiere'] };
+    const listing: FilmListing = {
+      filmId: 867,
+      listingTitle: 'LAS MANTIS',
+      tags: ['premiere'],
+    };
     const meta = parseDetail(text('pelicula-867.html'));
     const out = toScreenings(listing, meta, parseTree(json('film-867-tree.json')));
     expect(out[0].filmTitleOriginal).toBeUndefined();

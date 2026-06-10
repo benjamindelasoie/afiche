@@ -64,13 +64,21 @@ describe('displayFilmTitle — venue title (Option B)', () => {
   it('uses TMDB clean casing when the venue title matches modulo case', () => {
     // Cine Lorca all-caps "EL CONFORMISTA" → matched to TMDB "El conformista".
     expect(
-      displayFilmTitle({ title: 'El conformista', scrapedTitle: 'EL CONFORMISTA', ...matched }),
+      displayFilmTitle({
+        title: 'El conformista',
+        scrapedTitle: 'EL CONFORMISTA',
+        ...matched,
+      }),
     ).toBe('El conformista');
   });
 
   it('keeps TMDB proper-noun casing on a same-title match (not "La reina margot")', () => {
     expect(
-      displayFilmTitle({ title: 'La reina Margot', scrapedTitle: 'LA REINA MARGOT', ...matched }),
+      displayFilmTitle({
+        title: 'La reina Margot',
+        scrapedTitle: 'LA REINA MARGOT',
+        ...matched,
+      }),
     ).toBe('La reina Margot');
   });
 
@@ -84,13 +92,21 @@ describe('displayFilmTitle — venue title (Option B)', () => {
     // Cine Lorca shows "El gran arco"; TMDB canonical is "El arquitecto"
     // (L'inconnu de la Grande Arche). The marquee says "El gran arco".
     expect(
-      displayFilmTitle({ title: 'El arquitecto', scrapedTitle: 'EL GRAN ARCO', ...matched }),
+      displayFilmTitle({
+        title: 'El arquitecto',
+        scrapedTitle: 'EL GRAN ARCO',
+        ...matched,
+      }),
     ).toBe('El gran arco');
   });
 
   it('honors an already-cased differing venue title verbatim', () => {
     expect(
-      displayFilmTitle({ title: 'El arquitecto', scrapedTitle: 'El gran arco', ...matched }),
+      displayFilmTitle({
+        title: 'El arquitecto',
+        scrapedTitle: 'El gran arco',
+        ...matched,
+      }),
     ).toBe('El gran arco');
   });
 
@@ -121,10 +137,18 @@ describe('displayFilmTitle — sentence case', () => {
 
   it('capitalizes after period, exclamation, question mark', () => {
     expect(
-      displayFilmTitle({ title: 'PARTE I. PARTE II', scrapedTitle: 'PARTE I. PARTE II', ...unmatched }),
+      displayFilmTitle({
+        title: 'PARTE I. PARTE II',
+        scrapedTitle: 'PARTE I. PARTE II',
+        ...unmatched,
+      }),
     ).toBe('Parte i. Parte ii');
     expect(
-      displayFilmTitle({ title: '¿QUIÉN? ¡SÍ!', scrapedTitle: '¿QUIÉN? ¡SÍ!', ...unmatched }),
+      displayFilmTitle({
+        title: '¿QUIÉN? ¡SÍ!',
+        scrapedTitle: '¿QUIÉN? ¡SÍ!',
+        ...unmatched,
+      }),
     ).toBe('¿Quién? ¡Sí!');
   });
 
@@ -146,7 +170,11 @@ describe('displayFilmTitle — sentence case', () => {
 
   it('accepts proper-noun degradation', () => {
     expect(
-      displayFilmTitle({ title: 'BLADE RUNNER', scrapedTitle: 'BLADE RUNNER', ...unmatched }),
+      displayFilmTitle({
+        title: 'BLADE RUNNER',
+        scrapedTitle: 'BLADE RUNNER',
+        ...unmatched,
+      }),
     ).toBe('Blade runner');
   });
 });
@@ -168,14 +196,18 @@ describe('displayFilmTitle — no-op paths', () => {
   });
 
   it('leaves no-letter strings untouched', () => {
-    expect(displayFilmTitle({ title: '12 + 34', scrapedTitle: '12 + 34', ...unmatched })).toBe(
-      '12 + 34',
-    );
+    expect(
+      displayFilmTitle({ title: '12 + 34', scrapedTitle: '12 + 34', ...unmatched }),
+    ).toBe('12 + 34');
   });
 
   it('leaves non-cased scripts untouched', () => {
     expect(
-      displayFilmTitle({ title: 'スタンドアロン', scrapedTitle: 'スタンドアロン', ...unmatched }),
+      displayFilmTitle({
+        title: 'スタンドアロン',
+        scrapedTitle: 'スタンドアロン',
+        ...unmatched,
+      }),
     ).toBe('スタンドアロン');
   });
 });

@@ -308,12 +308,22 @@ function parseS1Cycle(
       const isProgramBlock = /duraci[oó]n total del programa/i.test(text);
       if (state.kind === 'with-time') {
         emit(state);
-        state = { kind: 'with-time', times, film: { title: '', synopsis: '' }, isProgramBlock };
+        state = {
+          kind: 'with-time',
+          times,
+          film: { title: '', synopsis: '' },
+          isProgramBlock,
+        };
       } else if (state.kind === 'without-time') {
         // Film already had title+metadata; now we know its times.
         state = { kind: 'with-time', times, film: state.film, isProgramBlock };
       } else {
-        state = { kind: 'with-time', times, film: { title: '', synopsis: '' }, isProgramBlock };
+        state = {
+          kind: 'with-time',
+          times,
+          film: { title: '', synopsis: '' },
+          isProgramBlock,
+        };
       }
       // A time marker line might also contain a trailing runtime "(73'; DM)."
       const inlineRuntime = text.match(/\((\d+)\s*[′'´]\s*;\s*[A-Z]+\)/);

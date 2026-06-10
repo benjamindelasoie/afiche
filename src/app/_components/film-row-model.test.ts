@@ -13,12 +13,16 @@ import type { ScreeningTag } from '@/db/schema';
 
 vi.mock('@/db', async () => {
   const schema = await vi.importActual<typeof import('@/db/schema')>('@/db/schema');
-  return { ...schema, get db() { return undefined; } };
+  return {
+    ...schema,
+    get db() {
+      return undefined;
+    },
+  };
 });
 
-const { buildDisclosureVenue, filmRowSummary, filmRowLead, DISCLOSURE_DAY_CAP } = await import(
-  './film-row-model'
-);
+const { buildDisclosureVenue, filmRowSummary, filmRowLead, DISCLOSURE_DAY_CAP } =
+  await import('./film-row-model');
 const { groupByFilm } = await import('@/db/queries');
 
 // Thu 2026-06-04 12:00 BA (15:00 UTC).
@@ -77,7 +81,13 @@ describe('buildDisclosureVenue — day grouping + cap', () => {
     // 6 distinct days: Thu 04 … Tue 09, each at 20:00 BA.
     const days = ['04', '05', '06', '07', '08', '09'];
     const v = venue(
-      days.map((d) => mkRow({ filmId: 1, cinemaId: 'lugones', startsAtUtc: at(`2026-06-${d}T23:00:00Z`) })),
+      days.map((d) =>
+        mkRow({
+          filmId: 1,
+          cinemaId: 'lugones',
+          startsAtUtc: at(`2026-06-${d}T23:00:00Z`),
+        }),
+      ),
     );
     const out = buildDisclosureVenue(v, NOW, true);
     expect(out.days).toHaveLength(DISCLOSURE_DAY_CAP);
@@ -103,8 +113,18 @@ describe('filmRowSummary', () => {
   it('single venue → cinema name; hoy uses "funciones hoy"', () => {
     const group = groupByFilm(
       [
-        mkRow({ filmId: 1, cinemaId: 'malba', cinemaName: 'MALBA', startsAtUtc: at('2026-06-04T22:00:00Z') }),
-        mkRow({ filmId: 1, cinemaId: 'malba', cinemaName: 'MALBA', startsAtUtc: at('2026-06-04T23:30:00Z') }),
+        mkRow({
+          filmId: 1,
+          cinemaId: 'malba',
+          cinemaName: 'MALBA',
+          startsAtUtc: at('2026-06-04T22:00:00Z'),
+        }),
+        mkRow({
+          filmId: 1,
+          cinemaId: 'malba',
+          cinemaName: 'MALBA',
+          startsAtUtc: at('2026-06-04T23:30:00Z'),
+        }),
       ],
       NOW,
     )[0];
@@ -116,7 +136,11 @@ describe('filmRowSummary', () => {
     const group = groupByFilm(
       [
         mkRow({ filmId: 1, cinemaId: 'malba', startsAtUtc: at('2026-06-04T22:00:00Z') }),
-        mkRow({ filmId: 1, cinemaId: 'lugones', startsAtUtc: at('2026-06-04T23:00:00Z') }),
+        mkRow({
+          filmId: 1,
+          cinemaId: 'lugones',
+          startsAtUtc: at('2026-06-04T23:00:00Z'),
+        }),
       ],
       NOW,
     )[0];
