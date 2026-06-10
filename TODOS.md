@@ -6,9 +6,19 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ## 38. Run-block add-to-calendar — revisit if users miss the one-tap save (found 2026-06-09, weekly-run design review)
 
+**⬆ OPERATOR SIGNAL 2026-06-10 (P4→P3):** Benjamin flagged it unprompted — ".ics download is a cool feature, good to have it there." Not shipping yet, but the trigger is no longer hypothetical. Prod state validated 2026-06-10 (afiche.ar): `/sala/lorca` Por película = **0** Agendar links; `?vista=dia` = only single-showtime-that-day rows (rule: `screenings.length === 1` per film-day, `VenueAgenda.tsx` CollapsedRow); `/sala/malba` = all rows (repertory, always 1/day); `/pelicula` = every future screening row. The gap is exactly the weekly-run surfaces.
+
 **Context:** The new `weekly-run` venue display (spec: `~/.gstack/projects/benjamindelasoie-afiche/specs/*-venue-weekly-run-display.md`, TODO #34b) deliberately **drops the per-screening `.ics` "Agendar ⤓"** from the film-first run block — a uniform run has 3-6 showtimes, so a per-time `.ics` set is noise. The whole block links to `/pelicula`, where per-screening `.ics` is unambiguous. **Acknowledged UX cost:** a Lorca/Cosmos visitor's default view loses one-tap add-to-calendar (now one tap deeper). The design review accepted this rather than papering it with an ambiguous control.
 
-**What:** if signal emerges that the missing one-tap "save" is real friction (cinephile chat, feature request, or analytics showing `/sala/[run-venue]` → `/pelicula` drop-off), add a lightweight affordance to the run block — candidates: a single "Ver funciones →" text link (utility-small, secondary), or a per-day `.ics` only when a film has one showtime that day. **Why not now:** speculative; the block-to-`/pelicula` link already carries the action. **Priority: P4.** Trigger: user-reported friction. **Depends on:** weekly-run shipped.
+**What:** add an add-to-calendar affordance back to the weekly-run surfaces without breaking the film-first grammar. Option space mapped 2026-06-10 (a run block aggregates days × times — e.g. Amarga Navidad = 9 concrete screenings — so a bare "Agendar" can't answer *which one*):
+
+- **(A) Per-time-chip `.ics` in Por día view.** Each chip in a collapsed row IS one concrete screening (day+time unambiguous) — turn `14:00 · 16:00 · 20:10` into three agendar targets. Cheapest; risk: overloads time-chips with a download action where users expect navigation.
+- **(B) "Próxima función" agendar on the run block.** One "Agendar ⤓" downloading the next catchable screening's `.ics`. One tap, unambiguous by convention; silently picks for the user.
+- **(C) Multi-VEVENT `.ics` for the whole run.** RFC 5545 allows N `VEVENT`s in one file ("add the run" = 9 calendar events). Honest to the block's semantics; spammy in a calendar.
+- **(D) Expand-on-demand picker.** "Agendar una función" reveals a per-day/per-time picker inline. Most correct, most chrome.
+- (Earlier candidates, still valid: "Ver funciones →" text link; per-day `.ics` when a film has one showtime that day.)
+
+Decision wants a short design pass (`/design-consultation`-weight, not a full review) before code — it's an affordance call on a freshly design-reviewed surface. **Priority: P3.** Trigger: next `/sala` design cycle, or operator picks an option. **Depends on:** weekly-run shipped (done, v0.3.5.x).
 
 ---
 
