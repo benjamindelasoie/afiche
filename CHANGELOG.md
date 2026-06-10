@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.5.1] - 2026-06-10
+
+### Fixed
+
+- **Single-showtime films no longer break the layout in a weekly-run venue's `Por día` view.** In the chronological (`?vista=dia`) view at Lorca/Cosmos, a film with one showtime fell through to the old `AgendaRow` (`time | poster | body`), so its poster was indented by the left-time column and its time floated alone — out of line with the poster-left rows around it. The collapse view now renders **every** film through the same poster-left `CollapsedRow`; a single-showtime film shows one time-chip and keeps its `Agendar ⤓` link (one screening ⇒ unambiguous `.ics`). Repertory venues are untouched (they never use the collapse path).
+
 ## [0.3.5.0] - 2026-06-09
 
 ### Added
