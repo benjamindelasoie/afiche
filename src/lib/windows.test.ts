@@ -124,12 +124,18 @@ describe('resolveWindowKey', () => {
 
 describe('windowRenderMode', () => {
   it('hoy is single-day: expanded by default, no day chips', () => {
-    expect(windowRenderMode('hoy')).toEqual({ multiDay: false, disclosureDefaultOpen: true });
+    expect(windowRenderMode('hoy')).toEqual({
+      multiDay: false,
+      disclosureDefaultOpen: true,
+    });
   });
 
   it('finde/semana/prox are multi-day: collapsed by default, day chips', () => {
     for (const key of ['finde', 'semana', 'prox'] as const) {
-      expect(windowRenderMode(key)).toEqual({ multiDay: true, disclosureDefaultOpen: false });
+      expect(windowRenderMode(key)).toEqual({
+        multiDay: true,
+        disclosureDefaultOpen: false,
+      });
     }
   });
 });

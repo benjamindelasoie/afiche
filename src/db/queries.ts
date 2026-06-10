@@ -535,7 +535,9 @@ export function groupByFilm(rows: ScreeningRow[], now: Date): FilmGroup[] {
     }));
     // Earliest NOT-yet-expired showtime drives ordering. screeningList is
     // already ascending, so the first non-expired entry is the soonest.
-    const nextCatchable = screeningList.find((s) => !isScreeningExpired(s.startsAtUtc, now));
+    const nextCatchable = screeningList.find(
+      (s) => !isScreeningExpired(s.startsAtUtc, now),
+    );
     groups.push({
       film: screeningList[0].film,
       byVenue,
@@ -788,7 +790,10 @@ export function deriveFeatured(
     const film = list[0].film;
     if (!film.posterUrl) continue; // no SIN AFICHE in the showcase
     if (lastPerFilm.get(filmId) === undefined) continue; // must be catchable
-    remaining.push({ film, hasPremiereTag: list.some((s) => s.tags.includes('premiere')) });
+    remaining.push({
+      film,
+      hasPremiereTag: list.some((s) => s.tags.includes('premiere')),
+    });
   }
 
   const picks: FeaturedPick[] = [];
@@ -837,7 +842,9 @@ export async function getFeaturedFilms(now: Date = new Date()): Promise<Featured
  * matter which window the visitor selected — preserves the SEO surface the old
  * day-grouped homepage emitted (don't regress json-ld.tsx's 7-day window).
  */
-export async function getJsonLdScreenings(now: Date = new Date()): Promise<ScreeningRow[]> {
+export async function getJsonLdScreenings(
+  now: Date = new Date(),
+): Promise<ScreeningRow[]> {
   const lower = getTodayStartBA(now);
   const upper = new Date(lower.getTime() + 7 * 86_400_000);
   return fetchRows({ lower, upper });

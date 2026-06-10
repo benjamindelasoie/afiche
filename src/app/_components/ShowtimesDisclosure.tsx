@@ -67,7 +67,8 @@ export interface ShowtimesDisclosureProps {
   filmTitle: string;
 }
 
-const TIME_CLASS = 'font-serif text-[23px] italic leading-none tabular-nums md:text-[25px]';
+const TIME_CLASS =
+  'font-serif text-[23px] italic leading-none tabular-nums md:text-[25px]';
 
 function TimeItem({ t }: { t: DisclosureTime }) {
   if (t.isPast) {

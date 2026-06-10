@@ -58,7 +58,9 @@ export function buildDisclosureVenue(
   let omittedDayNames: string[] = [];
   if (multiDay && dayEntries.length > DISCLOSURE_DAY_CAP) {
     const omitted = dayEntries.slice(DISCLOSURE_DAY_CAP);
-    omittedDayNames = omitted.map(([, rows]) => formatAgendaDayBA(rows[0].startsAtUtc).dow);
+    omittedDayNames = omitted.map(
+      ([, rows]) => formatAgendaDayBA(rows[0].startsAtUtc).dow,
+    );
     dayEntries = dayEntries.slice(0, DISCLOSURE_DAY_CAP);
   }
 
@@ -85,7 +87,9 @@ export function filmRowSummary(
   multiDay: boolean,
 ): { venueLabel: string; summaryRest: string } {
   const venueLabel =
-    group.byVenue.length === 1 ? group.byVenue[0].cinema.name : `${group.byVenue.length} salas`;
+    group.byVenue.length === 1
+      ? group.byVenue[0].cinema.name
+      : `${group.byVenue.length} salas`;
   const summaryRest = multiDay
     ? `${group.totalCount} funciones · ${venueLabel}`
     : `${group.totalCount} funciones hoy · ${venueLabel}`;

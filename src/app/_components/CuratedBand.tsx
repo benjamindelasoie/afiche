@@ -48,7 +48,9 @@ function CuratedCard({ pick, priority }: { pick: FeaturedPick; priority: boolean
       <p className="text-carmine mt-2 truncate font-mono text-[9px] tracking-[0.15em] uppercase md:mt-3 md:text-[10px]">
         {reasonLabel}
       </p>
-      <p className="line-clamp-2 font-serif text-[18px] leading-[1.05] md:text-2xl">{film.title}</p>
+      <p className="line-clamp-2 font-serif text-[18px] leading-[1.05] md:text-2xl">
+        {film.title}
+      </p>
       {meta ? (
         <p className="text-ink-gray hidden font-sans text-xs md:block">{meta}</p>
       ) : null}

@@ -10,19 +10,34 @@ import { filmMetaLine } from './film-meta';
 describe('filmMetaLine', () => {
   it('joins all present fields with " · "', () => {
     expect(
-      filmMetaLine({ director: 'Lila Avilés', year: 2023, country: 'México', runtimeMin: 95 }),
+      filmMetaLine({
+        director: 'Lila Avilés',
+        year: 2023,
+        country: 'México',
+        runtimeMin: 95,
+      }),
     ).toBe('Lila Avilés · 2023 · México · 95 min');
   });
 
   it('drops a 0 runtime (no "0 min", no trailing separator)', () => {
     expect(
-      filmMetaLine({ director: 'Luis Ortega', year: 2024, country: 'Argentina', runtimeMin: 0 }),
+      filmMetaLine({
+        director: 'Luis Ortega',
+        year: 2024,
+        country: 'Argentina',
+        runtimeMin: 0,
+      }),
     ).toBe('Luis Ortega · 2024 · Argentina');
   });
 
   it('drops null runtime too', () => {
     expect(
-      filmMetaLine({ director: 'Wim Wenders', year: 2023, country: 'Japón', runtimeMin: null }),
+      filmMetaLine({
+        director: 'Wim Wenders',
+        year: 2023,
+        country: 'Japón',
+        runtimeMin: null,
+      }),
     ).toBe('Wim Wenders · 2023 · Japón');
   });
 

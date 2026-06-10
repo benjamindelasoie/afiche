@@ -84,7 +84,8 @@ function SingleShowtime({
   const past = isScreeningExpired(s.startsAtUtc, now);
   const time = formatTimeBA(s.startsAtUtc);
   const iso = s.startsAtUtc.toISOString();
-  const timeCls = 'font-serif text-[26px] italic leading-none tabular-nums md:text-[30px]';
+  const timeCls =
+    'font-serif text-[26px] italic leading-none tabular-nums md:text-[30px]';
   return (
     <div className="mt-2.5 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 md:mt-3.5">
       {multiDay ? (
