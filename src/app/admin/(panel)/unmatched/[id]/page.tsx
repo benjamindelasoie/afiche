@@ -7,7 +7,7 @@ import { posterImageUrl, searchMovies, type TmdbMovieSummary } from '@/tmdb/clie
 import { assignTmdbIdAction } from './actions';
 
 export const metadata = {
-  title: 'Assign · Admin · Afiche',
+  title: 'Assign · Admin · afiche',
   robots: { index: false, follow: false },
 };
 

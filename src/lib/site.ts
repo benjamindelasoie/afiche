@@ -19,14 +19,16 @@ export const SITE_URL = 'https://afiche.ar';
 export const SITE_HOST = new URL(SITE_URL).host;
 
 /**
- * Product NAME in prose/metadata. Capitalized "Afiche" everywhere it's prose
- * (page title, og:title, manifest, the apple-web-app home-screen label) — the
- * lowercase "afiche" is the wordmark LOGOTYPE only (see DESIGN.md 2026-06-07).
+ * Product name in metadata. Lowercase "afiche" EVERYWHERE — the brand is
+ * standardized on the lowercase wordmark (decision 2026-06-14); capital-A
+ * "Afiche" is retired. Drives SITE_TITLE, the manifest name/short_name, and the
+ * apple-web-app home-screen label. (Readable-English prose in docs is a
+ * separate style call and stays mixed-case.)
  */
-export const SITE_NAME = 'Afiche';
+export const SITE_NAME = 'afiche';
 
 /** Default page title + og:title + manifest `name`. */
-export const SITE_TITLE = 'Afiche — cartelera curada de Buenos Aires';
+export const SITE_TITLE = 'afiche — cartelera curada de Buenos Aires';
 
 /**
  * Default meta description — shared by the page metadata (src/app/layout.tsx)

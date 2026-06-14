@@ -14,10 +14,10 @@ import type { EditionInfo } from '@/lib/edition';
 // affordance while reading as the same product.
 //
 // The wordmark is the lowercase logotype `afiche` — deliberate (quiet,
-// editorial, leans into "afiche" being a common noun; see DESIGN.md). The
-// NAME stays "Afiche" everywhere it's prose, not logo: the `aria-label`
-// below, the metadata `title` / og:title, and the JSON-LD. Don't "fix" the
-// casing of the visible wordmark.
+// editorial, leans into "afiche" being a common noun; see DESIGN.md). As of
+// 2026-06-14 the brand is lowercase `afiche` EVERYWHERE — the `aria-label`
+// below, the metadata `title` / og:title, manifest, and admin labels — not
+// just the wordmark. Capital-A "Afiche" is retired.
 // ---------------------------------------------------------------------------
 
 const WORDMARK_CLASS = 'font-serif leading-[0.85] tracking-[-0.02em]';
@@ -44,7 +44,7 @@ export function Masthead({
       {wordmarkHref ? (
         <Link
           href={wordmarkHref}
-          aria-label="Afiche — inicio"
+          aria-label="afiche — inicio"
           className={WORDMARK_CLASS}
           style={WORDMARK_STYLE}
         >

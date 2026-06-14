@@ -46,7 +46,7 @@ export const metadata: Metadata = {
   // src/app/manifest.ts.
   appleWebApp: {
     capable: true,
-    title: 'Afiche',
+    title: 'afiche',
     statusBarStyle: 'default',
   },
 };
