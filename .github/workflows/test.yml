@@ -23,5 +23,31 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
       - name: Unit tests
         run: npx vitest run
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Production build (migrate + next build)
+        env:
+          # A throwaway local SQLite file so `drizzle-kit migrate` runs without
+          # Turso credentials. All pages are force-dynamic, so `next build`
+          # does not execute DB queries or need TMDB/Anthropic tokens.
+          DATABASE_URL: file:./ci.db
+        run: npm run build
