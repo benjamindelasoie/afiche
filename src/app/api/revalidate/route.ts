@@ -18,8 +18,23 @@
  * very mild DoS but not worth leaving open.
  */
 
+import { timingSafeEqual } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
+
+/**
+ * Constant-time secret comparison. Mirrors the admin path
+ * (src/lib/admin-auth.ts). timingSafeEqual throws on unequal lengths, so the
+ * length is checked first (length is not itself secret here). Returns false for
+ * a missing header rather than throwing.
+ */
+function secretsMatch(provided: string | null, expected: string): boolean {
+  if (provided === null) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
 
 export async function POST(req: Request) {
   const expected = process.env.REVALIDATE_SECRET;
@@ -33,7 +48,7 @@ export async function POST(req: Request) {
   }
 
   const provided = req.headers.get('x-revalidate-secret');
-  if (provided !== expected) {
+  if (!secretsMatch(provided, expected)) {
     return NextResponse.json({ error: 'invalid secret' }, { status: 401 });
   }
 
