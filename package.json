@@ -44,7 +44,6 @@
     "@libsql/client": "^0.17.2",
     "@vercel/analytics": "^2.0.1",
     "cheerio": "^1.2.0",
-    "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.2",
     "next": "^16.2.6",
     "react": "19.2.4",
