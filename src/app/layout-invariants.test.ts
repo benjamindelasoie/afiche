@@ -162,6 +162,37 @@ describe('layout invariant: <main> elements need w-full + min-w-0', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Retired-tint invariant.
+//
+// `bg-carmine/5` was the old row-hover wash. On 2026-06-07 every row hover
+// moved to the canonical de-tinted treatment — `hover:bg-black/[0.025]` plus a
+// 3px carmine `before:` left-tick that scales in. DESIGN.md declared the tint
+// "retired EVERYWHERE", but /cartelera (Próximamente rows) and /pelicula
+// (screening rows) kept it until 2026-06-13 (#34a follow-on). This pins the
+// claim so a future edit can't quietly bring the pink wash back.
+// ---------------------------------------------------------------------------
+describe('retired tint: bg-carmine/5 is gone from every src/app .tsx', () => {
+  it('no component re-introduces the retired bg-carmine/5 row tint', async () => {
+    const tsxFiles = await collectTsxFiles(resolve(projectRoot, 'src/app'));
+    const offenders: string[] = [];
+    for (const file of tsxFiles) {
+      const src = await readFile(file, 'utf8');
+      src.split('\n').forEach((line, i) => {
+        if (line.includes('bg-carmine/5')) {
+          offenders.push(`  ${file.replace(projectRoot + '/', '')}:${i + 1}`);
+        }
+      });
+    }
+    expect(
+      offenders,
+      'bg-carmine/5 was retired 2026-06-07 → use hover:bg-black/[0.025] + the ' +
+        'carmine before: left-tick (see VenueAgenda / SalaUpcomingIndex). Offenders:\n' +
+        offenders.join('\n'),
+    ).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // JSON-LD mount invariants.
 //
 // Pin the structural contract that Schema.org JSON-LD ships from the
