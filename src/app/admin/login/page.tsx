@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { loginAction } from './actions';
 
 export const metadata: Metadata = {
-  title: 'Admin · Afiche',
+  title: 'Admin · afiche',
   // Strategy A noindex — admin surfaces never appear in search.
   robots: { index: false, follow: false },
 };
@@ -19,7 +19,7 @@ export default async function LoginPage({ searchParams }: PageProps) {
     <main className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center gap-6 p-6">
       <header>
         <h1 className="text-2xl font-semibold">Admin</h1>
-        <p className="text-sm text-neutral-500">Operator panel — Afiche</p>
+        <p className="text-sm text-neutral-500">Operator panel — afiche</p>
       </header>
 
       <form action={loginAction} className="flex flex-col gap-3">

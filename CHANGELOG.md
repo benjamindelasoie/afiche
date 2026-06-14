@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.7.1] - 2026-06-14
+
+### Changed
+
+- **Standardized the product on the lowercase `afiche` wordmark.** The capital-A "Afiche" is retired as stale branding: the page `<title>` / og:title, the PWA manifest name + short name, the masthead `aria-label`, the iOS home-screen label, and the admin-panel labels now all read lowercase `afiche`. (The share image, favicon, and app icons were already lowercase.) Readable-English prose in the README and docs is unchanged — this is the product surface only. Centralized in `src/lib/site.ts` (`SITE_NAME` / `SITE_TITLE`) so the page metadata and manifest can't drift on casing.
+
 ## [0.3.7.0] - 2026-06-14
 
 A codebase-hardening batch from an `/improve` audit: one data-quality bug fix, a homepage perf win, real CI gates, the first HTTP route-handler tests, baseline security headers, and housekeeping. No user-facing behaviour change beyond the duplicate-film fix.

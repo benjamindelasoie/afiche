@@ -18,7 +18,7 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/admin/unmatched" className="text-base font-semibold">
-              Admin · Afiche
+              Admin · afiche
             </Link>
             <nav className="flex items-center gap-3 text-sm text-neutral-600">
               <Link href="/admin/unmatched" className="hover:text-neutral-900">

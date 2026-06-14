@@ -5,7 +5,7 @@ import { enrichPendingAction } from './actions';
 import { RefreshButton } from './refresh-button';
 
 export const metadata = {
-  title: 'Runs · Admin · Afiche',
+  title: 'Runs · Admin · afiche',
   robots: { index: false, follow: false },
 };
 

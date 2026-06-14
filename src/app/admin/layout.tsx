@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Admin · Afiche',
+  title: 'Admin · afiche',
   // Strategy A noindex — every admin surface (login + panel) stays out of search.
   robots: { index: false, follow: false },
 };

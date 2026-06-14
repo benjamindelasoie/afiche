@@ -4,7 +4,7 @@ import { db, films, screenings, cinemas } from '@/db';
 import { verifySession } from '@/lib/admin-dal';
 
 export const metadata = {
-  title: 'Unmatched · Admin · Afiche',
+  title: 'Unmatched · Admin · afiche',
   robots: { index: false, follow: false },
 };
 
