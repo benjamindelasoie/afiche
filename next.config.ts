@@ -5,6 +5,23 @@ const nextConfig: NextConfig = {
   // fold the two alternate hosts onto it so there's a single canonical origin
   // (and a single host the admin session cookie lives on). Query strings are
   // forwarded automatically by Next.
+  async headers() {
+    return [
+      {
+        // Apply to every route.
+        source: '/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains',
+          },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return [
       {
