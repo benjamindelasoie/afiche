@@ -153,14 +153,14 @@ function AgendaRow({ s, anchorSlug }: { s: ScreeningRow; anchorSlug?: string }) 
         {formatTimeBA(s.startsAtUtc)}
       </time>
 
-      <div className="bg-cream flex h-[70px] w-12 shrink-0 items-center justify-center overflow-hidden border border-black shadow-[3px_3px_0_var(--color-carmine)] transition-[box-shadow,transform] duration-150 group-hover:translate-x-px group-hover:translate-y-px group-hover:shadow-[2px_2px_0_var(--color-carmine)] sm:h-24 sm:w-16 sm:shadow-[4px_4px_0_var(--color-carmine)] sm:group-hover:shadow-[3px_3px_0_var(--color-carmine)]">
+      <div className="bg-cream flex h-[70px] w-12 shrink-0 items-center justify-center overflow-hidden border border-black shadow-[3px_3px_0_var(--color-carmine)] transition-[box-shadow,transform] duration-150 group-hover:translate-x-px group-hover:translate-y-px group-hover:shadow-[2px_2px_0_var(--color-carmine)] sm:h-24 sm:w-16 sm:shadow-[4px_4px_0_var(--color-carmine)] sm:group-hover:shadow-[3px_3px_0_var(--color-carmine)] lg:h-28 lg:w-20">
         {s.film.posterUrl ? (
           <Image
             src={s.film.posterUrl}
             alt={s.film.title}
-            width={64}
-            height={96}
-            sizes="(min-width: 640px) 64px, 48px"
+            width={80}
+            height={112}
+            sizes="(min-width: 1024px) 80px, (min-width: 640px) 64px, 48px"
             loading="lazy"
             className="h-full w-full object-cover"
           />
@@ -278,14 +278,14 @@ function CollapsedRow({
         />
       )}
 
-      <div className="bg-cream flex h-[70px] w-12 shrink-0 items-center justify-center overflow-hidden border border-black shadow-[3px_3px_0_var(--color-carmine)] transition-[box-shadow,transform] duration-150 group-hover:translate-x-px group-hover:translate-y-px group-hover:shadow-[2px_2px_0_var(--color-carmine)] sm:h-24 sm:w-16 sm:shadow-[4px_4px_0_var(--color-carmine)] sm:group-hover:shadow-[3px_3px_0_var(--color-carmine)]">
+      <div className="bg-cream flex h-[70px] w-12 shrink-0 items-center justify-center overflow-hidden border border-black shadow-[3px_3px_0_var(--color-carmine)] transition-[box-shadow,transform] duration-150 group-hover:translate-x-px group-hover:translate-y-px group-hover:shadow-[2px_2px_0_var(--color-carmine)] sm:h-24 sm:w-16 sm:shadow-[4px_4px_0_var(--color-carmine)] sm:group-hover:shadow-[3px_3px_0_var(--color-carmine)] lg:h-28 lg:w-20">
         {film.posterUrl ? (
           <Image
             src={film.posterUrl}
             alt={film.title}
-            width={64}
-            height={96}
-            sizes="(min-width: 640px) 64px, 48px"
+            width={80}
+            height={112}
+            sizes="(min-width: 1024px) 80px, (min-width: 640px) 64px, 48px"
             loading="lazy"
             className="h-full w-full object-cover"
           />

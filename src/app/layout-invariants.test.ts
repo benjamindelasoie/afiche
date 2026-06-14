@@ -45,6 +45,10 @@ const MAIN_FILES = [
   'src/app/cartelera/page.tsx',
   'src/app/pelicula/[slug]/page.tsx',
   'src/app/pelicula/[slug]/not-found.tsx',
+  // The venue page's <main> became a max-w-6xl lg:grid (sticky identity rail +
+  // scrolling schedule) on 2026-06-13 (#34a). It must keep w-full + min-w-0 so
+  // the grid's content column can shrink instead of overflowing at 375px.
+  'src/app/sala/[id]/page.tsx',
 ];
 
 describe('layout invariant: <main> elements need w-full + min-w-0', () => {
