@@ -2,6 +2,30 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.7.0] - 2026-06-14
+
+A codebase-hardening batch from an `/improve` audit: one data-quality bug fix, a homepage perf win, real CI gates, the first HTTP route-handler tests, baseline security headers, and housekeeping. No user-facing behaviour change beyond the duplicate-film fix.
+
+### Fixed
+
+- **Two freshly-scraped rows for the same film no longer appear twice on the cartelera.** When two brand-new film rows resolved to the same TMDB id *within a single enrichment pass* — Cine Lorca vision-parser title drift (`GIOIA MIA` vs `GUIOTA MÍA`), or the same film scraped by two venues in one run — the per-row merge missed them: it only collapses a fresh row into an *already-enriched* one, and two fresh rows never see each other's `tmdb_id` in time (the `desc(id)` order + `id < f.id` predicate pass each other by). The result was a permanent duplicate that only the manual `db:dedupe-films` script removed. A new order-independent post-pass sweep (`collapseTmdbIdDuplicates`) collapses any `tmdb_id` that ends up on more than one row into the lowest id (the slug / URL-contract anchor); it also self-heals any pre-existing duplicate on the next scrape. Regression-tested (the test is proven to fail without the sweep).
+
+- **The cache-revalidation webhook compares its secret in constant time.** `src/app/api/revalidate/route.ts` used a plain `!==` (short-circuits on the first differing byte) where the admin path already uses `timingSafeEqual`; swapped to a length-guarded `timingSafeEqual`. Same 401/500/200 outcomes, no timing side-channel, no rotation needed.
+
+### Added
+
+- **Baseline security response headers on every route.** `next.config.ts` now sets `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, and HSTS (`max-age=63072000; includeSubDomains`, no `preload`) — defense-in-depth for the same-origin `/admin/*` panel. A Content-Security-Policy is deferred to its own Report-Only rollout.
+
+- **Regression tests for the two HTTP route handlers.** The `revalidate` (secret gate → 401/500) and per-screening `.ics` (`ID_RE` guard → 404, calendar headers) routes were untested; both now have coverage so a refactor can't silently loosen the secret check or the id validation.
+
+### Changed
+
+- **The homepage runs its 7-day query once per render instead of 2–3×.** The `force-dynamic` homepage issued the identical 7-day `screenings ⋈ films ⋈ cinemas` join two or three times per render (`getFeaturedFilms`, `getJsonLdScreenings`, and `?ventana=semana`). `fetchRows` is now wrapped in request-scoped React `cache()` keyed on primitives, deduping the identical calls within a render — no behaviour change, no caller changes.
+
+- **CI enforces lint, format, and the production build.** `.github/workflows/test.yml` ran only `tsc` + `vitest`; lint/format lived only in the bypassable local pre-push hook, and a broken `next build` surfaced only at deploy. The `test` job now also runs `eslint` + `prettier --check`, and a new parallel `build` job runs `drizzle-kit migrate && next build`.
+
+- **Housekeeping.** Removed the unused `date-fns` dependency; corrected the README's stale test count and a roadmap line that contradicted the indie-circuit-only scope; fixed a self-contradicting note in `DEPLOY.md`.
+
 ## [0.3.6.0] - 2026-06-14
 
 ### Changed
