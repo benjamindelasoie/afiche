@@ -25,7 +25,7 @@ turso auth signup    # or: turso auth login
 # Create the prod DB
 turso db create afiche
 
-# Grab the URL — save it, you'll need it for Vercel (and scrape-prod.sh hardcodes it)
+# Grab the URL — save it, you'll need it for Vercel (scrape-prod.sh reads it from .env.prod)
 turso db show afiche --url
 # → libsql://afiche-<org>.turso.io
 

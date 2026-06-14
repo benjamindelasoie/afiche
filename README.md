@@ -32,7 +32,7 @@ Afiche aggregates the weekly programming of Buenos Aires' independent and repert
 - **Geist** (sans, body) + **Geist Mono** (caps, eyebrows) + **Instrument Serif** (display: masthead, day banners, film titles, italic time accents)
 - **Drizzle ORM** + **libSQL** (SQLite locally, Turso in production)
 - **cheerio** for HTML scraping; **Claude vision** (`claude-sonnet-4-6`) for Cine Lorca's image-only weekly poster, with image-hash cache
-- **Vitest** for testing (596 tests across 30 files: date/window helpers, group-by-film grouping, scraper providers, ingest, run logging, TMDB enrichment, layout invariants)
+- **Vitest** for testing (~645 tests across 35 test files: date/window helpers, group-by-film grouping, scraper providers, ingest, run logging, TMDB enrichment, layout invariants)
 - **TMDB API** for film enrichment
 
 ## Cinemas covered
@@ -155,7 +155,7 @@ npm test                 # watch mode
 npm run test:coverage    # one-shot with v8 coverage
 ```
 
-596 tests across 30 files. The homepage-redesign suites:
+~645 tests across 35 test files. The homepage-redesign suites:
 
 - `src/db/group-by-film.test.ts` — film grouping, next-catchable sort, past-film sink ordering
 - `src/lib/windows.test.ts` — window registry + `?ventana=` resolution (unknown → `hoy`) + render modes
@@ -195,9 +195,8 @@ Cine Lorca's image-only weekly programming is extracted via [Anthropic's Claude]
 
 See [TODOS.md](TODOS.md) for the full backlog. The big structural items:
 
-1. **Cinépolis Recoleta scraper** — blocked on Cloudflare bot protection; needs Playwright + stealth tooling.
-2. **Indexability strategy for `/pelicula/<slug>`** — the per-film pages are currently `noindex` to protect against flap-404 SEO penalties when films leave BA. Question is whether to pivot to indexable + persistent pages (canonical BA cinema index) or stay on the curated-channels-only path. Captured as TODO #19 with the full decision factors; revisit via `/office-hours`.
-3. **MALBA recurring-weekly cycles** (S3) — the parser handles dense-cycle (S1) and single-event prose (S2) but not "Sábados a las 18:00" recurrence grammars. Trigger-gated on real warning data from `scrape_runs`.
+1. **Indexability strategy for `/pelicula/<slug>`** — the per-film pages are currently `noindex` to protect against flap-404 SEO penalties when films leave BA. Question is whether to pivot to indexable + persistent pages (canonical BA cinema index) or stay on the curated-channels-only path. Captured as TODO #19 with the full decision factors; revisit via `/office-hours`. (Multiplex chains like Cinépolis remain intentionally out of scope — see "What it does NOT do".)
+2. **MALBA recurring-weekly cycles** (S3) — the parser handles dense-cycle (S1) and single-event prose (S2) but not "Sábados a las 18:00" recurrence grammars. Trigger-gated on real warning data from `scrape_runs`.
 
 Plus smaller polish items: a `/admin/runs` log viewer, .ics calendar export per screening, expanded TMDB enrichment (prizes/tagline), card-composition rethink, X presence + newsletter (#16, #17).
 
