@@ -392,7 +392,7 @@ function FilmScreeningRow({ s, isPast }: { s: ScreeningRow; isPast: boolean }) {
   // interactive element.
   return (
     <li>
-      <div className="group hover:bg-carmine/5 relative transition-colors [&:has(a:active)]:translate-y-[1px]">
+      <div className="group before:bg-carmine relative transition-colors before:absolute before:top-4 before:bottom-4 before:left-0 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 hover:bg-black/[0.025] hover:before:scale-y-100 [&:has(a:active)]:translate-y-[1px]">
         {showTicketLink && (
           <a
             href={s.sourceUrl!}

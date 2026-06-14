@@ -116,22 +116,32 @@ export default async function SalaPage({
     : null;
 
   return (
-    <main className="mx-auto w-full max-w-5xl min-w-0 px-4 py-8 sm:px-6 md:py-16">
-      <Link
-        href="/"
-        className="tracking-eyebrow text-carmine mb-6 inline-flex min-h-[44px] items-center font-mono text-[11px] uppercase"
-      >
-        <span className="border-carmine border-b">← Cartelera</span>
-      </Link>
+    <main className="mx-auto w-full max-w-6xl min-w-0 px-4 py-8 sm:px-6 md:py-16 lg:grid lg:grid-cols-[20rem_1fr] lg:items-start lg:gap-x-14">
+      {/* Identity rail — left column on desktop, stacks above the schedule
+          below lg. Inlined here (not a <VenueRail> component): cinema,
+          venueInfo, ciclos, and vista are all already in scope, so a child
+          would only prop-drill them for one consumer (eng review 2026-06-13).
+          Sticky on desktop so identity + the Ciclos wayfinding + the view
+          toggle stay in view while the schedule scrolls. lg:self-start (with
+          the main's lg:items-start) keeps the rail from stretching to content
+          height, which sticky requires. */}
+      <aside className="mb-10 lg:sticky lg:top-6 lg:mb-0 lg:self-start">
+        <Link
+          href="/"
+          className="tracking-eyebrow text-carmine inline-flex min-h-[44px] items-center font-mono text-[11px] uppercase"
+        >
+          <span className="border-carmine border-b">← Cartelera</span>
+        </Link>
 
-      {/* Utility header: venue name (display-page-title scale) + address on the
-          left; the official-site action sits top-right on desktop, stacked below
-          on mobile. Type ("Cine independiente") and neighborhood were dropped —
-          redundant on an indie-circuit venue page where the address already
-          answers "where", and the name is the only identity that matters. */}
-      <header className="mb-8 md:mb-12 md:flex md:items-start md:justify-between md:gap-6">
-        <div className="min-w-0">
-          <h1 className="font-serif text-[clamp(2.5rem,8vw,4.5rem)] leading-[0.95] tracking-[-0.01em] text-balance">
+        {/* Venue identity. In the narrow rail everything stacks vertically:
+            the official-site action sits below the address. The name caps at
+            text-5xl on desktop (lg) so it fits the 320px rail — the full
+            display-page-title clamp still governs the single-column
+            mobile/tablet layout below lg. Type + neighborhood were dropped —
+            redundant on an indie-circuit venue page where the address already
+            answers "where", and the name is the only identity that matters. */}
+        <header className="mt-2 mb-8">
+          <h1 className="font-serif text-[clamp(2.5rem,8vw,4.5rem)] leading-[0.95] tracking-[-0.01em] text-balance lg:text-5xl">
             {cinema.name}
           </h1>
           {mapsHref && (
@@ -152,45 +162,45 @@ export default async function SalaPage({
               <span className="border-ink-gray/40 border-b pb-0.5">{cinema.address}</span>
             </a>
           )}
-        </div>
-        {cinema.ticketingBaseUrl && (
-          <a
-            href={cinema.ticketingBaseUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="tracking-card bg-carmine text-cream focus-visible:outline-carmine mt-4 inline-flex min-h-[44px] shrink-0 items-center px-3 font-mono text-[11px] uppercase focus-visible:outline-2 focus-visible:outline-offset-2 md:mt-2"
-            aria-label={`Sitio oficial de ${cinema.name}`}
-          >
-            Sitio oficial →
-          </a>
-        )}
-      </header>
-
-      {hasVenueInfo(venueInfo) && <VenueAbout info={venueInfo} />}
-
-      {!hasAny ? (
-        <p className="text-ink-gray py-12 text-center font-serif text-lg italic">
-          Por ahora, esta sala descansa.
-        </p>
-      ) : (
-        <>
-          {ciclos.length > 0 && (
-            <div className="mb-10">
-              <CiclosEnCurso ciclos={ciclos} />
-            </div>
+          {cinema.ticketingBaseUrl && (
+            <a
+              href={cinema.ticketingBaseUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="tracking-card bg-carmine text-cream focus-visible:outline-carmine mt-4 flex min-h-[44px] w-fit items-center px-3 font-mono text-[11px] uppercase focus-visible:outline-2 focus-visible:outline-offset-2"
+              aria-label={`Sitio oficial de ${cinema.name}`}
+            >
+              Sitio oficial →
+            </a>
           )}
+        </header>
 
-          <section id="cartelera">
-            {hasAgenda ? (
-              <>
-                {weeklyRun && (
-                  <CarteleraToggle
-                    id={id}
-                    sp={sp}
-                    active={showRuns ? 'pelicula' : 'dia'}
-                  />
-                )}
-                {showRuns ? (
+        {hasVenueInfo(venueInfo) && <VenueAbout info={venueInfo} />}
+
+        {ciclos.length > 0 && <CiclosEnCurso ciclos={ciclos} />}
+
+        {/* View toggle for weekly-run venues lives in the rail (a venue-level
+            control), only when there's an agenda to switch (supersedes the
+            2026-06-09 "toggle inside #cartelera" placement). */}
+        {weeklyRun && hasAgenda && (
+          <div className="mt-8">
+            <CarteleraToggle id={id} sp={sp} active={showRuns ? 'pelicula' : 'dia'} />
+          </div>
+        )}
+      </aside>
+
+      {/* Schedule column. min-w-0 so the grid's 1fr child can shrink instead of
+          overflowing on long titles / many showtimes (CLAUDE.md #1). */}
+      <div className="min-w-0">
+        {!hasAny ? (
+          <p className="text-ink-gray py-12 text-center font-serif text-lg italic">
+            Por ahora, esta sala descansa.
+          </p>
+        ) : (
+          <>
+            <section id="cartelera">
+              {hasAgenda ? (
+                showRuns ? (
                   <VenueRuns runs={runs} />
                 ) : (
                   // within-day collapse only at weekly-run venues' "Por día"
@@ -202,35 +212,35 @@ export default async function SalaPage({
                     anchorSlugByScreeningId={anchorSlugByScreeningId}
                     collapse={weeklyRun}
                   />
-                )}
-              </>
-            ) : (
-              <p className="text-ink-gray py-8 font-serif text-lg italic">
-                Esta quincena, la sala descansa.{' '}
-                {hasUpcoming && (
-                  <a
-                    href="#proximamente"
-                    className="tracking-eyebrow text-carmine border-carmine ml-1 border-b font-mono text-[11px] uppercase not-italic"
-                  >
-                    Lo que viene ↓
-                  </a>
-                )}
-              </p>
-            )}
-          </section>
-
-          {hasUpcoming && (
-            <section id="proximamente" className="mt-16 md:mt-24">
-              <div className="py-3 text-center md:py-4">
-                <h2 className="font-serif text-4xl leading-none text-balance italic md:text-5xl">
-                  Próximamente
-                </h2>
-              </div>
-              <SalaUpcomingIndex weeks={upcoming} />
+                )
+              ) : (
+                <p className="text-ink-gray py-8 font-serif text-lg italic">
+                  Esta quincena, la sala descansa.{' '}
+                  {hasUpcoming && (
+                    <a
+                      href="#proximamente"
+                      className="tracking-eyebrow text-carmine border-carmine ml-1 border-b font-mono text-[11px] uppercase not-italic"
+                    >
+                      Lo que viene ↓
+                    </a>
+                  )}
+                </p>
+              )}
             </section>
-          )}
-        </>
-      )}
+
+            {hasUpcoming && (
+              <section id="proximamente" className="mt-16 md:mt-24">
+                <div className="py-3 text-center md:py-4">
+                  <h2 className="font-serif text-4xl leading-none text-balance italic md:text-5xl">
+                    Próximamente
+                  </h2>
+                </div>
+                <SalaUpcomingIndex weeks={upcoming} />
+              </section>
+            )}
+          </>
+        )}
+      </div>
     </main>
   );
 }

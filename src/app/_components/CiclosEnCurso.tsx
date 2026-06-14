@@ -27,7 +27,7 @@ export function CiclosEnCurso({ ciclos }: { ciclos: Ciclo[] }) {
           <Link
             key={c.slug}
             href={`#programa-${c.slug}`}
-            className="focus-visible:outline-carmine hover:border-carmine hover:bg-carmine/5 block border-l-2 border-transparent px-2 py-2 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="before:bg-carmine focus-visible:outline-carmine relative block px-2 py-2 transition-colors before:absolute before:top-2 before:bottom-2 before:left-0 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 hover:bg-black/[0.025] hover:before:scale-y-100 focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             <span className="font-serif text-xl leading-snug md:text-2xl">
               {c.name}

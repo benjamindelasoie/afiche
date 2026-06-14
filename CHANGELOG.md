@@ -2,6 +2,16 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.6.0] - 2026-06-14
+
+### Changed
+
+- **`/sala/[id]` desktop now uses the width: a sticky identity rail beside the scrolling schedule.** The venue page was a single centered column on every viewport; the audit flagged desktop as "tolerates the width rather than using it." On desktop (`lg`+) it's now a two-column layout at `max-w-6xl` — a **sticky left rail** (venue name, address, official-site link, *sobre la sala*, *Ciclos en curso*, and the weekly-run `Por película / Por día` toggle) beside the scrolling agenda/runs, so identity and wayfinding stay in view while you scroll. It collapses to the existing single column below `lg` (rail stacks above the schedule) — one responsive layout, no horizontal overflow at 375/390. Covers both venue shapes (chronological MALBA/Lugones and film-first Lorca/Cosmos). The schedule poster steps up to its Tier-1 80×112 on desktop. Design-explored (variant "Programa de mano") and eng-reviewed. TODO #34(a).
+
+### Fixed
+
+- **`bg-carmine/5` row tint fully retired.** The 2026-06-07 "retired everywhere" change had missed two surfaces — the `/cartelera` *Próximamente* rows and the `/pelicula` screening rows still used the old pink hover wash. All rows across the app now share the canonical de-tinted hover (faint grey + a carmine left-tick), and a layout-invariant test fails if any component reintroduces the tint.
+
 ## [0.3.5.1] - 2026-06-10
 
 ### Fixed

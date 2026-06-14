@@ -45,6 +45,10 @@ const MAIN_FILES = [
   'src/app/cartelera/page.tsx',
   'src/app/pelicula/[slug]/page.tsx',
   'src/app/pelicula/[slug]/not-found.tsx',
+  // The venue page's <main> became a max-w-6xl lg:grid (sticky identity rail +
+  // scrolling schedule) on 2026-06-13 (#34a). It must keep w-full + min-w-0 so
+  // the grid's content column can shrink instead of overflowing at 375px.
+  'src/app/sala/[id]/page.tsx',
 ];
 
 describe('layout invariant: <main> elements need w-full + min-w-0', () => {
@@ -154,6 +158,37 @@ describe('layout invariant: <main> elements need w-full + min-w-0', () => {
     const classes = bodyMatch![2];
     expect(classes).toContain('flex');
     expect(classes).toContain('flex-col');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Retired-tint invariant.
+//
+// `bg-carmine/5` was the old row-hover wash. On 2026-06-07 every row hover
+// moved to the canonical de-tinted treatment — `hover:bg-black/[0.025]` plus a
+// 3px carmine `before:` left-tick that scales in. DESIGN.md declared the tint
+// "retired EVERYWHERE", but /cartelera (Próximamente rows) and /pelicula
+// (screening rows) kept it until 2026-06-13 (#34a follow-on). This pins the
+// claim so a future edit can't quietly bring the pink wash back.
+// ---------------------------------------------------------------------------
+describe('retired tint: bg-carmine/5 is gone from every src/app .tsx', () => {
+  it('no component re-introduces the retired bg-carmine/5 row tint', async () => {
+    const tsxFiles = await collectTsxFiles(resolve(projectRoot, 'src/app'));
+    const offenders: string[] = [];
+    for (const file of tsxFiles) {
+      const src = await readFile(file, 'utf8');
+      src.split('\n').forEach((line, i) => {
+        if (line.includes('bg-carmine/5')) {
+          offenders.push(`  ${file.replace(projectRoot + '/', '')}:${i + 1}`);
+        }
+      });
+    }
+    expect(
+      offenders,
+      'bg-carmine/5 was retired 2026-06-07 → use hover:bg-black/[0.025] + the ' +
+        'carmine before: left-tick (see VenueAgenda / SalaUpcomingIndex). Offenders:\n' +
+        offenders.join('\n'),
+    ).toEqual([]);
   });
 });
 

@@ -202,7 +202,7 @@ function UpcomingIndex({
               );
               return (
                 <li key={s.id}>
-                  <div className="hover:bg-carmine/5 relative transition-colors">
+                  <div className="before:bg-carmine relative transition-colors before:absolute before:top-3 before:bottom-3 before:left-0 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 hover:bg-black/[0.025] hover:before:scale-y-100">
                     {s.film.slug && (
                       <Link
                         href={`/pelicula/${s.film.slug}`}
