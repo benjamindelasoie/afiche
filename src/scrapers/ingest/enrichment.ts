@@ -43,7 +43,7 @@
  * Exported for tests. Not part of the public module contract.
  */
 
-import { and, desc, eq, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 import { db, films, screenings } from '@/db';
 import { enrichFilm, enrichByTmdbId, type EnrichResult } from '@/tmdb/enrich';
 import { hasTmdbToken } from '@/tmdb/client';
@@ -95,6 +95,10 @@ export async function enrichPendingFilms(warnings: string[]): Promise<Enrichment
     // Be kind to TMDB.
     await sleep(100);
   }
+
+  // Safety net for two fresh rows that resolved the same tmdb_id in this pass
+  // (the per-row merge above can't catch that case). Order-independent.
+  merged += await collapseTmdbIdDuplicates(warnings);
 
   return { enriched, merged, skipped };
 }
@@ -255,6 +259,46 @@ async function mergeIfTmdbIdCollides(
     `merged film ${f.id} "${f.scrapedTitle}" into existing id=${existing.id} (tmdb_id=${resolvedTmdbId} collision)`,
   );
   return true;
+}
+
+/**
+ * Post-pass safety net: collapse any tmdb_id that ended up on more than one
+ * row during this enrichment pass.
+ *
+ * The per-row mergeIfTmdbIdCollides only catches a collision when the WINNER
+ * already carries the tmdb_id at the moment the LOSER is processed. Two rows
+ * that BOTH resolve a fresh tmdb_id in the SAME pass slip past it (neither sees
+ * the other's id in time — see the desc(id) + lt(id, f.id) interaction). This
+ * sweep is order-independent: for each duplicated tmdb_id, keep the lowest id
+ * (the slug anchor / URL contract) and merge every higher-id row into it.
+ *
+ * Bonus: it also collapses any pre-existing duplicate left behind by an
+ * interrupted earlier run, so the duplicate state genuinely self-heals.
+ */
+async function collapseTmdbIdDuplicates(warnings: string[]): Promise<number> {
+  const dupes = await db
+    .select({ tmdbId: films.tmdbId })
+    .from(films)
+    .where(isNotNull(films.tmdbId))
+    .groupBy(films.tmdbId)
+    .having(sql`count(*) > 1`);
+
+  let merged = 0;
+  for (const { tmdbId } of dupes) {
+    if (tmdbId == null) continue;
+    const rows = await db
+      .select({ id: films.id })
+      .from(films)
+      .where(eq(films.tmdbId, tmdbId))
+      .orderBy(asc(films.id));
+    const [winner, ...losers] = rows;
+    if (!winner) continue;
+    for (const loser of losers) {
+      await mergeFilmInto(loser.id, winner.id, warnings);
+      merged++;
+    }
+  }
+  return merged;
 }
 
 /**

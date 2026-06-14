@@ -1104,6 +1104,79 @@ describe('enrichPendingFilms — merge on tmdb_id collision', () => {
       .where(eq(screenings.filmId, firstId));
     expect(reparented).toHaveLength(2);
   });
+
+  // ---------------------------------------------------------------------------
+  // T7: Both-fresh-in-one-pass — the case the per-row merge CANNOT catch.
+  // Two brand-new rows (matchSource='none', no tmdb_id) both resolve the same
+  // tmdb_id during a single enrichment pass. The per-row mergeIfTmdbIdCollides
+  // misses this because when the higher-id row is processed (DESC order) the
+  // lower-id row hasn't written its tmdb_id yet, and when the lower-id row is
+  // processed next, the higher-id row has already written its tmdb_id but
+  // fails the `id < f.id` predicate. The post-pass collapseTmdbIdDuplicates
+  // sweep catches it order-independently.
+  // ---------------------------------------------------------------------------
+  it('collapses two FRESH rows that resolve the same tmdb_id in one pass (lowest id wins)', async () => {
+    // Both rows are brand-new this scrape (matchSource 'none', no tmdb_id yet) —
+    // e.g. Lorca VLM drift "GIOIA MIA" vs "GUIOTA MÍA" for the same film, or the
+    // same film scraped by two venues in one run.
+    const lowerId = await seedFilm({
+      scrapedTitle: 'GIOIA MIA',
+      year: null,
+      matchSource: 'none',
+      screeningsAt: [futureDate(24)],
+    });
+    const higherId = await seedFilm({
+      scrapedTitle: 'GUIOTA MÍA',
+      year: null,
+      matchSource: 'none',
+      screeningsAt: [futureDate(48)],
+    });
+    expect(higherId).toBeGreaterThan(lowerId); // sanity: insert order = id order
+
+    // Both rows resolve to the SAME tmdb_id (the whole point).
+    enrichFilmMock.mockResolvedValue({
+      delta: {
+        tmdbId: 555,
+        imdbId: 'tt0000555',
+        title: 'Gioia mia',
+        titleOriginal: 'Gioia mia',
+        director: 'A Director',
+        country: 'IT',
+        year: 2023,
+        runtimeMin: 95,
+        posterUrl: '/posters/555.jpg',
+        matchConfidence: 0.95,
+        matchSource: 'auto' as const,
+      },
+      reason: 'ok',
+    });
+
+    const warnings: string[] = [];
+    const result = await enrichPendingFilms(warnings);
+
+    // Exactly one merge happened (the sweep), and only one film row remains.
+    expect(result.merged).toBeGreaterThanOrEqual(1);
+    const remaining = await testDb
+      .select({ id: films.id, tmdbId: films.tmdbId })
+      .from(films);
+    expect(remaining).toHaveLength(1);
+
+    // The LOWEST id survived (slug/URL-contract anchor).
+    expect(remaining[0].id).toBe(lowerId);
+    expect(remaining[0].tmdbId).toBe(555);
+
+    // The higher-id row is gone, and BOTH screenings now hang off the survivor.
+    const survivorScreenings = await testDb
+      .select()
+      .from(screenings)
+      .where(eq(screenings.filmId, lowerId));
+    expect(survivorScreenings).toHaveLength(2);
+    const orphaned = await testDb
+      .select()
+      .from(screenings)
+      .where(eq(screenings.filmId, higherId));
+    expect(orphaned).toHaveLength(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
