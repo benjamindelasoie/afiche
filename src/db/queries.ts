@@ -20,6 +20,7 @@
  * All functions run on the server (Server Components) and return plain data.
  */
 
+import { cache } from 'react';
 import { and, eq, gt, gte, lt, asc, desc, sql } from 'drizzle-orm';
 import { db, screenings, films, cinemas, scrapeRuns } from './index';
 import type { CastMember, ScreeningTag } from './schema';
@@ -117,65 +118,91 @@ interface BoundedQuery {
   cinemaId?: string;
 }
 
+// Request-scoped memoization. The homepage render calls fetchRows with the SAME
+// [todayStart, +7d) bounds up to 3× per render (getFeaturedFilms,
+// getJsonLdScreenings, and getWindowScreeningsByFilm('semana')). React cache()
+// dedups them within a single render. Keyed on PRIMITIVES (epoch ms + ids)
+// because cache() compares args with Object.is — fresh Date/option objects
+// would never hit. cache() is per-request only, so this never serves stale data
+// and is compatible with the page's force-dynamic freshness.
+const fetchRowsCached = cache(
+  async (
+    lowerMs: number,
+    upperMs: number | null,
+    filmId: number | null,
+    cinemaId: string | null,
+  ): Promise<ScreeningRow[]> => {
+    const lower = new Date(lowerMs);
+    const upper = upperMs === null ? undefined : new Date(upperMs);
+
+    const conditions = [gte(screenings.startsAtUtc, lower)];
+    if (upper) conditions.push(lt(screenings.startsAtUtc, upper));
+    if (filmId !== null) conditions.push(eq(screenings.filmId, filmId));
+    if (cinemaId !== null) conditions.push(eq(screenings.cinemaId, cinemaId));
+    const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions);
+
+    const rows = await db
+      .select({
+        screening: screenings,
+        film: films,
+        cinema: cinemas,
+      })
+      .from(screenings)
+      .innerJoin(films, eq(screenings.filmId, films.id))
+      .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
+      .where(whereClause)
+      .orderBy(asc(screenings.startsAtUtc));
+
+    return rows.map((row) => ({
+      id: row.screening.id,
+      startsAtUtc: row.screening.startsAtUtc,
+      tags: row.screening.tags,
+      sourceUrl: row.screening.sourceUrl,
+      programName: row.screening.programName ?? null,
+      film: {
+        id: row.film.id,
+        // Render-ready: smart-cased for unmatched all-caps titles, otherwise
+        // verbatim. The DB column stays raw; see src/lib/title-case.ts.
+        title: displayFilmTitle(row.film),
+        titleOriginal: row.film.titleOriginal,
+        director: row.film.director,
+        year: row.film.year,
+        country: row.film.country,
+        runtimeMin: row.film.runtimeMin,
+        synopsisEs: row.film.synopsisEs,
+        posterUrl: row.film.posterUrl,
+        backdropUrl: row.film.backdropUrl,
+        slug: row.film.slug ?? null,
+        cast: row.film.cast ?? null,
+        genres: row.film.genres ?? null,
+        popularity: row.film.popularity ?? null,
+        voteAverage: row.film.voteAverage ?? null,
+        voteCount: row.film.voteCount ?? null,
+        createdAt: row.film.createdAt,
+      },
+      cinema: {
+        id: row.cinema.id,
+        name: row.cinema.name,
+        neighborhood: row.cinema.neighborhood,
+        address: row.cinema.address,
+        type: row.cinema.type,
+      },
+    }));
+  },
+);
+
 async function fetchRows({
   lower,
   upper,
   filmId,
   cinemaId,
 }: BoundedQuery): Promise<ScreeningRow[]> {
-  const conditions = [gte(screenings.startsAtUtc, lower)];
-  if (upper) conditions.push(lt(screenings.startsAtUtc, upper));
-  if (filmId !== undefined) conditions.push(eq(screenings.filmId, filmId));
-  if (cinemaId !== undefined) conditions.push(eq(screenings.cinemaId, cinemaId));
-  const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions);
-
-  const rows = await db
-    .select({
-      screening: screenings,
-      film: films,
-      cinema: cinemas,
-    })
-    .from(screenings)
-    .innerJoin(films, eq(screenings.filmId, films.id))
-    .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
-    .where(whereClause)
-    .orderBy(asc(screenings.startsAtUtc));
-
-  return rows.map((row) => ({
-    id: row.screening.id,
-    startsAtUtc: row.screening.startsAtUtc,
-    tags: row.screening.tags,
-    sourceUrl: row.screening.sourceUrl,
-    programName: row.screening.programName ?? null,
-    film: {
-      id: row.film.id,
-      // Render-ready: smart-cased for unmatched all-caps titles, otherwise
-      // verbatim. The DB column stays raw; see src/lib/title-case.ts.
-      title: displayFilmTitle(row.film),
-      titleOriginal: row.film.titleOriginal,
-      director: row.film.director,
-      year: row.film.year,
-      country: row.film.country,
-      runtimeMin: row.film.runtimeMin,
-      synopsisEs: row.film.synopsisEs,
-      posterUrl: row.film.posterUrl,
-      backdropUrl: row.film.backdropUrl,
-      slug: row.film.slug ?? null,
-      cast: row.film.cast ?? null,
-      genres: row.film.genres ?? null,
-      popularity: row.film.popularity ?? null,
-      voteAverage: row.film.voteAverage ?? null,
-      voteCount: row.film.voteCount ?? null,
-      createdAt: row.film.createdAt,
-    },
-    cinema: {
-      id: row.cinema.id,
-      name: row.cinema.name,
-      neighborhood: row.cinema.neighborhood,
-      address: row.cinema.address,
-      type: row.cinema.type,
-    },
-  }));
+  return fetchRowsCached(
+    lower.getTime(),
+    upper?.getTime() ?? null,
+    filmId ?? null,
+    cinemaId ?? null,
+  );
 }
 
 function groupByDay(rows: ScreeningRow[], now: Date): DayGroup[] {
