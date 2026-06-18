@@ -2,6 +2,12 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.7.3] - 2026-06-17
+
+### Changed
+
+- **Swapped the README's `/pelicula` screenshot for the film *detail* view** (title, editorial still, poster, synopsis, top-billed cast) instead of the upcoming-screenings list, which read like a generic listings block rather than the film page itself.
+
 ## [0.3.7.2] - 2026-06-17
 
 Docs + licensing only. No code or behaviour change.
