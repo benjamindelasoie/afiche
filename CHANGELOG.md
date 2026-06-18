@@ -2,6 +2,20 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.7.2] - 2026-06-17
+
+Docs + licensing only. No code or behaviour change.
+
+### Added
+
+- **License: PolyForm Noncommercial 1.0.0** (`LICENSE.md`). afiche is now formally **source-available, not open source**: read, run, self-host, and modify for any noncommercial purpose; commercial use is reserved to the author. Replaces the stale "will add MIT" placeholder, which would have permitted commercial clones.
+- **Architecture diagram in the README** — a GitHub-native Mermaid fence (10 scrapers → `ingest` → TMDB → Turso → Next.js serving + `/admin` + `/api/revalidate`), replacing the hand-drawn ASCII art that still said "×7". The editable `.mmd` source + an `.excalidraw` scene live in `diagrams/`.
+- **Refreshed screenshots** from live afiche.ar (desktop + mobile homepage) plus a new `/pelicula` cross-venue screening shot.
+
+### Changed
+
+- **README rewritten around product, architecture, and tech stack.** Dropped the run-locally / fork tutorial, the test-command section, and the roadmap; folded a one-line testing note into the stack. Applied the lowercase `afiche` wordmark throughout.
+
 ## [0.3.7.1] - 2026-06-14
 
 ### Changed
