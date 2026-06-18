@@ -29,11 +29,13 @@ import {
   getEndOfTwoWeeksBA,
   getIsoWeekStartBA,
   isScreeningExpired,
+  SCREENING_GRACE_MS,
   BA_TZ,
 } from '@/lib/date-ranges';
 import { getWindowDef, type WindowKey } from '@/lib/windows';
 import { displayFilmTitle } from '@/lib/title-case';
 import { slugify } from '@/lib/slug';
+import { normalizeForSearch } from '@/lib/text';
 
 export interface ScreeningRow {
   id: number;
@@ -1169,4 +1171,165 @@ export function groupCiclos(rows: ScreeningRow[]): Ciclo[] {
     });
   }
   return ciclos.sort((a, b) => a.firstStartsAt.getTime() - b.firstStartsAt.getTime());
+}
+
+// ---------------------------------------------------------------------------
+// MCP server read queries (src/app/api/mcp). Read-only; no new tables.
+// ---------------------------------------------------------------------------
+
+export interface FilmSearchHit {
+  /** Always non-null — null-slug films are excluded (they can't be linked / fed to get_film). */
+  slug: string;
+  title: string;
+  titleOriginal: string | null;
+  director: string | null;
+  year: number | null;
+  country: string | null;
+  /** Earliest still-catchable showtime (UTC). */
+  nextShowtimeUtc: Date;
+  venueCount: number;
+  screeningCount: number;
+}
+
+/**
+ * Free-text film search over the LIVE cartelera, for the MCP `search_films`
+ * tool. Matches accent- and case-insensitively against the display title,
+ * original title, scraped title, and director.
+ *
+ *   "catchable" lower bound:  startsAt + grace >= now  ⇔  startsAt >= now - grace
+ *
+ * pushed into SQL so we only pull still-attendable screenings (not the whole
+ * forward catalog), then we fold accents + match + aggregate per film in JS
+ * (SQLite `LIKE` can't strip diacritics). Rows arrive ASC, so the first row
+ * per film is its soonest catchable showtime. Films whose `slug` is null are
+ * skipped — every hit must be linkable and usable with `get_film`.
+ */
+export async function searchUpcomingFilms(
+  term: string,
+  now: Date = new Date(),
+  limit = 20,
+): Promise<FilmSearchHit[]> {
+  const needle = normalizeForSearch(term);
+  if (needle.length < 2) return [];
+  const cap = Math.min(Math.max(Math.trunc(limit) || 0, 1), 50);
+  const lower = new Date(now.getTime() - SCREENING_GRACE_MS);
+
+  const rows = await db
+    .select({
+      filmId: films.id,
+      title: films.title,
+      scrapedTitle: films.scrapedTitle,
+      titleOriginal: films.titleOriginal,
+      director: films.director,
+      year: films.year,
+      country: films.country,
+      slug: films.slug,
+      matchSource: films.matchSource,
+      skipTmdb: films.skipTmdb,
+      cinemaId: screenings.cinemaId,
+      startsAtUtc: screenings.startsAtUtc,
+    })
+    .from(screenings)
+    .innerJoin(films, eq(screenings.filmId, films.id))
+    .where(gte(screenings.startsAtUtc, lower))
+    .orderBy(asc(screenings.startsAtUtc));
+
+  interface Agg {
+    hit: FilmSearchHit;
+    cinemas: Set<string>;
+    haystack: string;
+  }
+  const byFilm = new Map<number, Agg>();
+  for (const r of rows) {
+    if (!r.slug) continue; // unlinkable — exclude from results
+    let agg = byFilm.get(r.filmId);
+    if (!agg) {
+      const title = displayFilmTitle({
+        title: r.title,
+        scrapedTitle: r.scrapedTitle,
+        matchSource: r.matchSource,
+        skipTmdb: r.skipTmdb,
+      });
+      const haystack = [title, r.titleOriginal, r.scrapedTitle, r.director]
+        .filter((s): s is string => Boolean(s))
+        .map(normalizeForSearch)
+        .join('  ');
+      agg = {
+        hit: {
+          slug: r.slug,
+          title,
+          titleOriginal: r.titleOriginal,
+          director: r.director,
+          year: r.year,
+          country: r.country,
+          nextShowtimeUtc: r.startsAtUtc, // rows are ASC ⇒ first seen is soonest
+          venueCount: 0,
+          screeningCount: 0,
+        },
+        cinemas: new Set(),
+        haystack,
+      };
+      byFilm.set(r.filmId, agg);
+    }
+    agg.cinemas.add(r.cinemaId);
+    agg.hit.screeningCount += 1;
+  }
+
+  const hits: FilmSearchHit[] = [];
+  for (const agg of byFilm.values()) {
+    if (!agg.haystack.includes(needle)) continue;
+    agg.hit.venueCount = agg.cinemas.size;
+    hits.push(agg.hit);
+  }
+  hits.sort((a, b) => a.nextShowtimeUtc.getTime() - b.nextShowtimeUtc.getTime());
+  return hits.slice(0, cap);
+}
+
+/**
+ * Look up a single film by slug, returning the same `ScreeningRow['film']`
+ * shape the joined queries produce (so `format.ts` shapes it uniformly).
+ * Used by the MCP `get_film` tool to distinguish "film exists but has no
+ * catchable showtimes" (returns the film) from "unknown slug" (returns null).
+ */
+export async function getFilmBySlug(slug: string): Promise<ScreeningRow['film'] | null> {
+  const [row] = await db.select().from(films).where(eq(films.slug, slug)).limit(1);
+  if (!row) return null;
+  return {
+    id: row.id,
+    title: displayFilmTitle(row),
+    titleOriginal: row.titleOriginal,
+    director: row.director,
+    year: row.year,
+    country: row.country,
+    runtimeMin: row.runtimeMin,
+    synopsisEs: row.synopsisEs,
+    posterUrl: row.posterUrl,
+    backdropUrl: row.backdropUrl,
+    slug: row.slug ?? null,
+    cast: row.cast ?? null,
+    genres: row.genres ?? null,
+    popularity: row.popularity ?? null,
+    voteAverage: row.voteAverage ?? null,
+    voteCount: row.voteCount ?? null,
+    createdAt: row.createdAt,
+  };
+}
+
+/**
+ * Every cinema, ordered by name — the venue directory behind the MCP
+ * `list_cinemas` tool so agents can discover valid `cinema_id` / `neighborhood`
+ * filter values. Returns the full `CinemaRow` shape.
+ */
+export async function listCinemas(): Promise<CinemaRow[]> {
+  return db
+    .select({
+      id: cinemas.id,
+      name: cinemas.name,
+      neighborhood: cinemas.neighborhood,
+      address: cinemas.address,
+      type: cinemas.type,
+      ticketingBaseUrl: cinemas.ticketingBaseUrl,
+    })
+    .from(cinemas)
+    .orderBy(asc(cinemas.name));
 }

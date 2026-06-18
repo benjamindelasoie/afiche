@@ -2,6 +2,14 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.8.0] - 2026-06-18
+
+Adds a hosted, read-only **MCP (Model Context Protocol) server** so any MCP client (Claude, ChatGPT, MCP Inspector) can query afiche's live cartelera in natural language. No user-facing site change in this release — it is a new `/api/mcp` endpoint.
+
+### Added
+
+- **MCP server at `/api/mcp`** (Streamable HTTP, stateless — no Redis) exposing four read-only tools over the existing query layer: `search_films` (accent-insensitive title/director search of the live cartelera), `whats_on` (films by time window `hoy`/`finde`/`semana`/`prox`, optionally filtered by `cinema_id` or `neighborhood`, payload-capped), `get_film` (full detail + upcoming showtimes by slug), and `list_cinemas` (the venue directory). Each tool returns both a text block and validated `structuredContent`; times are Buenos Aires local. Built on `mcp-handler` + `@modelcontextprotocol/sdk` (pinned exact) with the tool logic in `src/mcp/` and three new read queries in `src/db/queries.ts`. Read-only over already-public data; no new env vars, no schema changes. Mounted at a literal route so `/api/<unknown>` stays a normal 404 (GET → 405, OPTIONS → CORS preflight). Every emitted showtime is filtered to still-catchable, so the server never advertises a screening you can no longer attend.
+
 ## [0.3.7.3] - 2026-06-17
 
 ### Changed
