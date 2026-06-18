@@ -1,0 +1,31 @@
+graph LR
+  V["10 venue sites<br/>lugones · malba · gaumont<br/>lorca · cosmos · york · …"]
+
+  subgraph pipeline["Scrape pipeline · scrape-prod.sh (residential IP)"]
+    R["run.ts<br/>orchestrator"]
+    P["Provider.fetch() x10<br/>→ ScrapedScreening[]"]
+    I["ingest()<br/>upsert films · replace future<br/>screenings · enrich"]
+  end
+
+  TMDB["TMDB API<br/>match (similarity) + enrich"]
+  D[("Turso / SQLite · Drizzle<br/>cinemas · films · screenings<br/>providers · scrapeRuns")]
+
+  subgraph web["Next.js 16 · RSC on Vercel"]
+    Q["queries.ts"]
+    PAGES["/ · /cartelera<br/>/pelicula/[slug] · /sala/[id]"]
+    ADMIN["/admin<br/>signed-cookie auth<br/>manual TMDB match"]
+    REV["/api/revalidate"]
+  end
+
+  U(("visitor"))
+
+  V -->|HTML / JSON| P
+  R -->|drives| P
+  P -->|screenings| I
+  I <-->|lookup + enrich| TMDB
+  I -->|upsert| D
+  R -.->|POST when done| REV
+  REV -.->|revalidate ISR| PAGES
+  D --> Q --> PAGES
+  ADMIN <-->|read / fix| D
+  U --> PAGES
