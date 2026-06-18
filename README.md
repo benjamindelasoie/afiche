@@ -99,6 +99,10 @@ graph LR
 
 afiche uses the TMDB API but is not endorsed or certified by TMDB. [TMDB](https://www.themoviedb.org) provides the film metadata, poster images, and editorial stills rendered alongside each screening. afiche hotlinks TMDB's CDN (`image.tmdb.org/t/p/...`) rather than re-hosting, per TMDB's best-practice guidance, and never resells or commercially redistributes TMDB data. Cine Lorca's image-only weekly programming is read via [Anthropic's Claude](https://www.anthropic.com/) vision API; the image is hashed and the result cached locally, so a given poster is parsed at most once.
 
+## License
+
+Licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE.md) (source-available). Noncommercial use is permitted; commercial use is reserved to the author.
+
 ---
 
 Built by [Benjamin Delasoie](https://github.com/benjamindelasoie). Spot a screening afiche missed or got wrong? Issues welcome.
