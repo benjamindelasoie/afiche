@@ -18,7 +18,7 @@ afiche pulls the weekly programming of Buenos Aires' independent and repertory c
 - **Per-film pages with cross-venue discovery.** `/pelicula/<slug>` gives each film a title block, an optional 16:9 editorial still, poster, synopsis, top-billed cast — and the killer feature: every upcoming screening of that film across BA, in one list. It answers "when *else* can I catch this?", which no single venue's own site can.
 - **Rich, deduplicated film cards.** Each film is enriched from TMDB (poster, backdrop, director, runtime, country, original title, Spanish synopsis, genres, cast). The same film surfacing with title drift across cinemas collapses to one entry, and a title-ambiguity guard keeps the three *Nosferatu*s apart.
 
-![A film's cross-venue screening list on /pelicula — every upcoming showtime across BA, one film](docs/screenshots/pelicula-cross-venue.png)
+![A film detail page on /pelicula — title, editorial still, poster, synopsis, and top-billed cast](docs/screenshots/pelicula-detail.png)
 
 ## What it doesn't do (yet)
 
