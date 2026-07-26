@@ -1,5 +1,4 @@
 import { cache } from 'react';
-import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import {
@@ -8,14 +7,13 @@ import {
   getUpcomingScreeningsByCinema,
   groupCiclos,
   visibleAgendaDays,
-  formatTimeBA,
-  formatDayShortBA,
-  type WeekGroup,
 } from '@/db/queries';
 import { VenueAgenda } from '@/app/_components/VenueAgenda';
 import { VenueRuns } from '@/app/_components/VenueRuns';
 import { CiclosEnCurso } from '@/app/_components/CiclosEnCurso';
 import { VenueAbout } from '@/app/_components/VenueAbout';
+import { UpcomingIndex } from '@/app/_components/UpcomingIndex';
+import { PageShell, BackLink, SectionHeading } from '@/app/_components/ui';
 import { getVenueInfo, hasVenueInfo } from '@/data/venue-info';
 import { isWeeklyRunVenue } from '@/lib/venue-agenda-style';
 import { groupScreeningRuns } from '@/lib/screening-runs';
@@ -116,7 +114,11 @@ export default async function SalaPage({
     : null;
 
   return (
-    <main className="mx-auto w-full max-w-6xl min-w-0 px-4 py-8 sm:px-6 md:py-16 lg:grid lg:grid-cols-[20rem_1fr] lg:items-start lg:gap-x-14">
+    <PageShell
+      width="6xl"
+      pad="roomy"
+      className="lg:grid lg:grid-cols-[20rem_1fr] lg:items-start lg:gap-x-14"
+    >
       {/* Identity rail — left column on desktop, stacks above the schedule
           below lg. Inlined here (not a <VenueRail> component): cinema,
           venueInfo, ciclos, and vista are all already in scope, so a child
@@ -126,12 +128,7 @@ export default async function SalaPage({
           the main's lg:items-start) keeps the rail from stretching to content
           height, which sticky requires. */}
       <aside className="mb-10 lg:sticky lg:top-6 lg:mb-0 lg:self-start">
-        <Link
-          href="/"
-          className="tracking-eyebrow text-carmine inline-flex min-h-[44px] items-center font-mono text-[11px] uppercase"
-        >
-          <span className="border-carmine border-b">← Cartelera</span>
-        </Link>
+        <BackLink hitArea>Cartelera</BackLink>
 
         {/* Venue identity. In the narrow rail everything stacks vertically:
             the official-site action sits below the address. The name caps at
@@ -230,18 +227,14 @@ export default async function SalaPage({
 
             {hasUpcoming && (
               <section id="proximamente" className="mt-16 md:mt-24">
-                <div className="py-3 text-center md:py-4">
-                  <h2 className="font-serif text-4xl leading-none text-balance italic md:text-5xl">
-                    Próximamente
-                  </h2>
-                </div>
-                <SalaUpcomingIndex weeks={upcoming} />
+                <SectionHeading>Próximamente</SectionHeading>
+                <UpcomingIndex weeks={upcoming} />
               </section>
             )}
           </>
         )}
       </div>
-    </main>
+    </PageShell>
   );
 }
 
@@ -299,68 +292,5 @@ function CarteleraToggle({
         Por día
       </a>
     </nav>
-  );
-}
-
-// Próximamente index for the cinema page. Omits the cinema column (redundant
-// on a page already scoped to one venue) — shows date, time, and film title.
-// No "última función" pill here: that signal means "last showing across all of
-// BA", which is off-topic on a single-venue schedule, and computing it cost an
-// unbounded all-screenings scan we dropped from this page (eng-review perf).
-function SalaUpcomingIndex({ weeks }: { weeks: WeekGroup[] }) {
-  return (
-    <div className="mt-8 space-y-10">
-      {weeks.map((week) => (
-        <div key={week.weekKey}>
-          <h3 className="tracking-eyebrow text-ink mb-3 border-t border-black/40 py-2 font-mono text-[11px] uppercase">
-            {week.label}
-          </h3>
-          <ul className="divide-y divide-black/15">
-            {week.screenings.map((s) => {
-              const isIndie = s.cinema.type === 'indie';
-              const rowBody = (
-                <div className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1 px-1 py-3">
-                  <div className="tracking-eyebrow font-mono text-[11px] whitespace-nowrap uppercase">
-                    <span className="text-ink-gray">
-                      {formatDayShortBA(s.startsAtUtc)}
-                    </span>
-                    <span className="text-ink-gray/60 mx-1">·</span>
-                    <span className={isIndie ? 'text-carmine font-bold' : 'text-ink'}>
-                      {formatTimeBA(s.startsAtUtc)}
-                    </span>
-                  </div>
-                  <div className="min-w-0">
-                    <span
-                      className={
-                        isIndie
-                          ? 'font-serif text-lg leading-tight'
-                          : 'font-sans text-base font-medium'
-                      }
-                    >
-                      {s.film.title}
-                    </span>
-                  </div>
-                </div>
-              );
-              return (
-                <li key={s.id}>
-                  <div className="before:bg-carmine relative transition-colors before:absolute before:top-3 before:bottom-3 before:left-0 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 hover:bg-black/[0.025] hover:before:scale-y-100">
-                    {s.film.slug && (
-                      <Link
-                        href={`/pelicula/${s.film.slug}`}
-                        data-screening-card
-                        className="focus-visible:outline-carmine absolute inset-0 focus-visible:outline-2 focus-visible:outline-offset-2"
-                        aria-label={`${s.film.title} — ${formatDayShortBA(s.startsAtUtc)} ${formatTimeBA(s.startsAtUtc)}`}
-                      />
-                    )}
-                    {rowBody}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
-    </div>
   );
 }

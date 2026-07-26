@@ -1,17 +1,21 @@
-import Link from 'next/link';
 import {
   getTwoWeeksScreenings,
   getUpcomingScreenings,
   getLastScrapeTime,
   getLastScreeningPerFilm,
-  formatTimeBA,
-  formatDayShortBA,
   type WeekGroup,
 } from '@/db/queries';
 import { DaySection } from '@/app/_components/DaySection';
 import { DateStrip } from '@/app/_components/DateStrip';
 import { Masthead } from '@/app/_components/Masthead';
-import { computeEdition, formatRangeLabel, formatLastScrape } from '@/lib/edition';
+import { UpcomingIndex } from '@/app/_components/UpcomingIndex';
+import {
+  PageShell,
+  ContentColumn,
+  PageFooter,
+  SectionHeading,
+} from '@/app/_components/ui';
+import { computeEdition, formatRangeLabel } from '@/lib/edition';
 
 // `/cartelera` — the exhaustive, day-by-day cartelera. This is the view the
 // homepage used to be; the 2026-06-06 redesign promoted a window-scoped
@@ -57,7 +61,7 @@ export default async function CarteleraPage() {
 
   return (
     <>
-      <main className="mx-auto w-full max-w-6xl min-w-0 px-4 pb-12 sm:px-6">
+      <PageShell width="6xl" pad="flush">
         <Masthead
           edition={edition}
           funcionesTotal={twoWeeksTotal}
@@ -65,161 +69,55 @@ export default async function CarteleraPage() {
           wordmarkHref="/"
         />
 
-        {!hasAny ? (
-          <EmptyStateAll />
-        ) : (
-          <>
-            <DateStrip days={twoWeeks} hasUpcoming={hasUpcoming} />
+        {/* Content clamps to the DESIGN.md 5xl single-column reading width;
+            the masthead + footer above/below span the wider 6xl chrome so the
+            header matches the homepage's (2026-07-25 chrome/content split). */}
+        <ContentColumn width="5xl">
+          {!hasAny ? (
+            <EmptyStateAll />
+          ) : (
+            <>
+              <DateStrip days={twoWeeks} hasUpcoming={hasUpcoming} />
 
-            <section id="cartelera" className="mt-6 md:mt-8">
-              {twoWeeks.every((d) => d.screenings.length === 0) ? (
-                <EmptyWeekMessage hasFollowup={hasUpcoming} />
-              ) : (
-                <div className="mt-10 space-y-12">
-                  {twoWeeks.map((day, dayIdx) => (
-                    <DaySection
-                      key={day.dateKey}
-                      day={day}
-                      isFirstDay={dayIdx === 0}
-                      lastScreeningPerFilm={lastScreeningPerFilm}
-                      now={now}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
-
-            {hasUpcoming && (
-              <section id="proximamente" className="mt-16 md:mt-24">
-                <SectionHeader
-                  title="Próximamente"
-                  subtitle={<SectionSubtitle parts={proximamenteSubtitle(upcoming)} />}
-                />
-                <UpcomingIndex
-                  weeks={upcoming}
-                  lastScreeningPerFilm={lastScreeningPerFilm}
-                />
-              </section>
-            )}
-          </>
-        )}
-
-        {lastScrape && (
-          <footer className="mt-20 border-t-8 border-double border-black pt-8 text-center">
-            <p className="tracking-eyebrow text-ink-gray font-mono text-[11px] uppercase">
-              Actualizado el {formatLastScrape(lastScrape)}
-            </p>
-          </footer>
-        )}
-      </main>
-    </>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Section header — serif italic title + mono subtitle (range + counts).
-// ---------------------------------------------------------------------------
-function SectionHeader({
-  title,
-  subtitle,
-}: {
-  title: string;
-  subtitle: React.ReactNode;
-}) {
-  return (
-    <div className="py-3 text-center md:py-4">
-      <h2 className="font-serif text-4xl leading-none text-balance italic md:text-5xl">
-        {title}
-      </h2>
-      {subtitle ? (
-        <p className="tracking-eyebrow text-ink-gray mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 font-mono text-[11px] uppercase md:mt-3">
-          {subtitle}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Próximamente index — week-grouped text index. One banner per ISO week +
-// chronological rows beneath.
-// ---------------------------------------------------------------------------
-function UpcomingIndex({
-  weeks,
-  lastScreeningPerFilm,
-}: {
-  weeks: WeekGroup[];
-  lastScreeningPerFilm: Map<number, number>;
-}) {
-  return (
-    <div className="mt-8 space-y-10">
-      {weeks.map((week) => (
-        <div key={week.weekKey}>
-          <h3 className="tracking-eyebrow text-ink mb-3 border-t border-black/40 py-2 font-mono text-[11px] uppercase">
-            {week.label}
-          </h3>
-          <ul className="divide-y divide-black/15">
-            {week.screenings.map((s) => {
-              const isIndie = s.cinema.type === 'indie';
-              const isLastFunction =
-                lastScreeningPerFilm.get(s.film.id) === s.startsAtUtc.getTime();
-              const rowBody = (
-                <div className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1 px-1 py-3 md:grid-cols-[auto_1fr_auto]">
-                  <div className="tracking-eyebrow font-mono text-[11px] whitespace-nowrap uppercase">
-                    <span className="text-ink-gray">
-                      {formatDayShortBA(s.startsAtUtc)}
-                    </span>
-                    <span className="text-ink-gray/60 mx-1">·</span>
-                    <span className={isIndie ? 'text-carmine font-bold' : 'text-ink'}>
-                      {formatTimeBA(s.startsAtUtc)}
-                    </span>
-                  </div>
-                  <div className="min-w-0">
-                    <span
-                      className={
-                        isIndie
-                          ? 'font-serif text-lg leading-tight'
-                          : 'font-sans text-base font-medium'
-                      }
-                    >
-                      {s.film.title}
-                    </span>
-                    {isLastFunction && (
-                      <span className="tracking-card bg-carmine text-cream ml-2 px-1.5 py-0.5 align-middle font-mono text-[10px] uppercase">
-                        Última
-                      </span>
-                    )}
-                  </div>
-                  <Link
-                    href={`/sala/${s.cinema.id}`}
-                    className={`tracking-card relative z-10 col-span-2 font-mono text-[11px] whitespace-nowrap uppercase md:col-span-1 ${
-                      isIndie ? 'text-carmine font-bold' : 'text-ink-gray'
-                    }`}
-                  >
-                    {s.cinema.name}
-                  </Link>
-                </div>
-              );
-              return (
-                <li key={s.id}>
-                  <div className="before:bg-carmine relative transition-colors before:absolute before:top-3 before:bottom-3 before:left-0 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 hover:bg-black/[0.025] hover:before:scale-y-100">
-                    {s.film.slug && (
-                      <Link
-                        href={`/pelicula/${s.film.slug}`}
-                        data-screening-card
-                        className="focus-visible:outline-carmine absolute inset-0 focus-visible:outline-2 focus-visible:outline-offset-2"
-                        aria-label={`${s.film.title} — ${s.cinema.name} — ${formatTimeBA(s.startsAtUtc)}`}
+              <section id="cartelera" className="mt-6 md:mt-8">
+                {twoWeeks.every((d) => d.screenings.length === 0) ? (
+                  <EmptyWeekMessage hasFollowup={hasUpcoming} />
+                ) : (
+                  <div className="mt-10 space-y-12">
+                    {twoWeeks.map((day, dayIdx) => (
+                      <DaySection
+                        key={day.dateKey}
+                        day={day}
+                        isFirstDay={dayIdx === 0}
+                        lastScreeningPerFilm={lastScreeningPerFilm}
+                        now={now}
                       />
-                    )}
-                    {rowBody}
+                    ))}
                   </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
-    </div>
+                )}
+              </section>
+
+              {hasUpcoming && (
+                <section id="proximamente" className="mt-16 md:mt-24">
+                  <SectionHeading
+                    subtitle={<SectionSubtitle parts={proximamenteSubtitle(upcoming)} />}
+                  >
+                    Próximamente
+                  </SectionHeading>
+                  <UpcomingIndex
+                    weeks={upcoming}
+                    showCinema
+                    lastScreeningPerFilm={lastScreeningPerFilm}
+                  />
+                </section>
+              )}
+            </>
+          )}
+        </ContentColumn>
+
+        <PageFooter lastScrape={lastScrape} />
+      </PageShell>
+    </>
   );
 }
 
