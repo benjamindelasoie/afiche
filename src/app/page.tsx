@@ -7,12 +7,13 @@ import {
   formatAgendaDayLongBA,
 } from '@/db/queries';
 import { resolveWindowKey, windowRenderMode, type WindowKey } from '@/lib/windows';
-import { computeEdition, formatLastScrape } from '@/lib/edition';
+import { computeEdition } from '@/lib/edition';
 import { JsonLd, buildHomepageJsonLd } from '@/lib/json-ld';
 import { Masthead } from './_components/Masthead';
 import { WindowNav } from './_components/WindowNav';
 import { CuratedBand } from './_components/CuratedBand';
 import { FilmRow } from './_components/FilmRow';
+import { PageShell, PageFooter } from './_components/ui';
 
 // The homepage is a window-scoped, GROUP-BY-FILM cartelera (redesign
 // 2026-06-06; see GitHub issue #17 + DESIGN.md). One row per film for a
@@ -87,7 +88,7 @@ export default async function HomePage({
       {jsonLdEvents.map((event, i) => (
         <JsonLd key={i} payload={event} />
       ))}
-      <main className="mx-auto w-full max-w-6xl min-w-0 px-4 pb-12 sm:px-6">
+      <PageShell width="6xl" pad="flush">
         <Masthead edition={edition} funcionesTotal={weekTotal} salasTotal={weekCinemas} />
 
         <WindowNav active={windowKey} />
@@ -144,14 +145,8 @@ export default async function HomePage({
         </section>
 
         {/* Footer — only the freshness stamp; omitted until a successful scrape. */}
-        {lastScrape && (
-          <footer className="mt-20 border-t-8 border-double border-black pt-8 text-center">
-            <p className="tracking-eyebrow text-ink-gray font-mono text-[11px] uppercase">
-              Actualizado el {formatLastScrape(lastScrape)}
-            </p>
-          </footer>
-        )}
-      </main>
+        <PageFooter lastScrape={lastScrape} />
+      </PageShell>
     </>
   );
 }

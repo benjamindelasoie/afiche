@@ -36,48 +36,50 @@ async function collectTsxFiles(dir: string): Promise<string[]> {
   return out;
 }
 
-// All top-level <main> elements rendered as direct flex children of body.
-// Body is `flex flex-col` per layout.tsx. Each of these mains MUST carry
-// `w-full` + `min-w-0` to opt out of the `min-width: auto` flex-item
-// default that pulls main to its content's natural width on mobile.
-const MAIN_FILES = [
-  'src/app/page.tsx',
-  'src/app/cartelera/page.tsx',
-  'src/app/pelicula/[slug]/page.tsx',
-  'src/app/pelicula/[slug]/not-found.tsx',
-  // The venue page's <main> became a max-w-6xl lg:grid (sticky identity rail +
-  // scrolling schedule) on 2026-06-13 (#34a). It must keep w-full + min-w-0 so
-  // the grid's content column can shrink instead of overflowing at 375px.
-  'src/app/sala/[id]/page.tsx',
-];
+// The single editorial-site <main> now lives in PageShell; every public page
+// composes it (directly, or via NotFoundShell). Body is `flex flex-col`
+// (layout.tsx), so that <main> is a direct flex child and MUST carry `w-full`
+// + `min-w-0` to opt out of the `min-width: auto` flex-item default that pulls
+// it to content's natural width on mobile (the 2026-05-03 incident). We assert
+// the invariant on the ONE component instead of re-checking every page, and
+// guard that no page reintroduces a raw, unmanaged <main>.
+//
+// Admin (src/app/admin/**) is a separate surface with its own layouts and is
+// intentionally out of scope.
+const ADMIN_RE = /\/admin\//;
+const PAGESHELL_FILE = 'src/app/_components/ui/PageShell.tsx';
 
-describe('layout invariant: <main> elements need w-full + min-w-0', () => {
-  it.each(MAIN_FILES)(
-    '%s — main has w-full and min-w-0 (flex-item width safety)',
-    async (relPath) => {
-      const src = await readFile(resolve(projectRoot, relPath), 'utf8');
+describe('layout invariant: the editorial <main> lives in PageShell (w-full + min-w-0)', () => {
+  it('PageShell renders a <main> carrying w-full and min-w-0', async () => {
+    const src = await readFile(resolve(projectRoot, PAGESHELL_FILE), 'utf8');
+    expect(src, 'Expected a <main> element in PageShell').toMatch(/<main\b/);
+    // The invariant classes live in the cn(...) base string on <main>.
+    expect(src, 'PageShell <main> must include w-full (CLAUDE.md #1)').toContain(
+      'w-full',
+    );
+    expect(src, 'PageShell <main> must include min-w-0 (CLAUDE.md #1)').toContain(
+      'min-w-0',
+    );
+  });
 
-      // Find the <main className="..."> tag. Permissive regex — handles
-      // string literal classnames; if the project ever switches to a
-      // template literal or a `cn(...)` helper, update the regex or this
-      // assertion strategy. For now, all our mains use the simple form.
-      const mainMatch = src.match(/<main\s+className=(["'`])([^"'`]+)\1/);
-      expect(mainMatch, `Expected <main className="..."> in ${relPath}`).not.toBeNull();
-      const classes = mainMatch![2];
-
-      expect(
-        classes,
-        `Missing w-full in <main> classes ("${classes}"). ` +
-          'See CLAUDE.md "Frontend conventions" #1.',
-      ).toContain('w-full');
-
-      expect(
-        classes,
-        `Missing min-w-0 in <main> classes ("${classes}"). ` +
-          'See CLAUDE.md "Frontend conventions" #1.',
-      ).toContain('min-w-0');
-    },
-  );
+  it('no editorial page renders a raw <main> outside PageShell', async () => {
+    const tsxFiles = await collectTsxFiles(resolve(projectRoot, 'src/app'));
+    const offenders: string[] = [];
+    for (const file of tsxFiles) {
+      const rel = file.replace(projectRoot + '/', '');
+      if (rel === PAGESHELL_FILE || ADMIN_RE.test(rel)) continue;
+      const src = await readFile(file, 'utf8');
+      src.split('\n').forEach((line, i) => {
+        if (/<main\b/.test(line)) offenders.push(`  ${rel}:${i + 1}`);
+      });
+    }
+    expect(
+      offenders,
+      'Raw <main> found outside PageShell. Route it through <PageShell> so the ' +
+        "w-full + min-w-0 flex-item invariant (CLAUDE.md #1) can't be forgotten. Offenders:\n" +
+        offenders.join('\n'),
+    ).toEqual([]);
+  });
 
   // -----------------------------------------------------------------
   // line-clamp-N + display utility on the same element silently
