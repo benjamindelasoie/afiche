@@ -8,6 +8,8 @@ import {
 } from '@/db/queries';
 import { isScreeningExpired } from '@/lib/date-ranges';
 import { filmMetaLine } from '@/lib/film-meta';
+import { cn } from '@/lib/cn';
+import { focusRing, hoverRail } from './ui';
 import { ShowtimesDisclosure } from './ShowtimesDisclosure';
 import { buildDisclosureVenue, filmRowSummary, filmRowLead } from './film-row-model';
 
@@ -103,7 +105,7 @@ function SingleShowtime({
           target="_blank"
           rel="noopener noreferrer"
           aria-label={`Comprar entradas — ${time}`}
-          className={`${timeCls} text-carmine focus-visible:outline-carmine relative z-10 focus-visible:outline-2 focus-visible:outline-offset-2`}
+          className={cn(timeCls, 'text-carmine relative z-10', focusRing)}
         >
           {time}
         </a>
@@ -114,7 +116,10 @@ function SingleShowtime({
       )}
       <Link
         href={`/sala/${s.cinema.id}`}
-        className="tracking-card text-ink focus-visible:outline-carmine relative z-10 font-mono text-[10px] uppercase focus-visible:outline-2 focus-visible:outline-offset-2"
+        className={cn(
+          'tracking-card text-ink relative z-10 font-mono text-[10px] uppercase',
+          focusRing,
+        )}
       >
         {s.cinema.name}
       </Link>
@@ -151,7 +156,12 @@ export function FilmRow({
     // `isolate` scopes the row's z-10 children (time/venue links, disclosure
     // toggle) to this article's stacking context so they can't paint over the
     // sticky WindowNav (also z-10) as the row scrolls under it.
-    <article className="group before:bg-carmine relative isolate flex gap-4 border-b border-black/10 py-4 before:absolute before:top-5 before:bottom-5 before:left-0 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 hover:bg-black/[0.025] hover:before:scale-y-100 md:gap-[18px] md:px-3.5 md:py-[22px]">
+    <article
+      className={cn(
+        'group isolate flex gap-4 border-b border-black/10 py-4 md:gap-[18px] md:px-3.5 md:py-[22px]',
+        hoverRail({ inset: 'lg' }),
+      )}
+    >
       <FilmPoster film={film} priority={priority} />
       <div className="min-w-0 flex-1">
         {titleHref ? (
@@ -159,7 +169,7 @@ export function FilmRow({
             href={titleHref}
             data-screening-card
             aria-label={film.title}
-            className="focus-visible:outline-carmine after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-offset-2"
+            className={cn('after:absolute after:inset-0', focusRing)}
           >
             <h3 className={titleClass}>{film.title}</h3>
           </Link>
