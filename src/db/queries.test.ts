@@ -42,7 +42,13 @@ vi.mock('@/db', async () => {
 });
 
 // Import AFTER mocks so queries.ts picks up the in-memory db.
-const { getTwoWeeksScreenings, getUpcomingScreenings } = await import('./queries');
+const {
+  getTwoWeeksScreenings,
+  getUpcomingScreenings,
+  searchUpcomingFilms,
+  getFilmBySlug,
+  listCinemas,
+} = await import('./queries');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -248,5 +254,109 @@ describe('getUpcomingScreenings — week-grouped Próximamente', () => {
 
     expect(upcoming).toHaveLength(1);
     expect(upcoming[0].label).toBe('Semana del 11 al 17 de mayo');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MCP read queries
+// ---------------------------------------------------------------------------
+describe('searchUpcomingFilms (MCP)', () => {
+  beforeEach(async () => {
+    testDb = await makeInMemoryDb();
+    await testDb.insert(cinemas).values({ id: 'malba', name: 'MALBA', type: 'indie' });
+  });
+
+  async function addFilm(opts: {
+    title: string;
+    director?: string;
+    slug: string | null;
+  }) {
+    const [row] = await testDb
+      .insert(films)
+      .values({
+        title: opts.title,
+        scrapedTitle: opts.title,
+        director: opts.director ?? null,
+        slug: opts.slug,
+        matchSource: 'auto',
+      })
+      .returning({ id: films.id });
+    return row.id;
+  }
+
+  it('matches accent-insensitively and counts only still-catchable screenings', async () => {
+    const id = await addFilm({
+      title: 'Hable con ella',
+      director: 'Pedro Almodóvar',
+      slug: 'hable-con-ella',
+    });
+    const now = baMidnightUtc(2026, 4, 24); // Apr 24 00:00 BA
+    // Future (today 19:00 BA = 22:00 UTC) — catchable.
+    await insertScreening(id, new Date(Date.UTC(2026, 3, 24, 22, 0)));
+    // Yesterday 22:00 BA = Apr 24 01:00 UTC — already expired vs `now`.
+    await insertScreening(id, new Date(Date.UTC(2026, 3, 24, 1, 0)));
+
+    const hits = await searchUpcomingFilms('almodovar', now, 20);
+    expect(hits).toHaveLength(1);
+    expect(hits[0].slug).toBe('hable-con-ella');
+    expect(hits[0].screeningCount).toBe(1); // expired one excluded
+    expect(hits[0].venueCount).toBe(1);
+  });
+
+  it('excludes films with a null slug (unlinkable)', async () => {
+    const id = await addFilm({ title: 'Sin Aficheo', slug: null });
+    const now = baMidnightUtc(2026, 4, 24);
+    await insertScreening(id, new Date(Date.UTC(2026, 3, 24, 22, 0)));
+    expect(await searchUpcomingFilms('aficheo', now, 20)).toHaveLength(0);
+  });
+
+  it('returns nothing when the query is under 2 chars', async () => {
+    const id = await addFilm({ title: 'Z', slug: 'z' });
+    await insertScreening(id, new Date(Date.UTC(2026, 3, 24, 22, 0)));
+    expect(await searchUpcomingFilms('z', baMidnightUtc(2026, 4, 24), 20)).toHaveLength(
+      0,
+    );
+  });
+
+  it('respects the limit', async () => {
+    const now = baMidnightUtc(2026, 4, 24);
+    for (const n of [1, 2, 3]) {
+      const id = await addFilm({ title: `Western ${n}`, slug: `western-${n}` });
+      await insertScreening(id, new Date(Date.UTC(2026, 3, 24, 22, 0)));
+    }
+    expect(await searchUpcomingFilms('western', now, 2)).toHaveLength(2);
+  });
+});
+
+describe('getFilmBySlug (MCP)', () => {
+  beforeEach(async () => {
+    testDb = await makeInMemoryDb();
+  });
+
+  it('returns the film for a known slug, null for an unknown one', async () => {
+    await testDb.insert(films).values({
+      title: 'Stalker',
+      scrapedTitle: 'Stalker',
+      slug: 'stalker',
+      matchSource: 'auto',
+      year: 1979,
+    });
+    const found = await getFilmBySlug('stalker');
+    expect(found?.title).toBe('Stalker');
+    expect(found?.year).toBe(1979);
+    expect(await getFilmBySlug('nope')).toBeNull();
+  });
+});
+
+describe('listCinemas (MCP)', () => {
+  beforeEach(async () => {
+    testDb = await makeInMemoryDb();
+  });
+
+  it('returns every cinema ordered by name', async () => {
+    await testDb.insert(cinemas).values({ id: 'zeta', name: 'Zeta', type: 'indie' });
+    await testDb.insert(cinemas).values({ id: 'alpha', name: 'Alpha', type: 'indie' });
+    const list = await listCinemas();
+    expect(list.map((c) => c.name)).toEqual(['Alpha', 'Zeta']);
   });
 });
