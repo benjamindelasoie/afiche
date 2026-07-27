@@ -14,13 +14,49 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { parseMovie, baWallClockToUtc, type MovieResponse } from './cacodelphia';
+import {
+  parseMovie,
+  splitCiclo,
+  baWallClockToUtc,
+  type MovieResponse,
+} from './cacodelphia';
 
 function fixture(name: string): MovieResponse {
   return JSON.parse(
     readFileSync(resolve(__dirname, '../../test/fixtures/cacodelphia', name), 'utf8'),
   ) as MovieResponse;
 }
+
+describe('splitCiclo', () => {
+  it('splits a "{film} - CICLO {name}" suffix into a Program', () => {
+    expect(splitCiclo('EL JOCKEY - CICLO LUIS ORTEGA')).toEqual({
+      filmTitle: 'EL JOCKEY',
+      programName: 'CICLO LUIS ORTEGA',
+    });
+  });
+
+  it('handles em-dash and RETROSPECTIVA/FOCO/MUESTRA keywords', () => {
+    expect(splitCiclo('LULÚ — RETROSPECTIVA LUIS ORTEGA').programName).toBe(
+      'RETROSPECTIVA LUIS ORTEGA',
+    );
+    expect(splitCiclo('Persona - FOCO Bergman').filmTitle).toBe('Persona');
+    expect(splitCiclo('Ugetsu - MUESTRA de cine japonés').filmTitle).toBe('Ugetsu');
+  });
+
+  it('leaves an ordinary title untouched (no programName)', () => {
+    expect(splitCiclo('BACKROOMS')).toEqual({ filmTitle: 'BACKROOMS' });
+    // a dash not followed by a program keyword is part of the title
+    expect(splitCiclo('Blade Runner - The Final Cut')).toEqual({
+      filmTitle: 'Blade Runner - The Final Cut',
+    });
+  });
+
+  it('does not strip when the suffix would empty the title', () => {
+    expect(splitCiclo('CICLO LUIS ORTEGA')).toEqual({
+      filmTitle: 'CICLO LUIS ORTEGA',
+    });
+  });
+});
 
 describe('baWallClockToUtc', () => {
   it('reads the BA wall-clock (the API mislabels it UTC) and shifts +3h', () => {

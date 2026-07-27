@@ -116,6 +116,29 @@ export const cacodelphiaProvider: Provider = {
 // Pure mapping (exported for fixture tests)
 // ---------------------------------------------------------------------------
 
+/**
+ * Cacodelphia's API bakes a ciclo/retrospective into the movie `nombre` as a
+ * "{Film} - CICLO {Name}" suffix (e.g. "EL JOCKEY - CICLO LUIS ORTEGA"). Left
+ * in the title it poisons TMDB search — a clean "EL JOCKEY" matches instantly,
+ * the suffixed form finds nothing and lands in the operator queue. Split it so
+ * the film title stays clean (TMDB-matchable) and the ciclo becomes a Program
+ * (`programName`), which is what it actually is. Conservative: only splits when
+ * a program keyword follows a dash, and never empties the title.
+ */
+const CICLO_SUFFIX_RE =
+  /\s*[-–—]\s*((?:CICLO|RETROSPECTIVA|FOCO|MUESTRA|HOMENAJE)\b.*)$/i;
+
+export function splitCiclo(raw: string): {
+  filmTitle: string;
+  programName?: string;
+} {
+  const m = raw.match(CICLO_SUFFIX_RE);
+  if (!m || m.index === undefined) return { filmTitle: raw };
+  const filmTitle = raw.slice(0, m.index).trim();
+  if (!filmTitle) return { filmTitle: raw }; // suffix was the whole title — keep it
+  return { filmTitle, programName: m[1].trim() };
+}
+
 /** Map one /movie response (+ its nowPlaying entry) to screenings. */
 export function parseMovie(
   resp: MovieResponse,
@@ -126,6 +149,7 @@ export function parseMovie(
   const showtimes = resp.data?.showtimes ?? [];
   const title = (movie?.nombre ?? listing.nombre ?? '').trim();
   if (!title) return [];
+  const { filmTitle, programName } = splitCiclo(title);
 
   const runtimeMin = parseRuntime(movie?.Duracion);
   const synopsisEs = cleanSynopsis(movie?.descripcion);
@@ -150,9 +174,10 @@ export function parseMovie(
 
     out.push({
       cinemaId: CINEMA_ID,
-      filmTitle: title,
+      filmTitle,
       startsAtUtc,
       tags,
+      ...(programName !== undefined ? { programName } : {}),
       ...(runtimeMin !== undefined ? { runtimeMin } : {}),
       ...(synopsisEs !== undefined ? { synopsisEs } : {}),
       sourceUrl,

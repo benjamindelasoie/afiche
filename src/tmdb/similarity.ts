@@ -159,6 +159,29 @@ export function levenshteinAtMostOne(a: string, b: string): boolean {
   return edits <= 1;
 }
 
+/**
+ * Strip venue-appended noise from a title for TMDB SEARCH ONLY — never for
+ * storage (`scraped_title` is immutable; see ADR-0002 and CONTEXT.md). Removes
+ * parentheticals and common exhibition tags (format "en 35mm", live-music "con
+ * música en vivo", "versión restaurada", language "doblada"/"vos",
+ * "estreno"/"preestreno") that make TMDB's search return zero candidates for a
+ * film it actually has — e.g. "LA QUIMERA DEL ORO CON MÚSICA EN VIVO" →
+ * "LA QUIMERA DEL ORO" → The Gold Rush (1925). Returns the original title
+ * unchanged if stripping would empty it.
+ */
+const SEARCH_NOISE_RE =
+  /\b(?:con\s+m[uú]sica\s+en\s+vivo|m[uú]sica\s+en\s+vivo|en\s+\d+\s?mm|\d+\s?mm|copia\s+(?:nueva|restaurada|en\s+\d+\s?mm)|versi[oó]n\s+restaurada|preestreno|avant[\s-]?premi[eè]re|[uú]nica\s+funci[oó]n|funci[oó]n\s+[uú]nica|estreno|4k|doblada|subtitulada|vose?|vos)\b/gi;
+
+export function stripSearchNoise(title: string): string {
+  const cleaned = title
+    .replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')
+    .replace(SEARCH_NOISE_RE, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/[\s\-–—:,]+$/g, '')
+    .trim();
+  return cleaned.length > 0 ? cleaned : title;
+}
+
 function normalize(s: string): string {
   // stripDiacritics handles both NFD-decomposable accents AND precomposed
   // extended-Latin letters (Polish \u0142, Danish \u00f8, etc.) \u2014 see the helper's

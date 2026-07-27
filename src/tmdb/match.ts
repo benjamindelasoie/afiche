@@ -43,6 +43,13 @@ export const TITLE_AMBIGUITY_EPSILON = 0.01;
 export interface MatchHints {
   /** Original-language title from the scrape (e.g. "The Misfits"). */
   titleOriginal?: string;
+  /**
+   * Venue-noise-stripped form of the scraped title (`stripSearchNoise`), used
+   * to also score candidates found via the cleaned search query — e.g. the
+   * TMDB entry for "La quimera del oro" should score 1.0 against the cleaned
+   * "LA QUIMERA DEL ORO", not the noisy "…CON MÚSICA EN VIVO". Never stored.
+   */
+  cleanedTitle?: string;
 }
 
 export interface MatchResult {
@@ -68,6 +75,9 @@ export function scoreCandidates(
   const queries: string[] = [scrapedTitle];
   if (hints?.titleOriginal && hints.titleOriginal !== scrapedTitle) {
     queries.push(hints.titleOriginal);
+  }
+  if (hints?.cleanedTitle && hints.cleanedTitle !== scrapedTitle) {
+    queries.push(hints.cleanedTitle);
   }
 
   const out: MatchResult[] = [];
