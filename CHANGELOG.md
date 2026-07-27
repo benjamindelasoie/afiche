@@ -2,6 +2,25 @@
 
 All notable changes to Afiche are documented here.
 
+## [0.3.9.0] - 2026-07-27
+
+Adds **`/acerca`**, the site's first about page, and a round of **self-healing** in the scrape → match pipeline: titles that previously never matched TMDB (venue noise, ciclo suffixes, bare-comma directors) now recover automatically, and a scraper improvement re-enters affected rows into the enrichment pool without a manual `UPDATE`.
+
+### Added
+
+- **`/acerca` — "Sobre afiche"**, the site's first about page, reached by a single quiet `sobre afiche` footer link on `/` and `/cartelera`. Editorial es-AR composed bespoke rather than reusing the venue "sobre la sala" block: a lede, **cómo se arma** (the scrape → dedup → TMDB pipeline in prose), **las salas** (the live venue list from `listCinemas()`, linked to `/sala/[id]`), and — near the bottom — **afiche como datos**: the read-only MCP endpoint plus its connect snippet in a carmine-ruled panel. The colophon carries the PolyForm NC license line. The MCP surface is deliberately soft: the footer link reads as a plain about link, with no outward signal the endpoint lives inside (per DESIGN.md voice — no marketing-speak, CTAs, or feature grids).
+- **Route-local `loading.tsx` and `error.tsx` for `/sala/[id]`** (TODO #37). Previously a render error bubbled to a higher boundary and the `force-dynamic` server fetch showed no fallback on soft navigation. `error.tsx` gives the editorial recovery UI DESIGN.md's Interaction-States section mandates ("La cartelera está rehaciéndose. Intentá de nuevo en unos minutos.") with a **Reintentar** retry and a path back to the cartelera, matching `NotFoundShell`'s grammar — dev surfaces the stack, prod withholds it. Built on Next 16's `unstable_retry` prop (renamed from `reset`). `loading.tsx` is a quiet pulse skeleton echoing the identity-rail + schedule grid so the swap-in doesn't reflow.
+- **Domain model + ADR log** — `CONTEXT.md` as the single-context domain doc, plus `docs/adr/`: 0001 (venue as the canonical term), 0002 (decision-memory normalized key), 0003 (vote-count dominance tiebreak — rejected, superseded by search-noise stripping). ADR-0003 is the decision record the TMDB self-healing code references. Project agent scaffolding (`docs/agents/`: issue-tracker, triage-labels, domain) is now versioned; installed/personal skill tooling stays local via `.gitignore`.
+
+### Changed
+
+- **Self-healing TMDB search for decorated and foreign release titles** (ADR-0003). `stripSearchNoise()` (`src/tmdb/similarity.ts`) strips exhibition tags **for the search query only** — never for storage, since `scraped_title` remains the immutable upsert key — recovering e.g. "LA QUIMERA DEL ORO CON MÚSICA EN VIVO" → *The Gold Rush* (1925). The cleaned form is plumbed through `scoreCandidates` / `pickBestMatch` as a `cleanedTitle` hint so it scores 1.0. `splitCiclo()` (`src/providers/cacodelphia.ts`) splits Cacodelphia's `"{Film} - CICLO {Name}"` movie names so the film title is TMDB-matchable and the ciclo becomes a Program (`programName`) — conservative, only splitting on a program keyword after a dash and never emptying the title.
+
+### Fixed
+
+- **MALBA prose schedules dropped the whole line into the film title when the director had no "de" prefix** (TODO #29). Lines like `"20:00 A Vida Luminosa, João Rosas (99'). Con presentación"` introduce the director with a bare comma; `parseShowtimeLine` left the entire string as the title, so it never matched TMDB and rendered raw. It now recognizes the bare-comma boundary — but only when a `(NN')` runtime marker follows the name, mirroring MALBA's format and guarding against splitting on a comma inside the title itself.
+- **A scraper improvement no longer needs a manual `UPDATE` to take effect on locked rows** (TODO #24). `buildUpdateSet` resets `match_source` `'none-attempted'` → `'none'` when the scraper delivers a value that meaningfully differs from what's stored, so cleaner data (like #29's titles) automatically re-enters the row into the enrichment pool. Scoped to that one transition: identical re-scrapes and curated (`'auto'` / `'override'` / `'manual'`) rows are untouched. Uses `IS NOT` so `NULL` → value counts as a change.
+
 ## [0.3.8.0] - 2026-06-18
 
 Adds a hosted, read-only **MCP (Model Context Protocol) server** so any MCP client (Claude, ChatGPT, MCP Inspector) can query afiche's live cartelera in natural language. No user-facing site change in this release — it is a new `/api/mcp` endpoint.

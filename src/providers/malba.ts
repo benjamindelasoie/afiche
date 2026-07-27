@@ -729,9 +729,7 @@ function parseShowtimeLine(lineHtml: string): {
   // "Amar, temer, partir" has no runtime marker, so it stays whole).
   const rest = m[3];
   const withDe = rest.match(/^(.+?),\s+de\s+(.+)$/u);
-  const bareComma = withDe
-    ? null
-    : rest.match(/^(.+?),\s+([^,(]+?)\s*\(\d+\s*['′]\)/u);
+  const bareComma = withDe ? null : rest.match(/^(.+?),\s+([^,(]+?)\s*\(\d+\s*['′]\)/u);
   const split = withDe ?? bareComma;
   const title = (split ? split[1] : rest).trim();
   const director = split

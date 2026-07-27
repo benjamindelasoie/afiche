@@ -1,7 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { listCinemas } from '@/db/queries';
-import { PageShell, BackLink, Caps, SectionHeading, focusRing } from '@/app/_components/ui';
+import {
+  PageShell,
+  BackLink,
+  Caps,
+  SectionHeading,
+  focusRing,
+} from '@/app/_components/ui';
 import { cn } from '@/lib/cn';
 
 // /acerca — "Sobre afiche". The site's editorial about page: what afiche is,
@@ -42,23 +48,23 @@ export default async function AcercaPage() {
 
         {/* Lede */}
         <p className="text-ink mt-10 font-serif text-2xl leading-snug text-pretty md:text-3xl">
-          Afiche es una cartelera — un mapa de lo que se proyecta esta semana en
-          las salas independientes y de repertorio de Buenos Aires. Una sola
-          pantalla para todo el circuito.
+          Afiche es una cartelera — un mapa de lo que se proyecta esta semana en las salas
+          independientes y de repertorio de Buenos Aires. Una sola pantalla para todo el
+          circuito.
         </p>
 
         {/* La idea */}
         <div className="text-ink mt-10 space-y-4 text-base leading-relaxed md:text-lg">
           <p>
-            Cada sala publica su programación a su manera —un PDF, una grilla, una
-            imagen escaneada, un sitio que cambia los jueves—. Afiche las lee
-            todas, reúne las funciones en un solo lugar y las ordena por{' '}
-            <em>película</em>: no por sala, no por horario. Así ves de un vistazo
-            qué se da hoy, este finde o la semana que viene.
+            Cada sala publica su programación a su manera —un PDF, una grilla, una imagen
+            escaneada, un sitio que cambia los jueves—. Afiche las lee todas, reúne las
+            funciones en un solo lugar y las ordena por <em>película</em>: no por sala, no
+            por horario. Así ves de un vistazo qué se da hoy, este finde o la semana que
+            viene.
           </p>
           <p>
-            Sin buscador, sin cuenta, sin algoritmo. La cartelera es el índice.
-            Hecho por cinéfilos, para cinéfilos.
+            Sin buscador, sin cuenta, sin algoritmo. La cartelera es el índice. Hecho por
+            cinéfilos, para cinéfilos.
           </p>
         </div>
 
@@ -67,10 +73,10 @@ export default async function AcercaPage() {
           <SectionHeading variant="bordered">Cómo se arma</SectionHeading>
           <p className="text-ink mt-5 text-base leading-relaxed text-pretty md:text-lg">
             Todas las madrugadas afiche revisa los sitios de las salas, junta las
-            funciones nuevas y colapsa la misma película —que suele aparecer con
-            títulos distintos en cada cine— en una sola ficha. Después la enriquece
-            con datos de TMDB: afiche, sinopsis, director, elenco, país. Lo que ves
-            es el circuito entero, deduplicado y puesto en limpio.
+            funciones nuevas y colapsa la misma película —que suele aparecer con títulos
+            distintos en cada cine— en una sola ficha. Después la enriquece con datos de
+            TMDB: afiche, sinopsis, director, elenco, país. Lo que ves es el circuito
+            entero, deduplicado y puesto en limpio.
           </p>
         </section>
 
@@ -78,12 +84,15 @@ export default async function AcercaPage() {
         <section className="mt-16">
           <SectionHeading variant="bordered">Las salas</SectionHeading>
           <p className="text-ink mt-5 text-base leading-relaxed text-pretty md:text-lg">
-            Cubrimos el circuito independiente y de repertorio. Las cadenas quedan
-            afuera, a propósito.
+            Cubrimos el circuito independiente y de repertorio. Las cadenas quedan afuera,
+            a propósito.
           </p>
           <ul className="mt-6 grid grid-cols-1 gap-x-8 sm:grid-cols-2">
             {cinemas.map((c) => (
-              <li key={c.id} className="border-t border-black/10 first:border-t-0 sm:[&:nth-child(2)]:border-t-0">
+              <li
+                key={c.id}
+                className="border-t border-black/10 first:border-t-0 sm:[&:nth-child(2)]:border-t-0"
+              >
                 <Link
                   href={`/sala/${c.id}`}
                   className={cn(
@@ -109,10 +118,9 @@ export default async function AcercaPage() {
         <section className="mt-16">
           <SectionHeading variant="bordered">afiche como datos</SectionHeading>
           <p className="text-ink mt-5 text-base leading-relaxed text-pretty md:text-lg">
-            La cartelera también se puede leer a máquina. Afiche publica sus
-            funciones vía MCP —el Model Context Protocol—, así cualquier asistente
-            de IA puede responder «¿qué dan esta noche en Palermo?» con datos
-            reales, en vivo.
+            La cartelera también se puede leer a máquina. Afiche publica sus funciones vía
+            MCP —el Model Context Protocol—, así cualquier asistente de IA puede responder
+            «¿qué dan esta noche en Palermo?» con datos reales, en vivo.
           </p>
 
           <div className="border-carmine mt-6 border-l-2 bg-black/[0.02]">
@@ -153,8 +161,8 @@ export default async function AcercaPage() {
         {/* Colophon */}
         <footer className="mt-16 border-t-8 border-double border-black pt-6">
           <p className="text-ink-gray text-sm leading-relaxed">
-            Afiche es software de código disponible, bajo licencia PolyForm
-            Noncommercial. Hecho en Buenos Aires.
+            Afiche es software de código disponible, bajo licencia PolyForm Noncommercial.
+            Hecho en Buenos Aires.
           </p>
         </footer>
       </article>

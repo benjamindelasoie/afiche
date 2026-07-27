@@ -164,7 +164,7 @@ describe('parseDetailPage — Strategy 1 missing-"de" director split (TODO #29)'
 
   it('still splits the canonical ", de Director" form (no regression)', () => {
     const out = parseDetailPage(
-      denseCycleHtml(["21:30 A Vida Luminosa, de João Rosas (99′)"]),
+      denseCycleHtml(['21:30 A Vida Luminosa, de João Rosas (99′)']),
       cycle,
       [],
     );

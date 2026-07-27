@@ -24,6 +24,8 @@ Decision wants a short design pass (`/design-consultation`-weight, not a full re
 
 ## 37. Route-local `loading.tsx` / `error.tsx` for `/sala/[id]` (found 2026-06-09, weekly-run design review)
 
+**✅ RESOLVED 2026-07-26 — shipped in v0.3.9.0.** Both boundaries landed at `src/app/sala/[id]/`. `error.tsx` carries the DESIGN.md Interaction-States copy ("La cartelera está rehaciéndose. Intentá de nuevo en unos minutos."), a **Reintentar** retry and a path back to the cartelera, matching `NotFoundShell`'s grammar; dev surfaces the stack, prod withholds it. Built on Next 16's `unstable_retry` prop (renamed from `reset`). `loading.tsx` is a quiet pulse skeleton echoing the identity-rail + schedule grid so the swap-in doesn't reflow.
+
 **Context:** The design review of the weekly-run spec surfaced that `src/app/sala/[id]/` has **no route-local `loading.tsx` or `error.tsx`** — a render error bubbles to a higher boundary, and there's no skeleton during the (force-dynamic) server fetch. DESIGN.md's Interaction-States section mandates an Error copy (`"La cartelera está rehaciéndose…"`). The weekly-run PR mitigates the immediate risk with a hard "`VenueRuns` must never throw on malformed/partial rows" requirement, but the route-level boundary gap is pre-existing and applies to the whole `/sala/[id]` surface, not just the new component.
 
 **What:** add `src/app/sala/[id]/error.tsx` (editorial Spanish error copy per DESIGN.md, prod-only; dev shows stack) and optionally `loading.tsx` (a quiet skeleton matching the date-rail / run-block rhythm). **Why not now:** out of scope for the display-shape PR; pre-existing and low-frequency (small DB, stable scrape). **Priority: P3.** Trigger: a real `/sala` error observed in prod, or the next `/sala` cycle. **Depends on:** nothing.
@@ -106,6 +108,8 @@ Decision wants a short design pass (`/design-consultation`-weight, not a full re
 
 ## 31. Smarter cross-language enrichment for foreign release titles (UPGRADE — found 2026-06-05 adding CineArte Cacodelphia)
 
+**◐ PARTIAL 2026-07-26 (v0.3.9.0) — the deterministic layer shipped; the LLM layer is still open.** Two zero-cost recoveries landed ahead of any LLM step, both narrowing the miss set this TODO has to solve (ADR-0003): `stripSearchNoise()` (`src/tmdb/similarity.ts`) strips exhibition decoration from the **search query only** — never storage, since `scraped_title` is the immutable upsert key — recovering e.g. "LA QUIMERA DEL ORO CON MÚSICA EN VIVO" → *The Gold Rush*; and `splitCiclo()` (`src/providers/cacodelphia.ts`) splits Cacodelphia's `"{Film} - CICLO {Name}"` so the film title is matchable and the ciclo becomes a Program. **Neither touches the actual cross-language case** — a correctly-extracted Spanish distributor title that simply isn't TMDB's title still returns 0 candidates. The world-knowledge + runtime-corroboration proposal below stands unchanged; re-measure the Cacodelphia miss rate against the cleaned pipeline before building it, since the 7/12 figure predates both fixes.
+
 **Context:** Onboarding Cacodelphia (`src/providers/cacodelphia.ts`, adro.studio JSON API) surfaced 7/12 films not auto-matching TMDB. Root cause, found by replaying the matcher: the source exposes ONLY the Spanish AR-release title — no original title, no year. When the local distributor's title differs from TMDB's stored title (the norm for foreign arthouse), `searchMovies(spanishTitle)` returns **0 candidates**, so there is nothing to score. Real examples that ARE on TMDB but missed: "MADRES JÓVENES" → *Recién nacidas / Jeunes Mères* (1242015), "SUEÑOS DE OSLO" → *Sueños en Oslo / Drømmer* (1228682), "LA CHICA DE COLONIA" → *Köln 75* (1171153), "EL GRAN ARCO" → *El arquitecto / L'Inconnu de la Grande Arche* (1290424). One was merely ambiguous ("EL PARTIDO" — many same-titled films tie at 1.0; a year disambiguates → 1666712). Two genuinely aren't on TMDB yet. This is the residual cross-language case [[feedback_afiche_scraper_iteration]] says to solve with world knowledge, not more scraping — the provider already extracts everything the API offers.
 
 **Why provider-level fixes don't suffice:** the missing lever is the original title, absent from this API. A `year` hint (from `FechaEstreno`) rescues only the *ambiguous* case, never the 0-candidate ones, and `FechaEstreno` is the AR *release* year (wrong for re-released classics), so it can't be passed blindly.
@@ -134,6 +138,8 @@ Decision wants a short design pass (`/design-consultation`-weight, not a full re
 ---
 
 ## 29. MALBA prose-schedule title contamination when director lacks "de" prefix (SCRAPER BUG — found 2026-05-30 during venue QA)
+
+**✅ RESOLVED 2026-07-26 — shipped in v0.3.9.0.** `parseShowtimeLine` (`src/providers/malba.ts`) now recognizes the bare-comma director boundary, gated on a following `(NN')` runtime marker so a comma *inside* a title can't trigger a split. +3 tests: the missing-"de" line, a canonical `", de Director"` no-regression, and the comma-in-title guard. Landed together with #24, which is what makes the fix flow through to already-locked rows on the next rescrape.
 
 **What:** On MALBA cycle pages whose schedule is prose (e.g. `https://malba.org.ar/evento/semana-de-cine-portugues/`), a showtime line formatted `"HH:MM Title, Director (runtime). Note"` — i.e. with the director introduced by a bare comma, NOT `", de Director"` — has the **entire line (minus the time) stored as the film title**. The director/runtime/note never split off.
 
@@ -203,6 +209,10 @@ do it as its own small PR with homepage regression coverage.
 
 ## 27. Residential-egress scrape daemon (UNBLOCKS full /admin/scrape + future cron)
 
+**✅ RESOLVED (option 3c) — the m1air home server.** Rather than buying a Pi, the old M1 Air was repurposed as the always-on box (reachable as `ssh m1air` over Tailscale). It runs the prod scraper on a launchd schedule (`ar.afiche.scrape`, 09:00 + 18:00 daily) pointed at the prod Turso DB — i.e. **transport option (c)**: the daemon runs its own cron and writes to the DB, the admin panel just reflects state. No tunnel, no webhook, no auth surface. This delivers the two headline wins: scrape cadence is decoupled from "is the laptop on," and daily-fresh data is ambient.
+
+**Still open (the webhook layer, option 3a):** on-demand scrape buttons on `/admin/runs` would still need Vercel → daemon transport (tunnel + shared secret). Deferred exactly as originally scoped — v1 ships without it. **Priority: P3**, trigger: the missing scrape buttons start to feel like a hole.
+
 **What:** A tiny daemon running on a residential-IP machine (Benjamin's home machine, a Raspberry Pi, or any always-on box at home) that accepts authenticated webhook requests from `/admin/scrape` and runs `npm run db:scrape -- --cinema=<id>` (or all) on demand. Reports status back via webhook or by writing to the same `scrape_runs` table the panel already reads.
 
 **Why this is upstream of multiple things:**
@@ -243,6 +253,8 @@ do it as its own small PR with homepage regression coverage.
 ---
 
 ## 24. Scraper-update cache invalidation: reset `match_source` when a meaningful field changes (STRUCTURAL POLISH)
+
+**✅ RESOLVED 2026-07-26 — shipped in v0.3.9.0.** `buildUpdateSet` (`src/scrapers/ingest/films.ts`) resets `match_source` `'none-attempted'` → `'none'` when the scraper delivers a value that meaningfully differs from what's stored, using `IS NOT` so `NULL` → value counts as a change. Scoped to exactly that transition — identical re-scrapes and curated (`'auto'` / `'override'` / `'manual'`) rows are untouched. All four test cases from the fix shape below landed (+4 ingest tests). Shipped alongside #29, the scraper improvement that motivated it.
 
 **What:** When the scraper UPDATEs a meaningful column (`director`, `titleOriginal`, `runtimeMin`, `synopsisEs`) on a row currently at `match_source='none-attempted'`, reset `match_source='none'` in the same transaction so the next enrichment pass retries with the new data.
 
