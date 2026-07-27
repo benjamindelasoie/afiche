@@ -1,11 +1,12 @@
 import Image from 'next/image';
-import Link from 'next/link';
 import {
   formatWeekdaySet,
   formatRunDateRange,
   type ScreeningRun,
   type RunSignature,
 } from '@/lib/screening-runs';
+import { cn } from '@/lib/cn';
+import { Pill, StretchedLink, hoverRail } from './ui';
 
 // ---------------------------------------------------------------------------
 // VenueRuns — the /sala/<id> "weekly-run" shape for fixed-weekly venues
@@ -30,12 +31,15 @@ export function VenueRuns({ runs }: { runs: ScreeningRun[] }) {
 function RunBlock({ run }: { run: ScreeningRun }) {
   const { film, programName } = run;
   return (
-    <article className="group before:bg-carmine relative flex gap-4 border-b border-black/10 py-5 transition-colors before:absolute before:top-5 before:bottom-5 before:-left-1.5 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 first:border-t hover:bg-black/[0.025] hover:before:scale-y-100 [&:has(a:active)]:translate-y-[1px]">
+    <article
+      className={cn(
+        'group flex gap-4 border-b border-black/10 py-5 first:border-t [&:has(a:active)]:translate-y-[1px]',
+        hoverRail({ inset: 'lg', gutter: true }),
+      )}
+    >
       {film.slug && (
-        <Link
+        <StretchedLink
           href={`/pelicula/${film.slug}`}
-          data-screening-card
-          className="focus-visible:outline-carmine absolute inset-0 focus-visible:outline-2 focus-visible:outline-offset-2"
           aria-label={`${film.title} — funciones`}
         />
       )}
@@ -66,12 +70,9 @@ function RunBlock({ run }: { run: ScreeningRun }) {
       <div className="min-w-0 flex-1">
         {programName && (
           <div className="mb-1 flex flex-wrap gap-1.5">
-            <span
-              title={programName}
-              className="tracking-card text-carmine border-carmine/40 max-w-[28ch] truncate border px-1.5 py-0.5 font-mono text-[10px] uppercase"
-            >
+            <Pill variant="ghost" title={programName} className="max-w-[28ch] truncate">
               {programName}
-            </span>
+            </Pill>
           </div>
         )}
         <h3 className="font-serif text-2xl leading-[1.05] tracking-[-0.01em] text-balance sm:text-3xl">

@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { formatDayShortBA, type Ciclo } from '@/db/queries';
+import { cn } from '@/lib/cn';
+import { Caps, focusRing, hoverRail } from './ui';
 
 // ---------------------------------------------------------------------------
 // CiclosEnCurso — the "Ciclos en curso" block on /sala/<id>. Lists the
@@ -19,24 +21,24 @@ export function CiclosEnCurso({ ciclos }: { ciclos: Ciclo[] }) {
   if (ciclos.length === 0) return null;
   return (
     <section className="border-ink border-y-[3px] border-double py-4">
-      <h2 className="tracking-eyebrow text-ink-gray mb-2 font-mono text-[11px] uppercase">
+      <Caps as="h2" className="text-ink-gray mb-2">
         Ciclos en curso
-      </h2>
+      </Caps>
       <div className="-mx-2">
         {ciclos.map((c) => (
           <Link
             key={c.slug}
             href={`#programa-${c.slug}`}
-            className="before:bg-carmine focus-visible:outline-carmine relative block px-2 py-2 transition-colors before:absolute before:top-2 before:bottom-2 before:left-0 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 hover:bg-black/[0.025] hover:before:scale-y-100 focus-visible:outline-2 focus-visible:outline-offset-2"
+            className={cn('block px-2 py-2', focusRing, hoverRail({ inset: 'xs' }))}
           >
             <span className="font-serif text-xl leading-snug md:text-2xl">
               {c.name}
               <span className="text-carmine ml-1 align-middle font-mono text-xs">→</span>
             </span>
-            <span className="tracking-card text-ink-gray block font-mono text-[10px] uppercase">
+            <Caps variant="card" className="text-ink-gray block text-[10px]">
               {c.filmCount} {c.filmCount === 1 ? 'película' : 'películas'} ·{' '}
               {cicloRange(c)}
-            </span>
+            </Caps>
           </Link>
         ))}
       </div>

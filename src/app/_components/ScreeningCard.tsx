@@ -2,6 +2,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { formatTimeBA, type ScreeningRow } from '@/db/queries';
 import { TAG_LABELS_ES } from '@/db';
+import { cn } from '@/lib/cn';
+import { Pill, StretchedLink, hoverRail } from './ui';
 
 // Heuristic: synopsis must be long enough and end with terminal punctuation.
 // Filters out ~100-140 char Lumiton tile-preview synopses that trail off
@@ -14,12 +16,9 @@ export function isCompleteSynopsis(text: string): boolean {
 
 function ProgramPill({ name }: { name: string }) {
   return (
-    <span
-      title={name}
-      className="tracking-card bg-carmine text-cream max-w-[40ch] truncate px-2 py-0.5 font-mono text-[11px] uppercase"
-    >
+    <Pill size="md" title={name} className="max-w-[40ch] truncate">
       {name}
-    </span>
+    </Pill>
   );
 }
 
@@ -53,18 +52,11 @@ export function ScreeningCard({
     <>
       {showTagStrip && (
         <div className="mb-2 flex flex-wrap gap-2">
-          {isLastFunction && (
-            <span className="tracking-card bg-carmine text-cream px-2 py-0.5 font-mono text-[11px] uppercase">
-              Última función
-            </span>
-          )}
+          {isLastFunction && <Pill size="md">Última función</Pill>}
           {visibleTags.map((t) => (
-            <span
-              key={t}
-              className="tracking-card bg-carmine text-cream px-2 py-0.5 font-mono text-[11px] uppercase"
-            >
+            <Pill key={t} size="md">
               {TAG_LABELS_ES[t]}
-            </span>
+            </Pill>
           ))}
           {s.programName && <ProgramPill name={s.programName} />}
         </div>
@@ -171,23 +163,16 @@ export function ScreeningCard({
   // De-tinted hairline row, aligned with the homepage FilmRow: no card fill,
   // no carmine left-bar — carmine lives on the time + a hover left-tick. The
   // carmine offset-shadow poster (the site's visual fingerprint) stays.
-  const cardClasses =
-    'group relative isolate block border-b border-black/10 px-1 py-4 transition-colors last:border-b-0 ' +
-    'before:bg-carmine before:absolute before:top-5 before:bottom-5 before:left-0 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 ' +
-    'hover:bg-black/[0.025] hover:before:scale-y-100 [&:has(a:active)]:translate-y-[1px]';
-  const focusClasses =
-    'focus-visible:outline-carmine focus-visible:outline-2 focus-visible:outline-offset-2';
+  const cardClasses = cn(
+    'group isolate block border-b border-black/10 px-1 py-4 last:border-b-0 [&:has(a:active)]:translate-y-[1px]',
+    hoverRail({ inset: 'lg' }),
+  );
 
   const ariaLabel = `${s.film.title} — ${s.cinema.name} — ${formatTimeBA(s.startsAtUtc)}`;
   return (
     <article className={cardClasses}>
       {s.film.slug && (
-        <Link
-          href={`/pelicula/${s.film.slug}`}
-          data-screening-card
-          className={`absolute inset-0 ${focusClasses}`}
-          aria-label={ariaLabel}
-        />
+        <StretchedLink href={`/pelicula/${s.film.slug}`} aria-label={ariaLabel} />
       )}
       {cardBody}
     </article>

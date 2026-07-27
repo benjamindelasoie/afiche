@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import Link from 'next/link';
 import {
   formatTimeBA,
   formatAgendaDayBA,
@@ -9,6 +8,8 @@ import {
 } from '@/db/queries';
 import { collapseDayByFilm, type DayFilmGroup } from '@/lib/screening-runs';
 import { TAG_LABELS_ES } from '@/db';
+import { cn } from '@/lib/cn';
+import { Pill, StretchedLink, hoverRail } from './ui';
 
 // ---------------------------------------------------------------------------
 // VenueAgenda — the /sala/<id> week, rendered as a date-rail agenda rather
@@ -135,13 +136,14 @@ function AgendaRow({ s, anchorSlug }: { s: ScreeningRow; anchorSlug?: string }) 
       // scrollport (globals.css) supplies the landing offset — no scroll-mt
       // here or the two would compound into a large dead gap.
       id={anchorSlug ? `programa-${anchorSlug}` : undefined}
-      className="group before:bg-carmine relative flex gap-3 py-4 transition-colors before:absolute before:top-4 before:bottom-4 before:-left-1.5 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 hover:bg-black/[0.025] hover:before:scale-y-100 sm:gap-4 [&:has(a:active)]:translate-y-[1px]"
+      className={cn(
+        'group flex gap-3 py-4 sm:gap-4 [&:has(a:active)]:translate-y-[1px]',
+        hoverRail({ inset: 'md', gutter: true }),
+      )}
     >
       {s.film.slug && (
-        <Link
+        <StretchedLink
           href={`/pelicula/${s.film.slug}`}
-          data-screening-card
-          className="focus-visible:outline-carmine absolute inset-0 focus-visible:outline-2 focus-visible:outline-offset-2"
           aria-label={`${s.film.title} — ${formatTimeBA(s.startsAtUtc)}`}
         />
       )}
@@ -180,20 +182,16 @@ function AgendaRow({ s, anchorSlug }: { s: ScreeningRow; anchorSlug?: string }) 
         {showTagStrip && (
           <div className="mb-1 flex flex-wrap gap-1.5">
             {visibleTags.map((t) => (
-              <span
-                key={t}
-                className="tracking-card bg-carmine text-cream px-1.5 py-0.5 font-mono text-[10px] uppercase"
-              >
-                {TAG_LABELS_ES[t]}
-              </span>
+              <Pill key={t}>{TAG_LABELS_ES[t]}</Pill>
             ))}
             {s.programName && (
-              <span
+              <Pill
+                variant="ghost"
                 title={s.programName}
-                className="tracking-card text-carmine border-carmine/40 max-w-[28ch] truncate border px-1.5 py-0.5 font-mono text-[10px] uppercase"
+                className="max-w-[28ch] truncate"
               >
                 {s.programName}
-              </span>
+              </Pill>
             )}
           </div>
         )}
@@ -267,13 +265,14 @@ function CollapsedRow({
   return (
     <article
       id={anchorSlug ? `programa-${anchorSlug}` : undefined}
-      className="group before:bg-carmine relative flex gap-3 py-4 transition-colors before:absolute before:top-4 before:bottom-4 before:-left-1.5 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 hover:bg-black/[0.025] hover:before:scale-y-100 sm:gap-4 [&:has(a:active)]:translate-y-[1px]"
+      className={cn(
+        'group flex gap-3 py-4 sm:gap-4 [&:has(a:active)]:translate-y-[1px]',
+        hoverRail({ inset: 'md', gutter: true }),
+      )}
     >
       {film.slug && (
-        <Link
+        <StretchedLink
           href={`/pelicula/${film.slug}`}
-          data-screening-card
-          className="focus-visible:outline-carmine absolute inset-0 focus-visible:outline-2 focus-visible:outline-offset-2"
           aria-label={`${film.title} — ${times.join(', ')}`}
         />
       )}
@@ -305,20 +304,12 @@ function CollapsedRow({
         {showTagStrip && (
           <div className="mb-1 flex flex-wrap gap-1.5">
             {visibleTags.map((t) => (
-              <span
-                key={t}
-                className="tracking-card bg-carmine text-cream px-1.5 py-0.5 font-mono text-[10px] uppercase"
-              >
-                {TAG_LABELS_ES[t]}
-              </span>
+              <Pill key={t}>{TAG_LABELS_ES[t]}</Pill>
             ))}
             {programName && (
-              <span
-                title={programName}
-                className="tracking-card text-carmine border-carmine/40 max-w-[28ch] truncate border px-1.5 py-0.5 font-mono text-[10px] uppercase"
-              >
+              <Pill variant="ghost" title={programName} className="max-w-[28ch] truncate">
                 {programName}
-              </span>
+              </Pill>
             )}
           </div>
         )}

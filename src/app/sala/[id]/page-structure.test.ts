@@ -19,29 +19,32 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PAGE = resolve(__dirname, 'page.tsx');
 const VENUE_AGENDA = resolve(__dirname, '../../_components/VenueAgenda.tsx');
 const CICLOS = resolve(__dirname, '../../_components/CiclosEnCurso.tsx');
+const RECIPES = resolve(__dirname, '../../_components/ui/recipes.ts');
 
 let page = '';
 let venueAgenda = '';
 let ciclos = '';
+let recipes = '';
 
 beforeAll(async () => {
-  [page, venueAgenda, ciclos] = await Promise.all([
+  [page, venueAgenda, ciclos, recipes] = await Promise.all([
     readFile(PAGE, 'utf8'),
     readFile(VENUE_AGENDA, 'utf8'),
     readFile(CICLOS, 'utf8'),
+    readFile(RECIPES, 'utf8'),
   ]);
 });
 
 describe('/sala/[id] desktop rail layout (#34a)', () => {
   it('main is a max-w-6xl two-column grid that collapses below lg', () => {
-    const main = page.match(/<main\s+className="([^"]+)"/)?.[1] ?? '';
-    expect(main).toContain('max-w-6xl');
-    expect(main).toContain('lg:grid');
-    expect(main).toContain('lg:grid-cols-[20rem_1fr]');
-    // CLAUDE.md #1 — the grid + its content column must keep these or the
-    // 1fr child overflows at 375px (also pinned in layout-invariants.test.ts).
-    expect(main).toContain('w-full');
-    expect(main).toContain('min-w-0');
+    // The <main> now lives in <PageShell>; the venue page composes it with the
+    // grid via width + className props. (w-full/min-w-0 are guaranteed on
+    // PageShell itself — pinned in layout-invariants.test.ts.)
+    const shell = page.match(/<PageShell\b([^>]*)>/)?.[1] ?? '';
+    expect(shell, 'expected the venue page to render <PageShell>').not.toBe('');
+    expect(shell).toContain('width="6xl"');
+    expect(shell).toContain('lg:grid');
+    expect(shell).toContain('lg:grid-cols-[20rem_1fr]');
   });
 
   it('renders a sticky identity rail as an <aside>', () => {
@@ -101,9 +104,15 @@ describe('CiclosEnCurso de-tint — #34a / DESIGN.md 2026-06-07', () => {
     expect(ciclos).not.toContain('bg-carmine/5');
   });
 
-  it('adopts the canonical de-tinted hover (black/[0.025] + carmine before: tick)', () => {
-    expect(ciclos).toContain('hover:bg-black/[0.025]');
-    expect(ciclos).toContain('before:bg-carmine');
-    expect(ciclos).toContain('hover:before:scale-y-100');
+  it('adopts the canonical de-tinted hover via the shared hoverRail recipe', () => {
+    // The hover recipe (bg wash + carmine before: tick) now lives in the
+    // hoverRail() token (_components/ui/recipes.ts); CiclosEnCurso composes it.
+    expect(ciclos).toContain('hoverRail(');
+  });
+
+  it('the hoverRail recipe defines the canonical de-tint (bg wash + carmine tick)', () => {
+    expect(recipes).toContain('hover:bg-black/[0.025]');
+    expect(recipes).toContain('before:bg-carmine');
+    expect(recipes).toContain('hover:before:scale-y-100');
   });
 });

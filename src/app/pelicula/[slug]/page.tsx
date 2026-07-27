@@ -11,6 +11,15 @@ import {
 } from '@/db/queries';
 import { TAG_LABELS_ES, GENRE_LABELS_ES } from '@/db';
 import { JsonLd, buildFilmPageJsonLd } from '@/lib/json-ld';
+import { cn } from '@/lib/cn';
+import {
+  PageShell,
+  BackLink,
+  SectionHeading,
+  Pill,
+  focusRing,
+  hoverRail,
+} from '@/app/_components/ui';
 
 // Server Component, dynamic per request. The cartelera anchors to BA
 // "today" via `new Date()`, and the screenings horizon shifts every
@@ -140,17 +149,12 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
   const jsonLdPayload = buildFilmPageJsonLd(film, screenings);
 
   return (
-    <main className="mx-auto w-full max-w-5xl min-w-0 px-4 py-8 sm:px-6 md:py-16">
+    <PageShell width="5xl" pad="roomy">
       <JsonLd payload={jsonLdPayload} />
       {/* Back link to cartelera. Editorial breadcrumb-style: small mono
           caps, carmine, sits above the headline. Lets the user ground
           themselves before the page-shaped content lands. */}
-      <Link
-        href="/"
-        className="tracking-eyebrow text-carmine border-carmine mb-8 inline-block border-b font-mono text-[11px] uppercase"
-      >
-        ← Cartelera
-      </Link>
+      <BackLink className="mb-8">Cartelera</BackLink>
 
       {/* Title block — display-md tracking, text-balance to keep long
           Spanish titles from orphaning a single word. */}
@@ -248,9 +252,7 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
           (pre-enrichment) or empty (TMDB had no credits). */}
       {film.cast && film.cast.length > 0 && (
         <section className="mb-12">
-          <h2 className="border-t border-black pt-4 font-serif text-2xl leading-none italic md:text-3xl">
-            Reparto
-          </h2>
+          <SectionHeading variant="bordered">Reparto</SectionHeading>
           <ul className="mt-6 grid gap-x-8 gap-y-3 sm:grid-cols-2">
             {film.cast.map((c, i) => (
               <li key={`${c.name}-${i}`} className="text-sm md:text-base">
@@ -271,19 +273,23 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
           the page is denser and a card grid would feel like SaaS
           slop per the /design-shotgun constraints. */}
       <section>
-        <h2 className="border-t border-black pt-4 font-serif text-2xl leading-none italic md:text-3xl">
+        <SectionHeading
+          variant="bordered"
+          trailing={
+            <span className="text-ink-gray ml-3 font-mono text-[11px] tracking-[0.2em] uppercase not-italic">
+              {screenings.length} {screenings.length === 1 ? 'función' : 'funciones'}
+            </span>
+          }
+        >
           Próximas funciones
-          <span className="text-ink-gray ml-3 font-mono text-[11px] tracking-[0.2em] uppercase not-italic">
-            {screenings.length} {screenings.length === 1 ? 'función' : 'funciones'}
-          </span>
-        </h2>
+        </SectionHeading>
         <ul className="mt-6 divide-y divide-black/15">
           {screenings.map((s) => (
             <FilmScreeningRow key={s.id} s={s} isPast={s.startsAtUtc.getTime() < nowMs} />
           ))}
         </ul>
       </section>
-    </main>
+    </PageShell>
   );
 }
 
@@ -330,7 +336,11 @@ function FilmScreeningRow({ s, isPast }: { s: ScreeningRow; isPast: boolean }) {
       <div className="min-w-0">
         <Link
           href={`/sala/${s.cinema.id}`}
-          className={`tracking-card relative z-10 ${cinemaColor} focus-visible:outline-carmine font-mono text-xs font-bold uppercase focus-visible:outline-2 focus-visible:outline-offset-2`}
+          className={cn(
+            'tracking-card relative z-10 font-mono text-xs font-bold uppercase',
+            cinemaColor,
+            focusRing,
+          )}
         >
           {s.cinema.name}
         </Link>
@@ -347,12 +357,7 @@ function FilmScreeningRow({ s, isPast }: { s: ScreeningRow; isPast: boolean }) {
         {visibleTags.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {visibleTags.map((t) => (
-              <span
-                key={t}
-                className="tracking-card bg-carmine text-cream px-1.5 py-0.5 font-mono text-[10px] uppercase"
-              >
-                {TAG_LABELS_ES[t]}
-              </span>
+              <Pill key={t}>{TAG_LABELS_ES[t]}</Pill>
             ))}
           </div>
         )}
@@ -374,7 +379,10 @@ function FilmScreeningRow({ s, isPast }: { s: ScreeningRow; isPast: boolean }) {
           <a
             href={`/api/screening/${s.id}/ics`}
             download
-            className="tracking-eyebrow text-ink-gray hover:text-carmine focus-visible:outline-carmine relative z-10 font-mono text-[10px] uppercase transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+            className={cn(
+              'tracking-eyebrow text-ink-gray hover:text-carmine relative z-10 font-mono text-[10px] uppercase transition-colors',
+              focusRing,
+            )}
             aria-label={`Agendar ${dayLabel} ${timeLabel} en ${s.cinema.name}`}
           >
             Agendar ⤓
@@ -392,14 +400,14 @@ function FilmScreeningRow({ s, isPast }: { s: ScreeningRow; isPast: boolean }) {
   // interactive element.
   return (
     <li>
-      <div className="group before:bg-carmine relative transition-colors before:absolute before:top-4 before:bottom-4 before:left-0 before:w-[3px] before:origin-top before:scale-y-0 before:transition-transform before:duration-150 hover:bg-black/[0.025] hover:before:scale-y-100 [&:has(a:active)]:translate-y-[1px]">
+      <div className={cn('group [&:has(a:active)]:translate-y-[1px]', hoverRail())}>
         {showTicketLink && (
           <a
             href={s.sourceUrl!}
             target="_blank"
             rel="noopener noreferrer"
             data-screening-card
-            className="focus-visible:outline-carmine absolute inset-0 focus-visible:outline-2 focus-visible:outline-offset-2"
+            className={cn('absolute inset-0', focusRing)}
             aria-label={`Entradas — ${s.cinema.name} ${dayLabel} ${timeLabel}`}
           />
         )}
