@@ -34,7 +34,7 @@ import {
 } from './client';
 import type { CastMember } from '@/db/schema';
 import { pickBestMatch, scoreCandidates, MATCH_CONFIDENCE_THRESHOLD } from './match';
-import { stripDiacritics, levenshteinAtMostOne } from './similarity';
+import { stripDiacritics, levenshteinAtMostOne, stripSearchNoise } from './similarity';
 import { findOverride } from './overrides';
 
 export interface EnrichmentDelta {
@@ -132,6 +132,13 @@ export async function enrichFilm(
     if (hints.titleOriginal && hints.titleOriginal !== scrapedTitle) {
       queries.push(hints.titleOriginal);
     }
+    // Retry-with-cleaned: venue noise ("… CON MÚSICA EN VIVO", "… EN 35 MM")
+    // makes TMDB search return nothing for a film it has. Search the stripped
+    // form too, and score against it (see MatchHints.cleanedTitle). ADR-0003.
+    const cleanedTitle = stripSearchNoise(scrapedTitle);
+    if (cleanedTitle !== scrapedTitle) {
+      queries.push(cleanedTitle);
+    }
     const seenIds = new Set<number>();
     const candidates: TmdbMovieSummary[] = [];
     for (const q of queries) {
@@ -150,6 +157,7 @@ export async function enrichFilm(
     // 3. Fuzzy match with both title hints.
     const match = pickBestMatch(candidates, scrapedTitle, year, {
       titleOriginal: hints.titleOriginal,
+      cleanedTitle,
     });
 
     // Cache the already-fetched top details so step 4 doesn't re-fetch
@@ -190,6 +198,7 @@ export async function enrichFilm(
     if (hints.director) {
       const sorted = scoreCandidates(candidates, scrapedTitle, year, {
         titleOriginal: hints.titleOriginal,
+        cleanedTitle,
       });
       for (const { candidate, confidence } of sorted.slice(0, 3)) {
         const details =

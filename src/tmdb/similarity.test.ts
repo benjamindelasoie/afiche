@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { jaroWinkler, stripDiacritics, levenshteinAtMostOne } from './similarity';
+import {
+  jaroWinkler,
+  stripDiacritics,
+  levenshteinAtMostOne,
+  stripSearchNoise,
+} from './similarity';
 
 // ---------------------------------------------------------------------------
 // stripDiacritics — NFD-decomposable accents PLUS the extended-Latin map
@@ -7,6 +12,26 @@ import { jaroWinkler, stripDiacritics, levenshteinAtMostOne } from './similarity
 // Without the map, "Żuławski" survives NFD as "Zuławski" — still a mismatch
 // against TMDB's anglicized "Zulawski".
 // ---------------------------------------------------------------------------
+describe('stripSearchNoise', () => {
+  it('strips live-music and format tags that break TMDB search', () => {
+    expect(stripSearchNoise('LA QUIMERA DEL ORO CON MÚSICA EN VIVO')).toBe(
+      'LA QUIMERA DEL ORO',
+    );
+    expect(stripSearchNoise('PELÍCULA SORPRESA EN 35 MM')).toBe('PELÍCULA SORPRESA');
+    expect(stripSearchNoise('Metropolis (versión restaurada)')).toBe('Metropolis');
+  });
+
+  it('leaves a clean title unchanged', () => {
+    expect(stripSearchNoise('El Jockey')).toBe('El Jockey');
+    expect(stripSearchNoise('Blade Runner')).toBe('Blade Runner');
+  });
+
+  it('never returns an empty string', () => {
+    expect(stripSearchNoise('estreno')).toBe('estreno');
+    expect(stripSearchNoise('(2007)')).toBe('(2007)');
+  });
+});
+
 describe('stripDiacritics', () => {
   it('returns empty string unchanged', () => {
     expect(stripDiacritics('')).toBe('');
