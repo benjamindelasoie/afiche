@@ -55,8 +55,16 @@ next-env.d.ts
 
 # claude code internal session state (settings, scheduled tasks, etc.)
 .claude/*
-# ...but DO version-control project skills (shareable, checked-in workflows)
+# ...but DO version-control the repo's own project skills. Installed/personal
+# skills (ask-matt, teach, writing-beats, grill-*, …) stay local: ignore
+# everything under skills/ except the checked-in project skills.
 !.claude/skills/
+.claude/skills/*
+!.claude/skills/add-venue/
+
+# agent tooling — local/personal, not versioned
+.agents/
+skills-lock.json
 
 # gstack /retro JSON snapshots — local trend tracking only
 .context/
