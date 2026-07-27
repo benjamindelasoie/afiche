@@ -120,6 +120,67 @@ describe('extractContinuaScreenings (listing-page "Continúa" tiles)', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Strategy-1 showtime-line splitting — the missing-"de" director boundary
+// (TODOS.md #29). Synthetic dense-cycle HTML that reproduces the exact
+// contaminated line from Semana de Cine Portugués (the source page for that
+// cycle is long gone; synthetic HTML matches the grammar per the convention
+// used for Strategy 2 below).
+// ---------------------------------------------------------------------------
+describe('parseDetailPage — Strategy 1 missing-"de" director split (TODO #29)', () => {
+  const cycle = {
+    slug: 'semana-de-cine-portugues',
+    title: 'Semana de Cine Portugués',
+    detailUrl: 'https://malba.org.ar/evento/semana-de-cine-portugues/',
+  };
+
+  // MALBA's day <p> puts the day header on its own source line (a newline
+  // follows the header's <br />), which is what parseS1DenseCycle's day-header
+  // detection keys on (splitFirstLine splits $p.text() on "\n").
+  function denseCycleHtml(showtimeLines: string[]): string {
+    const lines = showtimeLines.map((l) => `<br />\n${l}`).join('');
+    return `
+      <html><body><main>
+        <h3>Programación</h3>
+        <p>DOMINGO 31 de mayo${lines}</p>
+        <script type="application/ld+json">{"datePublished":"2026-05-01T00:00:00+00:00"}</script>
+      </main></body></html>
+    `;
+  }
+
+  it('splits "Title, Director (NN′)" into a clean title + director when "de" is absent', () => {
+    const warnings: string[] = [];
+    const out = parseDetailPage(
+      denseCycleHtml([
+        "20:00 A Vida Luminosa, João Rosas (99'). Con presentación del director",
+      ]),
+      cycle,
+      warnings,
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0].filmTitle).toBe('A Vida Luminosa');
+    expect(out[0].director).toBe('João Rosas');
+  });
+
+  it('still splits the canonical ", de Director" form (no regression)', () => {
+    const out = parseDetailPage(
+      denseCycleHtml(["21:30 A Vida Luminosa, de João Rosas (99′)"]),
+      cycle,
+      [],
+    );
+    expect(out[0].filmTitle).toBe('A Vida Luminosa');
+    expect(out[0].director).toBe('João Rosas');
+  });
+
+  it('does NOT split a comma inside the title when no runtime marker follows', () => {
+    // A bare comma is a director boundary ONLY when gated by "(NN')": without
+    // it, the comma belongs to the title and the line stays whole.
+    const out = parseDetailPage(denseCycleHtml(['20:00 Amar, temer, partir']), cycle, []);
+    expect(out[0].filmTitle).toBe('Amar, temer, partir');
+    expect(out[0].director).toBeUndefined();
+  });
+});
+
 describe('parseDetailPage (Olivera-Aries cycle)', () => {
   const html = fixture('evento-olivera-aries.html');
   const cycle = {

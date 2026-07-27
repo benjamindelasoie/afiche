@@ -17,6 +17,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import { makeInMemoryDb, type TestDb } from '../../test/helpers/in-memory-db';
 import { films, cinemas, screenings } from '@/db/schema';
+import type { ScrapedScreening } from '@/providers/types';
 
 // ---------------------------------------------------------------------------
 // Mocks — replace @/db and @/tmdb/enrich before the subject imports them.
@@ -46,6 +47,7 @@ vi.mock('@/tmdb/client', () => ({
 
 // Import AFTER mocks so ingest picks them up.
 const { enrichPendingFilms } = await import('./ingest');
+const { upsertFilms } = await import('./ingest/films');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -2228,5 +2230,97 @@ describe('ingest — re-scrape preserves enrichment on manual/auto/override rows
 
     const [after] = await testDb.select().from(films).where(eq(films.id, seeded.id));
     expect(after.synopsisEs).toBe('Sinopsis nueva del scraper actualizado.');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// upsertFilms — scraper-update cache invalidation (TODO #24)
+//
+// When the scraper delivers cleaner data for a row previously locked at
+// 'none-attempted' (TMDB queried + failed, e.g. on contaminated scraped
+// data like MALBA's bare-comma director bug, #29), reset match_source to
+// 'none' so the next enrichment pass retries. Only that transition — never
+// on identical re-scrapes, never on curated ('auto'/'override'/'manual')
+// rows. Automates the old manual `UPDATE ... SET match_source='none'`.
+// ---------------------------------------------------------------------------
+describe('upsertFilms — match_source reset on meaningful field change (TODO #24)', () => {
+  beforeEach(async () => {
+    testDb = await makeInMemoryDb();
+  });
+
+  function scraped(overrides: Partial<ScrapedScreening> = {}): ScrapedScreening {
+    return {
+      cinemaId: 'malba',
+      filmTitle: 'A Vida Luminosa',
+      year: 2025,
+      startsAtUtc: futureDate(),
+      tags: [],
+      sourceUrl: 'https://malba.org.ar/evento/semana-de-cine-portugues/',
+      ...overrides,
+    };
+  }
+
+  it('(a) flips none-attempted → none when the scraper re-emits a cleaned director', async () => {
+    // The #29 scenario: the row was locked because the director field held
+    // the contaminated "João Rosas (99')"; the fixed parser now emits the
+    // clean name, which differs, so the row re-enters the enrichment pool.
+    const id = await seedFilm({
+      scrapedTitle: 'A Vida Luminosa',
+      year: 2025,
+      matchSource: 'none-attempted',
+      director: "João Rosas (99')",
+      screeningsAt: 'none',
+    });
+
+    await upsertFilms([scraped({ director: 'João Rosas' })]);
+
+    expect(await getMatchSource(id)).toBe('none');
+    const [row] = await testDb.select().from(films).where(eq(films.id, id));
+    expect(row.director).toBe('João Rosas'); // ELSE branch wrote the clean value
+  });
+
+  it('(b) leaves none-attempted untouched when the scraper re-emits identical data', async () => {
+    const id = await seedFilm({
+      scrapedTitle: 'A Vida Luminosa',
+      year: 2025,
+      matchSource: 'none-attempted',
+      director: 'João Rosas',
+      screeningsAt: 'none',
+    });
+
+    await upsertFilms([scraped({ director: 'João Rosas' })]);
+
+    expect(await getMatchSource(id)).toBe('none-attempted');
+  });
+
+  it('(c) never touches an auto-matched row, even when a field changes', async () => {
+    const id = await seedFilm({
+      scrapedTitle: 'A Vida Luminosa',
+      year: 2025,
+      matchSource: 'auto',
+      director: 'TMDB Canonical Name',
+      screeningsAt: 'none',
+    });
+
+    await upsertFilms([scraped({ director: 'Some Other Name' })]);
+
+    expect(await getMatchSource(id)).toBe('auto');
+    // And the enrichment-protection gate still holds: curated director stays.
+    const [row] = await testDb.select().from(films).where(eq(films.id, id));
+    expect(row.director).toBe('TMDB Canonical Name');
+  });
+
+  it('(d) never touches a manually-curated row, even when a field changes', async () => {
+    const id = await seedFilm({
+      scrapedTitle: 'A Vida Luminosa',
+      year: 2025,
+      matchSource: 'manual',
+      director: 'Operator-Set Name',
+      screeningsAt: 'none',
+    });
+
+    await upsertFilms([scraped({ director: 'Some Other Name' })]);
+
+    expect(await getMatchSource(id)).toBe('manual');
   });
 });

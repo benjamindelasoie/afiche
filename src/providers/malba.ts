@@ -715,15 +715,31 @@ function parseShowtimeLine(lineHtml: string): {
   //                with `tmdb_id=NULL`.
   const $ = cheerio.load(`<root>${lineHtml}</root>`);
   const text = $('root').text().trim().replace(/\s+/g, ' ');
-  const m = text.match(/^(\d{1,2}):(\d{2})\s+(.+?)(?:,\s+de\s+(.+?))?$/);
+  const m = text.match(/^(\d{1,2}):(\d{2})\s+(.+)$/);
   if (!m) return null;
   const hour = parseInt(m[1], 10);
   const minute = parseInt(m[2], 10);
   if (hour < 0 || hour > 24 || minute < 0 || minute > 59) return null;
-  const director = m[4]
-    ?.replace(/\s*\(\d+\s*['′]\).*$/u, '')
-    .replace(/\.$/, '')
-    .trim();
+  // Split the remainder into film title + optional director. Two grammars:
+  //   Form 1 (the norm): "Title, de Director[ (NN')][. prose]"
+  //   Form 2 (missing-"de", TODOS.md #29): "Title, Director (NN')[. prose]"
+  // A bare comma (form 2) is only a director boundary when a `(NN')` runtime
+  // marker follows the name — that both mirrors how MALBA writes these prose
+  // lines AND guards against splitting a comma inside the title itself (e.g.
+  // "Amar, temer, partir" has no runtime marker, so it stays whole).
+  const rest = m[3];
+  const withDe = rest.match(/^(.+?),\s+de\s+(.+)$/u);
+  const bareComma = withDe
+    ? null
+    : rest.match(/^(.+?),\s+([^,(]+?)\s*\(\d+\s*['′]\)/u);
+  const split = withDe ?? bareComma;
+  const title = (split ? split[1] : rest).trim();
+  const director = split
+    ? split[2]
+        .replace(/\s*\(\d+\s*['′]\).*$/u, '')
+        .replace(/\.$/, '')
+        .trim()
+    : undefined;
   // Capture the per-film href when the line wraps the title in an <a>.
   // MALBA's showtime lines link to /evento/<film-slug>/ for individual
   // films; midnight repeats and a few prose-style lines have no link.
@@ -735,7 +751,7 @@ function parseShowtimeLine(lineHtml: string): {
   return {
     hour,
     minute,
-    title: m[3].trim(),
+    title,
     ...(director ? { director } : {}),
     ...(filmHref ? { filmHref } : {}),
   };

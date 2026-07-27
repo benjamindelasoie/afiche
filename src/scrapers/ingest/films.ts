@@ -19,7 +19,7 @@
  * The slug never updates after first set. URLs are the contract.
  */
 
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql, type SQL } from 'drizzle-orm';
 import { db, films, type FilmInsert } from '@/db';
 import type { ScrapedScreening } from '@/providers/types';
 import { buildFilmSlug, withIdSuffix } from '@/lib/slug';
@@ -217,19 +217,44 @@ async function upsertYearlessFilm(
  * in enrichment.ts:270 means venue-scraped synopses are preferred over
  * TMDB peninsular-Spanish, so a fresh scraped synopsis should always
  * overwrite (it can only be "better" by definition).
+ *
+ * Cache-invalidation (TODO #24): when the scraper delivers a value that
+ * meaningfully DIFFERS from what's stored on a row locked at
+ * 'none-attempted' (TMDB was queried and failed, e.g. on contaminated
+ * scraped data), reset match_source to 'none' so the next enrichment pass
+ * retries with the improved data. Scoped to that one transition — curated
+ * rows ('auto'/'override'/'manual') are untouched, and an identical
+ * re-scrape (no field differs) leaves the lock in place. This automates the
+ * manual `UPDATE films SET match_source='none' WHERE match_source='none-attempted'`
+ * that a scraper improvement (e.g. the MALBA bare-comma title fix, #29) used
+ * to require. `IS NOT` is used (not `!=`) so a NULL→value change counts.
  */
 function buildUpdateSet(s: ScrapedScreening): Record<string, unknown> {
   const set: Record<string, unknown> = {};
+  const changed: SQL[] = [];
   if (s.filmTitleOriginal !== undefined) {
     set.titleOriginal = sql`CASE WHEN ${films.matchSource} IN ('manual', 'auto', 'override') THEN ${films.titleOriginal} ELSE ${s.filmTitleOriginal} END`;
+    changed.push(sql`${films.titleOriginal} IS NOT ${s.filmTitleOriginal}`);
   }
   if (s.director !== undefined) {
     set.director = sql`CASE WHEN ${films.matchSource} IN ('manual', 'auto', 'override') THEN ${films.director} ELSE ${s.director} END`;
+    changed.push(sql`${films.director} IS NOT ${s.director}`);
   }
   if (s.runtimeMin !== undefined) {
     set.runtimeMin = sql`CASE WHEN ${films.matchSource} IN ('manual', 'auto', 'override') THEN ${films.runtimeMin} ELSE ${s.runtimeMin} END`;
+    changed.push(sql`${films.runtimeMin} IS NOT ${s.runtimeMin}`);
   }
-  if (s.synopsisEs !== undefined) set.synopsisEs = s.synopsisEs;
+  if (s.synopsisEs !== undefined) {
+    set.synopsisEs = s.synopsisEs;
+    changed.push(sql`${films.synopsisEs} IS NOT ${s.synopsisEs}`);
+  }
+  if (changed.length > 0) {
+    let anyChanged: SQL = changed[0];
+    for (let i = 1; i < changed.length; i++) {
+      anyChanged = sql`${anyChanged} OR ${changed[i]}`;
+    }
+    set.matchSource = sql`CASE WHEN ${films.matchSource} = 'none-attempted' AND (${anyChanged}) THEN 'none' ELSE ${films.matchSource} END`;
+  }
   return set;
 }
 
