@@ -25,6 +25,27 @@ import type { TmdbMovieSummary } from './client';
 export const MATCH_CONFIDENCE_THRESHOLD = 0.85;
 export const YEAR_TOLERANCE = 1;
 /**
+ * Version of the matching logic, stamped onto `films.match_attempt_version`
+ * whenever a row lands in 'none-attempted'. Rows stamped with an older
+ * version (or null, predating the column) re-enter the enrichment pool
+ * automatically, so a matcher improvement gets a pass at the backlog it was
+ * written to rescue.
+ *
+ * BUMP THIS whenever a change could turn a past miss into a hit — a scoring
+ * change here, a query-shaping change in similarity.ts (stripSearchNoise),
+ * a title-splitting change in a provider, a threshold move. Cheap to bump:
+ * the pending pool only ever queries films with a future screening, so a
+ * bump costs one TMDB call per still-showing stuck row, not per stuck row.
+ *
+ * History:
+ *   1 — implicit baseline (everything before this column existed).
+ *   2 — v0.3.9.0's self-healing: stripSearchNoise() venue-noise stripping,
+ *       splitCiclo() for Cacodelphia, the MALBA bare-comma director split.
+ *       These shipped without a way to re-open the rows they targeted, so
+ *       the backlog stayed locked and the feature was a no-op in prod.
+ */
+export const MATCHER_VERSION = 2;
+/**
  * Two candidates whose confidence scores are within this band are considered
  * tied on title — the matcher cannot disambiguate them by title similarity
  * alone. When such a tie occurs AND both tied candidates clear the confidence

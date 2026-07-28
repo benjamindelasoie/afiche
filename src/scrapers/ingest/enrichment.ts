@@ -46,6 +46,7 @@
 import { and, asc, desc, eq, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 import { db, films, screenings } from '@/db';
 import { enrichFilm, enrichByTmdbId, type EnrichResult } from '@/tmdb/enrich';
+import { MATCHER_VERSION } from '@/tmdb/match';
 import { hasTmdbToken } from '@/tmdb/client';
 import { mergeFilmInto } from './films';
 
@@ -104,11 +105,18 @@ export async function enrichPendingFilms(warnings: string[]): Promise<Enrichment
 }
 
 /**
- * Three paths feed into this pass:
+ * Four paths feed into this pass:
  *   1. Fresh rows (matchSource='none') — full search via enrichFilm.
  *   2. Failed-then-patched rows (matchSource='none-attempted' with a non-null
  *      tmdb_id, set by an operator in Drizzle Studio after the auto match
  *      failed) — direct fetch via enrichByTmdbId, no search.
+ *   2b. Stale misses (matchSource='none-attempted', no tmdb_id, stamped with
+ *      a match_attempt_version older than MATCHER_VERSION) — re-searched
+ *      under the improved matcher. This is what makes a matcher improvement
+ *      reach its own backlog: buildUpdateSet's unlock only fires when scraped
+ *      DATA changes, and a better matcher changes no data. Bounded by the
+ *      future-screening guard above, so a version bump costs one TMDB call
+ *      per still-showing stuck row.
  *   3. Pre-emptively patched rows (matchSource='manual' with a non-null
  *      tmdb_id BUT poster_url still null). 'manual' is normally the END
  *      state of path #2, but operators intuitively pick it when patching
@@ -156,6 +164,19 @@ async function fetchPendingFilms(): Promise<PendingFilm[]> {
           or(
             eq(films.matchSource, 'none'),
             and(eq(films.matchSource, 'none-attempted'), isNotNull(films.tmdbId)),
+            // Stale deterministic misses: attempted and failed under an older
+            // matcher. A better matcher changes no scraped data, so the
+            // buildUpdateSet unlock never fires for them — without this clause
+            // they stay locked forever and every matcher improvement is a
+            // no-op on its own backlog. Null version = predates the column.
+            and(
+              eq(films.matchSource, 'none-attempted'),
+              isNull(films.tmdbId),
+              or(
+                isNull(films.matchAttemptVersion),
+                lt(films.matchAttemptVersion, MATCHER_VERSION),
+              ),
+            ),
             and(
               eq(films.matchSource, 'manual'),
               isNotNull(films.tmdbId),
@@ -386,9 +407,12 @@ async function recordEnrichmentMiss(
     return;
   }
   if (result.reason === 'no-candidates' || result.reason === 'low-confidence') {
+    // Stamp the matcher that failed, so a future MATCHER_VERSION bump re-opens
+    // this row. Transient errors return above and stay at 'none' — only a
+    // deterministic miss is worth pinning to a version.
     await db
       .update(films)
-      .set({ matchSource: 'none-attempted' })
+      .set({ matchSource: 'none-attempted', matchAttemptVersion: MATCHER_VERSION })
       .where(eq(films.id, f.id));
   }
 }

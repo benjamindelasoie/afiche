@@ -1,0 +1,1 @@
+ALTER TABLE `films` ADD `match_attempt_version` integer;

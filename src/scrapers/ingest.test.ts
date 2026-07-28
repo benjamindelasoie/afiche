@@ -17,6 +17,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import { makeInMemoryDb, type TestDb } from '../../test/helpers/in-memory-db';
 import { films, cinemas, screenings } from '@/db/schema';
+import { MATCHER_VERSION } from '@/tmdb/match';
 import type { ScrapedScreening } from '@/providers/types';
 
 // ---------------------------------------------------------------------------
@@ -72,6 +73,11 @@ async function seedFilm(args: {
   // formerly year-less row (scraper emitted year=null, enrichment
   // filled in `year` later, but `scrapedYear` stays NULL forever).
   scrapedYear?: number | null;
+  // Matcher version stamped on the row. Defaults to the CURRENT
+  // MATCHER_VERSION so a 'none-attempted' seed means "already tried under
+  // today's matcher" — the state most tests intend. Pass an older number
+  // (or null) to simulate a row stuck under a superseded matcher.
+  matchAttemptVersion?: number | null;
   // Default behavior: insert one screening 24h in the future so the row
   // satisfies enrichPendingFilms's "has-future-screening" filter without
   // every test having to do this manually. Tests that exercise the
@@ -90,6 +96,8 @@ async function seedFilm(args: {
       titleOriginal: args.titleOriginal ?? null,
       director: args.director ?? null,
       matchSource: args.matchSource,
+      matchAttemptVersion:
+        args.matchAttemptVersion === undefined ? MATCHER_VERSION : args.matchAttemptVersion,
       tmdbId: args.tmdbId ?? null,
       posterUrl: args.posterUrl ?? null,
     })
@@ -115,6 +123,14 @@ function futureDate(hoursAhead: number = 24): Date {
   return new Date(Date.now() + hoursAhead * 60 * 60 * 1000);
 }
 
+async function getMatchAttemptVersion(id: number): Promise<number | null> {
+  const [row] = await testDb
+    .select({ v: films.matchAttemptVersion })
+    .from(films)
+    .where(eq(films.id, id));
+  return row?.v ?? null;
+}
+
 async function getMatchSource(id: number): Promise<string | null> {
   const [row] = await testDb
     .select({ matchSource: films.matchSource })
@@ -135,11 +151,15 @@ describe('enrichPendingFilms — retry semantics (regression)', () => {
   });
 
   // T10 — CRITICAL REGRESSION
-  it('does NOT re-enrich films whose match_source is "none-attempted"', async () => {
+  // Qualified by matcher version: a miss under the CURRENT matcher stays
+  // locked (that's the point — don't re-query TMDB every run). A miss under
+  // an OLDER matcher re-opens; see the stale-version tests below.
+  it('does NOT re-enrich films whose match_source is "none-attempted" under the current matcher', async () => {
     const attemptedId = await seedFilm({
       scrapedTitle: 'Mientras la ciudad duerme',
       year: 1950,
       matchSource: 'none-attempted',
+      matchAttemptVersion: MATCHER_VERSION,
     });
     const matchedId = await seedFilm({
       scrapedTitle: 'Already Matched',
@@ -262,6 +282,133 @@ describe('enrichPendingFilms — retry semantics (regression)', () => {
     await enrichPendingFilms([]);
 
     expect(await getMatchSource(id)).toBe('none-attempted');
+  });
+
+  // Regression: a matcher improvement must reach its own backlog.
+  // Found by /qa on 2026-07-27 against prod.
+  // Report: .gstack/qa-reports/qa-report-afiche-ar-2026-07-27.md
+  //
+  // v0.3.9.0 shipped stripSearchNoise()/splitCiclo()/the MALBA split to rescue
+  // rows like "LA QUIMERA DEL ORO CON MÚSICA EN VIVO", then never re-queried a
+  // single one of them: buildUpdateSet's unlock only fires when scraped DATA
+  // changes, and improving the matcher changes no data. The whole feature was
+  // a no-op in production. These pin the version gate that fixes it.
+  it('RE-ENRICHES a "none-attempted" row stamped with an older matcher version', async () => {
+    const staleId = await seedFilm({
+      scrapedTitle: 'LA QUIMERA DEL ORO CON MÚSICA EN VIVO',
+      year: 1925,
+      matchSource: 'none-attempted',
+      tmdbId: null,
+      matchAttemptVersion: MATCHER_VERSION - 1,
+    });
+    enrichFilmMock.mockResolvedValue({
+      delta: {
+        tmdbId: 962,
+        title: 'La quimera del oro',
+        posterUrl: '/gold.jpg',
+        matchSource: 'auto',
+        matchConfidence: 1,
+      },
+      reason: 'ok',
+    });
+
+    const result = await enrichPendingFilms([]);
+
+    expect(enrichFilmMock).toHaveBeenCalled();
+    expect(result.enriched).toBe(1);
+    expect(await getMatchSource(staleId)).toBe('auto');
+  });
+
+  it('RE-ENRICHES a "none-attempted" row with a NULL matcher version (predates the column)', async () => {
+    const legacyId = await seedFilm({
+      scrapedTitle: 'A Vida Luminosa',
+      year: null,
+      matchSource: 'none-attempted',
+      tmdbId: null,
+      matchAttemptVersion: null,
+    });
+    enrichFilmMock.mockResolvedValue({
+      delta: {
+        tmdbId: 111,
+        title: 'A Vida Luminosa',
+        posterUrl: '/vl.jpg',
+        matchSource: 'auto',
+        matchConfidence: 0.99,
+      },
+      reason: 'ok',
+    });
+
+    await enrichPendingFilms([]);
+
+    expect(enrichFilmMock).toHaveBeenCalled();
+    expect(await getMatchSource(legacyId)).toBe('auto');
+  });
+
+  it('stamps the current MATCHER_VERSION when a deterministic miss is recorded', async () => {
+    const id = await seedFilm({
+      scrapedTitle: 'Still Unmatchable',
+      year: 2019,
+      matchSource: 'none',
+      matchAttemptVersion: null,
+    });
+    enrichFilmMock.mockResolvedValue({ delta: null, reason: 'no-candidates' });
+
+    await enrichPendingFilms([]);
+
+    expect(await getMatchSource(id)).toBe('none-attempted');
+    expect(await getMatchAttemptVersion(id)).toBe(MATCHER_VERSION);
+  });
+
+  it('a re-opened row that misses AGAIN re-locks at the new version and is not retried a third time', async () => {
+    const id = await seedFilm({
+      scrapedTitle: 'Genuinely Not On TMDB',
+      year: null,
+      matchSource: 'none-attempted',
+      tmdbId: null,
+      matchAttemptVersion: MATCHER_VERSION - 1,
+    });
+    enrichFilmMock.mockResolvedValue({ delta: null, reason: 'low-confidence' });
+
+    await enrichPendingFilms([]);
+    expect(enrichFilmMock).toHaveBeenCalledTimes(1);
+    expect(await getMatchAttemptVersion(id)).toBe(MATCHER_VERSION);
+
+    // Second pass, same matcher: the row is locked again, no new TMDB call.
+    enrichFilmMock.mockClear();
+    await enrichPendingFilms([]);
+    expect(enrichFilmMock).not.toHaveBeenCalled();
+  });
+
+  it('does NOT re-open a stale-version row that has no future screening', async () => {
+    const deadId = await seedFilm({
+      scrapedTitle: 'Finished Festival Short',
+      year: null,
+      matchSource: 'none-attempted',
+      tmdbId: null,
+      matchAttemptVersion: MATCHER_VERSION - 1,
+      screeningsAt: 'none',
+    });
+
+    await enrichPendingFilms([]);
+
+    expect(enrichFilmMock).not.toHaveBeenCalled();
+    expect(await getMatchSource(deadId)).toBe('none-attempted');
+  });
+
+  it('does NOT re-open stale-version rows marked skip_tmdb (not films at all)', async () => {
+    const skippedId = await seedFilm({
+      scrapedTitle: 'PELÍCULA SORPRESA EN 35 MM',
+      year: 2004,
+      matchSource: 'none-attempted',
+      tmdbId: null,
+      matchAttemptVersion: MATCHER_VERSION - 1,
+    });
+    await testDb.update(films).set({ skipTmdb: true }).where(eq(films.id, skippedId));
+
+    await enrichPendingFilms([]);
+
+    expect(enrichFilmMock).not.toHaveBeenCalled();
+    expect(await getMatchSource(skippedId)).toBe('none-attempted');
   });
 
   it('leaves match_source at "none" on transient error so it retries', async () => {
@@ -470,12 +617,13 @@ describe('enrichPendingFilms — manual tmdb_id patch path', () => {
     expect(await getMatchSource(patchedId)).toBe('manual');
   });
 
-  it('does NOT touch a row with match_source="none-attempted" but tmdb_id null', async () => {
+  it('does NOT take the manual path for "none-attempted" + tmdb_id null at the current matcher version', async () => {
     const stuckId = await seedFilm({
       scrapedTitle: 'Some Stuck Title',
       year: null,
       matchSource: 'none-attempted',
       tmdbId: null, // operator hasn't patched yet
+      matchAttemptVersion: MATCHER_VERSION,
     });
 
     await enrichPendingFilms([]);

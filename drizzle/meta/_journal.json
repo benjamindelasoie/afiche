@@ -71,6 +71,13 @@
       "when": 1780799010480,
       "tag": "0009_old_warstar",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1785200496291,
+      "tag": "0010_tidy_calypso",
+      "breakpoints": true
     }
   ]
 }

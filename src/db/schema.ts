@@ -22,9 +22,10 @@
  *                           case the manual-patch path takes over). Transient
  *                           errors (network, TMDB 5xx, missing token) leave the
  *                           row at 'none' so it retries.
- *                           To force a re-attempt after improving the matcher:
- *                             UPDATE films SET match_source='none'
- *                             WHERE match_source='none-attempted';
+ *                           A matcher improvement re-opens these rows on its
+ *                           own: bump MATCHER_VERSION (src/tmdb/match.ts) and
+ *                           every row whose match_attempt_version is older
+ *                           re-enters the pending pool. No manual UPDATE.
  *   - providers table is "latest state" observability: one row per cinema,
  *     holds last-run / last-success / last-error / current screening_count.
  *   - scrape_runs table is "history" observability: one row per cinema per run,
@@ -152,6 +153,14 @@ export const films = sqliteTable(
     })
       .notNull()
       .default('none'),
+    // MATCHER_VERSION in effect when this row last landed in 'none-attempted'.
+    // Lets a matcher improvement re-open its own backlog: bump MATCHER_VERSION
+    // and every row stamped with an older version re-enters the pending pool.
+    // Without it a deterministic miss is permanent, because the unlock in
+    // buildUpdateSet only fires when scraped DATA changes — and a better
+    // matcher changes no data. Null on rows that predate the column, which
+    // counts as stale (they re-enter on the next pass). See src/tmdb/match.ts.
+    matchAttemptVersion: integer('match_attempt_version'),
     // Hard skip for the TMDB enrichment pass. Set true when the row is NOT
     // a film and shouldn't be searched against TMDB regardless of how good
     // the matcher gets — book presentations, "Película Sorpresa" mystery
