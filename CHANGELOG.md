@@ -2,6 +2,23 @@
 
 All notable changes to Afiche are documented here.
 
+## [1.0.0.1] - 2026-07-28
+
+**Hotfix.** 1.0.0.0 took the site down. For roughly an hour every visitor to afiche.ar got the global error boundary — "La cartelera no está disponible." — and nothing else.
+
+### Fixed
+
+- **The DB client was reaching the browser.** `db/client.ts` throws at module evaluation when `DATABASE_URL` is unset, which is permanently true in a browser. It got into the client bundle through the root `error.tsx` added in 1.0.0.0: a Client Component importing the `_components/ui` **barrel**, which re-exports `PageFooter`, which imports `@/lib/edition` for `formatLastScrape`, which imported `formatTimeBA` from `@/db/queries` — a pure `Intl` call that simply lived in a DB module. The throw killed hydration on every route, and the new error boundary caught the error it had itself caused. Fixed by moving `formatTimeBA` into `@/lib/date-ranges` (no imports, already owns `BA_TZ`), re-exported from `@/db/queries` so no call site changed.
+- **Both error boundaries now deep-import** their UI primitives instead of pulling the barrel. A barrel imported from a Client Component bundles everything it re-exports, so `error.tsx` was shipping `PageFooter` and `@/lib/edition` to the browser for four small components it could import directly.
+
+### Added
+
+- **`src/client-boundary.test.ts`** — walks the real import graph from every `'use client'` entry point and fails if `db/client.ts` is reachable, printing the offending chain. This class of bug is invisible to the rest of the stack: `next build`, `tsc --noEmit` and all 734 tests passed while shipping it, because the throw only happens in a browser. Server-rendered HTML stayed perfect throughout, which is why `curl` reported a healthy 200 the whole time the site was unusable. Type-only imports and `'use server'` modules are correctly excluded as non-edges.
+
+### Notes
+
+- The push of the fix produced no Vercel deployment — the GitHub webhook was dropped, with the project's git link intact. A follow-up empty commit fired it normally. Worth knowing the failure mode exists: a silent no-deploy looks exactly like a successful one from the terminal.
+
 ## [1.0.0.0] - 2026-07-28
 
 **1.0.** Afiche has been serving the real Buenos Aires indie circuit — 10 salas, ~170 funciones a week — for months. This release is the one that makes the machinery behind it trustworthy: the pipeline now repairs its own past mistakes, the box that runs it keeps itself current, and the failure mode that actually hurt this product is finally detectable.

@@ -1,7 +1,13 @@
 'use client'; // Error boundaries must be Client Components
 
 import { useEffect } from 'react';
-import { PageShell, BackLink, Caps, focusRing } from '@/app/_components/ui';
+// Deep imports, not the '@/app/_components/ui' barrel — see the note in
+// src/app/error.tsx and src/client-boundary.test.ts. A barrel pulled into a
+// Client Component bundles everything it re-exports.
+import { PageShell } from '@/app/_components/ui/PageShell';
+import { BackLink } from '@/app/_components/ui/BackLink';
+import { Caps } from '@/app/_components/ui/Caps';
+import { focusRing } from '@/app/_components/ui/recipes';
 import { cn } from '@/lib/cn';
 
 // Route-local error boundary for /sala/[id] (TODO #37). Editorial recovery copy

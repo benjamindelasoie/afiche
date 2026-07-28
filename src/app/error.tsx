@@ -1,7 +1,15 @@
 'use client'; // Error boundaries must be Client Components
 
 import { useEffect } from 'react';
-import { PageShell, BackLink, Caps, focusRing } from '@/app/_components/ui';
+// Deep imports, NOT the '@/app/_components/ui' barrel. A barrel imported from a
+// Client Component drags every module it re-exports into the browser bundle,
+// including PageFooter -> @/lib/edition, which has no business here. That path
+// is what put @/db/client in the browser and took the site down on 2026-07-28;
+// see src/client-boundary.test.ts, which now fails on any recurrence.
+import { PageShell } from '@/app/_components/ui/PageShell';
+import { BackLink } from '@/app/_components/ui/BackLink';
+import { Caps } from '@/app/_components/ui/Caps';
+import { focusRing } from '@/app/_components/ui/recipes';
 import { cn } from '@/lib/cn';
 
 /**
