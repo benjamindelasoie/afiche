@@ -162,7 +162,10 @@ export default async function UnmatchedPage() {
           </summary>
           <ul className="divide-y divide-neutral-200 border-t border-neutral-200">
             {hidden.map((h) => (
-              <li key={h.id} className="flex items-center justify-between gap-4 px-4 py-2">
+              <li
+                key={h.id}
+                className="flex items-center justify-between gap-4 px-4 py-2"
+              >
                 <div className="text-sm">
                   <span className="text-neutral-700">{h.scrapedTitle}</span>
                   {h.scrapedYear ? (

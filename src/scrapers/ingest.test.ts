@@ -97,7 +97,9 @@ async function seedFilm(args: {
       director: args.director ?? null,
       matchSource: args.matchSource,
       matchAttemptVersion:
-        args.matchAttemptVersion === undefined ? MATCHER_VERSION : args.matchAttemptVersion,
+        args.matchAttemptVersion === undefined
+          ? MATCHER_VERSION
+          : args.matchAttemptVersion,
       tmdbId: args.tmdbId ?? null,
       posterUrl: args.posterUrl ?? null,
     })

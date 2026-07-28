@@ -688,19 +688,24 @@ describe('directorsMatch — co-director conjunction splitting', () => {
 
   it('splits Spanish "e" (the y→e swap before an i- sound)', () => {
     expect(
-      directorsMatch('Magrio González e Iris Serrano', ['Magrio González', 'Iris Serrano']),
+      directorsMatch('Magrio González e Iris Serrano', [
+        'Magrio González',
+        'Iris Serrano',
+      ]),
     ).toBe(true);
   });
 
   it('splits "and", "&", "/" and "+"', () => {
     expect(directorsMatch('Joel Coen & Ethan Coen', ['Ethan Coen'])).toBe(true);
-    expect(directorsMatch('Lana Wachowski and Lilly Wachowski', ['Lilly Wachowski'])).toBe(
-      true,
-    );
+    expect(
+      directorsMatch('Lana Wachowski and Lilly Wachowski', ['Lilly Wachowski']),
+    ).toBe(true);
     expect(directorsMatch('Jean-Pierre Dardenne / Luc Dardenne', ['Luc Dardenne'])).toBe(
       true,
     );
-    expect(directorsMatch('Peter Farrelly + Bobby Farrelly', ['Bobby Farrelly'])).toBe(true);
+    expect(directorsMatch('Peter Farrelly + Bobby Farrelly', ['Bobby Farrelly'])).toBe(
+      true,
+    );
   });
 
   it('still matches a name that legitimately contains "y" (unsplit form retained)', () => {
@@ -710,7 +715,9 @@ describe('directorsMatch — co-director conjunction splitting', () => {
   });
 
   it('does NOT match an unrelated director just because a conjunction was split', () => {
-    expect(directorsMatch('Juan Cabral y Santiago Franco', ['Martin Scorsese'])).toBe(false);
+    expect(directorsMatch('Juan Cabral y Santiago Franco', ['Martin Scorsese'])).toBe(
+      false,
+    );
   });
 });
 
@@ -798,9 +805,13 @@ describe('enrichFilm — director-pivot rescue (title axis exhausted)', () => {
       details({ id: 250329, title: 'Hur gick det sen?', release_date: '1994-01-01' }),
     );
 
-    const r = await enrichFilm('LOS MUMIN: EL PEQUEÑO TROL MUMIN, MYMLA Y LA PEQUEÑA MY', 1994, {
-      director: 'Jaromir Wesely',
-    });
+    const r = await enrichFilm(
+      'LOS MUMIN: EL PEQUEÑO TROL MUMIN, MYMLA Y LA PEQUEÑA MY',
+      1994,
+      {
+        director: 'Jaromir Wesely',
+      },
+    );
 
     expect(r.reason).toBe('ok');
     expect(r.delta?.tmdbId).toBe(250329);
@@ -828,7 +839,11 @@ describe('enrichFilm — director-pivot rescue (title axis exhausted)', () => {
     // Ambiguous: two 2023 credits, title score cannot separate them
     // (0.497 vs 0.461 measured). Better a visible miss than a coin flip.
     searchByDirectorMock.mockResolvedValue([
-      summary({ id: 1160380, title: 'Vem ska trösta Knyttet?', release_date: '2023-01-01' }),
+      summary({
+        id: 1160380,
+        title: 'Vem ska trösta Knyttet?',
+        release_date: '2023-01-01',
+      }),
       summary({ id: 1422955, title: 'Hur gick det sen?', release_date: '2023-01-01' }),
     ]);
 

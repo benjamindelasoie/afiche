@@ -450,7 +450,9 @@ export function directorsMatch(scraped: string, tmdbDirectors: string[]): boolea
     return tmdbNames.some((t) => {
       const tp = splitPersonName(t);
       return (
-        tp !== null && sp.surname === tp.surname && givenNamesEquivalent(sp.given, tp.given)
+        tp !== null &&
+        sp.surname === tp.surname &&
+        givenNamesEquivalent(sp.given, tp.given)
       );
     });
   });
