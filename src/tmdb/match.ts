@@ -43,8 +43,12 @@ export const YEAR_TOLERANCE = 1;
  *       splitCiclo() for Cacodelphia, the MALBA bare-comma director split.
  *       These shipped without a way to re-open the rows they targeted, so
  *       the backlog stayed locked and the feature was a no-op in prod.
+ *   3 — directorsMatch: split co-directors on Spanish conjunctions (y / e)
+ *       as well as commas, and a surname-anchored tier that tolerates
+ *       given-name hypocorisms (Charles/Charlie). Both were rejecting
+ *       confidence-1.000 correct matches on prod.
  */
-export const MATCHER_VERSION = 2;
+export const MATCHER_VERSION = 3;
 /**
  * Two candidates whose confidence scores are within this band are considered
  * tied on title — the matcher cannot disambiguate them by title similarity

@@ -670,3 +670,100 @@ describe('directorsMatch — tier 2: Levenshtein-1 fuzzy fallback', () => {
     expect(directorsMatch('Kubrick', ['Scorsese'])).toBe(false);
   });
 });
+
+// Regression: director verification was rejecting confidence-1.000 correct
+// matches on two name-format classes. Found by /qa on 2026-07-27 by
+// diagnosing every live miss against prod.
+// Report: .gstack/qa-reports/qa-report-afiche-ar-2026-07-27.md
+describe('directorsMatch — co-director conjunction splitting', () => {
+  it('splits Spanish "y" — the El Partido case', () => {
+    // Venue scraped one blob; TMDB credits two people. conf was 1.000 and the
+    // match was still thrown away, leaving a duplicate film on the homepage.
+    expect(
+      directorsMatch('Juan Cabral y Santiago Franco', ['Juan Cabral', 'Santiago Franco']),
+    ).toBe(true);
+  });
+
+  it('splits Spanish "e" (the y→e swap before an i- sound)', () => {
+    expect(
+      directorsMatch('Magrio González e Iris Serrano', ['Magrio González', 'Iris Serrano']),
+    ).toBe(true);
+  });
+
+  it('splits "and", "&", "/" and "+"', () => {
+    expect(directorsMatch('Joel Coen & Ethan Coen', ['Ethan Coen'])).toBe(true);
+    expect(directorsMatch('Lana Wachowski and Lilly Wachowski', ['Lilly Wachowski'])).toBe(
+      true,
+    );
+    expect(directorsMatch('Jean-Pierre Dardenne / Luc Dardenne', ['Luc Dardenne'])).toBe(
+      true,
+    );
+    expect(directorsMatch('Peter Farrelly + Bobby Farrelly', ['Bobby Farrelly'])).toBe(true);
+  });
+
+  it('still matches a name that legitimately contains "y" (unsplit form retained)', () => {
+    // The Spanish "Ortega y Gasset" pattern: splitting yields junk, but the
+    // whole string is compared too, so the correct match still lands.
+    expect(directorsMatch('José Ortega y Gasset', ['José Ortega y Gasset'])).toBe(true);
+  });
+
+  it('does NOT match an unrelated director just because a conjunction was split', () => {
+    expect(directorsMatch('Juan Cabral y Santiago Franco', ['Martin Scorsese'])).toBe(false);
+  });
+});
+
+describe('directorsMatch — tier 3: surname-anchored hypocorism table', () => {
+  it('matches the Charles/Charlie Chaplin hypocorism (2 edits, tier 2 cannot)', () => {
+    expect(directorsMatch('Charles Chaplin', ['Charlie Chaplin'])).toBe(true);
+  });
+
+  it('matches Steven/Stephen, which a 0.90 similarity cutoff would MISS (0.894)', () => {
+    expect(directorsMatch('Steven Soderbergh', ['Stephen Soderbergh'])).toBe(true);
+  });
+
+  it('matches Spanish diminutives', () => {
+    expect(directorsMatch('Francisco Lombardi', ['Paco Lombardi'])).toBe(true);
+    expect(directorsMatch('José Martínez', ['Pepe Martinez'])).toBe(true);
+  });
+
+  // Why the table exists instead of a similarity threshold: gender and
+  // inflection variants score 0.92-0.97 Jaro-Winkler, ABOVE charles/charlie
+  // at 0.943. Any cutoff admitting the hypocorisms admits these too.
+  // Tier 3 refuses them because they are simply not in the table.
+  it('tier 3 does not relate gender variants — only curated table entries', () => {
+    // Surnames differ, so tier 2 cannot fire and we observe tier 3 alone.
+    expect(directorsMatch('Maria Gonzalez', ['Mario Fernandez'])).toBe(false);
+    expect(directorsMatch('Juana Perez', ['Juan Ortiz'])).toBe(false);
+  });
+
+  // KNOWN GAP, pre-existing and NOT introduced by the tier-3 table: a
+  // gender/inflection variant is one edit away on the full name, so tier 2's
+  // Levenshtein-1 accepts it. Asserted so the behaviour is visible and a
+  // future fix has a failing test to flip, rather than quietly tolerated.
+  it('tier 2 still accepts one-edit gender variants sharing a surname (known gap)', () => {
+    expect(directorsMatch('Maria González', ['Mario González'])).toBe(true);
+    expect(directorsMatch('Juan Pérez', ['Juana Pérez'])).toBe(true);
+  });
+
+  it('requires the surname to match EXACTLY — this is what keeps Nosferatu safe', () => {
+    // TODOS.md #18: Herzog vs Eggers must never collapse. Different surnames,
+    // so tier 3 cannot reach them however the given names relate.
+    expect(directorsMatch('Werner Herzog', ['Robert Eggers'])).toBe(false);
+    expect(directorsMatch('Charles Chaplin', ['Charlie Chapman'])).toBe(false);
+  });
+
+  it('does NOT match siblings sharing a surname', () => {
+    expect(directorsMatch('Joel Coen', ['Ethan Coen'])).toBe(false);
+    expect(directorsMatch('Jean-Pierre Dardenne', ['Luc Dardenne'])).toBe(false);
+  });
+
+  it('does NOT match a single-token name against a full name', () => {
+    expect(directorsMatch('Chaplin', ['Charlie Chaplin'])).toBe(false);
+  });
+
+  it('keeps alias groups disjoint so the relation stays unambiguous', () => {
+    // "alex" belongs to alexander only; alejandro carries its own diminutive.
+    expect(directorsMatch('Alexander Payne', ['Alex Payne'])).toBe(true);
+    expect(directorsMatch('Alejandro González', ['Alexander González'])).toBe(false);
+  });
+});

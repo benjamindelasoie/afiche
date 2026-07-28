@@ -261,10 +261,101 @@ export async function enrichFilm(
  */
 export const MIN_FUZZY_LEN = 6;
 
+/**
+ * Co-director separators. Venues join names with a Spanish conjunction as
+ * often as with a comma — "Juan Cabral y Santiago Franco", "Magrio González
+ * e Iris Serrano" (Spanish swaps `y`→`e` before an i- sound). Splitting only
+ * on commas left those as one 30-character blob compared against TMDB's
+ * individual credits, so a correct film at confidence 1.000 was rejected on
+ * director verification (measured on prod 2026-07-27: 2 of 20 live misses).
+ *
+ * Over-splitting is safe here: `directorsMatch` also keeps the unsplit form
+ * and accepts if ANY variant matches, so a name that legitimately contains
+ * a conjunction (the Spanish "Ortega y Gasset" pattern) still matches whole.
+ * Splitting can only add candidate comparisons, never remove one.
+ */
+const DIRECTOR_SEPARATOR_RE = /\s*(?:,|\/|&|\+|\by\b|\be\b|\band\b)\s*/gi;
+
+/**
+ * Given-name equivalence classes for the surname-anchored tier.
+ *
+ * Deliberately a lookup table, NOT a similarity threshold. Measured
+ * Jaro-Winkler on real pairs (2026-07-27) shows no cutoff can separate the
+ * two populations — gender and inflection variants score HIGHER than the
+ * hypocorisms we want:
+ *
+ *     want:   charles/charlie 0.943   steven/stephen 0.894
+ *     avoid:  juan/juana      0.960   marco/marcos   0.967   maria/mario 0.920
+ *
+ * A 0.90 threshold would match "María González" to "Mario González" while
+ * still missing Steven/Stephen. So: an explicit, auditable table, same
+ * philosophy as EXTENDED_LATIN_MAP in similarity.ts. Extend as real venue
+ * credits expose new pairs.
+ *
+ * Groups must stay DISJOINT — membership is looked up by name, so a name in
+ * two groups would make the relation ambiguous. (This is why "alex" sits with
+ * alexander only, and alejandro carries its own diminutives.)
+ *
+ * Single-char typos are NOT this tier's job: tier 2 already fuzzes the full
+ * name, so "Dziga Vertov"/"Dzigha Vertov" is handled there.
+ */
+const GIVEN_NAME_ALIASES: readonly (readonly string[])[] = [
+  // English
+  ['charles', 'charlie', 'charley', 'chuck'],
+  ['steven', 'stephen', 'steve'],
+  ['william', 'will', 'bill', 'billy'],
+  ['robert', 'bob', 'bobby', 'rob'],
+  ['richard', 'rick', 'ricky', 'dick'],
+  ['michael', 'mike', 'micky'],
+  ['thomas', 'tom', 'tommy'],
+  ['james', 'jim', 'jimmy'],
+  ['joseph', 'joe', 'joey'],
+  ['daniel', 'danny'],
+  ['anthony', 'tony'],
+  ['edward', 'eddie', 'ted'],
+  ['alexander', 'alex'],
+  ['nicholas', 'nick'],
+  ['benjamin', 'ben'],
+  ['samuel', 'sam'],
+  ['catherine', 'katherine', 'kathryn', 'kate', 'cathy'],
+  ['elizabeth', 'liz', 'beth', 'betty'],
+  ['margaret', 'maggie', 'peggy'],
+  // Spanish / Argentine — the corpus this matcher actually serves
+  ['francisco', 'paco', 'pancho', 'curro'],
+  ['jose', 'pepe'],
+  ['ignacio', 'nacho'],
+  ['enrique', 'quique'],
+  ['manuel', 'manolo'],
+  ['alejandro', 'jandro'],
+  ['antonio', 'tono'],
+  ['dolores', 'lola'],
+  ['guadalupe', 'lupe'],
+  ['concepcion', 'concha'],
+];
+
+/** name → index of its equivalence class in GIVEN_NAME_ALIASES. */
+const GIVEN_NAME_GROUP = new Map<string, number>(
+  GIVEN_NAME_ALIASES.flatMap((group, i) => group.map((n) => [n, i] as const)),
+);
+
+/** Same person's given name, allowing for a known diminutive/variant. */
+function givenNamesEquivalent(a: string, b: string): boolean {
+  if (a === b) return true;
+  const ga = GIVEN_NAME_GROUP.get(a);
+  return ga !== undefined && ga === GIVEN_NAME_GROUP.get(b);
+}
+
+/** Split "Charles Chaplin" into leading given name + trailing surname. */
+function splitPersonName(n: string): { given: string; surname: string } | null {
+  const toks = n.split(/\s+/).filter(Boolean);
+  if (toks.length < 2) return null;
+  return { given: toks[0], surname: toks.slice(1).join(' ') };
+}
+
 export function directorsMatch(scraped: string, tmdbDirectors: string[]): boolean {
   const normalize = (s: string) => stripDiacritics(s).toLowerCase().trim();
-  const scrapedNames = scraped
-    .split(/\s*,\s*/)
+  // Both the split parts AND the unsplit whole — see DIRECTOR_SEPARATOR_RE.
+  const scrapedNames = [...scraped.split(DIRECTOR_SEPARATOR_RE), scraped]
     .map(normalize)
     .filter(Boolean);
   const tmdbNames = tmdbDirectors.map(normalize);
@@ -275,11 +366,32 @@ export function directorsMatch(scraped: string, tmdbDirectors: string[]): boolea
   // Tier 2: Levenshtein-1 fuzzy fallback, gated by length floor on BOTH
   // sides of the comparison. Asymmetric guards (e.g. only-scraped >= 6) leak
   // false positives when TMDB carries a short name; require both >= N.
-  return scrapedNames.some(
-    (s) =>
-      s.length >= MIN_FUZZY_LEN &&
-      tmdbNames.some((t) => t.length >= MIN_FUZZY_LEN && levenshteinAtMostOne(s, t)),
-  );
+  if (
+    scrapedNames.some(
+      (s) =>
+        s.length >= MIN_FUZZY_LEN &&
+        tmdbNames.some((t) => t.length >= MIN_FUZZY_LEN && levenshteinAtMostOne(s, t)),
+    )
+  ) {
+    return true;
+  }
+
+  // Tier 3: surname-anchored hypocorism. Surname must match EXACTLY; only the
+  // given name is allowed to vary, and only via the curated alias table.
+  // Catches what Levenshtein-1 can't reach — TMDB credits Chaplin as
+  // "Charlie", venues scrape "Charles" (2 edits). Keeping the surname strict
+  // preserves the Nosferatu protection (TODOS.md #18): Herzog and Eggers
+  // share no surname, so this tier can never confuse them.
+  return scrapedNames.some((s) => {
+    const sp = splitPersonName(s);
+    if (!sp) return false;
+    return tmdbNames.some((t) => {
+      const tp = splitPersonName(t);
+      return (
+        tp !== null && sp.surname === tp.surname && givenNamesEquivalent(sp.given, tp.given)
+      );
+    });
+  });
 }
 
 async function buildDelta(
