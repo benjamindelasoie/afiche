@@ -129,3 +129,17 @@ add --path <dir>` (no `--url`): URL-managed sources can auto-reclone, and the
 sync code walk for them requires an explicit `--allow-reclone` opt-in.
 
 <!-- gstack-gbrain-search-guidance:end -->
+
+## Health Stack
+
+Used by `/health`. `npm test` is `vitest` (watch mode) — the CI-equivalent
+run is `vitest run`.
+
+- typecheck: `npx tsc --noEmit`
+- lint: `npx eslint .`
+- format: `npx prettier --check .`
+- test: `npx vitest run`
+
+Not installed, so `/health` skips them and redistributes their weight:
+`knip` (dead code) and `shellcheck` (5 shell scripts under `scripts/`,
+including the load-bearing `scrape-cron.sh`).
