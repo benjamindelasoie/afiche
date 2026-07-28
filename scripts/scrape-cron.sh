@@ -6,6 +6,9 @@
 # built to survive a laptop that sleeps:
 #   - resolves node via nvm ITSELF — launchd runs with a bare environment, so we
 #     can't rely on the shell profile having put node on PATH,
+#   - pulls main before every run (plus `npm ci` / `db:migrate:prod` when the
+#     lockfile or migrations moved), so the box can't drift behind shipped
+#     scraper fixes the way it did through July 2026,
 #   - staleness guard: skips if a scrape already succeeded in the last STALE_HOURS,
 #     so frequent wake-ups don't re-scrape and a just-woken Mac still catches up,
 #   - logs to .scrape-cron.log,
@@ -68,6 +71,56 @@ if ! command -v node >/dev/null 2>&1; then
   log "node not found on PATH; cannot scrape"
   notify "⚠️ afiche scrape couldn't start: node not found"
   exit 1
+fi
+
+# --- sync source -----------------------------------------------------------
+# Pull main before scraping so the box always runs the shipped scraper.
+#
+# Why this exists: on 2026-07-27 this checkout was found pinned at v0.3.7.3
+# while main was v0.3.9.0 — two releases of provider/matcher fixes that only
+# ever execute HERE (Vercel renders, it doesn't scrape) had never run. The
+# deploy story covered the website and quietly skipped the box doing the work.
+#
+# Failure posture: a pull failure NOTIFIES but does not abort. Scraping with
+# last-known-good code beats not scraping at all — stale data is the worse
+# outcome (see the 7-day silent gap in the same investigation). The one thing
+# we refuse to do is fail silently, which is what got us here.
+if command -v git >/dev/null 2>&1 && [ -d "$REPO_DIR/.git" ]; then
+  before=$(git rev-parse HEAD 2>/dev/null || echo unknown)
+  if git fetch --quiet origin main 2>>"$LOG" &&
+     git merge --ff-only --quiet origin/main 2>>"$LOG"; then
+    after=$(git rev-parse HEAD 2>/dev/null || echo unknown)
+    if [ "$before" != "$after" ]; then
+      log "pulled main: ${before:0:8} → ${after:0:8}"
+
+      # New/changed deps — node_modules must match the lockfile or the
+      # scrape fails on a missing import. Only when the lockfile moved.
+      if ! git diff --quiet "$before" "$after" -- package-lock.json 2>/dev/null; then
+        log "package-lock.json changed; running npm ci"
+        npm ci >>"$LOG" 2>&1 ||
+          { log "npm ci FAILED"; notify "⚠️ afiche: npm ci failed after pull"; }
+      fi
+
+      # Pending schema migrations — apply BEFORE scraping. Code that expects
+      # a column prod doesn't have crashes mid-run; drizzle's journal makes
+      # this a no-op when there's nothing new.
+      if ! git diff --quiet "$before" "$after" -- drizzle 2>/dev/null; then
+        log "drizzle migrations changed; applying to prod"
+        if npm run db:migrate:prod >>"$LOG" 2>&1; then
+          log "migrations applied"
+        else
+          log "MIGRATION FAILED — aborting scrape (schema/code mismatch)"
+          notify "⚠️ afiche: prod migration failed. Scrape aborted to avoid a schema/code mismatch. tail $LOG"
+          exit 1
+        fi
+      fi
+    else
+      log "already up to date (${after:0:8})"
+    fi
+  else
+    log "git pull FAILED (local edits, or origin unreachable) — scraping with existing code"
+    notify "⚠️ afiche: couldn't pull main on the scrape box; running possibly-stale scraper code"
+  fi
 fi
 
 # --- run -------------------------------------------------------------------
