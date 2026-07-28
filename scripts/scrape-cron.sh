@@ -25,7 +25,12 @@ set -uo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_DIR" || exit 1
 
-STALE_HOURS="${AFICHE_SCRAPE_STALE_HOURS:-12}"
+# Must be SHORTER than the gap between scheduled runs, or the later run is
+# dead code. The plist fires at 09:00 and 18:00 — a 9h gap — so the old
+# default of 12 made the 18:00 run skip every single day while the schedule
+# advertised twice-daily. 8 lets both fire (9h and 15h both clear it) while
+# still coalescing incidental wake-ups, which is what the guard is for.
+STALE_HOURS="${AFICHE_SCRAPE_STALE_HOURS:-8}"
 STAMP="$REPO_DIR/.scrape-last-success"   # gitignored; updated on success
 LOG="$REPO_DIR/.scrape-cron.log"
 

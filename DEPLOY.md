@@ -203,3 +203,58 @@ Alternative for one-off cases: add an entry to `tmdb-overrides.json` (mapped on 
 
 If a scrape fails, the script exits non-zero and prints the failing step. Re-run
 it manually once you've fixed the issue.
+
+### Staleness alerting (the failure that actually bites)
+
+A *failed* scrape is loud: `scrape-cron.sh` exits non-zero and pings Telegram.
+A scrape that **never ran** is silent — no code executes, so nothing can report it.
+That is the real-world failure: between 2026-07-20 and 2026-07-27 the scrape
+box stayed asleep, the cartelera served week-old showtimes, and nothing
+signalled it.
+
+`GET /api/health/freshness` closes that gap. It runs **on Vercel**, not on the
+scrape box — deliberately, since the box being off is the thing being detected.
+It reads the most recent successful `scrape_runs.finished_at` (the same value
+the footer renders as "actualizado el …") and pings Telegram when that is older
+than the threshold. A Vercel cron calls it daily at 14:00 UTC / 11:00 BA, two
+hours after the 09:00 scrape should have finished (`vercel.json`).
+
+**Alerting is opt-in, and dormant until you turn it on.** With nothing
+configured the daily cron returns 200 and does nothing — it does *not* error.
+That is deliberate: a red cron every day for a feature nobody enabled just
+trains you to ignore this endpoint. The response says why it's dormant:
+
+```json
+{ "stale": false, "alerting": "disabled", "alertingDisabledReason": "CRON_SECRET not set" }
+```
+
+To switch it on, set these Vercel env vars (Production):
+
+| Var | Purpose |
+|---|---|
+| `CRON_SECRET` | Bearer token; Vercel sends it automatically on cron invocations. **Alerting requires it** — while unset the endpoint is readable but can never send, which is what stops anyone hammering it into spamming your phone. |
+| `TELEGRAM_BOT_TOKEN` | Same bot as `scrape-cron.sh`; copy from `.env.prod`. |
+| `TELEGRAM_CHAT_ID` | Same chat id; copy from `.env.prod`. |
+| `AFICHE_STALE_HOURS` | Optional. Defaults to 26 — "we missed more than a full day". |
+
+```bash
+vercel env add CRON_SECRET production          # any long random string
+vercel env add TELEGRAM_BOT_TOKEN production   # value from .env.prod
+vercel env add TELEGRAM_CHAT_ID production     # value from .env.prod
+```
+
+Once `CRON_SECRET` is set the token is enforced — a call with a wrong or
+missing one gets 401. Check by hand any time:
+
+```bash
+# configured
+curl -H "Authorization: Bearer $CRON_SECRET" https://afiche.ar/api/health/freshness
+# → {"lastScrapeAt":"…","ageHours":3.2,"staleHours":26,"stale":false,"alerting":"enabled","alerted":false}
+
+# dormant (nothing set) — no header needed, still tells you the truth
+curl https://afiche.ar/api/health/freshness
+```
+
+The payload is not sensitive: the site footer already publishes the
+last-updated time to every visitor. The only side effect worth protecting is
+the Telegram send, and that is gated on the token.
