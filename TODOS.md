@@ -209,7 +209,9 @@ do it as its own small PR with homepage regression coverage.
 
 ## 27. Residential-egress scrape daemon (UNBLOCKS full /admin/scrape + future cron)
 
-**✅ RESOLVED (option 3c) — the m1air home server.** Rather than buying a Pi, the old M1 Air was repurposed as the always-on box (reachable as `ssh m1air` over Tailscale). It runs the prod scraper on a launchd schedule (`ar.afiche.scrape`, 09:00 + 18:00 daily) pointed at the prod Turso DB — i.e. **transport option (c)**: the daemon runs its own cron and writes to the DB, the admin panel just reflects state. No tunnel, no webhook, no auth surface. This delivers the two headline wins: scrape cadence is decoupled from "is the laptop on," and daily-fresh data is ambient.
+**✅ RESOLVED (option 3c) — a repurposed always-on machine.** Rather than buying a Pi, an existing spare Mac became the always-on box. It runs the prod scraper on a twice-daily OS-level schedule pointed at the prod Turso DB — i.e. **transport option (c)**: the daemon runs its own cron and writes to the DB, the admin panel just reflects state. No tunnel, no webhook, no auth surface. This delivers the two headline wins: scrape cadence is decoupled from "is the laptop on," and daily-fresh data is ambient. (Host details are operator-local and deliberately not recorded in this public repo.)
+
+**Follow-up 2026-07-28 (v1.0.0.0):** two weaknesses in this setup showed up in production and are now closed. The box had drifted two releases behind main — so scraper fixes shipped but never executed — which `scrape-cron.sh` fixes by pulling `main` before every run. And a sleeping box produced multi-day gaps that nothing detected, because failure alerting can't fire when no code runs; `/api/health/freshness` now watches from Vercel instead.
 
 **Still open (the webhook layer, option 3a):** on-demand scrape buttons on `/admin/runs` would still need Vercel → daemon transport (tunnel + shared secret). Deferred exactly as originally scoped — v1 ships without it. **Priority: P3**, trigger: the missing scrape buttons start to feel like a hole.
 
