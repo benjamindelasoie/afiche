@@ -23,6 +23,7 @@
 import {
   hasTmdbToken,
   searchMovies,
+  searchMoviesByDirector,
   getMovie,
   posterImageUrl,
   backdropImageUrl,
@@ -33,7 +34,12 @@ import {
   type TmdbMovieSummary,
 } from './client';
 import type { CastMember } from '@/db/schema';
-import { pickBestMatch, scoreCandidates, MATCH_CONFIDENCE_THRESHOLD } from './match';
+import {
+  pickBestMatch,
+  scoreCandidates,
+  MATCH_CONFIDENCE_THRESHOLD,
+  type MatchHints,
+} from './match';
 import { stripDiacritics, levenshteinAtMostOne, stripSearchNoise } from './similarity';
 import { findOverride } from './overrides';
 
@@ -151,6 +157,20 @@ export async function enrichFilm(
       }
     }
     if (candidates.length === 0) {
+      // 2b. Director-pivot rescue — the title axis is exhausted, so try the
+      // other axis we hold. Venues often use an Argentine release title TMDB
+      // doesn't carry ("LLEGAN LOS MUPPETS"), but the director is exact.
+      //
+      // DELIBERATELY CONSERVATIVE: accept only when a scraped year exists AND
+      // exactly one of the director's credits falls inside the year window.
+      // Title score cannot gate this — measured on prod 2026-07-27, a correct
+      // rescue scored 0.495 ("Hur gick det sen?" for the Moomin film) while a
+      // WRONG one scored 0.568 ("Prohibido olvidar" for "Colores Perdidos").
+      // The discriminator isn't similarity, it's the year: Colores Perdidos
+      // has no scraped year, so its director's lone credit passed a vacuous
+      // filter. Requiring year + uniqueness removes that whole class.
+      const rescued = await directorPivot(scrapedTitle, year, hints, cleanedTitle);
+      if (rescued) return rescued;
       return { delta: null, reason: 'no-candidates' };
     }
 
@@ -252,6 +272,48 @@ export async function enrichFilm(
  * Exported for unit tests; the canonical caller is enrichFilm's director-
  * fallback rescue.
  */
+
+/**
+ * Find a film via its DIRECTOR when title search found nothing.
+ *
+ * Returns a delta only under the narrow condition documented at the call
+ * site: a scraped year is present, and exactly one of the director's credits
+ * survives the year window. Anything looser admits wrong matches that score
+ * HIGHER than the right ones (measured; see the call site).
+ *
+ * Confidence is recorded at MATCH_CONFIDENCE_THRESHOLD — the title score is
+ * meaningless here (that axis already failed); what earns the match is
+ * director identity plus year uniqueness.
+ */
+async function directorPivot(
+  scrapedTitle: string,
+  year: number | undefined,
+  hints: MatchHints & { director?: string },
+  cleanedTitle: string,
+): Promise<EnrichResult | null> {
+  if (!hints.director || year === undefined) return null;
+
+  // Co-director strings: try each name until one resolves to a TMDB person.
+  const names = [...hints.director.split(DIRECTOR_SEPARATOR_RE), hints.director]
+    .map((n) => n.trim())
+    .filter(Boolean);
+
+  for (const name of names) {
+    const credits = await searchMoviesByDirector(name);
+    if (credits.length === 0) continue;
+    // scoreCandidates applies the ±1 year window; survivors are the credits
+    // that could plausibly be the screened film.
+    const inYear = scoreCandidates(credits, scrapedTitle, year, {
+      titleOriginal: hints.titleOriginal,
+      cleanedTitle,
+    });
+    if (inYear.length !== 1) continue;
+    const details = await getMovie(inYear[0].candidate.id);
+    const delta = await buildDelta(details, 'auto', MATCH_CONFIDENCE_THRESHOLD);
+    return { delta, reason: 'ok' };
+  }
+  return null;
+}
 
 /**
  * Minimum normalized length for Levenshtein-1 fuzzy matching to apply.

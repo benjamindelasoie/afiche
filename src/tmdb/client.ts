@@ -91,6 +91,53 @@ export async function searchMovies(
 }
 
 /**
+ * Films a person is credited as DIRECTOR on, via /search/person (whose
+ * `known_for` is too shallow) → /person/{id}/movie_credits.
+ *
+ * The director axis, used when the title axis is exhausted. Measured on prod
+ * 2026-07-27: 9 of 17 remaining misses were real films where TMDB's title
+ * search returns ZERO candidates because the venue used an Argentine release
+ * title TMDB doesn't carry — but we hold the director for nearly all of them.
+ * "LLEGAN LOS MUPPETS" finds nothing; James Frawley's filmography has
+ * The Muppet Movie (1979) immediately.
+ *
+ * Returns [] rather than throwing when the person isn't found — a miss on
+ * this rescue path should degrade to "no candidates", not fail the row.
+ * Capped at the first person match and MAX_PERSON_CREDITS films: a prolific
+ * director has hundreds of credits and the caller year-filters anyway.
+ */
+export const MAX_PERSON_CREDITS = 60;
+
+export async function searchMoviesByDirector(
+  director: string,
+): Promise<TmdbMovieSummary[]> {
+  const params = new URLSearchParams({
+    query: director,
+    language: 'es-AR',
+    include_adult: 'false',
+  });
+  const res = await fetch(`${BASE}/search/person?${params.toString()}`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) return [];
+  const body = (await res.json()) as { results?: { id: number }[] };
+  const person = body.results?.[0];
+  if (!person) return [];
+
+  const credRes = await fetch(
+    `${BASE}/person/${person.id}/movie_credits?language=es-AR`,
+    { headers: authHeaders() },
+  );
+  if (!credRes.ok) return [];
+  const creds = (await credRes.json()) as {
+    crew?: (TmdbMovieSummary & { job?: string })[];
+  };
+  return (creds.crew ?? [])
+    .filter((c) => c.job === 'Director')
+    .slice(0, MAX_PERSON_CREDITS);
+}
+
+/**
  * Fetch full movie details + credits by TMDB ID. Used after a match to
  * enrich with runtime, imdb_id, director, and (if desired) cast.
  *

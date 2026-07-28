@@ -17,6 +17,7 @@ const searchMock = vi.fn();
 const getMovieMock = vi.fn();
 const findOverrideMock = vi.fn();
 const hasTokenMock = vi.fn();
+const searchByDirectorMock = vi.fn();
 
 vi.mock('./client', async () => {
   const actual = await vi.importActual<typeof import('./client')>('./client');
@@ -24,6 +25,7 @@ vi.mock('./client', async () => {
     ...actual,
     hasTmdbToken: () => hasTokenMock(),
     searchMovies: (...args: unknown[]) => searchMock(...args),
+    searchMoviesByDirector: (...args: unknown[]) => searchByDirectorMock(...args),
     getMovie: (...args: unknown[]) => getMovieMock(...args),
     extractDirectors: actual.extractDirectors,
     posterImageUrl: actual.posterImageUrl,
@@ -765,5 +767,102 @@ describe('directorsMatch — tier 3: surname-anchored hypocorism table', () => {
     // "alex" belongs to alexander only; alejandro carries its own diminutive.
     expect(directorsMatch('Alexander Payne', ['Alex Payne'])).toBe(true);
     expect(directorsMatch('Alejandro González', ['Alexander González'])).toBe(false);
+  });
+});
+
+// Director-pivot rescue: when title search returns nothing but we hold a
+// director. Found by /qa on 2026-07-27 — 9 of 17 live misses were real films
+// whose Argentine release title TMDB does not carry.
+// Report: .gstack/qa-reports/qa-report-afiche-ar-2026-07-27.md
+describe('enrichFilm — director-pivot rescue (title axis exhausted)', () => {
+  beforeEach(() => {
+    searchMock.mockReset();
+    getMovieMock.mockReset();
+    findOverrideMock.mockReset();
+    hasTokenMock.mockReset();
+    searchByDirectorMock.mockReset();
+    hasTokenMock.mockReturnValue(true);
+    findOverrideMock.mockResolvedValue(null);
+    searchMock.mockResolvedValue([]); // title search always empty here
+    searchByDirectorMock.mockResolvedValue([]);
+  });
+
+  it('recovers a film when exactly ONE directed credit falls in the year window', async () => {
+    // The Moomin case: "LOS MUMIN: EL PEQUEÑO TROL…" finds nothing by title,
+    // but Jaromir Wesely has exactly one 1994 credit.
+    searchByDirectorMock.mockResolvedValue([
+      summary({ id: 250329, title: 'Hur gick det sen?', release_date: '1994-01-01' }),
+      summary({ id: 999, title: 'Something Else', release_date: '2010-01-01' }),
+    ]);
+    getMovieMock.mockResolvedValue(
+      details({ id: 250329, title: 'Hur gick det sen?', release_date: '1994-01-01' }),
+    );
+
+    const r = await enrichFilm('LOS MUMIN: EL PEQUEÑO TROL MUMIN, MYMLA Y LA PEQUEÑA MY', 1994, {
+      director: 'Jaromir Wesely',
+    });
+
+    expect(r.reason).toBe('ok');
+    expect(r.delta?.tmdbId).toBe(250329);
+    expect(searchByDirectorMock).toHaveBeenCalledWith('Jaromir Wesely');
+  });
+
+  it('refuses when the scraped year is MISSING — the Colores Perdidos wrong-match class', async () => {
+    // Measured on prod: this director has exactly one credit and it is the
+    // WRONG film (0.568 title score, higher than a correct rescue at 0.495).
+    // With no year the window is vacuous, so uniqueness proves nothing.
+    searchByDirectorMock.mockResolvedValue([
+      summary({ id: 1211622, title: 'Prohibido olvidar', release_date: '2014-01-01' }),
+    ]);
+
+    const r = await enrichFilm('Colores Perdidos', undefined, {
+      director: 'Roberto de Biase',
+    });
+
+    expect(r.reason).toBe('no-candidates');
+    expect(r.delta).toBeNull();
+    expect(searchByDirectorMock).not.toHaveBeenCalled();
+  });
+
+  it('refuses when MORE THAN ONE credit falls in the year window', async () => {
+    // Ambiguous: two 2023 credits, title score cannot separate them
+    // (0.497 vs 0.461 measured). Better a visible miss than a coin flip.
+    searchByDirectorMock.mockResolvedValue([
+      summary({ id: 1160380, title: 'Vem ska trösta Knyttet?', release_date: '2023-01-01' }),
+      summary({ id: 1422955, title: 'Hur gick det sen?', release_date: '2023-01-01' }),
+    ]);
+
+    const r = await enrichFilm('LOS MUMIN: ¿QUIÉN ANIMARÁ A CHICO?', 2023, {
+      director: 'Veronica Lassenius',
+    });
+
+    expect(r.reason).toBe('no-candidates');
+    expect(r.delta).toBeNull();
+  });
+
+  it('does not fire at all when there is no director hint', async () => {
+    const r = await enrichFilm('Some Untraceable Title', 1999);
+    expect(r.reason).toBe('no-candidates');
+    expect(searchByDirectorMock).not.toHaveBeenCalled();
+  });
+
+  it('tries each co-director until one resolves to a TMDB person', async () => {
+    searchByDirectorMock.mockImplementation((name: string) =>
+      Promise.resolve(
+        name === 'Santiago Franco'
+          ? [summary({ id: 42, title: 'Found It', release_date: '2020-01-01' })]
+          : [],
+      ),
+    );
+    getMovieMock.mockResolvedValue(
+      details({ id: 42, title: 'Found It', release_date: '2020-01-01' }),
+    );
+
+    const r = await enrichFilm('Un Título Argentino', 2020, {
+      director: 'Juan Cabral y Santiago Franco',
+    });
+
+    expect(r.reason).toBe('ok');
+    expect(r.delta?.tmdbId).toBe(42);
   });
 });

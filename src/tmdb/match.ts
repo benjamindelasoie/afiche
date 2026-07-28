@@ -47,8 +47,11 @@ export const YEAR_TOLERANCE = 1;
  *       as well as commas, and a surname-anchored tier that tolerates
  *       given-name hypocorisms (Charles/Charlie). Both were rejecting
  *       confidence-1.000 correct matches on prod.
+ *   4 — director-pivot rescue: when title search returns zero candidates,
+ *       look the director up on TMDB and accept a credit only when a scraped
+ *       year exists and exactly one credit falls in the year window.
  */
-export const MATCHER_VERSION = 3;
+export const MATCHER_VERSION = 4;
 /**
  * Two candidates whose confidence scores are within this band are considered
  * tied on title — the matcher cannot disambiguate them by title similarity
