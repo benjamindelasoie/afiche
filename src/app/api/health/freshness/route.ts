@@ -1,12 +1,12 @@
 /**
  * Cartelera freshness check — alert on a scrape that never happened.
  *
- * Why this exists on VERCEL rather than on the scrape box: the failure it
- * watches for is the box being asleep. Between 2026-07-20 and 2026-07-27 the
- * m1air home server never woke, `scrape-cron.sh` never executed, and the site
- * served week-old showtimes with nothing to signal it. `scrape-cron.sh` pings
- * on a FAILED scrape, which is the case that self-corrects; it is structurally
- * incapable of noticing a scrape that never ran, because no code runs.
+ * Why this exists on VERCEL rather than on the scrape host: the failure it
+ * watches for is that host being asleep. Over a week in July 2026 it never
+ * woke, `scrape-cron.sh` never executed, and the site served week-old
+ * showtimes with nothing to signal it. `scrape-cron.sh` pings on a FAILED
+ * scrape, which is the case that self-corrects; it is structurally incapable
+ * of noticing a scrape that never ran, because no code runs.
  *
  * Vercel is always up and can read the same prod DB, so the check lives here.
  * The freshness signal already exists — `scrape_runs.finished_at` for the most
@@ -112,7 +112,7 @@ export async function GET(req: Request) {
         : `last success ${ageHours.toFixed(1)}h ago (threshold ${staleHours}h)`;
     alerted = await notifyTelegram(
       `⚠️ afiche: la cartelera está desactualizada — ${detail}. ` +
-        'Revisá el scrape box (ssh m1air, tail .scrape-cron.log).',
+        'Revisá el scrape host y su .scrape-cron.log.',
     );
   }
 
