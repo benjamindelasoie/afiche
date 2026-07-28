@@ -23,6 +23,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { makeInMemoryDb, type TestDb } from '../../test/helpers/in-memory-db';
+import { eq } from 'drizzle-orm';
 import { films, cinemas, screenings } from '@/db/schema';
 
 // ---------------------------------------------------------------------------
@@ -358,5 +359,90 @@ describe('listCinemas (MCP)', () => {
     await testDb.insert(cinemas).values({ id: 'alpha', name: 'Alpha', type: 'indie' });
     const list = await listCinemas();
     expect(list.map((c) => c.name)).toEqual(['Alpha', 'Zeta']);
+  });
+});
+
+// Hidden films must be unreachable from EVERY public read surface, not just
+// the cartelera list. Each query below is one that bypasses (or is) the
+// fetchRows choke point, so each needs its own guarantee.
+describe('hidden films — visibility is enforced on every read surface', () => {
+  beforeEach(async () => {
+    testDb = await makeInMemoryDb();
+  });
+
+  async function seedHidden(): Promise<number> {
+    await testDb.insert(cinemas).values({ id: 'malba', name: 'MALBA', type: 'indie' });
+    const [row] = await testDb
+      .insert(films)
+      .values({
+        title: 'SMOF, festival de cine de animación',
+        scrapedTitle: 'SMOF, festival de cine de animación',
+        slug: 'smof-festival',
+        matchSource: 'none-attempted',
+        hiddenAt: new Date('2026-07-27T00:00:00Z'),
+      })
+      .returning({ id: films.id });
+    await testDb.insert(screenings).values({
+      filmId: row.id,
+      cinemaId: 'malba',
+      startsAtUtc: baMidnightUtc(2026, 7, 29),
+    });
+    return row.id;
+  }
+
+  it('is absent from the two-week cartelera', async () => {
+    await seedHidden();
+    const days = await getTwoWeeksScreenings(baMidnightUtc(2026, 7, 27));
+    expect(days.flatMap((d) => d.screenings)).toHaveLength(0);
+  });
+
+  it('is absent from Próximamente', async () => {
+    await seedHidden();
+    const weeks = await getUpcomingScreenings(baMidnightUtc(2026, 7, 27));
+    expect(weeks.flatMap((w) => w.screenings)).toHaveLength(0);
+  });
+
+  it('is absent from search (site + MCP search_films)', async () => {
+    await seedHidden();
+    const hits = await searchUpcomingFilms('SMOF', baMidnightUtc(2026, 7, 27));
+    expect(hits).toHaveLength(0);
+  });
+
+  it('404s on its detail page (getFilmBySlug returns null)', async () => {
+    await seedHidden();
+    expect(await getFilmBySlug('smof-festival')).toBeNull();
+  });
+
+  it('reappears everywhere once unhidden', async () => {
+    const id = await seedHidden();
+    await testDb.update(films).set({ hiddenAt: null }).where(eq(films.id, id));
+
+    const days = await getTwoWeeksScreenings(baMidnightUtc(2026, 7, 27));
+    expect(days.flatMap((d) => d.screenings)).toHaveLength(1);
+    expect(await getFilmBySlug('smof-festival')).not.toBeNull();
+    expect(await searchUpcomingFilms('SMOF', baMidnightUtc(2026, 7, 27))).toHaveLength(1);
+  });
+
+  it('does not hide OTHER films', async () => {
+    await seedHidden();
+    const [visible] = await testDb
+      .insert(films)
+      .values({
+        title: 'Un Film Real',
+        scrapedTitle: 'Un Film Real',
+        slug: 'un-film-real',
+        matchSource: 'auto',
+      })
+      .returning({ id: films.id });
+    await testDb.insert(screenings).values({
+      filmId: visible.id,
+      cinemaId: 'malba',
+      startsAtUtc: baMidnightUtc(2026, 7, 29),
+    });
+
+    const days = await getTwoWeeksScreenings(baMidnightUtc(2026, 7, 27));
+    const shown = days.flatMap((d) => d.screenings);
+    expect(shown).toHaveLength(1);
+    expect(shown[0].film.slug).toBe('un-film-real');
   });
 });

@@ -175,6 +175,24 @@ export const films = sqliteTable(
     // out by enrichment.fetchPendingFilms and by inspect-unmatched so the
     // row stops appearing in the "pending" report once flipped.
     skipTmdb: integer('skip_tmdb', { mode: 'boolean' }).notNull().default(false),
+    // Operator-hidden from the public cartelera. Non-null = hidden, and the
+    // timestamp records when. Distinct from skip_tmdb (which only governs
+    // TMDB enrichment): this governs VISIBILITY.
+    //
+    // The clutter it exists for is rows that are not films at all and never
+    // will be — festival umbrella programs ("SMOF, festival de cine de
+    // animación", the "CUADRO A CUADRO" series) and "PELÍCULA SORPRESA"
+    // mystery screenings. No matcher improvement can fix those; they just
+    // need to stop occupying a card.
+    //
+    // Hiding also sets skip_tmdb (see the admin toggle): if a row isn't worth
+    // showing, it isn't worth spending TMDB calls on either, and it drops out
+    // of the unenriched report so that number stays meaningful. Unhiding
+    // reverses both, symmetrically.
+    //
+    // Screenings are NOT deleted — the row keeps its history and a scrape can
+    // keep updating it. Hiding is reversible and lossless by construction.
+    hiddenAt: integer('hidden_at', { mode: 'timestamp' }),
     createdAt: integer('created_at', { mode: 'timestamp' })
       .notNull()
       .$defaultFn(() => new Date()),

@@ -149,6 +149,10 @@ async function fetchPendingFilms(): Promise<PendingFilm[]> {
           // Hard skip for rows operator-marked as non-films. Survives matcher
           // improvements — only flipped back via Drizzle Studio.
           eq(films.skipTmdb, false),
+          // Operator-hidden rows aren't shown, so they aren't worth a TMDB
+          // call. The admin toggle sets skip_tmdb alongside hidden_at, so
+          // this is belt-and-braces for a row hidden directly in Studio.
+          isNull(films.hiddenAt),
           // Only enrich films users can still see — at least one screening
           // today or later. Films whose screenings are all in the past
           // (expired festival residue, finished cycles, one-off premieres)

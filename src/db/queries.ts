@@ -21,7 +21,7 @@
  */
 
 import { cache } from 'react';
-import { and, eq, gt, gte, lt, asc, desc, sql } from 'drizzle-orm';
+import { and, eq, gt, gte, isNull, lt, asc, desc, sql } from 'drizzle-orm';
 import { db, screenings, films, cinemas, scrapeRuns } from './index';
 import type { CastMember, ScreeningTag } from './schema';
 import {
@@ -137,11 +137,15 @@ const fetchRowsCached = cache(
     const lower = new Date(lowerMs);
     const upper = upperMs === null ? undefined : new Date(upperMs);
 
-    const conditions = [gte(screenings.startsAtUtc, lower)];
+    // Operator-hidden films never reach the public cartelera. Enforced HERE,
+    // at the single choke point every public listing query funnels through
+    // (homepage windows, /sala agendas, featured band, JSON-LD), so a new
+    // caller cannot forget it and leak a hidden row.
+    const conditions = [gte(screenings.startsAtUtc, lower), isNull(films.hiddenAt)];
     if (upper) conditions.push(lt(screenings.startsAtUtc, upper));
     if (filmId !== null) conditions.push(eq(screenings.filmId, filmId));
     if (cinemaId !== null) conditions.push(eq(screenings.cinemaId, cinemaId));
-    const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions);
+    const whereClause = and(...conditions);
 
     const rows = await db
       .select({
@@ -428,7 +432,9 @@ export async function getUpcomingScreeningsByFilm(
   const [filmRow] = await db
     .select({ id: films.id })
     .from(films)
-    .where(eq(films.slug, slug))
+    // fetchRows would filter the hidden row out anyway and yield null; short-
+    // circuiting here makes the intent explicit and saves the second query.
+    .where(and(eq(films.slug, slug), isNull(films.hiddenAt)))
     .limit(1);
   if (!filmRow) return null;
 
@@ -460,7 +466,9 @@ export async function getScreeningById(id: number): Promise<ScreeningRow | null>
     .from(screenings)
     .innerJoin(films, eq(screenings.filmId, films.id))
     .innerJoin(cinemas, eq(screenings.cinemaId, cinemas.id))
-    .where(eq(screenings.id, id))
+    // Hidden films have no public surface — this backs the .ics route, so a
+    // stale calendar link to a hidden film must 404 rather than emit an event.
+    .where(and(eq(screenings.id, id), isNull(films.hiddenAt)))
     .limit(1);
   if (rows.length === 0) return null;
   const row = rows[0];
@@ -1231,7 +1239,9 @@ export async function searchUpcomingFilms(
     })
     .from(screenings)
     .innerJoin(films, eq(screenings.filmId, films.id))
-    .where(gte(screenings.startsAtUtc, lower))
+    // Backs both site search and the MCP search_films tool — a hidden film
+    // must be unreachable through every read surface, not just the HTML one.
+    .where(and(gte(screenings.startsAtUtc, lower), isNull(films.hiddenAt)))
     .orderBy(asc(screenings.startsAtUtc));
 
   interface Agg {
@@ -1292,7 +1302,13 @@ export async function searchUpcomingFilms(
  * catchable showtimes" (returns the film) from "unknown slug" (returns null).
  */
 export async function getFilmBySlug(slug: string): Promise<ScreeningRow['film'] | null> {
-  const [row] = await db.select().from(films).where(eq(films.slug, slug)).limit(1);
+  // Hidden films 404 — backs /pelicula/[slug], so hiding must remove the
+  // detail page too, not just the cartelera card that links to it.
+  const [row] = await db
+    .select()
+    .from(films)
+    .where(and(eq(films.slug, slug), isNull(films.hiddenAt)))
+    .limit(1);
   if (!row) return null;
   return {
     id: row.id,
