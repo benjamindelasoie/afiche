@@ -206,3 +206,25 @@ export function isScreeningExpired(startsAtUtc: Date, now: Date): boolean {
 export function getEndOfTwoWeeksBA(now: Date): Date {
   return new Date(getTodayStartBA(now).getTime() + 14 * 86_400_000);
 }
+
+/**
+ * "20:15" 24h showtime label in BA local time.
+ *
+ * Lives here, not in `@/db/queries`, on purpose. It is a pure Intl call with
+ * no database dependency, and `@/lib/edition` needs it for the footer's
+ * last-scrape line. `edition.ts` is reachable from the `_components/ui`
+ * barrel, which `app/error.tsx` ('use client') imports — so any module
+ * `edition.ts` touches gets pulled into the *client* bundle. Importing it
+ * from `@/db/queries` dragged `@/db/client` into the browser, where the
+ * missing DATABASE_URL threw at module evaluation and took the whole site
+ * down behind the global error boundary. Keep pure formatters out of the
+ * DB module graph.
+ */
+export function formatTimeBA(d: Date): string {
+  return new Intl.DateTimeFormat('es-AR', {
+    timeZone: BA_TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(d);
+}

@@ -9,8 +9,17 @@
  */
 
 import { getEditionNumber, editionFullSentence } from '@/lib/iso-week';
-import { getIsoWeekStartBA, getIsoWeekEndBA, BA_TZ } from '@/lib/date-ranges';
-import { formatTimeBA } from '@/db/queries';
+// Import formatTimeBA from the pure date module, NOT from '@/db/queries'.
+// edition.ts is reachable from a client component (app/error.tsx → the
+// _components/ui barrel → PageFooter), so anything it imports is bundled for
+// the browser. Pulling it from '@/db/queries' dragged '@/db/client' client-side
+// and threw "DATABASE_URL is not set" at module eval, blanking the whole site.
+import {
+  getIsoWeekStartBA,
+  getIsoWeekEndBA,
+  BA_TZ,
+  formatTimeBA,
+} from '@/lib/date-ranges';
 
 export interface EditionInfo {
   editionNumber: number;

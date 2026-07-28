@@ -31,6 +31,7 @@ import {
   isScreeningExpired,
   SCREENING_GRACE_MS,
   BA_TZ,
+  formatTimeBA,
 } from '@/lib/date-ranges';
 import { getWindowDef, type WindowKey } from '@/lib/windows';
 import { displayFilmTitle } from '@/lib/title-case';
@@ -925,14 +926,9 @@ function formatDayLabel(d: Date): string {
   return `${weekday} ${day} de ${month}`;
 }
 
-export function formatTimeBA(d: Date): string {
-  return new Intl.DateTimeFormat('es-AR', {
-    timeZone: BA_TZ,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(d);
-}
+// formatTimeBA now lives in @/lib/date-ranges (pure, DB-free) and is
+// re-exported here so existing `from '@/db/queries'` call sites keep working.
+export { formatTimeBA };
 
 /**
  * "23 Abr" short day label for the Próximamente text index where each
