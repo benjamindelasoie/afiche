@@ -21,7 +21,7 @@
  */
 
 import { cache } from 'react';
-import { and, eq, gt, gte, isNull, lt, asc, desc, sql } from 'drizzle-orm';
+import { and, eq, gt, gte, isNull, isNotNull, lt, asc, desc, sql } from 'drizzle-orm';
 import { db, screenings, films, cinemas, scrapeRuns } from './index';
 import type { CastMember, ScreeningTag } from './schema';
 import {
@@ -1348,4 +1348,38 @@ export async function listCinemas(): Promise<CinemaRow[]> {
     })
     .from(cinemas)
     .orderBy(asc(cinemas.name));
+}
+
+/**
+ * Slugs of films worth putting in the sitemap: those with at least one
+ * still-upcoming screening.
+ *
+ * Scoped that way on purpose — `/pelicula/<slug>` 404s once a film's
+ * screenings have passed (see its not-found.tsx), so a broader list would
+ * advertise URLs that answer 404 and burn crawl budget. Hidden films are
+ * excluded for the same reason: hiding must not leave a trail in the sitemap.
+ *
+ * `lastModified` is the film row's createdAt — the honest "when did afiche
+ * learn about this" timestamp. Screening times change more often, but a
+ * lastmod that churns daily across ~500 URLs is noise to a crawler.
+ */
+export async function listSitemapFilms(
+  now: Date = new Date(),
+): Promise<{ slug: string; lastModified: Date }[]> {
+  const rows = await db
+    .selectDistinct({ slug: films.slug, createdAt: films.createdAt })
+    .from(films)
+    .innerJoin(screenings, eq(screenings.filmId, films.id))
+    .where(
+      and(
+        isNotNull(films.slug),
+        isNull(films.hiddenAt),
+        gte(screenings.startsAtUtc, now),
+      ),
+    )
+    .orderBy(asc(films.slug));
+
+  return rows
+    .filter((r): r is { slug: string; createdAt: Date } => r.slug !== null)
+    .map((r) => ({ slug: r.slug, lastModified: r.createdAt }));
 }

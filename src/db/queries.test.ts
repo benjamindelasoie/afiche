@@ -49,6 +49,7 @@ const {
   searchUpcomingFilms,
   getFilmBySlug,
   listCinemas,
+  listSitemapFilms,
 } = await import('./queries');
 
 // ---------------------------------------------------------------------------
@@ -444,5 +445,80 @@ describe('hidden films — visibility is enforced on every read surface', () => 
     const shown = days.flatMap((d) => d.screenings);
     expect(shown).toHaveLength(1);
     expect(shown[0].film.slug).toBe('un-film-real');
+  });
+});
+
+// listSitemapFilms backs /sitemap.xml. Both exclusions matter: a slug we
+// advertise must actually resolve, and /pelicula/<slug> 404s for hidden films
+// and for films whose screenings have all passed.
+describe('listSitemapFilms — only advertises URLs that resolve', () => {
+  beforeEach(async () => {
+    testDb = await makeInMemoryDb();
+    await testDb.insert(cinemas).values({ id: 'malba', name: 'MALBA', type: 'indie' });
+  });
+
+  async function seedFilm(args: {
+    slug: string | null;
+    hidden?: boolean;
+    screeningAt?: Date;
+  }): Promise<void> {
+    const [row] = await testDb
+      .insert(films)
+      .values({
+        title: args.slug ?? 'untitled',
+        scrapedTitle: args.slug ?? 'untitled',
+        slug: args.slug,
+        matchSource: 'auto',
+        hiddenAt: args.hidden ? new Date('2026-07-27T00:00:00Z') : null,
+      })
+      .returning({ id: films.id });
+    if (args.screeningAt) {
+      await testDb.insert(screenings).values({
+        filmId: row.id,
+        cinemaId: 'malba',
+        startsAtUtc: args.screeningAt,
+      });
+    }
+  }
+
+  const NOW = baMidnightUtc(2026, 7, 27);
+  const FUTURE = baMidnightUtc(2026, 7, 30);
+  const PAST = baMidnightUtc(2026, 7, 20);
+
+  it('includes a film with an upcoming screening', async () => {
+    await seedFilm({ slug: 'un-film', screeningAt: FUTURE });
+    const out = await listSitemapFilms(NOW);
+    expect(out.map((f) => f.slug)).toEqual(['un-film']);
+  });
+
+  it('excludes a film whose screenings have all passed (its page 404s)', async () => {
+    await seedFilm({ slug: 'ya-paso', screeningAt: PAST });
+    expect(await listSitemapFilms(NOW)).toHaveLength(0);
+  });
+
+  it('excludes a hidden film even with upcoming screenings', async () => {
+    await seedFilm({ slug: 'oculto', hidden: true, screeningAt: FUTURE });
+    expect(await listSitemapFilms(NOW)).toHaveLength(0);
+  });
+
+  it('excludes a film with no slug', async () => {
+    await seedFilm({ slug: null, screeningAt: FUTURE });
+    expect(await listSitemapFilms(NOW)).toHaveLength(0);
+  });
+
+  it('lists a film once even with several upcoming screenings', async () => {
+    await seedFilm({ slug: 'repetida', screeningAt: FUTURE });
+    const [row] = await testDb
+      .select({ id: films.id })
+      .from(films)
+      .where(eq(films.slug, 'repetida'));
+    await testDb.insert(screenings).values([
+      { filmId: row.id, cinemaId: 'malba', startsAtUtc: baMidnightUtc(2026, 7, 31) },
+      { filmId: row.id, cinemaId: 'malba', startsAtUtc: baMidnightUtc(2026, 8, 1) },
+    ]);
+
+    const out = await listSitemapFilms(NOW);
+    expect(out).toHaveLength(1);
+    expect(out[0].slug).toBe('repetida');
   });
 });

@@ -49,6 +49,15 @@ async function collectTsxFiles(dir: string): Promise<string[]> {
 const ADMIN_RE = /\/admin\//;
 const PAGESHELL_FILE = 'src/app/_components/ui/PageShell.tsx';
 
+// global-error.tsx REPLACES the root layout (Next requires it to render its own
+// <html>/<body>), so there is no flex body for PageShell's invariant to apply
+// to, and it cannot assume the Tailwind layer loaded — its styles are inline by
+// necessity. It is the one file that legitimately owns a raw <main>; exempting
+// it keeps the landmark for screen readers rather than downgrading to a <div>
+// to satisfy a rule that doesn't apply. Every other page must still use
+// PageShell.
+const RAW_MAIN_EXEMPT = new Set(['src/app/global-error.tsx']);
+
 describe('layout invariant: the editorial <main> lives in PageShell (w-full + min-w-0)', () => {
   it('PageShell renders a <main> carrying w-full and min-w-0', async () => {
     const src = await readFile(resolve(projectRoot, PAGESHELL_FILE), 'utf8');
@@ -67,7 +76,8 @@ describe('layout invariant: the editorial <main> lives in PageShell (w-full + mi
     const offenders: string[] = [];
     for (const file of tsxFiles) {
       const rel = file.replace(projectRoot + '/', '');
-      if (rel === PAGESHELL_FILE || ADMIN_RE.test(rel)) continue;
+      if (rel === PAGESHELL_FILE || ADMIN_RE.test(rel) || RAW_MAIN_EXEMPT.has(rel))
+        continue;
       const src = await readFile(file, 'utf8');
       src.split('\n').forEach((line, i) => {
         if (/<main\b/.test(line)) offenders.push(`  ${rel}:${i + 1}`);
