@@ -98,6 +98,21 @@ export const VENUE_INFO: Record<string, VenueInfo> = {
     price: 'Gratis',
     ticketing: 'Entrada libre y gratuita, por orden de llegada. Miércoles a domingos.',
   },
+  'cineclub-lucero': {
+    // BORRADOR (reescribir): el voice final es de Benjamin. Datos tomados el
+    // 2026-08-02 de la descripción del propio Club Lucero en Eventbrite (única
+    // superficie viva: clublucero.com da 410 y la cuenta @cineclublucero de IG
+    // fue dada de baja). De ahí salen la sala en el primer piso del bar, las
+    // funciones de miércoles a viernes y las del patio los martes con auris
+    // inalámbricos. Los ciclos son los que aparecen repetidos en su cartelera.
+    blurb:
+      'La sala del primer piso de Club Lucero, un bar de Palermo. Clásicos, animé en VHS y ciclos temáticos de miércoles a viernes; los martes la función se pasa al patio y se escucha por auriculares inalámbricos, así el bar sigue funcionando al lado.',
+    // Precio omitido a propósito: cambia función por función — hay muchas
+    // gratuitas y otras pagas. El precio real de cada una está en su propia
+    // página de Eventbrite, a la que linkea cada función de la cartelera.
+    ticketing:
+      'Entradas por Eventbrite, función por función: muchas son gratuitas y otras pagas. El precio de cada una figura en su propia página.',
+  },
 };
 
 /** Editorial info for a venue, or null if none is curated yet. */

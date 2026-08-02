@@ -1,7 +1,7 @@
 /**
  * Prod-safe cinema seed.
  *
- * Inserts (idempotently) the 10 indie cinemas the scraper needs as
+ * Inserts (idempotently) the 11 indie cinemas the scraper needs as
  * foreign-key targets. Does NOT touch films or screenings. Safe to run
  * against Turso or any environment without wiping real data.
  *
@@ -99,6 +99,19 @@ const CINEMAS: CinemaInsert[] = [
     type: 'indie',
     address: 'Viamonte 525',
     ticketingBaseUrl: 'https://centroculturalborges.gob.ar',
+  },
+  {
+    id: 'cineclub-lucero',
+    name: 'Cineclub Lucero',
+    neighborhood: 'Palermo',
+    type: 'indie',
+    // Address per Club Lucero's own Eventbrite venue record, reordered from
+    // Eventbrite's US-style "6048 Nicaragua" to Argentine convention. The sala
+    // is on the first floor of the bar. clublucero.com is dead (410), so the
+    // Eventbrite organizer page is the venue's live programming surface and
+    // therefore the "Sitio oficial" target.
+    address: 'Nicaragua 6048',
+    ticketingBaseUrl: 'https://www.eventbrite.com/o/club-lucero-34315560147',
   },
 ];
 
