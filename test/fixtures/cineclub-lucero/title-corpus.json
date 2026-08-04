@@ -1,0 +1,584 @@
+{
+  "entries": [
+    {
+      "raw": "\"JEANNE DIELMAN, 23 QUAI DU COMMERCE, 1080 BRUXELLES\"",
+      "parsed": {
+        "filmTitle": "JEANNE DIELMAN, 23 QUAI DU COMMERCE, 1080 BRUXELLES"
+      }
+    },
+    {
+      "raw": "FLEABAG, EL MONÓLOGO + PILOTO DE LA SERIE",
+      "excluded": "theatre monologue + TV pilot"
+    },
+    {
+      "raw": "\"SPIDERMAN - ACROSS THE SPIDER-VERSE\"(2023)",
+      "parsed": {
+        "filmTitle": "SPIDERMAN - ACROSS THE SPIDER-VERSE",
+        "year": 2023
+      }
+    },
+    {
+      "raw": "NIRVANNA: \"The band,the show, the movie\"",
+      "parsed": {
+        "filmTitle": "NIRVANNA: The band,the show, the movie"
+      }
+    },
+    {
+      "raw": "SESIONES CLUB LUCERO: EL LADO OSCURO DE OZ",
+      "excluded": "DJ/visual session"
+    },
+    {
+      "raw": "VHS ANIME: \"Battle Angel Alita\" (Gunnm), de Hiroshi Fukutomi.",
+      "parsed": {
+        "filmTitle": "Battle Angel Alita",
+        "filmTitleOriginal": "Gunnm",
+        "director": "Hiroshi Fukutomi",
+        "programName": "VHS ANIME"
+      }
+    },
+    {
+      "raw": "\"THE SHINING\"",
+      "parsed": {
+        "filmTitle": "THE SHINING"
+      }
+    },
+    {
+      "raw": "Mobile Suit Gundam: \"Char's Counterattack\"  Dir. Yoshiyuki Tomino",
+      "parsed": {
+        "filmTitle": "Mobile Suit Gundam: Char's Counterattack",
+        "director": "Yoshiyuki Tomino"
+      }
+    },
+    {
+      "raw": "\"SOLARIS\" Dir.  ANDREI TARKOVSKY",
+      "parsed": {
+        "filmTitle": "SOLARIS",
+        "director": "ANDREI TARKOVSKY"
+      }
+    },
+    {
+      "raw": "ESPECIAL ANIME: \"YOUR NAME\" (2016)",
+      "parsed": {
+        "filmTitle": "YOUR NAME",
+        "year": 2016,
+        "programName": "ESPECIAL ANIME"
+      }
+    },
+    {
+      "raw": "\"INTERSTELLAR\" (2014)",
+      "parsed": {
+        "filmTitle": "INTERSTELLAR",
+        "year": 2014
+      }
+    },
+    {
+      "raw": "MARATON ANTES DEL AMANECER: \"ANTES DE LA MEDIANOCHE\" (2013)",
+      "parsed": {
+        "filmTitle": "ANTES DE LA MEDIANOCHE",
+        "year": 2013,
+        "programName": "MARATON ANTES DEL AMANECER"
+      }
+    },
+    {
+      "raw": "MARATON ANTES DEL AMANECER: \"ANTES DEL ATARDECER\" (2004)",
+      "parsed": {
+        "filmTitle": "ANTES DEL ATARDECER",
+        "year": 2004,
+        "programName": "MARATON ANTES DEL AMANECER"
+      }
+    },
+    {
+      "raw": "MARATON ANTES DEL AMANECER: \"ANTES DEL AMANECER\" (1995)",
+      "parsed": {
+        "filmTitle": "ANTES DEL AMANECER",
+        "year": 1995,
+        "programName": "MARATON ANTES DEL AMANECER"
+      }
+    },
+    {
+      "raw": "\"PSICOSIS\"",
+      "parsed": {
+        "filmTitle": "PSICOSIS"
+      }
+    },
+    {
+      "raw": "\"ALL THAT JAZZ\"",
+      "parsed": {
+        "filmTitle": "ALL THAT JAZZ"
+      }
+    },
+    {
+      "raw": "RIÑON PELVICO (Parte Dos)",
+      "parsed": {
+        "filmTitle": "RIÑON PELVICO (Parte Dos)"
+      }
+    },
+    {
+      "raw": "\"THE ROCKY HORROR PICTURE SHOW\"",
+      "parsed": {
+        "filmTitle": "THE ROCKY HORROR PICTURE SHOW"
+      }
+    },
+    {
+      "raw": "VHS ANIMÉ : THE END OF EVANGELION de Hideaki Anno & Kazuya TsurumakI (1997)",
+      "parsed": {
+        "filmTitle": "THE END OF EVANGELION",
+        "director": "Hideaki Anno & Kazuya TsurumakI",
+        "year": 1997,
+        "programName": "VHS ANIMÉ"
+      }
+    },
+    {
+      "raw": "SUSPIRIA",
+      "parsed": {
+        "filmTitle": "SUSPIRIA"
+      }
+    },
+    {
+      "raw": "\"CABARET\"",
+      "parsed": {
+        "filmTitle": "CABARET"
+      }
+    },
+    {
+      "raw": "THEY LIVE",
+      "parsed": {
+        "filmTitle": "THEY LIVE"
+      }
+    },
+    {
+      "raw": "UNDER THE SKIN",
+      "parsed": {
+        "filmTitle": "UNDER THE SKIN"
+      }
+    },
+    {
+      "raw": "TORSO (1973)",
+      "parsed": {
+        "filmTitle": "TORSO",
+        "year": 1973
+      }
+    },
+    {
+      "raw": "PI de Darren Aronofsky (1998)",
+      "parsed": {
+        "filmTitle": "PI",
+        "director": "Darren Aronofsky",
+        "year": 1998
+      }
+    },
+    {
+      "raw": "\"CITIZEN KANE\" (1941)",
+      "parsed": {
+        "filmTitle": "CITIZEN KANE",
+        "year": 1941
+      }
+    },
+    {
+      "raw": "PELICULERO PRESENTA: THE WOLF OF SNOW HOLLOW (2020)",
+      "parsed": {
+        "filmTitle": "THE WOLF OF SNOW HOLLOW",
+        "year": 2020,
+        "programName": "PELICULERO PRESENTA"
+      }
+    },
+    {
+      "raw": "PERROS DE LA CALLE",
+      "parsed": {
+        "filmTitle": "PERROS DE LA CALLE"
+      }
+    },
+    {
+      "raw": "CLERKS",
+      "parsed": {
+        "filmTitle": "CLERKS"
+      }
+    },
+    {
+      "raw": "\"76 89 23\"  EL DOCUMENTAL  - Dir. Federico Benoit",
+      "parsed": {
+        "filmTitle": "76 89 23 EL DOCUMENTAL",
+        "director": "Federico Benoit"
+      }
+    },
+    {
+      "raw": "\"A Girl Walks Home Alone at Night\" (2014)",
+      "parsed": {
+        "filmTitle": "A Girl Walks Home Alone at Night",
+        "year": 2014
+      }
+    },
+    {
+      "raw": "\"TINY FURNITURE\" (2010)",
+      "parsed": {
+        "filmTitle": "TINY FURNITURE",
+        "year": 2010
+      }
+    },
+    {
+      "raw": "VHS ANIMÉ PRESENTA:Dragon Ball Z: El Ataque del Dragón",
+      "parsed": {
+        "filmTitle": "Dragon Ball Z: El Ataque del Dragón",
+        "programName": "VHS ANIMÉ PRESENTA"
+      }
+    },
+    {
+      "raw": "Ciclo OPERAS PRIMAS: SHADOWS de John Cassavets",
+      "parsed": {
+        "filmTitle": "SHADOWS",
+        "director": "John Cassavets",
+        "programName": "Ciclo OPERAS PRIMAS"
+      }
+    },
+    {
+      "raw": "Ciclo OPERAS PRIMAS: SIN ALIENTO de JEAN LUC GODARD",
+      "parsed": {
+        "filmTitle": "SIN ALIENTO",
+        "director": "JEAN LUC GODARD",
+        "programName": "Ciclo OPERAS PRIMAS"
+      }
+    },
+    {
+      "raw": "EL VIAJE DE CHIHIRO  (Hayao Miyazaki,2003)",
+      "parsed": {
+        "filmTitle": "EL VIAJE DE CHIHIRO",
+        "director": "Hayao Miyazaki",
+        "year": 2003
+      }
+    },
+    {
+      "raw": "HAIRSPRAY (John Waters, 1988)",
+      "parsed": {
+        "filmTitle": "HAIRSPRAY",
+        "director": "John Waters",
+        "year": 1988
+      }
+    },
+    {
+      "raw": "PELICULERO PRESENTA: IF YOU WERE THE LAST (Kristian Mercado, 2023)",
+      "parsed": {
+        "filmTitle": "IF YOU WERE THE LAST",
+        "director": "Kristian Mercado",
+        "year": 2023,
+        "programName": "PELICULERO PRESENTA"
+      }
+    },
+    {
+      "raw": "FLEABAG TEMPORADA 1- CAPITULOS 4 AL 6",
+      "excluded": "theatre monologue + TV pilot"
+    },
+    {
+      "raw": "FLEABAG TEMPORADA 1- CAPITULOS 1 AL 3",
+      "excluded": "theatre monologue + TV pilot"
+    },
+    {
+      "raw": "HEDWIG AND THE ANGRY INCH (John Cameron Mitchell, 2001)",
+      "parsed": {
+        "filmTitle": "HEDWIG AND THE ANGRY INCH",
+        "director": "John Cameron Mitchell",
+        "year": 2001
+      }
+    },
+    {
+      "raw": "VHS ANIMÉ PRESENTA: SAILOR MOON (Kunihiko Ikuhara,1993)",
+      "parsed": {
+        "filmTitle": "SAILOR MOON",
+        "director": "Kunihiko Ikuhara",
+        "year": 1993,
+        "programName": "VHS ANIMÉ PRESENTA"
+      }
+    },
+    {
+      "raw": "ERASERHEAD (David Lynch, 1977)",
+      "parsed": {
+        "filmTitle": "ERASERHEAD",
+        "director": "David Lynch",
+        "year": 1977
+      }
+    },
+    {
+      "raw": "AKIRA (Katsuhiro Otomo, 1988)",
+      "parsed": {
+        "filmTitle": "AKIRA",
+        "director": "Katsuhiro Otomo",
+        "year": 1988
+      }
+    },
+    {
+      "raw": "GHOST WORLD (Terry Zwigoff, 2001)",
+      "parsed": {
+        "filmTitle": "GHOST WORLD",
+        "director": "Terry Zwigoff",
+        "year": 2001
+      }
+    },
+    {
+      "raw": "THE MATRIX (Lana y Lilly Wachowski, 1999)",
+      "parsed": {
+        "filmTitle": "THE MATRIX",
+        "director": "Lana y Lilly Wachowski",
+        "year": 1999
+      }
+    },
+    {
+      "raw": "GHOST IN THE SHELL  (Mamoru Oshii, 1995)",
+      "parsed": {
+        "filmTitle": "GHOST IN THE SHELL",
+        "director": "Mamoru Oshii",
+        "year": 1995
+      }
+    },
+    {
+      "raw": "LIFE OF BRIAN (Terry Jones, 1979)",
+      "parsed": {
+        "filmTitle": "LIFE OF BRIAN",
+        "director": "Terry Jones",
+        "year": 1979
+      }
+    },
+    {
+      "raw": "THE SEVENTH SEAL (Ingmar Bergman, 1957)",
+      "parsed": {
+        "filmTitle": "THE SEVENTH SEAL",
+        "director": "Ingmar Bergman",
+        "year": 1957
+      }
+    },
+    {
+      "raw": "JESUS CHRIST SUPERSTAR (Norman Jewison, 1973)",
+      "parsed": {
+        "filmTitle": "JESUS CHRIST SUPERSTAR",
+        "director": "Norman Jewison",
+        "year": 1973
+      }
+    },
+    {
+      "raw": "THE WITCH (Robert Eggers, 2015)",
+      "parsed": {
+        "filmTitle": "THE WITCH",
+        "director": "Robert Eggers",
+        "year": 2015
+      }
+    },
+    {
+      "raw": "THE EXORCIST (William Friedkin, 1973)",
+      "parsed": {
+        "filmTitle": "THE EXORCIST",
+        "director": "William Friedkin",
+        "year": 1973
+      }
+    },
+    {
+      "raw": "SAINT MAUD (Rose Glass, 2019)",
+      "parsed": {
+        "filmTitle": "SAINT MAUD",
+        "director": "Rose Glass",
+        "year": 2019
+      }
+    },
+    {
+      "raw": "ACROSS THE UNIVERSE",
+      "parsed": {
+        "filmTitle": "ACROSS THE UNIVERSE"
+      }
+    },
+    {
+      "raw": "TERROR. POR MUJERES: \"HUESERA\"",
+      "parsed": {
+        "filmTitle": "HUESERA",
+        "programName": "TERROR. POR MUJERES"
+      }
+    },
+    {
+      "raw": "FUCK YOU! EL ÚLTIMO SHOW - Dir. Jose Luis Garcia",
+      "parsed": {
+        "filmTitle": "FUCK YOU! EL ÚLTIMO SHOW",
+        "director": "Jose Luis Garcia"
+      }
+    },
+    {
+      "raw": "FLEABAG, EL MONÓLOGO",
+      "excluded": "theatre monologue + TV pilot"
+    },
+    {
+      "raw": "ESPECIAL ANIME : \"PERFECT BLUE\"",
+      "parsed": {
+        "filmTitle": "PERFECT BLUE",
+        "programName": "ESPECIAL ANIME"
+      }
+    },
+    {
+      "raw": "TERROR X MUJERES: \"AMERICAN PSYCO\"",
+      "parsed": {
+        "filmTitle": "AMERICAN PSYCO",
+        "programName": "TERROR X MUJERES"
+      }
+    },
+    {
+      "raw": "CIENCIA FICCION POR MUJERES: \"LOVE ME\"",
+      "parsed": {
+        "filmTitle": "LOVE ME",
+        "programName": "CIENCIA FICCION POR MUJERES"
+      }
+    },
+    {
+      "raw": "CIENCIA FICCION POR MUJERES: \"THE POD GENERATION\"",
+      "parsed": {
+        "filmTitle": "THE POD GENERATION",
+        "programName": "CIENCIA FICCION POR MUJERES"
+      }
+    },
+    {
+      "raw": "MUSICALES X MUJERES: \"MAMMA MIA\"",
+      "parsed": {
+        "filmTitle": "MAMMA MIA",
+        "programName": "MUSICALES X MUJERES"
+      }
+    },
+    {
+      "raw": "VHS ANIMÉ PRESENTA: \"Las Caballeros del Zodíaco Contraatacan\"",
+      "parsed": {
+        "filmTitle": "Las Caballeros del Zodíaco Contraatacan",
+        "programName": "VHS ANIMÉ PRESENTA"
+      }
+    },
+    {
+      "raw": "\"PERSÉPOLIS\" Dir. Marjane Satrapi (2007)",
+      "parsed": {
+        "filmTitle": "PERSÉPOLIS",
+        "director": "Marjane Satrapi",
+        "year": 2007
+      }
+    },
+    {
+      "raw": "TERROR X MUJERES: \"TIGERS ARE NOT AFRAID\"",
+      "parsed": {
+        "filmTitle": "TIGERS ARE NOT AFRAID",
+        "programName": "TERROR X MUJERES"
+      }
+    },
+    {
+      "raw": "PELICULERO PRESENTA: STRANGE DARLING",
+      "parsed": {
+        "filmTitle": "STRANGE DARLING",
+        "programName": "PELICULERO PRESENTA"
+      }
+    },
+    {
+      "raw": "MUSICALES X MUJERES: \"EL MUNDO SEGUN WAYNE\"",
+      "parsed": {
+        "filmTitle": "EL MUNDO SEGUN WAYNE",
+        "programName": "MUSICALES X MUJERES"
+      }
+    },
+    {
+      "raw": "TERROR X MUJERES: \" A Girl Walks Home Alone at Night\" (2014)",
+      "parsed": {
+        "filmTitle": "A Girl Walks Home Alone at Night",
+        "year": 2014,
+        "programName": "TERROR X MUJERES"
+      }
+    },
+    {
+      "raw": "BRIDE OF FRANKESTEIN (1935)",
+      "parsed": {
+        "filmTitle": "BRIDE OF FRANKESTEIN",
+        "year": 1935
+      }
+    },
+    {
+      "raw": "YOUNG FRANKESTEIN - MEL BROOKS (1974)",
+      "parsed": {
+        "filmTitle": "YOUNG FRANKESTEIN",
+        "director": "MEL BROOKS",
+        "year": 1974
+      }
+    },
+    {
+      "raw": "MUSICALES X MUJERES: \"THE LURE\"",
+      "parsed": {
+        "filmTitle": "THE LURE",
+        "programName": "MUSICALES X MUJERES"
+      }
+    },
+    {
+      "raw": "EL ECLIPSE - MICHELANGELO ANTONIONI (1962)",
+      "parsed": {
+        "filmTitle": "EL ECLIPSE",
+        "director": "MICHELANGELO ANTONIONI",
+        "year": 1962
+      }
+    },
+    {
+      "raw": "#BRINGBACK2016: \"ARRIVAL\"",
+      "parsed": {
+        "filmTitle": "ARRIVAL",
+        "programName": "#BRINGBACK2016"
+      }
+    },
+    {
+      "raw": "#BRINGBACK2016: \"LA LA LAND\"",
+      "parsed": {
+        "filmTitle": "LA LA LAND",
+        "programName": "#BRINGBACK2016"
+      }
+    },
+    {
+      "raw": "JOYSTICK A LA PANTALLA: \"READY PLAYER ONE\"",
+      "parsed": {
+        "filmTitle": "READY PLAYER ONE",
+        "programName": "JOYSTICK A LA PANTALLA"
+      }
+    },
+    {
+      "raw": "JOYSTICK A LA PANTALLA: \"MORTAL KOMBAT\"",
+      "parsed": {
+        "filmTitle": "MORTAL KOMBAT",
+        "programName": "JOYSTICK A LA PANTALLA"
+      }
+    },
+    {
+      "raw": "JOYSTICK A LA PANTALLA: \"STREET FIGHTER\"",
+      "parsed": {
+        "filmTitle": "STREET FIGHTER",
+        "programName": "JOYSTICK A LA PANTALLA"
+      }
+    },
+    {
+      "raw": "AMORES NOVENTOSOS: \"LOCO POR MARY\"(1998)",
+      "parsed": {
+        "filmTitle": "LOCO POR MARY",
+        "year": 1998,
+        "programName": "AMORES NOVENTOSOS"
+      }
+    },
+    {
+      "raw": "AMORES NOVENTOSOS: \"EL DIA DE LA MARMOTA\" (1993)",
+      "parsed": {
+        "filmTitle": "EL DIA DE LA MARMOTA",
+        "year": 1993,
+        "programName": "AMORES NOVENTOSOS"
+      }
+    },
+    {
+      "raw": "AMOR NOVENTOSO: \"CUMBRES BORRASCOSAS\" (1992)",
+      "parsed": {
+        "filmTitle": "CUMBRES BORRASCOSAS",
+        "year": 1992,
+        "programName": "AMOR NOVENTOSO"
+      }
+    },
+    {
+      "raw": "COSMOS: \"INTERSTELLAR\" (2014)",
+      "parsed": {
+        "filmTitle": "INTERSTELLAR",
+        "year": 2014,
+        "programName": "COSMOS"
+      }
+    },
+    {
+      "raw": "COSMOS DE CARL SAGAN: CAPITULOS 1-8",
+      "excluded": "TV episodes"
+    }
+  ]
+}
