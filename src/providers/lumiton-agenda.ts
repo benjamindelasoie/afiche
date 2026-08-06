@@ -111,6 +111,23 @@ export function parseAgenda(
     const locs = parseLocationsJson(locsAttr);
     if (!locs.includes(config.locationSlug)) return; // not our venue
 
+    // The agenda mixes cinema with museum programming — guided tours, book
+    // launches, kids' workshops, TV retrospectives. Lumiton classifies these
+    // itself: every screening carries `tipo-proyecciones`, while activities
+    // carry `tipo-vecine-vecine` alone or no tipo class at all. Measured on
+    // the live agenda 2026-08-06, that separated 56 screenings from 4
+    // activities with no false positives either way.
+    //
+    // Filtering on the venue's own taxonomy beats title heuristics, and it
+    // matters beyond tidiness: an activity that becomes a `films` row can
+    // never enrich, so it sits in the operator's unmatched queue forever
+    // and reaches the page with a fallback poster.
+    if (!isScreening($a)) {
+      const label = $a.find('h3').first().text().trim() || date;
+      warnings.push(`${config.cinemaId}: skipped non-screening "${label}"`);
+      return;
+    }
+
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       warnings.push(`${config.cinemaId}: malformed data-date "${date}"`);
       return;
@@ -384,6 +401,20 @@ function buildBaLocalToUtc(isoDate: string, hourBa: number, minuteBa: number): D
     day = next.getUTCDate();
   }
   return new Date(Date.UTC(year, month, day, hLocal + 3, minuteBa, 0, 0));
+}
+
+/**
+ * Lumiton's own marker for "this event is a film screening". Present on every
+ * screening across all three venues; absent on museum activities. See the
+ * call site in `parseAgenda` for the measurement behind it.
+ */
+const SCREENING_CLASS = 'tipo-proyecciones';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function isScreening($a: any): boolean {
+  return (($a.attr('class') as string | undefined) ?? '')
+    .toLowerCase()
+    .includes(SCREENING_CLASS);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

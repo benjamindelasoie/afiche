@@ -87,7 +87,7 @@ describe('parseAgenda — synthetic edge cases', () => {
     const title = overrides.title ?? 'Test Film';
     return `
       <html><body>
-        <article class="group tipo-vecine" data-event data-date="${date}" data-locations='${locations}'>
+        <article class="group tipo-vecine tipo-proyecciones" data-event data-date="${date}" data-locations='${locations}'>
           <div class="g-event-fecha">
             <div class="tracking-tighter text-6xl">viernes</div>
             <div><span class="text-3xl">15</span><span class="text-xl">may</span></div>

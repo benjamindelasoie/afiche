@@ -47,7 +47,10 @@ const VENUES: Record<string, LumitonVenueConfig & { expectedCount: number }> = {
     cinemaId: 'lumiton',
     displayName: 'Lumiton',
     locationSlug: 'lumiton',
-    expectedCount: 2,
+    // 2 tiles carry the lumiton slug, but one is the "ALFRED HITCHCOCK
+    // PRESENTS" TV retrospective — an activity, not a screening — which the
+    // `tipo-proyecciones` filter drops. See the non-screening test below.
+    expectedCount: 1,
   },
 };
 
@@ -64,21 +67,67 @@ describe('parseAgenda — venue-slug filtering', () => {
     for (const s of out) expect(s.cinemaId).toBe('centro-cultural-munro');
   });
 
-  it('Lumiton: 2 events from the fixture', () => {
+  it('Lumiton: 1 screening from the fixture (the 2nd tile is an activity)', () => {
     const out = parseAgenda(html, VENUES.lumiton, []);
     expect(out).toHaveLength(VENUES.lumiton.expectedCount);
     for (const s of out) expect(s.cinemaId).toBe('lumiton');
   });
 
-  it('venue counts sum to the fixture total (no silent drops, no overlap)', () => {
-    // 8 + 7 + 2 = 17 event tiles total in the fixture (none of which
-    // are tagged to multiple venues in this snapshot).
+  it('venue counts sum to the fixture total, minus the one activity', () => {
+    // 17 event tiles carry a venue slug; 16 are screenings. The 17th is the
+    // "ALFRED HITCHCOCK PRESENTS" TV retrospective at Lumiton, dropped by
+    // the tipo-proyecciones filter. No tile is tagged to multiple venues in
+    // this snapshot, so there's no overlap to account for.
     const all = [
       ...parseAgenda(html, VENUES.cineYork, []),
       ...parseAgenda(html, VENUES.munro, []),
       ...parseAgenda(html, VENUES.lumiton, []),
     ];
-    expect(all).toHaveLength(17);
+    expect(all).toHaveLength(16);
+  });
+
+  it('drops museum activities and says which, rather than dropping silently', () => {
+    const warnings: string[] = [];
+    parseAgenda(html, VENUES.lumiton, warnings);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('skipped non-screening');
+    expect(warnings[0]).toContain('ALFRED HITCHCOCK PRESENTS');
+  });
+
+  it('separates screenings from activities across a full live agenda', () => {
+    // agenda-with-actividades.html — captured 2026-08-06, the snapshot the
+    // filter was designed against. It holds all four activity shapes that
+    // were reaching the unmatched queue as un-enrichable `films` rows:
+    // a guided tour, a book launch, a kids' workshop and a TV retrospective.
+    const live = readFileSync(
+      resolve(__dirname, '../../test/fixtures/cine-york/agenda-with-actividades.html'),
+      'utf8',
+    );
+    const warnings: string[] = [];
+    const all = [
+      ...parseAgenda(live, VENUES.cineYork, warnings),
+      ...parseAgenda(live, VENUES.munro, warnings),
+      ...parseAgenda(live, VENUES.lumiton, warnings),
+    ];
+
+    const titles = all.map((s) => s.filmTitle);
+    for (const activity of [
+      'VISITA GUIADA',
+      'PRESENTACIÓN DEL LIBRO',
+      'FIN DE SEMANA DE LA INFANCIA',
+      'LA TV INFANTIL DE LOS 70 Y 80',
+    ]) {
+      expect(titles.some((t) => t.includes(activity))).toBe(false);
+    }
+
+    // ...while the shorts programmes, which ARE screenings even though TMDB
+    // will never match them, must survive. Dropping these would be the
+    // over-correction this filter has to avoid.
+    for (const programme of ['FINQUITA', 'SESIÓN PELICULNHAS', 'PIBIT BANG']) {
+      expect(titles.some((t) => t.includes(programme))).toBe(true);
+    }
+
+    expect(warnings.filter((w) => w.includes('skipped non-screening'))).toHaveLength(4);
   });
 
   it('an unknown venue slug returns zero screenings without warnings', () => {
