@@ -11,6 +11,56 @@
       "scrapedTitle": "Una historia sencilla",
       "tmdbId": 404,
       "note": "David Lynch, 1999. TMDB has it as 'Una historia verdadera' (es-AR), the Lugones retro listed it as 'Una historia sencilla' — search returns 0 results for that title. tmdb.org/movie/404"
+    },
+    {
+      "scrapedTitle": "Algo ha cambiado: Un viaje quijotesco al Pappo's blues",
+      "tmdbId": 1451032,
+      "note": "LLM judge (claude-haiku-4-5-20251001, confidence 0.92): The listing title 'Algo ha cambiado: Un viaje quijotesco al Pappo's blues' matches the TMDB candidate's core title 'Algo ha cambiado: Un viaje quijotesco al blues local' with only a minor variation in the subtitle (Pappo's blues vs blues local), the director name matches Sergio Bonacci Lapalma, and the documentary nature aligns with an arthouse cinema programming. — tmdb.org/movie/1451032"
+    },
+    {
+      "scrapedTitle": "Drácula",
+      "tmdbId": 1323409,
+      "note": "LLM judge (claude-haiku-4-5-20251001, confidence 0.95): Candidate 7 is explicitly identified as 'Drácula de Radu Jude' (2025), a film by the Romanian director Radu Jude shot in Transylvania, which matches the listing director and is the only entry that directly attributes the film to Jude. — tmdb.org/movie/1323409"
+    },
+    {
+      "scrapedTitle": "EL DÍA D BAJO PRESIÓN",
+      "tmdbId": 1318413,
+      "note": "LLM judge (claude-haiku-4-5-20251001, confidence 0.92): The listing 'EL DÍA D BAJO PRESIÓN' (D-Day Under Pressure) matches the plot description of 'Pressure' about D-Day timing and meteorological pressure, with the Spanish title 'Tiempo de victoria' (Time for Victory) fitting the D-Day context; the single candidate with explicit D-Day reference is almost certainly correct. — tmdb.org/movie/1318413"
+    },
+    {
+      "scrapedTitle": "EL GUARDAESPALDAS",
+      "tmdbId": 619,
+      "note": "LLM judge (claude-haiku-4-5-20251001, confidence 0.92): The 1992 Whitney Houston film 'The Bodyguard' is the most iconic and frequently screened 'El guardaespaldas' in arthouse/cineclubs, matching the venue's indie cinema profile far better than obscure 1980 or 1963 versions. — tmdb.org/movie/619"
+    },
+    {
+      "scrapedTitle": "EL ÁNGEL",
+      "tmdbId": 507505,
+      "note": "LLM judge (claude-haiku-4-5-20251001, confidence 0.92): The 2018 Argentine film 'El Ángel' directed by Luis Ortega about a young criminal named Carlitos is the most likely match for an arthouse cinema programming, given its critical acclaim and relevance to Argentine cinema; the simple title 'EL ÁNGEL' without additional descriptors matches this well-known recent film better than the numerous alternatives. — tmdb.org/movie/507505"
+    },
+    {
+      "scrapedTitle": "Infection",
+      "tmdbId": 32171,
+      "note": "LLM judge (claude-haiku-4-5-20251001, confidence 0.95): Masayuki Ochiai is a Japanese director, and tmdb_id=32171 is the 2004 Japanese film 'Infection' (感染) about a hospital cover-up, which matches his filmography and the arthouse cinema context at MALBA. — tmdb.org/movie/32171"
+    },
+    {
+      "scrapedTitle": "LOS NADADORES",
+      "tmdbId": 978149,
+      "note": "LLM judge (claude-haiku-4-5-20251001, confidence 0.92): The 2022 essay film about pools and collective memory aligns with CineArte Cacodelphia's arthouse/cinephile programming profile, while the 2026 entry appears to be a future release unlikely to be screened at an indie cinema. — tmdb.org/movie/978149"
+    },
+    {
+      "scrapedTitle": "MARTIN EDEN",
+      "tmdbId": 582873,
+      "note": "LLM judge (claude-haiku-4-5-20251001, confidence 0.92): The 2019 Italian film by Pietro Marcello is the most likely candidate for an arthouse cinema programming, matching the literary adaptation of Jack London's novel with a contemporary art-house sensibility that fits CineArte Cacodelphia's profile. — tmdb.org/movie/582873"
+    },
+    {
+      "scrapedTitle": "Raptus",
+      "tmdbId": 608950,
+      "note": "LLM judge (claude-haiku-4-5-20251001, confidence 0.92): Riccardo Freda directed the 1969 'Raptus', an Italian giallo film about a photographer and a prostitute, which matches the director attribution and fits MALBA's arthouse programming profile far better than recent 2025 entries. — tmdb.org/movie/608950"
+    },
+    {
+      "scrapedTitle": "TOTALMENTE POSEIDOS",
+      "tmdbId": 1249452,
+      "note": "LLM judge (claude-haiku-4-5-20251001, confidence 0.92): The listing title 'TOTALMENTE POSEIDOS' matches the documentary 'La Renga: Totalmente poseídos' (2024), a concert/tour documentary by the Argentine rock band La Renga, which is exactly the type of content an arthouse cinema like CineArte Cacodelphia would program. — tmdb.org/movie/1249452"
     }
   ]
 }
