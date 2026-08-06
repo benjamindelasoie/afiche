@@ -93,6 +93,25 @@ describe('parseEventTitle', () => {
     });
   });
 
+  it('splits an unknown cycle name when a quoted title follows', () => {
+    // The operator invents cycle names constantly, so a keyword allowlist
+    // can't keep up — the quote is the reliable signal. These four all
+    // appeared within one month.
+    expect(parseEventTitle('#BRINGBACK2016: "ARRIVAL"')).toEqual({
+      filmTitle: 'ARRIVAL',
+      programName: '#BRINGBACK2016',
+    });
+    expect(parseEventTitle('JOYSTICK A LA PANTALLA: "MORTAL KOMBAT"')).toEqual({
+      filmTitle: 'MORTAL KOMBAT',
+      programName: 'JOYSTICK A LA PANTALLA',
+    });
+    expect(parseEventTitle('AMORES NOVENTOSOS: "LOCO POR MARY"(1998)')).toEqual({
+      filmTitle: 'LOCO POR MARY',
+      year: 1998,
+      programName: 'AMORES NOVENTOSOS',
+    });
+  });
+
   it('splits on the FIRST colon so a title keeps its own', () => {
     expect(
       parseEventTitle('VHS ANIMÉ PRESENTA:Dragon Ball Z: El Ataque del Dragón'),
@@ -222,6 +241,75 @@ describe('nonFeatureReason', () => {
     expect(nonFeatureReason('AKIRA (Katsuhiro Otomo, 1988)')).toBeUndefined();
     // "VHS ANIMÉ" is a cycle name, not a TV marker — must not be excluded.
     expect(nonFeatureReason('VHS ANIMÉ PRESENTA: SAILOR MOON')).toBeUndefined();
+  });
+});
+
+/**
+ * GOLDEN CORPUS — the guard rail on `parseEventTitle`.
+ *
+ * `filmTitle` and `year` are the immutable `(scrapedTitle, scrapedYear)` upsert
+ * key in `films`, and `tmdb-overrides.json` is keyed on `scrapedTitle` too. So
+ * a regex tweak that shifts an existing title doesn't just re-parse it — it
+ * forks a new film row and silently un-keys any manual TMDB override written
+ * against the old string. TMDB's merge pass rescues the common case, but not
+ * the films that needed the manual help in the first place.
+ *
+ * This pins every distinct screening title the organizer has published, so any
+ * such shift fails here with a readable before/after instead of landing quietly
+ * in prod. When a change IS intended: update the fixture in the same commit,
+ * re-key affected entries in `tmdb-overrides.json`, and UPDATE the existing
+ * `films.scraped_title` rather than letting a duplicate row appear.
+ *
+ * Fixture: test/fixtures/cineclub-lucero/title-corpus.json — 82 distinct
+ * titles captured 2026-08-04 from the full `type=past` history.
+ */
+describe('parseEventTitle — golden corpus', () => {
+  const { entries } = JSON.parse(
+    readFileSync(
+      resolve(__dirname, '../../test/fixtures/cineclub-lucero/title-corpus.json'),
+      'utf8',
+    ),
+  ) as {
+    entries: Array<{
+      raw: string;
+      excluded?: string;
+      parsed?: ReturnType<typeof parseEventTitle>;
+    }>;
+  };
+
+  it('covers the whole published history', () => {
+    expect(entries.length).toBe(82);
+    expect(new Set(entries.map((e) => e.raw)).size).toBe(entries.length);
+  });
+
+  for (const entry of entries) {
+    if (entry.excluded) {
+      it(`excludes ${entry.raw}`, () => {
+        expect(nonFeatureReason(entry.raw)).toBe(entry.excluded);
+      });
+    } else {
+      it(`parses ${entry.raw}`, () => {
+        expect(nonFeatureReason(entry.raw)).toBeUndefined();
+        expect(parseEventTitle(entry.raw)).toEqual(entry.parsed);
+      });
+    }
+  }
+
+  it('never yields an empty or whitespace-only title', () => {
+    for (const e of entries) {
+      if (e.excluded) continue;
+      expect(e.parsed!.filmTitle.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it('collapses a cycle-prefixed film onto the same key as its bare listing', () => {
+    // COSMOS: "INTERSTELLAR" and "INTERSTELLAR" are the same film. If the
+    // prefix survived into filmTitle they would be two rows in `films`.
+    const cosmos = parseEventTitle('COSMOS: "INTERSTELLAR" (2014)');
+    const bare = parseEventTitle('"INTERSTELLAR" (2014)');
+    expect(cosmos.filmTitle).toBe(bare.filmTitle);
+    expect(cosmos.year).toBe(bare.year);
+    expect(cosmos.programName).toBe('COSMOS');
   });
 });
 

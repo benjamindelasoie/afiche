@@ -249,17 +249,34 @@ export interface ParsedTitle {
 }
 
 /**
- * Cycle prefixes are freeform, so we gate the "PREFIX: film" split on a
- * keyword rather than splitting on every colon. Without the gate,
- * `Mobile Suit Gundam: "Char's Counterattack"` loses the franchise half of
- * its real TMDB title, and `NIRVANNA: "The band,the show, the movie"` loses
- * the word TMDB actually indexes it under.
+ * A "PREFIX: film" split needs a trigger, because a colon can equally be part
+ * of the work's own name. Two triggers, either sufficient:
+ *
+ *  1. A QUOTED title follows the colon. When the operator quotes the film,
+ *     they're marking where the title starts, so whatever precedes it is
+ *     curatorial. This is the load-bearing one — cycle names are invented
+ *     constantly (#BRINGBACK2016, JOYSTICK A LA PANTALLA, AMORES NOVENTOSOS
+ *     and COSMOS all appeared inside one month), so an allowlist can't keep
+ *     up. `COSMOS: "INTERSTELLAR"` matters especially: left unsplit it forks
+ *     a second films row alongside the plain INTERSTELLAR already scraped.
+ *  2. The prefix carries a cycle keyword. Needed for the unquoted cases —
+ *     `Ciclo OPERAS PRIMAS: SHADOWS de John Cassavets`,
+ *     `PELICULERO PRESENTA: STRANGE DARLING`.
  *
  * `X`/`POR` catch the recurring themed nights, which have no other marker:
  * TERROR X MUJERES, CIENCIA FICCION POR MUJERES, MUSICALES X MUJERES.
  */
 const PROGRAM_KEYWORD_RE =
   /\b(CICLO|PRESENTA|ESPECIAL|MARAT[OÓ]N|SESIONES|VHS)\b|\s(X|POR)\s/i;
+
+/**
+ * Prefixes that are part of the FILM's title, not a cycle — the exception to
+ * trigger 1 above. Both are franchise halves TMDB indexes the full string
+ * under, so splitting them loses the match. Keep this list tight: it only
+ * earns its place for works whose real title contains a colon AND whose
+ * event name quotes the second half.
+ */
+const FRANCHISE_PREFIX_RE = /^(NIRVANNA|MOBILE SUIT GUNDAM)$/i;
 
 /** Directors written as `(Nombre Apellido, 1999)` — the commonest form. */
 const DIRECTOR_YEAR_PAREN_RE = /\(\s*([^(),\d]{3,60}?)\s*,\s*(\d{4})\s*\)/;
@@ -285,6 +302,8 @@ const DASH_DIRECTOR_STOPWORDS =
   /\b(EL|LA|LOS|LAS|UN|UNA|Y|O|DE|DEL|EN|CON|THE|OF|AND|A)\b/;
 
 const QUOTE_RE = /["“”«»]([^"“”«»]+)["“”«»]/g;
+/** Same shape, non-global — `.test()` on a /g regex mutates `lastIndex`. */
+const HAS_QUOTED_SPAN_RE = /["“”«»][^"“”«»]+["“”«»]/;
 /**
  * Quoted spans are masked with a delimited index before any metadata regex
  * runs. The `@@` delimiters matter: a bare number would be indistinguishable
@@ -309,6 +328,18 @@ const ORIGINAL_TITLE_RE = /@@\d+@@\s*\(\s*([^)]+?)\s*\)/;
  * A quoted span becomes the whole title only when nothing meaningful is left
  * outside it. Otherwise the unquoted words are kept — that's what preserves
  * `Mobile Suit Gundam: Char's Counterattack`.
+ *
+ * THESE REGEXES ARE EFFECTIVELY FROZEN. `filmTitle` and `year` become the
+ * immutable `(scrapedTitle, scrapedYear)` upsert key in `films`, and
+ * `tmdb-overrides.json` is keyed on `scrapedTitle` as well. Changing a rule
+ * therefore forks a new film row for every title whose parse shifts, and
+ * silently un-keys any manual TMDB override written against the old string —
+ * which bites hardest on exactly the films that needed manual help. The golden
+ * corpus in `cineclub-lucero.test.ts` pins all 82 published titles so such a
+ * shift fails CI instead of landing quietly. If a change is intended: update
+ * the corpus fixture in the same commit, re-key affected `tmdb-overrides.json`
+ * entries, and UPDATE the existing `films.scraped_title` rather than letting a
+ * duplicate row appear.
  */
 export function parseEventTitle(raw: string): ParsedTitle {
   const s = raw.replace(/\s+/g, ' ').trim();
@@ -318,9 +349,17 @@ export function parseEventTitle(raw: string): ParsedTitle {
   let programName: string | undefined;
   let body = s;
   const colon = s.match(/^([^:]{2,60}?)\s*:\s*(.+)$/);
-  if (colon && PROGRAM_KEYWORD_RE.test(colon[1])) {
-    programName = colon[1].trim();
-    body = colon[2].trim();
+  if (colon) {
+    const prefix = colon[1].trim();
+    const rest = colon[2].trim();
+    const quotedTitleFollows = HAS_QUOTED_SPAN_RE.test(rest);
+    const isCycle =
+      (quotedTitleFollows || PROGRAM_KEYWORD_RE.test(prefix)) &&
+      !FRANCHISE_PREFIX_RE.test(prefix);
+    if (isCycle) {
+      programName = prefix;
+      body = rest;
+    }
   }
 
   // 2. Mask quoted spans so metadata regexes only ever see unquoted text.
