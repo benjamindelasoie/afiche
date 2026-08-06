@@ -17,6 +17,7 @@ import {
   scoreCandidates,
   MATCH_CONFIDENCE_THRESHOLD,
   TITLE_AMBIGUITY_EPSILON,
+  titleForms,
 } from './match';
 import type { TmdbMovieSummary } from './client';
 
@@ -345,5 +346,83 @@ describe('scoreCandidates — sorted list for director fallback', () => {
     expect(sorted).toHaveLength(2);
     expect(sorted[0].confidence).toBeGreaterThanOrEqual(MATCH_CONFIDENCE_THRESHOLD);
     expect(sorted[1].confidence).toBeGreaterThanOrEqual(MATCH_CONFIDENCE_THRESHOLD);
+  });
+});
+
+describe('titleForms — Spanish release subtitles', () => {
+  it('exposes the pre-subtitle form for comma / colon / spaced-dash', () => {
+    expect(titleForms('Paprika, detective de los sueños')).toEqual([
+      'Paprika, detective de los sueños',
+      'Paprika',
+    ]);
+    expect(titleForms('Alien: el octavo pasajero')).toEqual([
+      'Alien: el octavo pasajero',
+      'Alien',
+    ]);
+    expect(titleForms('Rocky - Lo mejor de mí')).toEqual([
+      'Rocky - Lo mejor de mí',
+      'Rocky',
+    ]);
+  });
+
+  it('never truncates on a bare space — that would eat real titles', () => {
+    // The containment that MUST stay a miss: a different Buñuel film.
+    expect(titleForms('El ángel exterminador')).toEqual(['El ángel exterminador']);
+    expect(titleForms('100 metros lisos')).toEqual(['100 metros lisos']);
+    expect(titleForms('Blade Runner')).toEqual(['Blade Runner']);
+  });
+
+  it('handles empty / separator-only input without producing an empty form', () => {
+    expect(titleForms(undefined)).toEqual(['']);
+    expect(titleForms('')).toEqual(['']);
+    expect(titleForms(', solo subtitulo')).toEqual([', solo subtitulo']);
+  });
+});
+
+describe('pickBestMatch — subtitled Spanish release titles (the PAPRIKA case)', () => {
+  // Measured against live TMDB 2026-08-06: searching PAPRIKA/2006 returns the
+  // WRONG film scoring 0.893 and the right one 0.845, under a 0.85 threshold.
+  const wrong = candidate({
+    id: 1330686,
+    title: 'Paprika Western',
+    original_title: 'Paprika Western',
+    release_date: '2006-10-01',
+    popularity: 1,
+  });
+  const right = candidate({
+    id: 4977,
+    title: 'Paprika, detective de los sueños',
+    original_title: 'パプリカ',
+    release_date: '2006-10-01',
+    popularity: 20,
+  });
+
+  it('promotes the subtitled correct film over a shorter wrong one', () => {
+    const sorted = scoreCandidates([wrong, right], 'PAPRIKA', 2006);
+    expect(sorted[0].candidate.id).toBe(4977);
+    expect(sorted[0].confidence).toBeCloseTo(1, 5);
+    const picked = pickBestMatch([wrong, right], 'PAPRIKA', 2006);
+    expect(picked?.candidate.id).toBe(4977);
+  });
+
+  it('still refuses to pick when truncation creates a genuine tie', () => {
+    // Herzog's Spanish title truncates to exactly Eggers' title. Both reach
+    // ~1.0, so the ambiguity guard must fire and hand off to director rescue
+    // rather than letting popularity decide (TODOS.md #18).
+    const eggers = candidate({
+      id: 426063,
+      title: 'Nosferatu',
+      original_title: 'Nosferatu',
+      release_date: '2024-12-25',
+      popularity: 500,
+    });
+    const herzog = candidate({
+      id: 24173,
+      title: 'Nosferatu, fantasma de la noche',
+      original_title: 'Nosferatu: Phantom der Nacht',
+      release_date: '1979-01-17',
+      popularity: 12,
+    });
+    expect(pickBestMatch([eggers, herzog], 'Nosferatu', undefined)).toBeNull();
   });
 });

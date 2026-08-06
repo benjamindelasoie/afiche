@@ -50,8 +50,15 @@ export const YEAR_TOLERANCE = 1;
  *   4 — director-pivot rescue: when title search returns zero candidates,
  *       look the director up on TMDB and accept a credit only when a scraped
  *       year exists and exactly one credit falls in the year window.
+ *   5 — two independent rescues for the same stuck pool: `directorsComparable`
+ *       (enrich.ts) makes director verification ABSTAIN instead of reject when
+ *       TMDB credits the director in a non-Latin script, which was silently
+ *       excluding effectively all Japanese/Chinese/Korean/Russian cinema; and
+ *       `titleForms` scores the pre-subtitle form of a candidate title, so
+ *       "Paprika, detective de los sueños" can win against a cartelera that
+ *       says PAPRIKA.
  */
-export const MATCHER_VERSION = 4;
+export const MATCHER_VERSION = 5;
 /**
  * Two candidates whose confidence scores are within this band are considered
  * tied on title — the matcher cannot disambiguate them by title similarity
@@ -112,18 +119,25 @@ export function scoreCandidates(
   for (const c of candidates) {
     if (!yearAcceptable(c.release_date, scrapedYear)) continue;
 
+    const titleVariants = titleForms(c.title);
+    const origVariants = titleForms(c.original_title);
+
     let bestScore = 0;
     let matchedAgainst: 'title' | 'original_title' = 'title';
     for (const q of queries) {
-      const titleScore = jaroWinkler(q, c.title ?? '');
-      const origScore = jaroWinkler(q, c.original_title ?? '');
-      if (titleScore > bestScore) {
-        bestScore = titleScore;
-        matchedAgainst = 'title';
+      for (const t of titleVariants) {
+        const s = jaroWinkler(q, t);
+        if (s > bestScore) {
+          bestScore = s;
+          matchedAgainst = 'title';
+        }
       }
-      if (origScore > bestScore) {
-        bestScore = origScore;
-        matchedAgainst = 'original_title';
+      for (const t of origVariants) {
+        const s = jaroWinkler(q, t);
+        if (s > bestScore) {
+          bestScore = s;
+          matchedAgainst = 'original_title';
+        }
       }
     }
     out.push({ candidate: c, confidence: bestScore, matchedAgainst });
@@ -163,6 +177,37 @@ export function pickBestMatch(
   }
 
   return best;
+}
+
+/**
+ * Separator introducing a descriptive subtitle on a Spanish release title.
+ * Comma, colon, or a spaced dash — never a bare space, which would let any
+ * two-word title be truncated to its first word.
+ */
+const SUBTITLE_SEPARATOR_RE = /\s*(?:,|:|\s[-–—]\s).*$/;
+
+/**
+ * The forms of a TMDB title worth scoring against.
+ *
+ * Spanish-language TMDB releases routinely append a descriptive subtitle the
+ * venue never writes: "Paprika, detective de los sueños" for a cartelera that
+ * says PAPRIKA. Jaro-Winkler punishes that length gap hard — the correct
+ * candidate scored 0.845 against a 0.85 threshold while the WRONG film
+ * ("Paprika Western") scored 0.893 and won. Scoring the pre-subtitle form too
+ * lifts the right one to 1.000.
+ *
+ * Deliberately anchored on real punctuation. "El ángel exterminador" has no
+ * separator, so it is never truncated to "El ángel" — that containment is a
+ * different film and must stay a miss. Where truncation DOES create a genuine
+ * tie (Herzog's "Nosferatu, el vampiro" vs Eggers' "Nosferatu"), both reach
+ * ~1.0, TITLE_AMBIGUITY_EPSILON fires and the director rescue disambiguates —
+ * the guard still holds.
+ */
+export function titleForms(title: string | undefined): string[] {
+  const full = (title ?? '').trim();
+  if (!full) return [''];
+  const main = full.replace(SUBTITLE_SEPARATOR_RE, '').trim();
+  return main && main !== full ? [full, main] : [full];
 }
 
 function yearAcceptable(

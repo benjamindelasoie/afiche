@@ -36,7 +36,7 @@ vi.mock('./overrides', () => ({
   findOverride: (...args: unknown[]) => findOverrideMock(...args),
 }));
 
-const { enrichFilm } = await import('./enrich');
+const { enrichFilm, directorsComparable } = await import('./enrich');
 
 function summary(overrides: Partial<TmdbMovieSummary>): TmdbMovieSummary {
   return {
@@ -879,5 +879,151 @@ describe('enrichFilm — director-pivot rescue (title axis exhausted)', () => {
 
     expect(r.reason).toBe('ok');
     expect(r.delta?.tmdbId).toBe(42);
+  });
+});
+
+describe('directorsComparable — non-Latin credits carry no signal', () => {
+  it('is false when TMDB credits the director in another script', () => {
+    // TMDB serves crew names in the original script under language=es-AR.
+    expect(directorsComparable('Satoshi Kon', ['今敏'])).toBe(false);
+    expect(directorsComparable('Kenji Iwaisawa', ['岩井澤健治'])).toBe(false);
+    expect(directorsComparable('Andrei Tarkovsky', ['Андрей Тарковский'])).toBe(false);
+  });
+
+  it('is false when TMDB credits no director at all', () => {
+    expect(directorsComparable('Chantal Akerman', [])).toBe(false);
+    expect(directorsComparable('Chantal Akerman', ['', '  '])).toBe(false);
+  });
+
+  it('stays TRUE for Latin-vs-Latin, so the Nosferatu guard keeps biting', () => {
+    expect(directorsComparable('Werner Herzog', ['Robert Eggers'])).toBe(true);
+    expect(directorsComparable('Satoshi Kon', ['Satoshi Kon'])).toBe(true);
+    // Mixed credit lists still comparable — one Latin name is enough.
+    expect(directorsComparable('Satoshi Kon', ['今敏', 'Satoshi Kon'])).toBe(true);
+  });
+});
+
+describe('enrichFilm — abstains rather than rejects on a non-Latin director credit', () => {
+  beforeEach(() => {
+    searchMock.mockReset();
+    getMovieMock.mockReset();
+    findOverrideMock.mockReset();
+    hasTokenMock.mockReset();
+    hasTokenMock.mockReturnValue(true);
+    findOverrideMock.mockResolvedValue(null);
+  });
+
+  // Regression: PERFECT BLUE scored a perfect 1.000 on title, was the only
+  // candidate, and was still rejected because the hint said "Satoshi Kon"
+  // while TMDB credited "今敏". That silently excluded most Japanese,
+  // Chinese, Korean and Russian cinema from the cartelera.
+  it('accepts a confident title match whose credit is in kanji', async () => {
+    searchMock.mockResolvedValue([
+      summary({
+        id: 10494,
+        title: 'Perfect Blue',
+        original_title: 'PERFECT BLUE',
+        release_date: '1998-02-28',
+      }),
+    ]);
+    getMovieMock.mockResolvedValue(
+      details({
+        id: 10494,
+        title: 'Perfect Blue',
+        original_title: 'PERFECT BLUE',
+        release_date: '1998-02-28',
+        credits: {
+          cast: [],
+          crew: [{ id: 901, name: '今敏', job: 'Director', department: 'Directing' }],
+        },
+      }),
+    );
+
+    const r = await enrichFilm('PERFECT BLUE', 1997, { director: 'Satoshi Kon' });
+    expect(r.reason).toBe('ok');
+    expect(r.delta?.tmdbId).toBe(10494);
+  });
+
+  it('still rejects a Latin-vs-Latin director mismatch', async () => {
+    searchMock.mockResolvedValue([
+      summary({
+        id: 426063,
+        title: 'Nosferatu',
+        original_title: 'Nosferatu',
+        release_date: '2024-12-25',
+        popularity: 500,
+      }),
+    ]);
+    getMovieMock.mockResolvedValue(
+      details({
+        id: 426063,
+        title: 'Nosferatu',
+        original_title: 'Nosferatu',
+        release_date: '2024-12-25',
+        credits: {
+          cast: [],
+          crew: [
+            { id: 902, name: 'Robert Eggers', job: 'Director', department: 'Directing' },
+          ],
+        },
+      }),
+    );
+
+    const r = await enrichFilm('Nosferatu', undefined, { director: 'Werner Herzog' });
+    expect(r.reason).toBe('low-confidence');
+    expect(r.delta).toBeNull();
+  });
+});
+
+describe('enrichFilm — keeps the romanized director for the cartelera', () => {
+  beforeEach(() => {
+    searchMock.mockReset();
+    getMovieMock.mockReset();
+    findOverrideMock.mockReset();
+    hasTokenMock.mockReset();
+    hasTokenMock.mockReturnValue(true);
+    findOverrideMock.mockResolvedValue(null);
+  });
+
+  function perfectBlue(crewName: string) {
+    searchMock.mockResolvedValue([
+      summary({
+        id: 10494,
+        title: 'Perfect Blue',
+        original_title: 'PERFECT BLUE',
+        release_date: '1998-02-28',
+      }),
+    ]);
+    getMovieMock.mockResolvedValue(
+      details({
+        id: 10494,
+        title: 'Perfect Blue',
+        original_title: 'PERFECT BLUE',
+        release_date: '1998-02-28',
+        credits: {
+          cast: [],
+          crew: [{ id: 903, name: crewName, job: 'Director', department: 'Directing' }],
+        },
+      }),
+    );
+  }
+
+  it('prefers the scraped Latin name over a kanji TMDB credit', async () => {
+    // Nobody reads "今敏" on an es-AR cartelera and recognizes Satoshi Kon.
+    perfectBlue('今敏');
+    const r = await enrichFilm('PERFECT BLUE', 1997, { director: 'Satoshi Kon' });
+    expect(r.delta?.director).toBe('Satoshi Kon');
+  });
+
+  it('still prefers TMDB when TMDB has the Latin spelling', async () => {
+    perfectBlue('Satoshi Kon');
+    const r = await enrichFilm('PERFECT BLUE', 1997, { director: 'satoshi kon' });
+    expect(r.delta?.director).toBe('Satoshi Kon');
+  });
+
+  it('keeps the TMDB credit when the scrape has no director', async () => {
+    perfectBlue('今敏');
+    const r = await enrichFilm('PERFECT BLUE', 1997);
+    expect(r.delta?.director).toBe('今敏');
   });
 });

@@ -126,7 +126,7 @@ export async function enrichFilm(
     const overrideId = await findOverride(scrapedTitle, year);
     if (overrideId !== null) {
       const details = await getMovie(overrideId);
-      const delta = await buildDelta(details, 'override', null);
+      const delta = await buildDelta(details, 'override', null, hints.director);
       return { delta, reason: 'ok' };
     }
 
@@ -200,10 +200,21 @@ export async function enrichFilm(
       // With this verification, mismatched director on the top match
       // falls through to step 4, which walks the sorted top-N and
       // accepts the first candidate whose director matches.
+      // Abstain, don't reject, when the comparison carries no information —
+      // TMDB crew names come back in the original script, so a romanized
+      // hint can never match a kanji/cyrillic credit. See directorsComparable.
+      const topDirectors = extractDirectors(topDetails);
       const directorVerified =
-        !hints.director || directorsMatch(hints.director, extractDirectors(topDetails));
+        !hints.director ||
+        !directorsComparable(hints.director, topDirectors) ||
+        directorsMatch(hints.director, topDirectors);
       if (directorVerified) {
-        const delta = await buildDelta(topDetails, 'auto', match.confidence);
+        const delta = await buildDelta(
+          topDetails,
+          'auto',
+          match.confidence,
+          hints.director,
+        );
         return { delta, reason: 'ok' };
       }
       // Fall through to step 4 — preserve topDetails for reuse.
@@ -231,7 +242,7 @@ export async function enrichFilm(
           // so we credit this match at threshold level for traceability
           // even if the string score was below it.
           const boosted = Math.max(confidence, MATCH_CONFIDENCE_THRESHOLD);
-          const delta = await buildDelta(details, 'auto', boosted);
+          const delta = await buildDelta(details, 'auto', boosted, hints.director);
           return { delta, reason: 'ok' };
         }
       }
@@ -309,7 +320,12 @@ async function directorPivot(
     });
     if (inYear.length !== 1) continue;
     const details = await getMovie(inYear[0].candidate.id);
-    const delta = await buildDelta(details, 'auto', MATCH_CONFIDENCE_THRESHOLD);
+    const delta = await buildDelta(
+      details,
+      'auto',
+      MATCH_CONFIDENCE_THRESHOLD,
+      hints.director,
+    );
     return { delta, reason: 'ok' };
   }
   return null;
@@ -414,6 +430,37 @@ function splitPersonName(n: string): { given: string; surname: string } | null {
   return { given: toks[0], surname: toks.slice(1).join(' ') };
 }
 
+/** True when `s` carries at least one Latin letter (after diacritic folding). */
+function hasLatinLetters(s: string): boolean {
+  return /[a-z]/i.test(stripDiacritics(s));
+}
+
+/**
+ * Whether a director comparison can carry information at all.
+ *
+ * TMDB serves crew names in the ORIGINAL SCRIPT when queried with
+ * `language=es-AR`: Perfect Blue credits "今敏", not "Satoshi Kon"; 100 metros
+ * lisos credits "岩井澤健治", not "Kenji Iwaisawa". Venues always scrape the
+ * romanized name, so `directorsMatch` returns false — and the verification
+ * guard in `enrichFilm` then REJECTED confidence-1.000 correct matches for
+ * effectively all Japanese, Chinese, Korean, Russian and Greek cinema. On an
+ * arthouse cartelera that is a large, systematically-excluded slice: anime
+ * nights, Kurosawa, Wong Kar-wai, Kiarostami.
+ *
+ * A disjoint writing system is not evidence of a mismatch, it's absence of
+ * evidence — so the caller must abstain rather than reject, falling back to
+ * the same treatment a film with no director hint gets. Ditto when TMDB
+ * credits no director at all.
+ *
+ * The Nosferatu protection (TODOS.md #18) is untouched: Herzog and Eggers are
+ * both Latin-scripted, so their comparison stays comparable and still bites.
+ */
+export function directorsComparable(scraped: string, tmdbDirectors: string[]): boolean {
+  const tmdbNames = tmdbDirectors.map((d) => d.trim()).filter(Boolean);
+  if (tmdbNames.length === 0) return false;
+  return hasLatinLetters(scraped) === tmdbNames.some(hasLatinLetters);
+}
+
 export function directorsMatch(scraped: string, tmdbDirectors: string[]): boolean {
   const normalize = (s: string) => stripDiacritics(s).toLowerCase().trim();
   // Both the split parts AND the unsplit whole — see DIRECTOR_SEPARATOR_RE.
@@ -458,10 +505,29 @@ export function directorsMatch(scraped: string, tmdbDirectors: string[]): boolea
   });
 }
 
+/**
+ * TMDB's es-AR credits come back in the original script ("今敏"), which is
+ * useless on an Argentine cartelera — nobody reads the card and recognizes
+ * the kanji for Satoshi Kon. The venue almost always printed the romanized
+ * name, so when TMDB's credit carries no Latin letters and the scrape does,
+ * keep the scraped one. Only ever swaps a non-Latin string for a Latin one;
+ * a Latin TMDB credit always wins, since it's the more canonical spelling.
+ */
+function preferLatinDirector(
+  tmdbDirector: string | null,
+  scrapedDirector: string | undefined,
+): string | null {
+  if (!scrapedDirector?.trim()) return tmdbDirector;
+  if (tmdbDirector && hasLatinLetters(tmdbDirector)) return tmdbDirector;
+  if (!hasLatinLetters(scrapedDirector)) return tmdbDirector;
+  return scrapedDirector.trim();
+}
+
 async function buildDelta(
   details: TmdbMovieDetails,
   matchSource: 'auto' | 'override' | 'manual',
   confidence: number | null,
+  scrapedDirector?: string,
 ): Promise<EnrichmentDelta> {
   const directors = extractDirectors(details);
   const country =
@@ -487,7 +553,10 @@ async function buildDelta(
     imdbId: details.imdb_id ?? null,
     title: details.title,
     titleOriginal: details.original_title ?? null,
-    director: directors.length > 0 ? directors.join(', ') : null,
+    director: preferLatinDirector(
+      directors.length > 0 ? directors.join(', ') : null,
+      scrapedDirector,
+    ),
     country,
     year: Number.isNaN(year) ? null : year,
     runtimeMin: details.runtime ?? null,
