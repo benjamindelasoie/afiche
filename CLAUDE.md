@@ -92,9 +92,9 @@ identifier yet.
 `gbrain code-def`, `code-refs`, `code-callers`, `code-callees`, `search`, and
 `query` from anywhere under this worktree route to that source by default —
 no `--source` flag needed (gbrain >= 0.41.38.0; on older gbrain the call-graph
-commands need `--source "$(cat .gbrain-source)"`). Conductor sibling worktrees
-of the same repo each have their own pin and their own indexed pages, so
-semantic results match the code on disk here.
+commands need `--source "$(cat .gbrain-source)"`). Sibling worktrees of the
+same repo each have their own pin and their own indexed pages, so semantic
+results match the code on disk here.
 
 Call-graph queries (`code-callers`/`code-callees`) also need the graph to be
 built first — run `/sync-gbrain --dream` (or `--full`) if they return
