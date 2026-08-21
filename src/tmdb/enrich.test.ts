@@ -260,6 +260,10 @@ describe('enrichFilm — director fallback (rescues below-threshold matches)', (
     getMovieMock.mockReset();
     findOverrideMock.mockReset().mockResolvedValue(null);
     hasTokenMock.mockReset().mockReturnValue(true);
+    // The director-pivot now also runs after a low-confidence title pass, so a
+    // miss reaches searchMoviesByDirector. Default it to "person not found" so
+    // these title-axis tests exercise only the top-N fallback, not the pivot.
+    searchByDirectorMock.mockReset().mockResolvedValue([]);
   });
 
   it('rescues a film whose string similarity is below threshold when the director matches', async () => {
@@ -879,6 +883,88 @@ describe('enrichFilm — director-pivot rescue (title axis exhausted)', () => {
 
     expect(r.reason).toBe('ok');
     expect(r.delta?.tmdbId).toBe(42);
+  });
+
+  it('ignores an UNDATED co-credit when counting uniqueness (Kon / Paprika + unfinished 夢みる機械)', async () => {
+    // The director has two credits the ±1 window would accept — but one has no
+    // release_date (an unreleased/unfinished project). It must not dilute
+    // "exactly one", or a real dated match is lost. Strict-date count → 1.
+    searchByDirectorMock.mockResolvedValue([
+      summary({
+        id: 55830,
+        title: 'Paprika, detective de los sueños',
+        release_date: '2006-11-25',
+      }),
+      summary({ id: 88888, title: '夢みる機械', release_date: '' }),
+    ]);
+    getMovieMock.mockResolvedValue(
+      details({
+        id: 55830,
+        title: 'Paprika, detective de los sueños',
+        release_date: '2006-11-25',
+      }),
+    );
+
+    const r = await enrichFilm('PAPRIKA', 2006, { director: 'Satoshi Kon' });
+
+    expect(r.reason).toBe('ok');
+    expect(r.delta?.tmdbId).toBe(55830);
+  });
+
+  it('ALSO fires after the title axis returned only unverifiable candidates (not just on zero)', async () => {
+    // Paprika / Satoshi Kon: title search surfaces a wrong film ("Paprika
+    // Western") that outscores the real localized entry, so the title axis
+    // produces a candidate but none verifies. The director pivot must still
+    // run — searchMoviesByDirector finds Kon's lone 2006 credit. Pre-v6 the
+    // pivot only fired when candidates.length === 0, so this stayed stuck.
+    searchMock.mockResolvedValue([
+      summary({
+        id: 1,
+        title: 'Paprika Western',
+        original_title: 'Paprika Western',
+        release_date: '2006-01-01',
+      }),
+    ]);
+    getMovieMock.mockImplementation((id: number) =>
+      Promise.resolve(
+        id === 55830
+          ? details({
+              id: 55830,
+              title: 'Paprika, detective de los sueños',
+              release_date: '2006-11-25',
+            })
+          : details({
+              id: 1,
+              title: 'Paprika Western',
+              release_date: '2006-01-01',
+              credits: {
+                cast: [],
+                crew: [
+                  {
+                    id: 9,
+                    name: 'Someone Else',
+                    job: 'Director',
+                    department: 'Directing',
+                  },
+                ],
+              },
+            }),
+      ),
+    );
+    searchByDirectorMock.mockResolvedValue([
+      summary({
+        id: 55830,
+        title: 'Paprika, detective de los sueños',
+        release_date: '2006-11-25',
+      }),
+      summary({ id: 111, title: 'Perfect Blue', release_date: '1997-01-01' }),
+    ]);
+
+    const r = await enrichFilm('PAPRIKA', 2006, { director: 'Satoshi Kon' });
+
+    expect(r.reason).toBe('ok');
+    expect(r.delta?.tmdbId).toBe(55830);
+    expect(searchByDirectorMock).toHaveBeenCalledWith('Satoshi Kon');
   });
 });
 

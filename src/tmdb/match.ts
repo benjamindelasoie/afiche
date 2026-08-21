@@ -57,8 +57,21 @@ export const YEAR_TOLERANCE = 1;
  *       `titleForms` scores the pre-subtitle form of a candidate title, so
  *       "Paprika, detective de los sueños" can win against a cartelera that
  *       says PAPRIKA.
+ *   6 — three more unmatched-backlog rescues (measured on prod 2026-08-16):
+ *       (a) the director-pivot now also fires after the title axis produced
+ *           candidates but none verified — not only on zero candidates — so a
+ *           film buried under wrong title hits is still findable by director:
+ *           "Luca"/Espina (under Italian inspector serials), "Paprika"/Kon
+ *           (outscored by "Paprika Western"). Still gated by scraped year +
+ *           single-credit-in-window.
+ *       (b) the pivot's uniqueness count now requires a CONCRETE in-window
+ *           release date (`concreteYearWithin`), so an undated/unfinished
+ *           project can't dilute "exactly one" — Kon's undated 夢みる機械 was
+ *           blocking the Paprika rescue.
+ *       (c) `stripSearchNoise` drops trailing ALL-CAPS festival tags
+ *           (" - 8° FINCA", " - DOC BSAS") that returned zero candidates.
  */
-export const MATCHER_VERSION = 5;
+export const MATCHER_VERSION = 6;
 /**
  * Two candidates whose confidence scores are within this band are considered
  * tied on title — the matcher cannot disambiguate them by title similarity

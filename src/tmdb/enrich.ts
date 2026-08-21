@@ -38,6 +38,7 @@ import {
   pickBestMatch,
   scoreCandidates,
   MATCH_CONFIDENCE_THRESHOLD,
+  YEAR_TOLERANCE,
   type MatchHints,
 } from './match';
 import { stripDiacritics, levenshteinAtMostOne, stripSearchNoise } from './similarity';
@@ -248,6 +249,20 @@ export async function enrichFilm(
       }
     }
 
+    // Title axis exhausted without an accepted match — candidates existed but
+    // none cleared verification, and step 4's top-3 director walk found no
+    // agreeing credit either. Try the director AXIS as a last resort: search
+    // TMDB by the director's name, which surfaces the right film even when the
+    // title search only ever returned wrong candidates. Same conservative gate
+    // as the zero-candidates pivot (scraped year present AND exactly one credit
+    // concretely inside the year window). Rescues "Luca" (Rodrigo Espina),
+    // buried under Italian inspector serials the title search returned, and
+    // "Paprika" (Satoshi Kon), outscored by "Paprika Western". No-year cases
+    // stay correctly blocked — the year gate is what stops a large filmography
+    // from producing a false rescue. See MATCHER_VERSION history (v6).
+    const rescued = await directorPivot(scrapedTitle, year, hints, cleanedTitle);
+    if (rescued) return rescued;
+
     return { delta: null, reason: 'low-confidence' };
   } catch (err) {
     return {
@@ -285,12 +300,25 @@ export async function enrichFilm(
  */
 
 /**
- * Find a film via its DIRECTOR when title search found nothing.
+ * True only when `releaseDate` carries a parseable year within YEAR_TOLERANCE
+ * of `year`. Unlike the matcher's lenient `yearAcceptable`, a missing or
+ * unparseable date is FALSE here — the director-pivot uses this to count only
+ * credits it can positively place in the year window (see call site).
+ */
+function concreteYearWithin(releaseDate: string | undefined, year: number): boolean {
+  if (!releaseDate || releaseDate.length < 4) return false;
+  const candYear = parseInt(releaseDate.slice(0, 4), 10);
+  if (Number.isNaN(candYear)) return false;
+  return Math.abs(candYear - year) <= YEAR_TOLERANCE;
+}
+
+/**
+ * Find a film via its DIRECTOR when the title axis came up empty or wrong.
  *
  * Returns a delta only under the narrow condition documented at the call
- * site: a scraped year is present, and exactly one of the director's credits
- * survives the year window. Anything looser admits wrong matches that score
- * HIGHER than the right ones (measured; see the call site).
+ * sites: a scraped year is present, and exactly one of the director's credits
+ * concretely falls in the year window. Anything looser admits wrong matches
+ * that score HIGHER than the right ones (measured; see the call sites).
  *
  * Confidence is recorded at MATCH_CONFIDENCE_THRESHOLD — the title score is
  * meaningless here (that axis already failed); what earns the match is
@@ -312,12 +340,16 @@ async function directorPivot(
   for (const name of names) {
     const credits = await searchMoviesByDirector(name);
     if (credits.length === 0) continue;
-    // scoreCandidates applies the ±1 year window; survivors are the credits
-    // that could plausibly be the screened film.
+    // scoreCandidates applies the ±1 year window, but is LENIENT on credits
+    // with no release_date (it accepts them). That leniency is right for the
+    // general matcher, wrong for the pivot's uniqueness count: an undated
+    // credit can't be confirmed to fall in the year, so it must not dilute
+    // "exactly one". Require a concrete in-window date. (Satoshi Kon's undated,
+    // unfinished "夢みる機械" was making Paprika 2-in-window → refused.)
     const inYear = scoreCandidates(credits, scrapedTitle, year, {
       titleOriginal: hints.titleOriginal,
       cleanedTitle,
-    });
+    }).filter((m) => concreteYearWithin(m.candidate.release_date, year));
     if (inYear.length !== 1) continue;
     const details = await getMovie(inYear[0].candidate.id);
     const delta = await buildDelta(

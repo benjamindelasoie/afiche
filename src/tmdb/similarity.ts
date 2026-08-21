@@ -172,9 +172,27 @@ export function levenshteinAtMostOne(a: string, b: string): boolean {
 const SEARCH_NOISE_RE =
   /\b(?:con\s+m[uú]sica\s+en\s+vivo|m[uú]sica\s+en\s+vivo|en\s+\d+\s?mm|\d+\s?mm|copia\s+(?:nueva|restaurada|en\s+\d+\s?mm)|versi[oó]n\s+restaurada|preestreno|avant[\s-]?premi[eè]re|[uú]nica\s+funci[oó]n|funci[oó]n\s+[uú]nica|estreno|4k|doblada|subtitulada|vose?|vos)\b/gi;
 
+/**
+ * Trailing festival / cycle tag, joined to the real title by a dash — e.g.
+ * "Tierra que habla - 8° FINCA", "TU ROSTRO - DOC BSAS". Venues append the
+ * festival label to every film in a competition; TMDB has the film but not
+ * the tagged form, so search returns zero candidates.
+ *
+ * Deliberately conservative: the tail must be ALL-CAPS (optionally led by an
+ * ordinal like "8°"). The uppercase-only character class means a mixed-case
+ * subtitle — "Algo ha cambiado - Un viaje quijotesco" — can't reach the `$`
+ * anchor and is left untouched, so we only ever strip shout-cased festival
+ * labels, never a legitimate lowercase subtitle. Bounded length keeps it from
+ * eating a long trailing clause. (Discovered 2026-08-16 on the FINCA and
+ * DOC BSAS cycles; see MATCHER_VERSION history.)
+ */
+const FESTIVAL_SUFFIX_RE =
+  /\s*[-–—]\s*(?:\d+\s*[°ºªo]\s*)?[A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑ0-9.°º]*(?:\s+[A-ZÁÉÍÓÚÜÑ0-9.°º]+){0,4}\s*$/u;
+
 export function stripSearchNoise(title: string): string {
   const cleaned = title
     .replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')
+    .replace(FESTIVAL_SUFFIX_RE, ' ')
     .replace(SEARCH_NOISE_RE, ' ')
     .replace(/\s{2,}/g, ' ')
     .replace(/[\s\-–—:,]+$/g, '')

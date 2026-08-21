@@ -30,6 +30,26 @@ describe('stripSearchNoise', () => {
     expect(stripSearchNoise('estreno')).toBe('estreno');
     expect(stripSearchNoise('(2007)')).toBe('(2007)');
   });
+
+  it('strips a trailing ALL-CAPS festival/cycle tag joined by a dash', () => {
+    // Venues append the competition label to every film in a cycle; TMDB has
+    // the film but not the tagged form, so search returns zero candidates.
+    expect(stripSearchNoise('Tierra que habla - 8° FINCA')).toBe('Tierra que habla');
+    expect(stripSearchNoise('TODO PARECÍA POSIBLE - DOC BSAS')).toBe(
+      'TODO PARECÍA POSIBLE',
+    );
+    expect(stripSearchNoise('La vida fracturada - 8° FINCA')).toBe('La vida fracturada');
+    // Double-space before the dash (VLM/scrape artifact) still collapses.
+    expect(stripSearchNoise('Amora  Mora - 8° FINCA')).toBe('Amora Mora');
+  });
+
+  it('does NOT strip a mixed-case subtitle after a dash', () => {
+    // The uppercase-only tail class means a real lowercase subtitle can never
+    // reach the anchor, so a legitimate " - Subtitle" survives untouched.
+    expect(
+      stripSearchNoise('Algo ha cambiado - Un viaje quijotesco al Pappo’s blues'),
+    ).toBe('Algo ha cambiado - Un viaje quijotesco al Pappo’s blues');
+  });
 });
 
 describe('stripDiacritics', () => {
