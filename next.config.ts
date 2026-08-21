@@ -20,6 +20,20 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        // Markdown content negotiation (acceptmarkdown.com): these pages answer
+        // in HTML *or* text/markdown depending on Accept (the proxy, src/proxy.ts,
+        // rewrites markdown requests to /api/md, which sets its own
+        // `Vary: Accept, Accept-Encoding`). This rule stamps `Vary: Accept` on
+        // the pre-render match as belt-and-suspenders so the negotiated response
+        // always advertises it. The HTML variant itself is `force-dynamic` →
+        // `Cache-Control: no-store` (never shared-cached), so it needs no Vary of
+        // its own; the only edge-cached variant is the markdown one, which
+        // carries Vary correctly. (Next owns the RSC Vary on the dynamic HTML
+        // response and overrides this there — harmless, since it isn't cached.)
+        source: '/(|cartelera|acerca)',
+        headers: [{ key: 'Vary', value: 'Accept' }],
+      },
     ];
   },
   async redirects() {

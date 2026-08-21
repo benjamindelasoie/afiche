@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   getWindowScreeningsByFilm,
@@ -8,7 +9,7 @@ import {
 } from '@/db/queries';
 import { resolveWindowKey, windowRenderMode, type WindowKey } from '@/lib/windows';
 import { computeEdition } from '@/lib/edition';
-import { JsonLd, buildHomepageJsonLd } from '@/lib/json-ld';
+import { JsonLd, buildHomepageJsonLd, buildSiteJsonLd } from '@/lib/json-ld';
 import { Masthead } from './_components/Masthead';
 import { WindowNav } from './_components/WindowNav';
 import { CuratedBand } from './_components/CuratedBand';
@@ -32,6 +33,15 @@ import { PageShell, PageFooter } from './_components/ui';
 // yesterday's window until the next scrape fires revalidatePath('/'). See
 // src/app/api/revalidate/route.ts.
 export const dynamic = 'force-dynamic';
+
+// Canonical URL for the homepage. The window selector rides on `?ventana=`
+// (hoy|finde|semana|prox) — four query variants of the SAME page — so every
+// one canonicalizes to the bare apex. Set here rather than in the root layout
+// so interior pages (/pelicula, /sala) aren't wrongly canonicalized to `/`.
+// Resolves against `metadataBase` (layout.tsx) → https://afiche.ar/.
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+};
 
 // Per-window list heading. `semana` reads "La cartelera" to avoid colliding
 // with the curated "Esta semana" band that sits above it.
@@ -85,6 +95,10 @@ export default async function HomePage({
 
   return (
     <>
+      {/* Site-identity node — tells crawlers "afiche is an Organization" with a
+          canonical url, logo, and description, so the page's identity doesn't
+          resolve to the nested Person directors inside the event graph. */}
+      <JsonLd payload={buildSiteJsonLd()} />
       {jsonLdEvents.map((event, i) => (
         <JsonLd key={i} payload={event} />
       ))}

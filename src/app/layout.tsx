@@ -1,7 +1,13 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
-import { SITE_URL, SITE_TITLE, SITE_DESCRIPTION } from '@/lib/site';
+import {
+  SITE_URL,
+  SITE_TITLE,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_LOCALE,
+} from '@/lib/site';
 import './globals.css';
 
 const geistSans = Geist({
@@ -37,6 +43,21 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: SITE_TITLE,
   description: SITE_DESCRIPTION,
+  // OpenGraph identity, site-wide. `type: 'website'` and `url` are the two
+  // signals entity-resolvers / AI crawlers look for beyond title+image (the
+  // og:image itself comes from the src/app/opengraph-image.png file convention,
+  // which Next merges into `openGraph.images` automatically). `og:locale` uses
+  // the underscore form (es_AR); the human <html lang> uses the hyphen form.
+  // Interior pages (/pelicula, /sala, /acerca) override title/description and
+  // inherit the rest — `website` is the correct type for all of them.
+  openGraph: {
+    type: 'website',
+    siteName: SITE_NAME,
+    locale: SITE_LOCALE.replace('-', '_'),
+    url: SITE_URL,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
   // Home-screen / standalone behavior on iOS. `capable` opts into the
   // fullscreen standalone launch (no Safari chrome) so a home-screen tap
   // feels like an app; `title` is the short label shown under the icon
