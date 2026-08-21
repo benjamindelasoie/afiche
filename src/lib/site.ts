@@ -36,3 +36,19 @@ export const SITE_TITLE = 'afiche — cartelera curada de Buenos Aires';
  */
 export const SITE_DESCRIPTION =
   'Cartelera curada de cine en Buenos Aires. MALBA, Cine Lorca, Sala Lugones, Cosmos, Gaumont, y más.';
+
+/**
+ * BCP-47 language tag for the site. `es-AR` (used on <html lang>) for human
+ * copy; the OpenGraph `og:locale` variant is the underscore form `es_AR`
+ * (see src/app/layout.tsx). Single source so the two can't drift.
+ */
+export const SITE_LOCALE = 'es-AR';
+
+/**
+ * Canonical public source-of-truth for the project — the code-available repo's
+ * author profile. afiche has no separate social presence; this GitHub identity
+ * IS the project's external home, so it's the `sameAs` on the site's
+ * Organization JSON-LD (src/lib/json-ld.tsx) and the "source" pointer in
+ * /llms.txt. Kept out of product copy per the public-repo hygiene rule.
+ */
+export const SITE_SOURCE_URL = 'https://github.com/benjamindelasoie';

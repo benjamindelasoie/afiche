@@ -9,11 +9,20 @@ import { BackLink } from './BackLink';
 export function NotFoundShell({
   title,
   children,
+  links,
 }: {
   /** The serif-italic headline (e.g. "Esta sala no está en nuestra cartelera."). */
   title: string;
   /** The softer supporting line beneath it. */
   children: ReactNode;
+  /**
+   * Optional extra recovery links rendered under the back-link. The root 404
+   * (which can't guess what the visitor wanted) uses this to give humans AND
+   * agents a small map — cartelera, about, sitemap, llms.txt — so a dead URL is
+   * a fork in the road, not a wall. The route-local 404s omit it (their single
+   * back-link is enough).
+   */
+  links?: ReactNode;
 }) {
   return (
     <PageShell width="5xl" pad="airy">
@@ -23,6 +32,7 @@ export function NotFoundShell({
         </h1>
         <p className="text-ink-gray font-serif text-lg italic">{children}</p>
         <BackLink className="mt-2">Cartelera actual</BackLink>
+        {links}
       </section>
     </PageShell>
   );

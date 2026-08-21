@@ -24,8 +24,10 @@ import {
   buildScreeningEvent,
   buildHomepageJsonLd,
   buildFilmPageJsonLd,
+  buildSiteJsonLd,
   serialize,
 } from './json-ld';
+import { SITE_URL, SITE_NAME } from './site';
 import { JsonLd } from './json-ld';
 import type { ScreeningRow } from '@/db/queries';
 
@@ -379,5 +381,45 @@ describe('<JsonLd> component', () => {
     const closingTagCount = (html.match(/<\/script>/g) ?? []).length;
     expect(closingTagCount).toBe(1);
     expect(html).toContain('<\\/script>');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildSiteJsonLd — the homepage site-identity Organization node.
+//
+// This is what an AI crawler / entity-resolver reads to answer "what/who is
+// this site". Pins the four fields the audit rewards (name, description, url,
+// type) plus the stable @id, logo, and a real external sameAs.
+// ---------------------------------------------------------------------------
+describe('buildSiteJsonLd', () => {
+  it('is a Schema.org Organization with name, url, description, logo, and @context', () => {
+    const site = buildSiteJsonLd();
+    expect(site['@context']).toBe('https://schema.org');
+    expect(site['@type']).toBe('Organization');
+    expect(site.name).toBe(SITE_NAME);
+    expect(site.url).toBe(SITE_URL);
+    expect(site.description).toBeTruthy();
+    expect(site.logo).toBe(`${SITE_URL}/icon-512.png`);
+  });
+
+  it('carries a stable @id and a non-empty sameAs of absolute URLs', () => {
+    const site = buildSiteJsonLd();
+    expect(site['@id']).toBe(`${SITE_URL}/#organization`);
+    expect(Array.isArray(site.sameAs)).toBe(true);
+    expect(site.sameAs.length).toBeGreaterThan(0);
+    for (const url of site.sameAs) {
+      expect(() => new URL(url)).not.toThrow();
+    }
+  });
+
+  it('scopes areaServed to the city afiche covers', () => {
+    const site = buildSiteJsonLd();
+    expect(site.areaServed).toEqual({ '@type': 'City', name: 'Buenos Aires' });
+  });
+
+  it('serializes to valid JSON that round-trips', () => {
+    const parsed = JSON.parse(serialize(buildSiteJsonLd()));
+    expect(parsed['@type']).toBe('Organization');
+    expect(parsed.url).toBe(SITE_URL);
   });
 });

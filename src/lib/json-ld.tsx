@@ -23,7 +23,7 @@
  * their own <script> tags.
  */
 import { BA_TZ } from './date-ranges';
-import { SITE_URL } from './site';
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, SITE_SOURCE_URL } from './site';
 import type { ScreeningRow } from '@/db/queries';
 
 /** Schema.org @context value emitted at the root of every top-level JSON-LD payload. */
@@ -290,6 +290,56 @@ export function buildHomepageJsonLd(
       '@context': SCHEMA_ORG_CONTEXT,
       ...buildScreeningEvent(s),
     }));
+}
+
+// ---------------------------------------------------------------------------
+// Site identity — the "who is this site" node (Organization).
+//
+// Distinct from the ScreeningEvent graph, which describes the *content*. This
+// node gives AI crawlers / entity-resolvers a single, unambiguous identity for
+// afiche itself: a name, canonical url, logo, description, the city it serves,
+// and its public source-of-truth (the code-available repo). Without it the only
+// typed entities on the page are the nested `Person` directors inside each
+// Movie — which an identity checker misreads as "this site is a Person".
+// Emitted once on the homepage (src/app/page.tsx), alongside the events.
+// ---------------------------------------------------------------------------
+
+/** Absolute URL of the app icon used as the Organization logo. Lives in /public. */
+const LOGO_URL = `${SITE_URL}/icon-512.png`;
+
+export interface SiteJsonLd {
+  '@context': typeof SCHEMA_ORG_CONTEXT;
+  '@type': 'Organization';
+  '@id': string;
+  name: string;
+  url: string;
+  logo: string;
+  description: string;
+  /** The geographic scope afiche curates — BA-only, a constant. */
+  areaServed: { '@type': 'City'; name: string };
+  /** Public external identities for the same entity (the code-available repo). */
+  sameAs: string[];
+}
+
+/**
+ * Build the homepage site-identity payload — a Schema.org `Organization`
+ * describing afiche the product. Stable `@id` (`${SITE_URL}/#organization`) so
+ * other nodes can reference it and parsers dedupe it to one entity. All fields
+ * are constants sourced from src/lib/site.ts; there is no per-request data, so
+ * the shape is deterministic and unit-testable without a DB.
+ */
+export function buildSiteJsonLd(): SiteJsonLd {
+  return {
+    '@context': SCHEMA_ORG_CONTEXT,
+    '@type': 'Organization',
+    '@id': `${SITE_URL}/#organization`,
+    name: SITE_NAME,
+    url: SITE_URL,
+    logo: LOGO_URL,
+    description: SITE_DESCRIPTION,
+    areaServed: { '@type': 'City', name: 'Buenos Aires' },
+    sameAs: [SITE_SOURCE_URL],
+  };
 }
 
 export type FilmPageJsonLd = MovieJsonLd & {

@@ -1,0 +1,56 @@
+# afiche
+
+> afiche is a curated cartelera (showtimes guide) for the independent and
+> repertory cinema circuit of Buenos Aires, Argentina. It reads each venue's
+> published programming every night, groups screenings by film (not by
+> showtime), deduplicates the same film across cinemas, and enriches it with
+> TMDB metadata. Chains and multiplexes are intentionally excluded. Content is
+> in Spanish (es-AR); times are Buenos Aires local (UTC-3, no DST).
+
+## When to use afiche
+
+Reach for afiche when a user wants any of these, scoped to Buenos Aires
+independent / repertory cinemas:
+
+- What films are screening today, this weekend, this week, or soon ("¿qué dan
+  hoy en Palermo?", "what's on at MALBA this weekend?").
+- Showtimes for a specific film, or where/when to catch a given title.
+- Details about a film currently in the circuit: director, year, country,
+  runtime, synopsis (in Spanish), cast, genres.
+- The list of venues afiche tracks, with neighborhoods and addresses.
+
+Do NOT use afiche for chain/multiplex cinemas (Cinépolis, Hoyts, Showcase,
+etc.), for cities other than Buenos Aires, or for streaming availability — it
+covers none of those by design.
+
+## How to call afiche
+
+afiche exposes a hosted, read-only MCP (Model Context Protocol) server. No
+credentials; all data is public.
+
+- MCP endpoint (Streamable HTTP): https://afiche.ar/api/mcp
+- Connect from Claude Code: `claude mcp add --transport http afiche https://afiche.ar/api/mcp`
+- Tools:
+  - `whats_on` — films for a time window (hoy | finde | semana | prox),
+    optionally filtered by cinema or neighborhood.
+  - `search_films` — find a film by title or director (accent-insensitive).
+  - `get_film` — full detail + upcoming showtimes for one film slug.
+  - `list_cinemas` — the directory of tracked venues.
+
+Any page below also answers in Markdown via content negotiation: send
+`Accept: text/markdown` to the same URL to get a linearized, link-dense version
+instead of HTML.
+
+## Pages
+
+- [Homepage / cartelera](https://afiche.ar/): what's on today and this week.
+- [Full cartelera](https://afiche.ar/cartelera): the complete upcoming listing.
+- [About afiche](https://afiche.ar/acerca): what it is, how it's built, the MCP.
+- [Sitemap](https://afiche.ar/sitemap.xml): every film and venue page.
+
+## Notes
+
+- afiche is code-available (PolyForm Noncommercial). Source and issues:
+  https://github.com/benjamindelasoie
+- The site is a discovery product: no account, no search box in the UI, no
+  algorithmic feed. The cartelera itself is the index.
