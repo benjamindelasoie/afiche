@@ -417,6 +417,18 @@ describe('buildSiteJsonLd', () => {
     expect(site.areaServed).toEqual({ '@type': 'City', name: 'Buenos Aires' });
   });
 
+  it('carries a PostalAddress and a ContactPoint (entity-resolution completeness)', () => {
+    const site = buildSiteJsonLd();
+    expect(site.address).toEqual({
+      '@type': 'PostalAddress',
+      addressLocality: 'Buenos Aires',
+      addressCountry: 'AR',
+    });
+    expect(site.contactPoint['@type']).toBe('ContactPoint');
+    expect(site.contactPoint.contactType).toBeTruthy();
+    expect(() => new URL(site.contactPoint.url)).not.toThrow();
+  });
+
   it('serializes to valid JSON that round-trips', () => {
     const parsed = JSON.parse(serialize(buildSiteJsonLd()));
     expect(parsed['@type']).toBe('Organization');

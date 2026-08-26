@@ -317,6 +317,22 @@ export interface SiteJsonLd {
   description: string;
   /** The geographic scope afiche curates — BA-only, a constant. */
   areaServed: { '@type': 'City'; name: string };
+  /**
+   * Where the org is based. Locality-only (Buenos Aires, AR) — afiche is a
+   * distributed project with no street office, and Schema.org PostalAddress is
+   * valid with just locality + country. Entity-resolvers expect an `address`.
+   */
+  address: { '@type': 'PostalAddress'; addressLocality: string; addressCountry: string };
+  /**
+   * How to reach the project. afiche has no support phone/inbox; its public
+   * contact channel is the code-available repo's issue tracker, so the
+   * ContactPoint points there via `url`.
+   */
+  contactPoint: {
+    '@type': 'ContactPoint';
+    contactType: string;
+    url: string;
+  };
   /** Public external identities for the same entity (the code-available repo). */
   sameAs: string[];
 }
@@ -338,6 +354,16 @@ export function buildSiteJsonLd(): SiteJsonLd {
     logo: LOGO_URL,
     description: SITE_DESCRIPTION,
     areaServed: { '@type': 'City', name: 'Buenos Aires' },
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Buenos Aires',
+      addressCountry: 'AR',
+    },
+    contactPoint: {
+      '@type': 'ContactPoint',
+      contactType: 'customer support',
+      url: SITE_SOURCE_URL,
+    },
     sameAs: [SITE_SOURCE_URL],
   };
 }

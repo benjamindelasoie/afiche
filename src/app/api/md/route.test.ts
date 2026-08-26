@@ -38,6 +38,14 @@ describe('GET /api/md', () => {
     expect(body.startsWith('# ')).toBe(true);
   });
 
+  it('is not shared-cacheable — no cross-variant CDN poisoning at the shared URL', () => {
+    // The markdown is served via a rewrite at the same public URL as the HTML;
+    // caching it there risks a CDN handing markdown to an HTML crawler.
+    return GET(mdRequest('/')).then((res) => {
+      expect(res.headers.get('cache-control')).toContain('no-store');
+    });
+  });
+
   it('reads the two homepage windows (hoy + semana)', async () => {
     await GET(mdRequest('/'));
     const windows = q.getWindowScreeningsByFilm.mock.calls.map((c) => c[0]);
