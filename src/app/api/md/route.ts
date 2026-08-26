@@ -33,9 +33,15 @@ const MARKDOWN_HEADERS: Record<string, string> = {
   // The load-bearing header for this whole feature: the same URL serves HTML or
   // markdown depending on Accept, so caches MUST key on it.
   Vary: 'Accept, Accept-Encoding',
-  // Short shared-cache TTL with SWR: fresh enough for a daily-scraped cartelera,
-  // cheap enough that agents don't hammer the DB.
-  'Cache-Control': 'public, max-age=0, s-maxage=60, stale-while-revalidate=300',
+  // `no-store`, deliberately. This markdown is served via a proxy rewrite at the
+  // SAME public URL as the HTML page (`/`, `/cartelera`, `/acerca`). If it were
+  // shared-cacheable, a CDN that doesn't perfectly honor `Vary: Accept` on a
+  // rewritten response could hand the cached markdown to an HTML crawler (or
+  // vice-versa) — the exact cross-variant poisoning acceptmarkdown.com warns
+  // about, and a likely cause of a scanner reading "no H1" off a markdown body.
+  // Not caching the negotiated response removes that failure mode entirely; the
+  // agent-markdown surface is low-volume, so the per-request DB read is cheap.
+  'Cache-Control': 'no-store',
 };
 
 /** Normalize a rewritten path: strip a trailing slash (except root) so `/acerca/` == `/acerca`. */
