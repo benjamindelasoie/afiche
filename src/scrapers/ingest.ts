@@ -51,13 +51,24 @@ export async function ingest(result: ProviderRunResult): Promise<IngestSummary> 
   const filmIdByKey = await upsertFilms(result.screenings);
   summary.filmsUpserted = filmIdByKey.size;
 
-  // 3. Replace future screenings for this cinema.
-  summary.screeningsInserted = await replaceFutureScreenings(
+  // 3. Replace future screenings for this cinema. The pre-write circuit
+  //    breaker refuses to wipe a live schedule when the fetch came back empty
+  //    (a likely scraper break), so a silent site redesign can't publish an
+  //    empty venue. A break is surfaced as a warning for the audit + digest.
+  const replace = await replaceFutureScreenings(
     result.cinemaId,
     now,
     result.screenings,
     filmIdByKey,
   );
+  summary.screeningsInserted = replace.inserted;
+  if (replace.circuitBroke) {
+    summary.warnings.push(
+      `circuit breaker: "${result.cinemaId}" returned 0 screenings but ` +
+        `${replace.preservedFuture} future rows exist — kept the last good ` +
+        `schedule (scraper likely broke against a site change)`,
+    );
+  }
 
   // 4. TMDB enrichment (non-fatal; merges duplicates safely now that
   //    screenings are live and re-pointable).
