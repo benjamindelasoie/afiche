@@ -70,8 +70,16 @@ export const YEAR_TOLERANCE = 1;
  *           blocking the Paprika rescue.
  *       (c) `stripSearchNoise` drops trailing ALL-CAPS festival tags
  *           (" - 8° FINCA", " - DOC BSAS") that returned zero candidates.
+ *   7 — `stripSearchNoise` now also drops the LEADING festival/cycle prefix
+ *       ("FESTIVAL ESCENARIO: WE ARE THE SHAGS" → "WE ARE THE SHAGS",
+ *       "CONVOCATORIA DE CORTOS: PROGRAMA I" → "PROGRAMA I"), the mirror of
+ *       (6c). Measured on prod 2026-09-01: the Centro Cultural Borges
+ *       "FESTIVAL ESCENARIO" programme and the Cine York "CONVOCATORIA DE
+ *       CORTOS" blocks were stuck at none-attempted because the prefix made
+ *       TMDB search return zero candidates. Bumping the version re-opens the
+ *       locked none-attempted rows so the next enrich retries them.
  */
-export const MATCHER_VERSION = 6;
+export const MATCHER_VERSION = 7;
 /**
  * Two candidates whose confidence scores are within this band are considered
  * tied on title — the matcher cannot disambiguate them by title similarity
