@@ -70,8 +70,11 @@ export const YEAR_TOLERANCE = 1;
  *           blocking the Paprika rescue.
  *       (c) `stripSearchNoise` drops trailing ALL-CAPS festival tags
  *           (" - 8° FINCA", " - DOC BSAS") that returned zero candidates.
+ *   7 — `stripSearchNoise` also drops the LEADING festival/cycle prefix
+ *       ("FESTIVAL ESCENARIO: X" → "X"), the mirror of (6c). Bumping re-opens
+ *       the none-attempted rows the prefix had stuck at zero candidates.
  */
-export const MATCHER_VERSION = 6;
+export const MATCHER_VERSION = 7;
 /**
  * Two candidates whose confidence scores are within this band are considered
  * tied on title — the matcher cannot disambiguate them by title similarity

@@ -189,9 +189,19 @@ const SEARCH_NOISE_RE =
 const FESTIVAL_SUFFIX_RE =
   /\s*[-–—]\s*(?:\d+\s*[°ºªo]\s*)?[A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑ0-9.°º]*(?:\s+[A-ZÁÉÍÓÚÜÑ0-9.°º]+){0,4}\s*$/u;
 
+/**
+ * Leading festival/cycle prefix, the mirror of FESTIVAL_SUFFIX_RE. Fires only
+ * when the title opens with a cycle keyword and consumes up to the first colon,
+ * so "FESTIVAL ESCENARIO: WE ARE THE SHAGS" → "WE ARE THE SHAGS" but a real
+ * "Kill Bill: Volume 1" survives untouched.
+ */
+const FESTIVAL_PREFIX_RE =
+  /^\s*(?:FESTIVAL|CONVOCATORIA|CICLO|MUESTRA|RETROSPECTIVA|COMPETENCIA|SEMANA|PROGRAMA|CORTOS|CORTOMETRAJES?)\b[^:]{0,40}:\s*/iu;
+
 export function stripSearchNoise(title: string): string {
   const cleaned = title
     .replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')
+    .replace(FESTIVAL_PREFIX_RE, ' ')
     .replace(FESTIVAL_SUFFIX_RE, ' ')
     .replace(SEARCH_NOISE_RE, ' ')
     .replace(/\s{2,}/g, ' ')

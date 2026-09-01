@@ -50,6 +50,21 @@ describe('stripSearchNoise', () => {
       stripSearchNoise('Algo ha cambiado - Un viaje quijotesco al Pappo’s blues'),
     ).toBe('Algo ha cambiado - Un viaje quijotesco al Pappo’s blues');
   });
+
+  it('strips a leading festival/cycle prefix joined by a colon', () => {
+    expect(stripSearchNoise('FESTIVAL ESCENARIO: WE ARE THE SHAGS')).toBe(
+      'WE ARE THE SHAGS',
+    );
+    expect(stripSearchNoise('FESTIVAL ESCENARIO: THE BEST SUMMER')).toBe(
+      'THE BEST SUMMER',
+    );
+    expect(stripSearchNoise('CONVOCATORIA DE CORTOS: PROGRAMA I')).toBe('PROGRAMA I');
+  });
+
+  it('does NOT strip a colon that is part of a real title', () => {
+    expect(stripSearchNoise('Kill Bill: Volume 1')).toBe('Kill Bill: Volume 1');
+    expect(stripSearchNoise('Blade Runner 2049')).toBe('Blade Runner 2049');
+  });
 });
 
 describe('stripDiacritics', () => {

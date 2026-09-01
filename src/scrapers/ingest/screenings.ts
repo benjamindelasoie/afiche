@@ -13,38 +13,60 @@
  * re-points them to the surviving row safely.
  */
 
-import { and, eq, gt, sql } from 'drizzle-orm';
+import { and, count, eq, gt, sql } from 'drizzle-orm';
 import { db, screenings } from '@/db';
 import type { ScrapedScreening } from '@/providers/types';
 import { filmKey } from './films';
 
+export interface ReplaceScreeningsResult {
+  inserted: number;
+  /** True when the breaker fired: an empty fetch was refused to protect a live schedule. */
+  circuitBroke: boolean;
+  /** Future rows left intact when circuitBroke; 0 otherwise. */
+  preservedFuture: number;
+}
+
 /**
  * Replace future screenings for a cinema with the freshly-scraped set.
- * Returns the number of rows actually inserted (after the no-echo filter
- * and the film_id resolution).
  *
- * `now` is passed in (not computed inline) so the caller controls the
- * freeze point — important when a future test fakes the clock.
+ * Pre-write circuit breaker: the delete+insert would wipe the live schedule, so
+ * a scraper that silently breaks (returns 0) could publish an empty venue. When
+ * the fetch is empty AND future rows exist, refuse the replace, keep the last
+ * good schedule, and report circuitBroke so the caller warns. Empty-only on
+ * purpose — a smaller-but-nonzero fetch is ambiguous (a winding-down cycle looks
+ * like a half-broken scraper), so partial drops stay the audit's soft FYI.
+ *
+ * `now` is passed in so a test can control the freeze point.
  */
 export async function replaceFutureScreenings(
   cinemaId: string,
   now: Date,
   scraped: ScrapedScreening[],
   filmIdByKey: Map<string, number>,
-): Promise<number> {
+): Promise<ReplaceScreeningsResult> {
+  if (scraped.length === 0) {
+    // Empty fetch — break only if wiping would destroy a live schedule.
+    const [{ n }] = await db
+      .select({ n: count() })
+      .from(screenings)
+      .where(and(eq(screenings.cinemaId, cinemaId), gt(screenings.startsAtUtc, now)));
+    if (n > 0) return { inserted: 0, circuitBroke: true, preservedFuture: n };
+    return { inserted: 0, circuitBroke: false, preservedFuture: 0 };
+  }
+
   // Clear existing future screenings for this cinema. Keeps historical
   // rows so we never wipe past programming once we have any.
   await db
     .delete(screenings)
     .where(and(eq(screenings.cinemaId, cinemaId), gt(screenings.startsAtUtc, now)));
 
-  if (scraped.length === 0) return 0;
-
   const toInsert = scraped
     .map((s) => buildScreeningRow(s, filmIdByKey))
     .filter((x): x is NonNullable<typeof x> => x !== null);
 
-  if (toInsert.length === 0) return 0;
+  if (toInsert.length === 0) {
+    return { inserted: 0, circuitBroke: false, preservedFuture: 0 };
+  }
 
   // onConflictDoUpdate (NOT DoNothing) so re-scrape refreshes metadata that
   // may have changed: programName, sourceUrl, tags, scrapedAt. Without
@@ -69,7 +91,7 @@ export async function replaceFutureScreenings(
       },
     });
 
-  return toInsert.length;
+  return { inserted: toInsert.length, circuitBroke: false, preservedFuture: 0 };
 }
 
 /**

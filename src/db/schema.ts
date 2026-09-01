@@ -353,6 +353,32 @@ export const screenings = sqliteTable(
 );
 
 // ---------------------------------------------------------------------------
+// tmdb_overrides — durable (scraped_title, year?) → TMDB id overrides
+// ---------------------------------------------------------------------------
+//
+// The machine-writable half of the override layer: the self-healing agent
+// writes auto-applied matches here so they survive a rescrape (reset-programming
+// preserves this table). Coexists with tmdb-overrides.json; findOverride unions
+// both, the JSON file winning. See src/tmdb/overrides.ts.
+export const tmdbOverrides = sqliteTable(
+  'tmdb_overrides',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    scrapedTitle: text('scraped_title').notNull(),
+    year: integer('year'), // null = year-agnostic (matches any year)
+    tmdbId: integer('tmdb_id').notNull(),
+    note: text('note'),
+    // 'manual' | 'self-heal-judge' | 'self-heal-research' | 'seed'
+    source: text('source').notNull().default('manual'),
+    confidence: real('confidence'),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [uniqueIndex('tmdb_overrides_title_year_idx').on(t.scrapedTitle, t.year)],
+);
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -431,3 +457,5 @@ export type Provider = typeof providers.$inferSelect;
 export type ProviderInsert = typeof providers.$inferInsert;
 export type ScrapeRun = typeof scrapeRuns.$inferSelect;
 export type ScrapeRunInsert = typeof scrapeRuns.$inferInsert;
+export type TmdbOverride = typeof tmdbOverrides.$inferSelect;
+export type TmdbOverrideInsert = typeof tmdbOverrides.$inferInsert;

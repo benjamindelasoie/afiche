@@ -12,6 +12,7 @@ export {
   screenings,
   providers,
   scrapeRuns,
+  tmdbOverrides,
   TAG_LABELS_ES,
   GENRE_LABELS_ES,
 } from './schema';
@@ -27,4 +28,6 @@ export type {
   ScrapeRun,
   ScrapeRunInsert,
   ScreeningTag,
+  TmdbOverride,
+  TmdbOverrideInsert,
 } from './schema';

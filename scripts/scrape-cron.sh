@@ -133,9 +133,23 @@ log "starting scrape:prod (node $(node --version))"
 if npm run scrape:prod >>"$LOG" 2>&1; then
   date +%s >"$STAMP"
   log "scrape OK"
+  scrape_rc=0
 else
-  rc=$?
-  log "scrape FAILED (exit $rc)"
-  notify "⚠️ afiche scrape failed (exit $rc) — data may be going stale. tail $LOG"
-  exit "$rc"
+  scrape_rc=$?
+  log "scrape FAILED (exit $scrape_rc)"
+  notify "⚠️ afiche scrape failed (exit $scrape_rc) — data may be going stale. tail $LOG"
 fi
+
+# --- self-heal -------------------------------------------------------------
+# Runs after EVERY scrape, pass OR fail — a failed/empty run is exactly what
+# the audit needs to see. Best-effort: it judges the unmatched tail, auto-applies
+# the corroborated matches, and Telegrams a digest, but it NEVER changes the
+# scrape's exit code (a broken heal must not mask or fail the scrape).
+log "starting self-heal"
+if npm run db:self-heal:prod -- --write >>"$LOG" 2>&1; then
+  log "self-heal OK"
+else
+  log "self-heal FAILED (exit $?) — non-fatal, scrape result stands"
+fi
+
+exit "$scrape_rc"
