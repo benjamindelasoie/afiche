@@ -14,7 +14,8 @@ vi.mock('@/db', async () => {
   };
 });
 
-const { findOverride, upsertOverride, _resetOverridesCache } = await import('./overrides');
+const { findOverride, upsertOverride, _resetOverridesCache } =
+  await import('./overrides');
 
 beforeEach(async () => {
   testDb = await makeInMemoryDb();

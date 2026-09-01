@@ -36,7 +36,8 @@ import type { AuditAlert } from '@/scrapers/audit';
 async function searchCandidates(f: HealFilm) {
   const year = f.scrapedYear ?? undefined;
   const queries = [f.scrapedTitle];
-  if (f.titleOriginal && f.titleOriginal !== f.scrapedTitle) queries.push(f.titleOriginal);
+  if (f.titleOriginal && f.titleOriginal !== f.scrapedTitle)
+    queries.push(f.titleOriginal);
   const cleaned = stripSearchNoise(f.scrapedTitle);
   if (cleaned !== f.scrapedTitle) queries.push(cleaned);
 

@@ -70,8 +70,19 @@ describe('detectAlerts', () => {
   });
 
   it('considers only the latest run per cinema', () => {
-    const older = run({ id: 1, cinemaId: 'malba', startedAt: new Date('2026-09-01T09:00:00Z'), status: 'failure', error: 'old' });
-    const newer = run({ id: 2, cinemaId: 'malba', startedAt: new Date('2026-09-01T11:00:00Z'), status: 'success' });
+    const older = run({
+      id: 1,
+      cinemaId: 'malba',
+      startedAt: new Date('2026-09-01T09:00:00Z'),
+      status: 'failure',
+      error: 'old',
+    });
+    const newer = run({
+      id: 2,
+      cinemaId: 'malba',
+      startedAt: new Date('2026-09-01T11:00:00Z'),
+      status: 'success',
+    });
     expect(detectAlerts([older, newer], NOW)).toEqual([]);
   });
 });

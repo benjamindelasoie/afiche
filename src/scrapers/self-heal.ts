@@ -39,9 +39,7 @@ export interface CandidateFacts {
   year: number | null;
 }
 
-export type HealDecision =
-  | { action: 'auto-apply' }
-  | { action: 'queue'; reason: string };
+export type HealDecision = { action: 'auto-apply' } | { action: 'queue'; reason: string };
 
 function normalizeName(s: string): string {
   return stripDiacritics(s.toLowerCase())

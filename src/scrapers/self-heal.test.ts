@@ -59,7 +59,10 @@ const NO_MATCH = { directors: [], year: null };
 describe('classifyProposal — safety invariants', () => {
   it('NEVER auto-applies a web-researched proposal, even at max confidence + full corroboration', () => {
     const p = makeProposal({ kind: 'web-researched', confidence: 1 });
-    const d = classifyProposal(p, 'Luis Ortega', { directors: ['Luis Ortega'], year: 2018 });
+    const d = classifyProposal(p, 'Luis Ortega', {
+      directors: ['Luis Ortega'],
+      year: 2018,
+    });
     expect(d).toEqual({ action: 'queue', reason: 'web-researched: never auto-applies' });
   });
 

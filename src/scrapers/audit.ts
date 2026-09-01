@@ -84,7 +84,12 @@ export function detectAlerts(runs: ScrapeRun[], now: Date): AuditAlert[] {
     }
     for (const w of r.warnings ?? []) {
       if (w.toLowerCase().includes('circuit breaker')) {
-        alerts.push({ cinemaId: r.cinemaId, kind: 'circuit-breaker', detail: w, runId: r.id });
+        alerts.push({
+          cinemaId: r.cinemaId,
+          kind: 'circuit-breaker',
+          detail: w,
+          runId: r.id,
+        });
       }
     }
   }

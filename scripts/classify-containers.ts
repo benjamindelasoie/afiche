@@ -37,7 +37,12 @@ async function main() {
   await db
     .update(films)
     .set({ skipTmdb: true })
-    .where(inArray(films.id, containers.map((f) => f.id)));
+    .where(
+      inArray(
+        films.id,
+        containers.map((f) => f.id),
+      ),
+    );
   console.log(`\nMarked ${containers.length} film(s) skip_tmdb.`);
 }
 

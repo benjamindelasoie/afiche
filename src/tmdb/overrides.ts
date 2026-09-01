@@ -78,7 +78,12 @@ export async function upsertOverride(entry: {
   if (existing.length > 0) {
     await db
       .update(tmdbOverrides)
-      .set({ tmdbId: row.tmdbId, note: row.note, source: row.source, confidence: row.confidence })
+      .set({
+        tmdbId: row.tmdbId,
+        note: row.note,
+        source: row.source,
+        confidence: row.confidence,
+      })
       .where(eq(tmdbOverrides.id, existing[0].id));
   } else {
     await db.insert(tmdbOverrides).values(row);
