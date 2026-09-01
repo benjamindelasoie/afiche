@@ -1,17 +1,9 @@
 /**
- * Manual + machine overrides — maps (scraped_title, year?) to a TMDB ID.
+ * Overrides — maps (scraped_title, year?) to a TMDB ID, checked before search.
  *
- * Two layers, unioned:
- *   1. tmdb-overrides.json (project root) — the HUMAN-curated seed. Committed
- *      to git, reviewable in a diff. Add an entry here for a hand-verified
- *      match. This layer WINS on key conflict — a human correction always
- *      beats a machine one.
- *   2. the `tmdb_overrides` DB table — the MACHINE-written layer. The
- *      self-healing agent (Actor 1) inserts here via `upsertOverride` so an
- *      auto-applied match survives a rescrape (`reset-programming` preserves
- *      the table). See the self-healing design doc.
- *
- * The ingest pipeline checks overrides FIRST, before hitting the search API.
+ * Two layers, unioned: the git-committed tmdb-overrides.json (human seed) and
+ * the tmdb_overrides DB table (machine-written by the self-healing agent). The
+ * JSON file wins on conflict, so a hand correction always beats a machine one.
  */
 
 import { readFile } from 'node:fs/promises';
@@ -50,11 +42,8 @@ export async function findOverride(
 }
 
 /**
- * Insert or update a machine override in the `tmdb_overrides` table, then
- * invalidate the in-process cache so the next `findOverride` sees it.
- *
- * Keyed on (scraped_title, year) — matching the same (title, year?) pair
- * `findOverride` looks up. A null `year` is the year-agnostic slot.
+ * Insert or update a machine override, keyed on (scraped_title, year), then
+ * invalidate the cache. A null year is the year-agnostic slot.
  */
 export async function upsertOverride(entry: {
   scrapedTitle: string;
@@ -73,10 +62,8 @@ export async function upsertOverride(entry: {
     source: entry.source ?? 'manual',
     confidence: entry.confidence ?? null,
   };
-  // SQLite treats NULLs as distinct in a unique index, so onConflict on
-  // (scraped_title, year) won't fire for the year-agnostic (NULL) slot.
-  // Do an explicit update-then-insert against the same key to stay
-  // idempotent for both the year-specific and the year-agnostic case.
+  // SQLite treats NULLs as distinct in a unique index, so onConflictDoUpdate
+  // won't fire for the null-year slot. Check-then-write keeps both slots idempotent.
   const existing = await db
     .select({ id: tmdbOverrides.id })
     .from(tmdbOverrides)
@@ -102,8 +89,7 @@ export async function upsertOverride(entry: {
 async function loadOverrides(): Promise<Map<string, number>> {
   const map = new Map<string, number>();
 
-  // Layer 2 (machine): the DB table. Loaded first so the JSON seed can
-  // overlay and win on any key conflict.
+  // DB table first, so the JSON seed can overlay and win on conflict.
   try {
     const rows = await db
       .select({
@@ -116,25 +102,21 @@ async function loadOverrides(): Promise<Map<string, number>> {
       map.set(makeKey(r.scrapedTitle, r.year ?? undefined), r.tmdbId);
     }
   } catch {
-    // Table missing (pre-migration) or DB unavailable → fall back to the
-    // JSON seed alone. Never fatal: a broken override table must not stop
-    // enrichment.
+    // Table missing or DB unavailable — fall back to the JSON seed alone.
   }
 
-  // Layer 1 (human): tmdb-overrides.json. Overlaid last → wins on conflict.
+  // JSON seed, overlaid last → wins on conflict.
   try {
-    // Project root is two levels up from src/tmdb/
     const here = dirname(fileURLToPath(import.meta.url));
     const path = resolve(here, '..', '..', 'tmdb-overrides.json');
-    const raw = await readFile(path, 'utf8');
-    const parsed = JSON.parse(raw) as OverridesFile;
+    const parsed = JSON.parse(await readFile(path, 'utf8')) as OverridesFile;
     for (const entry of parsed.overrides ?? []) {
       if (entry.scrapedTitle && entry.tmdbId) {
         map.set(makeKey(entry.scrapedTitle, entry.year), entry.tmdbId);
       }
     }
   } catch {
-    // File missing or malformed → DB-only overrides, not a fatal error.
+    // File missing or malformed → DB-only overrides.
   }
 
   return map;

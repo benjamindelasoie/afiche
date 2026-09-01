@@ -1,10 +1,5 @@
-/**
- * Pre-write circuit breaker for replaceFutureScreenings.
- *
- * The delete+insert is destructive; an empty fetch from a broken scraper must
- * NOT wipe a cinema's live future schedule. These tests exercise the breaker
- * against a real in-memory DB.
- */
+// Pre-write circuit breaker for replaceFutureScreenings — an empty fetch must
+// not wipe a cinema's live schedule.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { and, count, eq, gt } from 'drizzle-orm';

@@ -34,10 +34,8 @@ async function resetProgramming() {
 
   // Order matters for FK constraints: screenings reference both films and
   // scrape_runs, so wipe them first. Cinemas + providers are untouched.
-  //
-  // tmdb_overrides is INTENTIONALLY preserved (like cinemas/providers): it is
-  // the durable store the self-healing agent writes auto-applied matches to,
-  // so a rescrape must NOT lose them. Do NOT add db.delete(tmdbOverrides) here.
+  // tmdb_overrides is intentionally preserved too — do NOT delete it here, it
+  // is the self-healing agent's durable store and a rescrape must not lose it.
   await db.delete(screenings);
   await db.delete(films);
   await db.delete(scrapeRuns);

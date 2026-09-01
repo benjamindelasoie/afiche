@@ -1,19 +1,9 @@
-/**
- * Override layer — unions the human-curated tmdb-overrides.json seed with the
- * machine-written tmdb_overrides DB table, JSON winning on conflict.
- *
- * Uses a real in-memory libSQL DB (migrations applied) so the table read/write
- * paths are exercised for real, not mocked.
- */
-
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { makeInMemoryDb, type TestDb } from '../../test/helpers/in-memory-db';
 
 let testDb: TestDb;
 
-// Replace @/db so overrides.ts talks to the in-memory test DB. Spreading the
-// real schema keeps `tmdbOverrides` (and every other table) intact; only `db`
-// is swapped. Same pattern as ingest.test.ts.
+// Swap @/db for the in-memory test DB; keep the real schema exports.
 vi.mock('@/db', async () => {
   const schema = await vi.importActual<typeof import('@/db/schema')>('@/db/schema');
   return {
@@ -68,8 +58,7 @@ describe('tmdb overrides — DB table layer', () => {
 
 describe('tmdb overrides — union precedence', () => {
   it('lets the human JSON seed win over a conflicting DB row', async () => {
-    // "Una historia sencilla" is a real seed entry (tmdbId 404) in
-    // tmdb-overrides.json. A conflicting machine row must NOT override it.
+    // "Una historia sencilla" → 404 is a real seed entry in tmdb-overrides.json.
     await upsertOverride({
       scrapedTitle: 'Una historia sencilla',
       year: null,

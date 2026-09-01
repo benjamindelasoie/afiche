@@ -52,9 +52,6 @@ describe('stripSearchNoise', () => {
   });
 
   it('strips a leading festival/cycle prefix joined by a colon', () => {
-    // Venues prefix every film in a programme with the cycle name; TMDB has
-    // the film but not the prefixed form. Measured on prod 2026-09-01
-    // (Centro Cultural Borges FESTIVAL ESCENARIO, Cine York CONVOCATORIA).
     expect(stripSearchNoise('FESTIVAL ESCENARIO: WE ARE THE SHAGS')).toBe(
       'WE ARE THE SHAGS',
     );
@@ -65,8 +62,6 @@ describe('stripSearchNoise', () => {
   });
 
   it('does NOT strip a colon that is part of a real title', () => {
-    // The prefix must OPEN with a known cycle keyword; a normal title that
-    // merely contains a colon is left untouched so its search stays intact.
     expect(stripSearchNoise('Kill Bill: Volume 1')).toBe('Kill Bill: Volume 1');
     expect(stripSearchNoise('Blade Runner 2049')).toBe('Blade Runner 2049');
   });

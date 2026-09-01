@@ -190,21 +190,10 @@ const FESTIVAL_SUFFIX_RE =
   /\s*[-–—]\s*(?:\d+\s*[°ºªo]\s*)?[A-ZÁÉÍÓÚÜÑ][A-ZÁÉÍÓÚÜÑ0-9.°º]*(?:\s+[A-ZÁÉÍÓÚÜÑ0-9.°º]+){0,4}\s*$/u;
 
 /**
- * Leading festival / cycle label, joined to the real title by a colon — e.g.
- * "FESTIVAL ESCENARIO: WE ARE THE SHAGS" → "WE ARE THE SHAGS",
- * "CONVOCATORIA DE CORTOS: PROGRAMA I" → "PROGRAMA I". Venues prefix every
- * film in a programme with the cycle name; TMDB has the film but not the
- * prefixed form, so search returns zero candidates. (The SUFFIX form is
- * handled by FESTIVAL_SUFFIX_RE; this is the mirror for the prefix form,
- * measured on prod 2026-09-01: the FESTIVAL ESCENARIO / CONVOCATORIA rows.)
- *
- * Conservative in TWO ways: it fires only when the string OPENS with a known
- * cycle keyword (FESTIVAL, CONVOCATORIA, CICLO, MUESTRA, RETROSPECTIVA,
- * COMPETENCIA, SEMANA, PROGRAMA, CORTOS/CORTOMETRAJES), and it consumes only
- * up to the FIRST colon ([^:] cannot cross one). A normal title that merely
- * contains a colon ("Kill Bill: Volume 1") is untouched because it does not
- * open with a cycle keyword. Search-only, so a false strip only degrades a
- * query — it never changes the stored/displayed title (ADR-0002).
+ * Leading festival/cycle prefix, the mirror of FESTIVAL_SUFFIX_RE. Fires only
+ * when the title opens with a cycle keyword and consumes up to the first colon,
+ * so "FESTIVAL ESCENARIO: WE ARE THE SHAGS" → "WE ARE THE SHAGS" but a real
+ * "Kill Bill: Volume 1" survives untouched.
  */
 const FESTIVAL_PREFIX_RE =
   /^\s*(?:FESTIVAL|CONVOCATORIA|CICLO|MUESTRA|RETROSPECTIVA|COMPETENCIA|SEMANA|PROGRAMA|CORTOS|CORTOMETRAJES?)\b[^:]{0,40}:\s*/iu;

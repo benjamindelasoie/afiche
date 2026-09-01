@@ -51,10 +51,8 @@ export async function ingest(result: ProviderRunResult): Promise<IngestSummary> 
   const filmIdByKey = await upsertFilms(result.screenings);
   summary.filmsUpserted = filmIdByKey.size;
 
-  // 3. Replace future screenings for this cinema. The pre-write circuit
-  //    breaker refuses to wipe a live schedule when the fetch came back empty
-  //    (a likely scraper break), so a silent site redesign can't publish an
-  //    empty venue. A break is surfaced as a warning for the audit + digest.
+  // 3. Replace future screenings. The pre-write breaker refuses an empty fetch
+  //    (a likely scraper break) so a live schedule isn't wiped; surface it as a warning.
   const replace = await replaceFutureScreenings(
     result.cinemaId,
     now,
