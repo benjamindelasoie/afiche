@@ -353,6 +353,47 @@ export const screenings = sqliteTable(
 );
 
 // ---------------------------------------------------------------------------
+// tmdb_overrides — durable (scraped_title, year?) → TMDB id overrides
+// ---------------------------------------------------------------------------
+//
+// The machine-writable half of the override layer. The self-healing agent
+// (Actor 1) inserts here so an auto-applied match survives a rescrape:
+// `reset-programming` wipes films/screenings/scrape_runs but INTENTIONALLY
+// leaves this table (and cinemas/providers) intact, so a heal is not lost the
+// way a bare `films.tmdb_id` write would be (see the self-healing design doc).
+//
+// It coexists with `tmdb-overrides.json`: the JSON file stays the human-curated
+// seed (git-committed, reviewable), and `findOverride` UNIONS both — the JSON
+// file wins on key conflict, so a hand correction always beats a machine one.
+// This is why no risky "seed prod then flip" migration is needed.
+export const tmdbOverrides = sqliteTable(
+  'tmdb_overrides',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    // Raw scraped title, matched case-insensitively (see findOverride.makeKey).
+    scrapedTitle: text('scraped_title').notNull(),
+    // Nullable: an override may be year-agnostic (matches any year for a title).
+    year: integer('year'),
+    tmdbId: integer('tmdb_id').notNull(),
+    // Human/LLM rationale — mirrors the `note` field in tmdb-overrides.json.
+    note: text('note'),
+    // Who wrote it: 'manual', 'self-heal-judge' (candidate-set LLM judge),
+    // 'self-heal-research' (open-ended research — never auto-applied), 'seed'.
+    source: text('source').notNull().default('manual'),
+    // Judge/agent confidence when machine-written; null for hand-written rows.
+    confidence: real('confidence'),
+    createdAt: integer('created_at', { mode: 'timestamp' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [
+    // Lookup key. NULL year rows are distinct under SQLite's unique-index
+    // semantics; the upsert writer keys on 'any' to keep them unambiguous.
+    uniqueIndex('tmdb_overrides_title_year_idx').on(t.scrapedTitle, t.year),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -431,3 +472,5 @@ export type Provider = typeof providers.$inferSelect;
 export type ProviderInsert = typeof providers.$inferInsert;
 export type ScrapeRun = typeof scrapeRuns.$inferSelect;
 export type ScrapeRunInsert = typeof scrapeRuns.$inferInsert;
+export type TmdbOverride = typeof tmdbOverrides.$inferSelect;
+export type TmdbOverrideInsert = typeof tmdbOverrides.$inferInsert;
