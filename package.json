@@ -38,6 +38,8 @@
     "db:audit-run:prod": "dotenv -e .env.prod -- tsx scripts/audit-run.ts",
     "db:classify-containers": "dotenv -e .env.local -- tsx scripts/classify-containers.ts",
     "db:classify-containers:prod": "dotenv -e .env.prod -- tsx scripts/classify-containers.ts",
+    "db:self-heal": "dotenv -e .env.local -- tsx scripts/self-heal.ts",
+    "db:self-heal:prod": "dotenv -e .env.prod -- tsx scripts/self-heal.ts",
     "db:ia-stats": "dotenv -e .env.local -- tsx scripts/ia-stats.ts",
     "db:ia-stats:prod": "dotenv -e .env.prod -- tsx scripts/ia-stats.ts",
     "scrape:prod": "./scripts/scrape-prod.sh",

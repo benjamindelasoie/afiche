@@ -23,10 +23,22 @@ const {
   classifyProposal,
   applyProposal,
   processProposals,
+  buildHealProposals,
   yearCorroborates,
   directorCorroborates,
   AUTO_APPLY_MIN_CONFIDENCE,
 } = await import('./self-heal');
+
+const HEAL_FILM = {
+  id: 1,
+  scrapedTitle: 'Stuck',
+  scrapedYear: 2018,
+  director: 'Dir',
+  titleOriginal: null,
+};
+// The candidate objects are opaque to buildHealProposals (passed straight to
+// the mocked judge), so a minimal stand-in is enough.
+const ONE_CANDIDATE = [{ id: 100 }] as never;
 
 function makeProposal(over: Partial<HealProposal> = {}): HealProposal {
   return {
@@ -111,6 +123,46 @@ describe('applyProposal — DB-only write', () => {
 
     const [row] = await testDb.select().from(films).where(eq(films.id, f.id));
     expect(row.matchAttemptVersion).toBeNull();
+  });
+});
+
+describe('buildHealProposals', () => {
+  it('routes a film with no candidates to noCandidate', async () => {
+    const res = await buildHealProposals([HEAL_FILM], {
+      searchCandidates: async () => [],
+      judge: async () => {
+        throw new Error('judge should not be called with no candidates');
+      },
+    });
+    expect(res.noCandidate).toEqual([HEAL_FILM]);
+    expect(res.proposals).toEqual([]);
+  });
+
+  it('routes a judge decline (tmdbId null) to declined', async () => {
+    const res = await buildHealProposals([HEAL_FILM], {
+      searchCandidates: async () => ONE_CANDIDATE,
+      judge: async () => ({ tmdbId: null, confidence: 0.2, reasoning: 'none match' }),
+    });
+    expect(res.declined).toEqual([HEAL_FILM]);
+    expect(res.proposals).toEqual([]);
+  });
+
+  it('builds a candidate-judged proposal when the judge picks an id', async () => {
+    const res = await buildHealProposals([HEAL_FILM], {
+      searchCandidates: async () => ONE_CANDIDATE,
+      judge: async () => ({ tmdbId: 100, confidence: 0.93, reasoning: 'clear match' }),
+    });
+    expect(res.proposals).toEqual([
+      {
+        filmId: 1,
+        scrapedTitle: 'Stuck',
+        scrapedYear: 2018,
+        tmdbId: 100,
+        confidence: 0.93,
+        kind: 'candidate-judged',
+        reasoning: 'clear match',
+      },
+    ]);
   });
 });
 

@@ -17,6 +17,8 @@ import { db, films } from '@/db';
 import { YEAR_TOLERANCE } from '@/tmdb/match';
 import { stripDiacritics, jaroWinkler } from '@/tmdb/similarity';
 import { upsertOverride } from '@/tmdb/overrides';
+import type { TmdbMovieSummary } from '@/tmdb/client';
+import type { JudgeInput, JudgeProposal } from '@/tmdb/judge';
 
 /** Above the human-reviewed 0.85 diff bar: unattended publish needs a higher one. */
 export const AUTO_APPLY_MIN_CONFIDENCE = 0.9;
@@ -120,6 +122,73 @@ export interface QueuedProposal {
 export interface ProcessResult {
   applied: HealProposal[];
   queued: QueuedProposal[];
+}
+
+/** A stuck film the harness will try to heal (subset of the audit's StuckFilm). */
+export interface HealFilm {
+  id: number;
+  scrapedTitle: string;
+  scrapedYear: number | null;
+  director: string | null;
+  titleOriginal: string | null;
+}
+
+/** Injected side-effects, so the proposal builder stays unit-testable. */
+export interface HealDeps {
+  searchCandidates: (film: HealFilm) => Promise<TmdbMovieSummary[]>;
+  judge: (input: JudgeInput, candidates: TmdbMovieSummary[]) => Promise<JudgeProposal>;
+}
+
+export interface BuildResult {
+  proposals: HealProposal[];
+  /** Films with no TMDB candidates at all — the web-research / manual tail. */
+  noCandidate: HealFilm[];
+  /** Films the judge actively declined (candidates existed, none matched). */
+  declined: HealFilm[];
+}
+
+/**
+ * Turn stuck films into candidate-judged proposals via the existing SDK judge.
+ * No auto-apply happens here — this only proposes; processProposals gates.
+ */
+export async function buildHealProposals(
+  filmsToHeal: HealFilm[],
+  deps: HealDeps,
+): Promise<BuildResult> {
+  const proposals: HealProposal[] = [];
+  const noCandidate: HealFilm[] = [];
+  const declined: HealFilm[] = [];
+
+  for (const f of filmsToHeal) {
+    const candidates = await deps.searchCandidates(f);
+    if (candidates.length === 0) {
+      noCandidate.push(f);
+      continue;
+    }
+    const judged = await deps.judge(
+      {
+        scrapedTitle: f.scrapedTitle,
+        year: f.scrapedYear ?? undefined,
+        director: f.director ?? undefined,
+        titleOriginal: f.titleOriginal ?? undefined,
+      },
+      candidates,
+    );
+    if (judged.tmdbId === null) {
+      declined.push(f);
+      continue;
+    }
+    proposals.push({
+      filmId: f.id,
+      scrapedTitle: f.scrapedTitle,
+      scrapedYear: f.scrapedYear,
+      tmdbId: judged.tmdbId,
+      confidence: judged.confidence,
+      kind: 'candidate-judged',
+      reasoning: judged.reasoning,
+    });
+  }
+  return { proposals, noCandidate, declined };
 }
 
 /**
