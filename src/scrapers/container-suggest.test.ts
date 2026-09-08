@@ -2,34 +2,47 @@ import { describe, it, expect } from 'vitest';
 import { suggestContainerPatterns, uncoveredTitles } from './container-suggest';
 import { isNonFilmContainer } from '@/tmdb/container';
 
-describe('suggestContainerPatterns', () => {
-  const caught = (t: string) => isNonFilmContainer(t);
+// The suggestion content is tested against FIXED fake predicates, never the
+// live classifier: once Actor 2 lands a fix, the live classifier catches these
+// titles, which would silently empty the suggestion and make the test lie.
+const NONE_CAUGHT = () => false;
 
-  it('suggests FESTIVAL and SORPRESA for the real issue #58 titles', () => {
+describe('suggestContainerPatterns', () => {
+  it('suggests FESTIVAL and SORPRESA for the issue #58 title shapes', () => {
     const s = suggestContainerPatterns(
       ['FESTIVAL INTERNACIONAL DE ANIMACIÓN DE URUGUAY', '¡Película sorpresa!'],
-      caught,
+      NONE_CAUGHT,
     );
     expect(s.map((x) => x.keyword)).toEqual(['FESTIVAL', 'SORPRESA']);
     expect(s[0].regexSource).toBe('\\bFESTIVAL\\b');
   });
 
-  it('skips titles the current classifier already catches', () => {
-    // "CONVOCATORIA DE CORTOS: PROGRAMA I" is already a container.
-    const s = suggestContainerPatterns(['CONVOCATORIA DE CORTOS: PROGRAMA I'], caught);
-    expect(s).toEqual([]);
+  it('skips a title the caught-predicate already covers', () => {
+    const caughtEverything = () => true;
+    expect(suggestContainerPatterns(['FESTIVAL X'], caughtEverything)).toEqual([]);
   });
 
   it('dedups and returns keywords in priority order', () => {
     const s = suggestContainerPatterns(
       ['CORTOS del sur', 'FESTIVAL A', 'FESTIVAL B'],
-      () => false,
+      NONE_CAUGHT,
     );
     expect(s.map((x) => x.keyword)).toEqual(['FESTIVAL', 'CORTOS']);
   });
 
   it('reports titles no keyword covers as uncovered', () => {
-    const titles = ['FESTIVAL A', 'Just A Normal Film'];
-    expect(uncoveredTitles(titles, () => false)).toEqual(['Just A Normal Film']);
+    expect(uncoveredTitles(['FESTIVAL A', 'Just A Normal Film'], NONE_CAUGHT)).toEqual([
+      'Just A Normal Film',
+    ]);
+  });
+
+  it('integration: a title the live classifier already catches yields no suggestion', () => {
+    // Uses stable CONVOCATORIA/CORTOS/PROGRAMA patterns, not the ones Actor 2 adds.
+    expect(
+      suggestContainerPatterns(
+        ['CONVOCATORIA DE CORTOS: PROGRAMA I'],
+        isNonFilmContainer,
+      ),
+    ).toEqual([]);
   });
 });
