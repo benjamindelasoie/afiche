@@ -31,14 +31,14 @@ const {
   TITLE_AUTO_APPLY_MIN_CONFIDENCE,
 } = await import('./self-heal');
 
-/** An exact, unique, well-established title match — the "unambiguous" case. */
+/** An exact, dominant, well-established title match — the "unambiguous" case. */
 const TITLE_MATCH = {
   directors: [],
   year: null,
   title: 'Terminator 2: el juicio final',
   originalTitle: 'Terminator 2: Judgment Day',
   voteCount: 12000,
-  titleUniqueInSet: true,
+  titleDominant: true,
 };
 
 const HEAL_FILM = {
@@ -124,13 +124,13 @@ describe('classifyProposal — safety invariants', () => {
     expect(d.action).toBe('queue');
   });
 
-  it('queues an exact-title match that is NOT unique in the candidate set', () => {
+  it('queues an exact-title match with a comparable same-title rival (not dominant)', () => {
     const p = makeProposal({
       scrapedTitle: 'TERMINATOR 2 - EL JUICIO FINAL',
       scrapedYear: null,
       confidence: 0.99,
     });
-    const d = classifyProposal(p, null, { ...TITLE_MATCH, titleUniqueInSet: false });
+    const d = classifyProposal(p, null, { ...TITLE_MATCH, titleDominant: false });
     expect(d.action).toBe('queue');
   });
 
@@ -172,11 +172,11 @@ describe('titleCorroborates', () => {
     ).toBe(true);
   });
 
-  it('rejects a non-unique, low-vote, or non-matching title', () => {
+  it('rejects a non-dominant, low-vote, or non-matching title', () => {
     expect(
       titleCorroborates('TERMINATOR 2 - EL JUICIO FINAL', {
         ...TITLE_MATCH,
-        titleUniqueInSet: false,
+        titleDominant: false,
       }),
     ).toBe(false);
     expect(
@@ -265,6 +265,38 @@ describe('buildHealProposals', () => {
         reasoning: 'clear match',
       },
     ]);
+  });
+
+  it('marks a same-title match dominant when it dwarfs its rival by votes', async () => {
+    // The Metrópolis case: canonical film (3185 votes) vs a same-title rival.
+    const candidates = [
+      { id: 19, title: 'Metrópolis', original_title: 'Metropolis', vote_count: 3185 },
+      { id: 9606, title: 'Metrópolis', original_title: 'メトロポリス', vote_count: 578 },
+    ] as never;
+    const film = { ...HEAL_FILM, scrapedTitle: 'Metrópolis', scrapedYear: null };
+    const res = await buildHealProposals([film], {
+      searchCandidates: async () => candidates,
+      judge: async () => ({ tmdbId: 19, confidence: 0.95, reasoning: 'Lang 1927' }),
+    });
+    expect(res.summaryFacts.get(film.id)?.titleDominant).toBe(true);
+  });
+
+  it('marks a same-title match NOT dominant when the rival is comparable', async () => {
+    const candidates = [
+      { id: 1, title: 'La invitación', original_title: 'La invitación', vote_count: 300 },
+      {
+        id: 2,
+        title: 'La invitación',
+        original_title: 'The Invitation',
+        vote_count: 200,
+      },
+    ] as never;
+    const film = { ...HEAL_FILM, scrapedTitle: 'La invitación', scrapedYear: null };
+    const res = await buildHealProposals([film], {
+      searchCandidates: async () => candidates,
+      judge: async () => ({ tmdbId: 1, confidence: 0.95, reasoning: 'guess' }),
+    });
+    expect(res.summaryFacts.get(film.id)?.titleDominant).toBe(false);
   });
 });
 

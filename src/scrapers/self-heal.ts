@@ -29,6 +29,13 @@ export const TITLE_AUTO_APPLY_MIN_CONFIDENCE = 0.95;
 /** A candidate below this vote count is long-tail — never an "unambiguous" title match. */
 export const TITLE_MIN_VOTE_COUNT = 100;
 
+/**
+ * How far the chosen exact-title match must outweigh the next same-title film by
+ * vote count to count as "the" film. Several films can share a title (Metropolis
+ * 1927 vs the 2001 anime vs obscure namesakes); the canonical one dominates.
+ */
+export const TITLE_DOMINANCE_RATIO = 4;
+
 export interface HealProposal {
   filmId: number;
   scrapedTitle: string;
@@ -51,8 +58,12 @@ export interface CandidateFacts {
   title?: string;
   originalTitle?: string;
   voteCount?: number;
-  /** The chosen candidate is the ONLY exact title match in the searched set. */
-  titleUniqueInSet?: boolean;
+  /**
+   * The chosen candidate exact-matches the scraped title AND dominates every
+   * other same-title candidate by vote count (ratio >= TITLE_DOMINANCE_RATIO).
+   * True with no rivals; false when a comparable same-title film exists.
+   */
+  titleDominant?: boolean;
 }
 
 export type HealDecision = { action: 'auto-apply' } | { action: 'queue'; reason: string };
@@ -88,15 +99,15 @@ export function directorCorroborates(
 /**
  * Exact-title corroboration: the scraped title IS the evidence. True only when
  * the scraped title normalizes-equal to the candidate's title or original
- * title, that candidate is the UNIQUE exact match in the searched set (no
- * same-name mixup), and the film is one TMDB actually knows (vote floor —
+ * title, that candidate DOMINATES any same-title rival by vote count (no live
+ * same-name ambiguity), and the film is one TMDB actually knows (vote floor —
  * filters obscure long-tail wrong picks).
  */
 export function titleCorroborates(
   scrapedTitle: string,
   candidate: CandidateFacts,
 ): boolean {
-  if (!candidate.titleUniqueInSet) return false;
+  if (!candidate.titleDominant) return false;
   if ((candidate.voteCount ?? 0) < TITLE_MIN_VOTE_COUNT) return false;
   const s = normalizeName(scrapedTitle);
   if (!s) return false;
@@ -111,7 +122,7 @@ export function titleCorroborates(
  * web-researched veto comes first so no confidence value can bypass it. Two
  * auto-apply paths, both candidate-judged only:
  *   - year/director corroboration at the standard bar, or
- *   - exact-unique-title corroboration at a raised bar, provided no year or
+ *   - exact-dominant-title corroboration at a raised bar, provided no year or
  *     director actively disagrees (a title shortcut never overrides a mismatch).
  */
 export function classifyProposal(
@@ -207,7 +218,7 @@ export interface CandidateSummaryFacts {
   title: string;
   originalTitle: string;
   voteCount: number;
-  titleUniqueInSet: boolean;
+  titleDominant: boolean;
 }
 
 export interface BuildResult {
@@ -269,12 +280,20 @@ export async function buildHealProposals(
         normalizeName(c.title ?? '') === sNorm ||
         normalizeName(c.original_title ?? '') === sNorm,
     );
+    const chosenVotes = chosen?.vote_count ?? 0;
+    const chosenIsExact = exact.some((c) => c.id === judged.tmdbId);
+    const rivalVotes = Math.max(
+      0,
+      ...exact.filter((c) => c.id !== judged.tmdbId).map((c) => c.vote_count ?? 0),
+    );
     summaryFacts.set(f.id, {
       title: chosen?.title ?? '',
       originalTitle: chosen?.original_title ?? '',
-      voteCount: chosen?.vote_count ?? 0,
-      titleUniqueInSet:
-        sNorm.length > 0 && exact.length === 1 && exact[0]?.id === judged.tmdbId,
+      voteCount: chosenVotes,
+      titleDominant:
+        sNorm.length > 0 &&
+        chosenIsExact &&
+        chosenVotes >= TITLE_DOMINANCE_RATIO * rivalVotes,
     });
   }
   return { proposals, noCandidate, declined, summaryFacts };
