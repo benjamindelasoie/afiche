@@ -124,18 +124,29 @@ async function main() {
     }));
 
   console.log(`\n— Judging ${stuck.length} active-stuck film(s) (containers excluded)\n`);
-  const { proposals, noCandidate, declined } = await buildHealProposals(stuck, {
-    searchCandidates,
-    judge: judgeCandidates,
-  });
+  const { proposals, noCandidate, declined, summaryFacts } = await buildHealProposals(
+    stuck,
+    {
+      searchCandidates,
+      judge: judgeCandidates,
+    },
+  );
   const filmById = new Map(stuck.map((s) => [s.id, s]));
+
+  /** Merge the movie-detail facts (directors/year) with the search summary facts. */
+  const resolveFacts = async (
+    p: (typeof proposals)[number],
+  ): Promise<CandidateFacts> => ({
+    ...(await candidateFacts(p.tmdbId)),
+    ...summaryFacts.get(p.filmId),
+  });
 
   if (!write) {
     for (const p of proposals) {
       const decision = classifyProposal(
         p,
         filmById.get(p.filmId)?.director ?? null,
-        await candidateFacts(p.tmdbId),
+        await resolveFacts(p),
       );
       const mark = decision.action === 'auto-apply' ? '✓ APPLY ' : '· queue ';
       const why = decision.action === 'queue' ? ` (${decision.reason})` : '';
@@ -152,7 +163,7 @@ async function main() {
 
   const { applied, queued } = await processProposals(proposals, async (p) => ({
     scrapedDirector: filmById.get(p.filmId)?.director ?? null,
-    candidate: await candidateFacts(p.tmdbId),
+    candidate: await resolveFacts(p),
   }));
 
   const digest =

@@ -26,8 +26,20 @@ const {
   buildHealProposals,
   yearCorroborates,
   directorCorroborates,
+  titleCorroborates,
   AUTO_APPLY_MIN_CONFIDENCE,
+  TITLE_AUTO_APPLY_MIN_CONFIDENCE,
 } = await import('./self-heal');
+
+/** An exact, unique, well-established title match — the "unambiguous" case. */
+const TITLE_MATCH = {
+  directors: [],
+  year: null,
+  title: 'Terminator 2: el juicio final',
+  originalTitle: 'Terminator 2: Judgment Day',
+  voteCount: 12000,
+  titleUniqueInSet: true,
+};
 
 const HEAL_FILM = {
   id: 1,
@@ -75,7 +87,10 @@ describe('classifyProposal — safety invariants', () => {
   it('queues a confident candidate-judged proposal with NO corroboration', () => {
     const p = makeProposal({ confidence: 0.99 });
     const d = classifyProposal(p, null, NO_MATCH);
-    expect(d).toEqual({ action: 'queue', reason: 'no director/year corroboration' });
+    expect(d).toEqual({
+      action: 'queue',
+      reason: 'no director/year/title corroboration',
+    });
   });
 
   it('auto-applies a confident candidate-judged proposal with YEAR corroboration', () => {
@@ -87,6 +102,90 @@ describe('classifyProposal — safety invariants', () => {
     const p = makeProposal({ scrapedYear: null });
     const d = classifyProposal(p, 'Radu Jude', { directors: ['Radu Jude'], year: null });
     expect(d).toEqual({ action: 'auto-apply' });
+  });
+
+  it('auto-applies an exact-unique-title match with no year/director, at the raised bar', () => {
+    const p = makeProposal({
+      scrapedTitle: 'TERMINATOR 2 - EL JUICIO FINAL',
+      scrapedYear: null,
+      confidence: 0.99,
+    });
+    const d = classifyProposal(p, null, TITLE_MATCH);
+    expect(d).toEqual({ action: 'auto-apply' });
+  });
+
+  it('queues an exact-title match below the raised title bar', () => {
+    const p = makeProposal({
+      scrapedTitle: 'TERMINATOR 2 - EL JUICIO FINAL',
+      scrapedYear: null,
+      confidence: TITLE_AUTO_APPLY_MIN_CONFIDENCE - 0.02,
+    });
+    const d = classifyProposal(p, null, TITLE_MATCH);
+    expect(d.action).toBe('queue');
+  });
+
+  it('queues an exact-title match that is NOT unique in the candidate set', () => {
+    const p = makeProposal({
+      scrapedTitle: 'TERMINATOR 2 - EL JUICIO FINAL',
+      scrapedYear: null,
+      confidence: 0.99,
+    });
+    const d = classifyProposal(p, null, { ...TITLE_MATCH, titleUniqueInSet: false });
+    expect(d.action).toBe('queue');
+  });
+
+  it('queues an exact-unique-title match on a long-tail film below the vote floor', () => {
+    const p = makeProposal({ scrapedYear: null, confidence: 0.99 });
+    const d = classifyProposal(p, null, {
+      ...TITLE_MATCH,
+      title: 'A Film',
+      originalTitle: 'A Film',
+      voteCount: 3,
+    });
+    expect(d.action).toBe('queue');
+  });
+
+  it('NEVER title-shortcuts past a director that actively disagrees', () => {
+    const p = makeProposal({
+      scrapedTitle: 'A Film',
+      scrapedYear: null,
+      confidence: 0.99,
+    });
+    const d = classifyProposal(p, 'Real Director', {
+      ...TITLE_MATCH,
+      title: 'A Film',
+      originalTitle: 'A Film',
+      directors: ['Someone Else'],
+    });
+    expect(d.action).toBe('queue');
+  });
+});
+
+describe('titleCorroborates', () => {
+  it('accepts an exact, unique, established title match (title or original)', () => {
+    expect(titleCorroborates('TERMINATOR 2 - EL JUICIO FINAL', TITLE_MATCH)).toBe(true);
+    expect(
+      titleCorroborates('terminator 2 judgment day', {
+        ...TITLE_MATCH,
+        title: 'Otra cosa',
+      }),
+    ).toBe(true);
+  });
+
+  it('rejects a non-unique, low-vote, or non-matching title', () => {
+    expect(
+      titleCorroborates('TERMINATOR 2 - EL JUICIO FINAL', {
+        ...TITLE_MATCH,
+        titleUniqueInSet: false,
+      }),
+    ).toBe(false);
+    expect(
+      titleCorroborates('TERMINATOR 2 - EL JUICIO FINAL', {
+        ...TITLE_MATCH,
+        voteCount: 5,
+      }),
+    ).toBe(false);
+    expect(titleCorroborates('Something Else', TITLE_MATCH)).toBe(false);
   });
 });
 

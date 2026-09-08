@@ -23,6 +23,12 @@ import type { JudgeInput, JudgeProposal } from '@/tmdb/judge';
 /** Above the human-reviewed 0.85 diff bar: unattended publish needs a higher one. */
 export const AUTO_APPLY_MIN_CONFIDENCE = 0.9;
 
+/** Title-only path has no year/director to lean on, so it demands more of the judge. */
+export const TITLE_AUTO_APPLY_MIN_CONFIDENCE = 0.95;
+
+/** A candidate below this vote count is long-tail — never an "unambiguous" title match. */
+export const TITLE_MIN_VOTE_COUNT = 100;
+
 export interface HealProposal {
   filmId: number;
   scrapedTitle: string;
@@ -33,10 +39,20 @@ export interface HealProposal {
   reasoning: string;
 }
 
-/** TMDB metadata for the proposed film, used to corroborate the match. */
+/**
+ * TMDB metadata for the proposed film, used to corroborate the match. The
+ * director/year come from the movie detail; the title fields come from the
+ * search summary and are optional so callers that only corroborate on
+ * year/director (and older tests) stay valid.
+ */
 export interface CandidateFacts {
   directors: string[];
   year: number | null;
+  title?: string;
+  originalTitle?: string;
+  voteCount?: number;
+  /** The chosen candidate is the ONLY exact title match in the searched set. */
+  titleUniqueInSet?: boolean;
 }
 
 export type HealDecision = { action: 'auto-apply' } | { action: 'queue'; reason: string };
@@ -70,8 +86,33 @@ export function directorCorroborates(
 }
 
 /**
+ * Exact-title corroboration: the scraped title IS the evidence. True only when
+ * the scraped title normalizes-equal to the candidate's title or original
+ * title, that candidate is the UNIQUE exact match in the searched set (no
+ * same-name mixup), and the film is one TMDB actually knows (vote floor —
+ * filters obscure long-tail wrong picks).
+ */
+export function titleCorroborates(
+  scrapedTitle: string,
+  candidate: CandidateFacts,
+): boolean {
+  if (!candidate.titleUniqueInSet) return false;
+  if ((candidate.voteCount ?? 0) < TITLE_MIN_VOTE_COUNT) return false;
+  const s = normalizeName(scrapedTitle);
+  if (!s) return false;
+  return (
+    normalizeName(candidate.title ?? '') === s ||
+    normalizeName(candidate.originalTitle ?? '') === s
+  );
+}
+
+/**
  * Decide whether a proposal may be auto-applied. Order matters: the
- * web-researched veto comes first so no confidence value can bypass it.
+ * web-researched veto comes first so no confidence value can bypass it. Two
+ * auto-apply paths, both candidate-judged only:
+ *   - year/director corroboration at the standard bar, or
+ *   - exact-unique-title corroboration at a raised bar, provided no year or
+ *     director actively disagrees (a title shortcut never overrides a mismatch).
  */
 export function classifyProposal(
   p: HealProposal,
@@ -81,19 +122,43 @@ export function classifyProposal(
   if (p.kind !== 'candidate-judged') {
     return { action: 'queue', reason: 'web-researched: never auto-applies' };
   }
+
+  const yearOk = yearCorroborates(p.scrapedYear, candidate.year);
+  const directorOk = directorCorroborates(scrapedDirector, candidate.directors);
+
+  if (p.confidence >= AUTO_APPLY_MIN_CONFIDENCE && (yearOk || directorOk)) {
+    return { action: 'auto-apply' };
+  }
+
+  // Title path: a scraped year/director that exists but disagrees is a veto.
+  const yearContradicts = p.scrapedYear != null && candidate.year != null && !yearOk;
+  const directorContradicts =
+    scrapedDirector != null && candidate.directors.length > 0 && !directorOk;
+  if (
+    p.confidence >= TITLE_AUTO_APPLY_MIN_CONFIDENCE &&
+    titleCorroborates(p.scrapedTitle, candidate) &&
+    !yearContradicts &&
+    !directorContradicts
+  ) {
+    return { action: 'auto-apply' };
+  }
+
   if (p.confidence < AUTO_APPLY_MIN_CONFIDENCE) {
     return {
       action: 'queue',
       reason: `confidence ${p.confidence.toFixed(2)} < ${AUTO_APPLY_MIN_CONFIDENCE} bar`,
     };
   }
-  const corroborated =
-    yearCorroborates(p.scrapedYear, candidate.year) ||
-    directorCorroborates(scrapedDirector, candidate.directors);
-  if (!corroborated) {
-    return { action: 'queue', reason: 'no director/year corroboration' };
+  if (
+    titleCorroborates(p.scrapedTitle, candidate) &&
+    p.confidence < TITLE_AUTO_APPLY_MIN_CONFIDENCE
+  ) {
+    return {
+      action: 'queue',
+      reason: `title-exact but confidence ${p.confidence.toFixed(2)} < ${TITLE_AUTO_APPLY_MIN_CONFIDENCE}`,
+    };
   }
-  return { action: 'auto-apply' };
+  return { action: 'queue', reason: 'no director/year/title corroboration' };
 }
 
 /**
@@ -137,12 +202,22 @@ export interface HealDeps {
   judge: (input: JudgeInput, candidates: TmdbMovieSummary[]) => Promise<JudgeProposal>;
 }
 
+/** Title/vote facts from the search summary, needed for the title path. */
+export interface CandidateSummaryFacts {
+  title: string;
+  originalTitle: string;
+  voteCount: number;
+  titleUniqueInSet: boolean;
+}
+
 export interface BuildResult {
   proposals: HealProposal[];
   /** Films with no TMDB candidates at all — the web-research / manual tail. */
   noCandidate: HealFilm[];
   /** Films the judge actively declined (candidates existed, none matched). */
   declined: HealFilm[];
+  /** Per-proposal (keyed by filmId) summary facts, merged into CandidateFacts. */
+  summaryFacts: Map<number, CandidateSummaryFacts>;
 }
 
 /**
@@ -156,6 +231,7 @@ export async function buildHealProposals(
   const proposals: HealProposal[] = [];
   const noCandidate: HealFilm[] = [];
   const declined: HealFilm[] = [];
+  const summaryFacts = new Map<number, CandidateSummaryFacts>();
 
   for (const f of filmsToHeal) {
     const candidates = await deps.searchCandidates(f);
@@ -185,8 +261,23 @@ export async function buildHealProposals(
       kind: 'candidate-judged',
       reasoning: judged.reasoning,
     });
+
+    const chosen = candidates.find((c) => c.id === judged.tmdbId);
+    const sNorm = normalizeName(f.scrapedTitle);
+    const exact = candidates.filter(
+      (c) =>
+        normalizeName(c.title ?? '') === sNorm ||
+        normalizeName(c.original_title ?? '') === sNorm,
+    );
+    summaryFacts.set(f.id, {
+      title: chosen?.title ?? '',
+      originalTitle: chosen?.original_title ?? '',
+      voteCount: chosen?.vote_count ?? 0,
+      titleUniqueInSet:
+        sNorm.length > 0 && exact.length === 1 && exact[0]?.id === judged.tmdbId,
+    });
   }
-  return { proposals, noCandidate, declined };
+  return { proposals, noCandidate, declined, summaryFacts };
 }
 
 /**
