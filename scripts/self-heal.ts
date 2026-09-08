@@ -30,6 +30,8 @@ import { searchMovies, getMovie, extractDirectors, hasTmdbToken } from '@/tmdb/c
 import { judgeCandidates } from '@/tmdb/judge';
 import { stripSearchNoise } from '@/tmdb/similarity';
 import { isNonFilmContainer } from '@/tmdb/container';
+import { groupMisses, type Miss } from '@/scrapers/heal-patterns';
+import { openPatternIssues } from './lib/pattern-issues';
 import type { AuditAlert } from '@/scrapers/audit';
 
 /** Same multi-query shaping the judge-unmatched script uses. */
@@ -141,6 +143,15 @@ async function main() {
     ...summaryFacts.get(p.filmId),
   });
 
+  // Layer 2: group the films that STILL missed into fixable-in-code causes.
+  const misses: Miss[] = [...noCandidate, ...declined].map((f) => ({
+    id: f.id,
+    scrapedTitle: f.scrapedTitle,
+    scrapedYear: f.scrapedYear,
+    director: f.director,
+  }));
+  const patternGroups = groupMisses(misses);
+
   if (!write) {
     for (const p of proposals) {
       const decision = classifyProposal(
@@ -156,8 +167,18 @@ async function main() {
     }
     console.log(
       `\n${proposals.length} judged · ${noCandidate.length} no-candidate · ` +
-        `${declined.length} declined\nDry run — nothing written.`,
+        `${declined.length} declined`,
     );
+    if (patternGroups.length > 0) {
+      console.log(`\n— Layer 2: ${patternGroups.length} fixable pattern(s) →`);
+      for (const g of patternGroups) {
+        console.log(`  [${g.cause}] ${g.films.length} films — "${g.title}"`);
+      }
+      const preview = await openPatternIssues(patternGroups, { write: false });
+      for (const c of preview.created) console.log(`  would file: ${c.signature}`);
+      for (const s of preview.skipped) console.log(`  skip ${s.signature}: ${s.reason}`);
+    }
+    console.log('\nDry run — nothing written.');
     return;
   }
 
@@ -165,6 +186,9 @@ async function main() {
     scrapedDirector: filmById.get(p.filmId)?.director ?? null,
     candidate: await resolveFacts(p),
   }));
+
+  // Layer 2 write: open a matcher-pattern issue per new fixable cause.
+  const issues = await openPatternIssues(patternGroups, { write: true });
 
   const digest =
     `afiche self-heal\n` +
@@ -176,6 +200,9 @@ async function main() {
       : '') +
     (noCandidate.length
       ? `\nno-candidate:\n${noCandidate.map((f) => `? ${f.scrapedTitle}`).join('\n')}`
+      : '') +
+    (issues.created.length
+      ? `\nissues:\n${issues.created.map((c) => `🐛 ${c.signature} → ${c.url}`).join('\n')}`
       : '') +
     (brief.alerts.length
       ? `\nalerts:\n${brief.alerts.map((a) => `⚠️ ${a.cinemaId}: ${a.kind}`).join('\n')}`
