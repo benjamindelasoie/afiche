@@ -40,6 +40,8 @@
     "db:classify-containers:prod": "dotenv -e .env.prod -- tsx scripts/classify-containers.ts",
     "db:self-heal": "dotenv -e .env.local -- tsx scripts/self-heal.ts",
     "db:self-heal:prod": "dotenv -e .env.prod -- tsx scripts/self-heal.ts",
+    "actor2:fix": "dotenv -e .env.local -- tsx scripts/actor2-fix.ts",
+    "actor2:fix:prod": "dotenv -e .env.prod -- tsx scripts/actor2-fix.ts",
     "db:ia-stats": "dotenv -e .env.local -- tsx scripts/ia-stats.ts",
     "db:ia-stats:prod": "dotenv -e .env.prod -- tsx scripts/ia-stats.ts",
     "scrape:prod": "./scripts/scrape-prod.sh",
