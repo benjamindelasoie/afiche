@@ -45,7 +45,7 @@ Verify:
 
 ```bash
 turso db shell afiche "SELECT id, name FROM cinemas;"
-# → you should see 7 rows
+# → you should see 12 rows
 ```
 
 > Note: schema migrations also run automatically on every Vercel deploy (`drizzle-kit migrate && next build` is the build command — see `package.json`). The manual `db:migrate:prod` is for first-time setup or running migrations out-of-band.
@@ -97,7 +97,7 @@ Two files, strictly separated. Both are gitignored.
 |---------------------|----------------------------------------------------------------|
 | `DATABASE_URL`      | `file:./local.db` (local SQLite)                               |
 | `TMDB_API_TOKEN`    | your v4 Read Access Token                                      |
-| `ANTHROPIC_API_KEY` | optional — required only for the Cine Lorca provider. Empty = Lorca stays dormant; rest of the scrape continues normally. Get one at https://console.anthropic.com/. Cost is ~$0.01/scrape. |
+| `ANTHROPIC_API_KEY` | optional — required for the Cine Lorca provider and for the self-heal judge (`db:self-heal`). Empty = Lorca stays dormant and self-heal refuses to run; the rest of the scrape continues normally. Get one at https://console.anthropic.com/. Cost is ~$0.01/scrape. |
 
 **`.env.prod`** — Turso + the Vercel deployment. Used by every `:prod`-suffixed npm script (`db:migrate:prod`, `db:studio:prod`, `db:seed-cinemas:prod`) and by `scripts/scrape-prod.sh`.
 
@@ -107,13 +107,13 @@ Two files, strictly separated. Both are gitignored.
 | `DATABASE_AUTH_TOKEN`  | the Turso token from Section 1                                 |
 | `TMDB_API_TOKEN`       | your v4 Read Access Token                                      |
 | `REVALIDATE_SECRET`    | same 32-byte hex as Vercel (must match)                        |
-| `ANTHROPIC_API_KEY`    | optional — see `.env.local` row above. Same value is fine in both files. |
+| `ANTHROPIC_API_KEY`    | optional — see `.env.local` row above. Same value is fine in both files. Required if you want the self-heal loop (Section 4) to run. |
 | `TELEGRAM_BOT_TOKEN`   | optional — for the scheduled-scrape failure alert (`scripts/scrape-cron.sh`). Create a bot via @BotFather → it gives you the token. Empty = no Telegram ping (the local macOS notification still fires). |
 | `TELEGRAM_CHAT_ID`     | optional — your Telegram numeric chat id (message @userinfobot to get it, or read it from `https://api.telegram.org/bot<token>/getUpdates` after you DM your bot once). Needed alongside the token. |
 
 The split exists so you cannot accidentally point `db:studio` or `db:scrape` at prod, and so prod operations (`:prod` suffix) are explicit and self-documenting in `package.json`.
 
-> **Note on the Anthropic key.** Vercel does NOT need this — vision is called from the dev-machine scrape script (`npm run scrape:prod`), not from any runtime route. Add to `.env.local` for local dev scrapes, `.env.prod` for the prod scrape. Vercel env vars stay at the original four.
+> **Note on the Anthropic key.** Vercel does NOT need this — vision and the self-heal judge are called from the dev-machine scrape script (`npm run scrape:prod`) and the cron wrapper, not from any runtime route. Add to `.env.local` for local dev scrapes, `.env.prod` for the prod scrape. Vercel env vars stay at the original four.
 
 `scrape-prod.sh` reads everything from `.env.prod`. The only hardcoded value is the canonical site URL (`https://afiche.ar` — public, so no harm).
 
@@ -125,7 +125,46 @@ The prod scrape has to run from a residential IP (datacenter IPs get 403'd by Cl
 bash scripts/install-scrape-launchd.sh   # LaunchAgent: 09:00 + 18:00 local, catches up on wake
 ```
 
-`scripts/scrape-cron.sh` is the wrapper it runs — it resolves node via nvm (launchd's env is bare), fast-forwards `main` (plus `npm ci` / `db:migrate:prod` when the lockfile or migrations moved) so the box can't drift behind shipped scraper fixes, skips if a scrape already succeeded in the last 8h — deliberately shorter than the 9h gap between the two scheduled runs, or the later one would be dead code — logs to `.scrape-cron.log`, and on failure fires a macOS notification plus (if `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` are set in `.env.prod`) a Telegram message. `launchd` replays a missed run when the Mac wakes from sleep; a full *shutdown's* missed run isn't replayed (boot it and the next run catches up). An always-on box (Mac mini) closes that last gap with no changes. Uninstall: `launchctl bootout gui/$(id -u)/ar.afiche.scrape && rm ~/Library/LaunchAgents/ar.afiche.scrape.plist`.
+`scripts/scrape-cron.sh` is the wrapper it runs — it resolves node via nvm (launchd's env is bare), fast-forwards `main` (plus `npm ci` / `db:migrate:prod` when the lockfile or migrations moved) so the box can't drift behind shipped scraper fixes, skips if a scrape already succeeded in the last 8h — deliberately shorter than the 9h gap between the two scheduled runs, or the later one would be dead code — logs to `.scrape-cron.log`, and on failure fires a macOS notification plus (if `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` are set in `.env.prod`) a Telegram message. After the scrape it chains the self-heal loop and Actor 2 (next subsection), both best-effort — neither can change the scrape's exit code. `launchd` replays a missed run when the Mac wakes from sleep; a full *shutdown's* missed run isn't replayed (boot it and the next run catches up). An always-on box (Mac mini) closes that last gap with no changes. Uninstall: `launchctl bootout gui/$(id -u)/ar.afiche.scrape && rm ~/Library/LaunchAgents/ar.afiche.scrape.plist`.
+
+### The self-heal loop (runs after every scrape)
+
+`scrape-cron.sh` chains two more stages after the scrape, pass *or* fail — a
+failed run is exactly what the audit needs to see:
+
+```bash
+npm run db:self-heal:prod -- --write   # Actor 1: heal the data, file pattern issues
+npm run actor2:fix:prod                # Actor 2: open a fix PR for the first mechanical issue
+```
+
+Both are best-effort and never override the scrape's exit code. What they need:
+
+| Requirement | Why |
+|---|---|
+| `ANTHROPIC_API_KEY` in `.env.prod` | the judge. Unset → self-heal exits with an error and the scrape result still stands. |
+| `TMDB_API_TOKEN` in `.env.prod` | candidate search, same token as the scrape. |
+| `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` | optional — the heal digest (applied / queued counts + the 7-day trend). Unset → skipped silently. |
+| `REVALIDATE_URL` + `REVALIDATE_SECRET` | optional — re-revalidates the site after a heal writes overrides. Unset → skipped. |
+| `gh auth login` (repo scope) on the box | the GitHub issue + PR writes. Without it those calls are a clean no-op, not a failure. |
+
+To see what it would do before letting it write, run `npm run db:self-heal:prod`
+without `--write`: dry run is the default — it judges, prints what it *would*
+apply, and touches nothing.
+
+Each stage has a kill switch — env vars in `.env.prod`, default on, off only on an
+explicit falsy value (`0/false/off/no`) — so you can pause one without editing code
+or the cron:
+
+| Var | Pauses |
+|---|---|
+| `SELF_HEAL_ENABLED` | the whole self-heal run |
+| `SELF_HEAL_APPLY_ENABLED` | auto-applying overrides (judge + queue only) |
+| `LAYER2_ISSUES_ENABLED` | opening matcher-pattern issues |
+| `ACTOR2_ENABLED` | the Actor 2 fix automation |
+
+Actor 2 opens a PR and stops — it never merges, so nothing reaches `main` without
+you reading it. The full design is in
+[`docs/agents/self-heal-loop.md`](docs/agents/self-heal-loop.md).
 
 ### GitHub Actions secrets (optional, for the manual-trigger fallback)
 
@@ -191,7 +230,7 @@ To patch one:
 
 Faster than re-running the whole `scrape:prod` because it skips every provider's slow fetch.
 
-Alternative for one-off cases: add an entry to `tmdb-overrides.json` (mapped on `scraped_title`, applied to every future row that matches). Use the override file when the same title will recur across scrapes; use Studio patching for one-shot rescues of an existing row.
+Alternative for one-off cases: add an entry to `tmdb-overrides.json` (mapped on `scraped_title`, applied to every future row that matches). Use the override file when the same title will recur across scrapes; use Studio patching for one-shot rescues of an existing row. Overrides are read as two unioned layers — this git-committed JSON seed and the `tmdb_overrides` table the self-heal agent writes — with the JSON file winning on a key conflict, so a hand correction always beats a machine one.
 
 ---
 
@@ -200,6 +239,7 @@ Alternative for one-off cases: add an entry to `tmdb-overrides.json` (mapped on 
 - **Vercel → Deployments** for build failures on push
 - **scrape-prod.sh exit status** on the dev machine; warnings column in `scrape_runs` surfaces provider-level issues
 - **Turso → Dashboard** for query / storage usage (free tier is generous)
+- **The heal digest** on Telegram after each scrape — applied vs. queued counts and the 7-day `heal_runs` trend; a growing queue or a spike in errors is the signal to look
 
 If a scrape fails, the script exits non-zero and prints the failing step. Re-run
 it manually once you've fixed the issue.

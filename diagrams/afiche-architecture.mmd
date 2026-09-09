@@ -1,14 +1,14 @@
 graph LR
-  V["10 venue sites<br/>lugones · malba · gaumont<br/>lorca · cosmos · york · …"]
+  V["12 venue sites<br/>lugones · malba · gaumont<br/>lorca · cosmos · york · …"]
 
   subgraph pipeline["Scrape pipeline · scrape-prod.sh (residential IP)"]
     R["run.ts<br/>orchestrator"]
-    P["Provider.fetch() x10<br/>→ ScrapedScreening[]"]
+    P["Provider.fetch() x12<br/>→ ScrapedScreening[]"]
     I["ingest()<br/>upsert films · replace future<br/>screenings · enrich"]
   end
 
   TMDB["TMDB API<br/>match (similarity) + enrich"]
-  D[("Turso / SQLite · Drizzle<br/>cinemas · films · screenings<br/>providers · scrapeRuns")]
+  D[("Turso / SQLite · Drizzle<br/>cinemas · films · screenings<br/>providers · scrapeRuns<br/>tmdbOverrides · healRuns")]
 
   subgraph web["Next.js 16 · RSC on Vercel"]
     Q["queries.ts"]

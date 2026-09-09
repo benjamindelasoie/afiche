@@ -41,21 +41,23 @@ afiche pulls the weekly programming of Buenos Aires' independent and repertory c
 | Cine Gaumont | San Nicolás | indie / repertory (INCAA) | cinegaumont.ar |
 | CineArte Cacodelphia | San Nicolás | indie / repertory | cineartecacodelphia.com.ar (adro.studio JSON API) |
 | Centro Cultural Borges | San Nicolás | indie / cultural center | centroculturalborges.gob.ar |
+| Cineclub Lucero | Palermo | indie / cineclub | eventbrite.com (organizer feed) |
+| Cinta | Palermo | indie / open-air terrace | passline.com (producer page) |
 
 ## Architecture
 
 ```mermaid
 graph LR
-  V["10 venue sites<br/>lugones · malba · gaumont<br/>lorca · cosmos · york · …"]
+  V["12 venue sites<br/>lugones · malba · gaumont<br/>lorca · cosmos · york · …"]
 
   subgraph pipeline["Scrape pipeline · scrape-prod.sh (residential IP)"]
     R["run.ts<br/>orchestrator"]
-    P["Provider.fetch() x10<br/>→ ScrapedScreening[]"]
+    P["Provider.fetch() x12<br/>→ ScrapedScreening[]"]
     I["ingest()<br/>upsert films · replace future<br/>screenings · enrich"]
   end
 
   TMDB["TMDB API<br/>match (similarity) + enrich"]
-  D[("Turso / SQLite · Drizzle<br/>cinemas · films · screenings<br/>providers · scrapeRuns")]
+  D[("Turso / SQLite · Drizzle<br/>cinemas · films · screenings<br/>providers · scrapeRuns<br/>tmdbOverrides · healRuns")]
 
   subgraph web["Next.js 16 · RSC on Vercel"]
     Q["queries.ts"]
@@ -78,13 +80,15 @@ graph LR
   U --> PAGES
 ```
 
-**Getting data in.** The scrape doesn't run in the cloud. `scrape-prod.sh` runs on an always-on machine behind a residential connection, because lumiton.ar and complejoteatral.gob.ar 403 datacenter IPs and a GitHub Actions runner can't reach them. It's scheduled twice daily and pulls `main` before each run, so a shipped scraper fix reaches the pipeline without anyone deploying it by hand. It walks all 10 providers (`src/scrapers/run.ts`) and ingests each through `src/scrapers/ingest.ts` — upsert films → replace that cinema's future screenings → TMDB-enrich. Every provider is pure `() → ScrapedScreening[]`. Three of the ten (Cine York, Munro, Lumiton) share `lumiton-agenda.ts` because one Lumiton agenda page drives all three venues; Cine Lorca has no HTML schedule at all — its week lives on a single poster image, so its provider hashes the image and, on a cache miss, runs a Claude vision call (`temperature: 0`, structured JSON) to read the showtimes.
+**Getting data in.** The scrape doesn't run in the cloud. `scrape-prod.sh` runs on an always-on machine behind a residential connection, because lumiton.ar and complejoteatral.gob.ar 403 datacenter IPs and a GitHub Actions runner can't reach them. It's scheduled twice daily and pulls `main` before each run, so a shipped scraper fix reaches the pipeline without anyone deploying it by hand. It walks all 12 providers (`src/scrapers/run.ts`) and ingests each through `src/scrapers/ingest.ts` — upsert films → replace that cinema's future screenings → TMDB-enrich. Every provider is pure `() → ScrapedScreening[]`. Three of the twelve (Cine York, Munro, Lumiton) share `lumiton-agenda.ts` because one Lumiton agenda page drives all three venues; Cine Lorca has no HTML schedule at all — its week lives on a single poster image, so its provider hashes the image and, on a cache miss, runs a Claude vision call (`temperature: 0`, structured JSON) to read the showtimes. Cinta has no site at all — its listing lives on a Passline producer page behind a fingerprint-based Cloudflare challenge, so its provider tries the origin first and falls back to a reader proxy that returns the same post-challenge markup, recording the fallback as a run warning.
 
-**Staying correct.** Ingest is idempotent (unique index on `(scraped_title, scraped_year)`) and self-healing. A film that shows up with title drift across cinemas — different localizations, year-null collisions — collapses to one row keyed on `tmdb_id` after enrichment, and a title-ambiguity guard plus director verification stop silent wrong-matches on common titles (the *Nosferatu* class: Eggers 2024 vs Herzog 1979 vs Murnau 1922 all share a Spanish title). A failed match parks the row and stamps it with the matcher version that failed it (`MATCHER_VERSION`, `src/tmdb/match.ts`), so improving the matcher re-opens exactly the rows it was written to rescue — without that, a better matcher never gets a second look at its own backlog, because nothing about those rows changed. Each run records one `scrape_runs` row per `(cinema, run)` with status + counts; when it finishes, `scrape-prod.sh` POSTs `/api/revalidate` so the deployed pages pick up the fresh data. A daily Vercel cron reads the newest successful run and warns if the cartelera has gone stale — the one failure a scraper can't report about itself is the run that never happened.
+**Staying correct.** Ingest is idempotent (unique index on `(scraped_title, scraped_year)`) and self-healing. A film that shows up with title drift across cinemas — different localizations, year-null collisions — collapses to one row keyed on `tmdb_id` after enrichment, and a title-ambiguity guard plus director verification stop silent wrong-matches on common titles (the *Nosferatu* class: Eggers 2024 vs Herzog 1979 vs Murnau 1922 all share a Spanish title). A failed match parks the row and stamps it with the matcher version that failed it (`MATCHER_VERSION`, `src/tmdb/match.ts`), so improving the matcher re-opens exactly the rows it was written to rescue — without that, a better matcher never gets a second look at its own backlog, because nothing about those rows changed. A pre-write circuit breaker guards the other direction: `ingest` replaces a venue's future schedule wholesale, so a provider that silently breaks against a site redesign would publish an empty venue — when the fetch comes back empty and future rows exist, the replace is refused, the last good schedule stands, and the run reports `circuitBroke`. Each run records one `scrape_runs` row per `(cinema, run)` with status + counts; when it finishes, `scrape-prod.sh` POSTs `/api/revalidate` so the deployed pages pick up the fresh data. A daily Vercel cron reads the newest successful run and warns if the cartelera has gone stale — the one failure a scraper can't report about itself is the run that never happened.
+
+**Repairing itself.** Deterministic matching still misses, and until now the gap between a miss and a fix was however long it took someone to notice. A three-actor loop runs after every scrape, pass or fail (`scripts/self-heal.ts`, `scripts/actor2-fix.ts`). Actor 1 audits the run, judges the films still stuck against the candidates the matcher already fetched, and writes only what it can corroborate — a candidate-judged proposal at confidence ≥ 0.90 with the year or director agreeing, or at ≥ 0.95 when the title is an exact, dominant match nothing contradicts; a web-researched id never auto-applies. Applied matches land in `tmdb_overrides` (durable across `reset-programming`, and always outranked by the hand-curated `tmdb-overrides.json` seed) and re-open the film for the next enrich; everything else queues for a human. Misses that no single override fixes are grouped by cause and filed as `matcher-pattern` issues, and Actor 2 picks up the mechanical ones, prepares the fix in a throwaway worktree, and opens a PR — it never merges. Each write is recorded in `heal_runs` for a 7-day trend in the digest, and `SELF_HEAL_ENABLED`, `SELF_HEAL_APPLY_ENABLED`, `LAYER2_ISSUES_ENABLED` and `ACTOR2_ENABLED` pause any stage without a code change. Full walkthrough in [docs/agents/self-heal-loop.md](docs/agents/self-heal-loop.md).
 
 **Getting data out.** Every serving route — and the MCP server — reads the same DB through `src/db/queries.ts`. The homepage (`src/app/page.tsx`) calls `getWindowScreeningsByFilm` (one row per film, bounded by `?ventana=`), `getFeaturedFilms` (the *Destacados* band), and `getJsonLdScreenings` (structured-data feed). `/cartelera` (`src/app/cartelera/page.tsx`) calls `getTwoWeeksScreenings` (the 14-day window), `getUpcomingScreenings` (*Próximamente*), and `getLastScreeningPerFilm` (the ÚLTIMA FUNCIÓN anchor). `/pelicula/[slug]` calls `getUpcomingScreeningsByFilm` for the cross-venue list. The window registry (`src/lib/windows.ts`) is the single source for the nav, the `?ventana=` validation, and the bounded query.
 
-**The cartelera as data.** `/api/mcp` exposes the same live cartelera over the [Model Context Protocol](https://modelcontextprotocol.io) (Streamable HTTP, stateless), so any MCP client can answer "¿qué dan esta noche en Palermo?" against real showtimes. Four read-only tools — `search_films`, `whats_on`, `get_film`, `list_cinemas` — wrap the query layer in `src/mcp/`, return validated `structuredContent`, and emit Buenos Aires local times. Every showtime it advertises is filtered to still-catchable, so it never sends anyone to a screening that already started. No credentials; it's the same public data the site renders.
+**The cartelera as data.** `/api/mcp` exposes the same live cartelera over the [Model Context Protocol](https://modelcontextprotocol.io) (Streamable HTTP, stateless), so any MCP client can answer "¿qué dan esta noche en Palermo?" against real showtimes. Four read-only tools — `search_films`, `whats_on`, `get_film`, `list_cinemas` — wrap the query layer in `src/mcp/`, return validated `structuredContent`, and emit Buenos Aires local times. Every showtime it advertises is filtered to still-catchable, so it never sends anyone to a screening that already started. No credentials; it's the same public data the site renders. The reading pages meet agents halfway too: `/`, `/cartelera` and `/acerca` answer an `Accept: text/markdown` request with markdown at the same public URL, and [`/llms.txt`](https://afiche.ar/llms.txt) describes the site and how to call the MCP tools.
 
 ```bash
 claude mcp add --transport http afiche https://afiche.ar/api/mcp
@@ -98,7 +102,7 @@ claude mcp add --transport http afiche https://afiche.ar/api/mcp
 - **Drizzle ORM + libSQL** — SQLite locally, Turso in production
 - **cheerio** for HTML scraping; **Claude vision** (`claude-sonnet-4-6`) for Cine Lorca's image-only poster, image-hash cached
 - **TMDB API** for film metadata, posters, and editorial stills
-- **Vitest** — ~735 tests across 40 files (scraper providers, ingest, TMDB enrichment, date/window helpers, layout invariants); fixtures are real HTML captures, so tests never hit the network or burn vision credits
+- **Vitest** — ~1,020 tests across 58 files (scraper providers, ingest, TMDB enrichment + the self-heal safety gate, date/window helpers, layout invariants); fixtures are real HTML captures, so tests never hit the network or burn vision credits
 - **MCP** — `mcp-handler` + `@modelcontextprotocol/sdk` serving the read-only cartelera tools at `/api/mcp`
 - **Vercel** for hosting, ISR revalidation, and the daily freshness cron
 

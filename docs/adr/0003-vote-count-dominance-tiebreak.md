@@ -1,6 +1,10 @@
 # 0003 — Rejected: vote-count dominance tiebreak for no-year title ambiguity
 
 **Status: rejected** (measured 2026-07-12, before implementation).
+**Superseded in part by [ADR-0004](0004-vote-dominance-adopted-narrowly.md)**:
+the rule was revisited on 2026-09-08 and adopted in a narrower form (matcher v8)
+— only in the branch where no director hint exists, and behind a margin and a
+vote-count floor this ADR did not test.
 
 We considered adding a vote-count "dominance" tiebreak to `pickBestMatch`'s
 no-year ambiguity guard (`src/tmdb/match.ts`): when two TMDB candidates tie on
