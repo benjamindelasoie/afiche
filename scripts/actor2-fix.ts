@@ -21,8 +21,6 @@
  */
 
 import 'dotenv/config';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { readFile, writeFile, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -31,28 +29,35 @@ import { db, films } from '@/db';
 import { isNonFilmContainer } from '@/tmdb/container';
 import { stripSearchNoise } from '@/tmdb/similarity';
 import { suggestContainerPatterns, uncoveredTitles } from '@/scrapers/container-suggest';
+import { readSignature } from '@/scrapers/issue-protocol';
 import { flagEnabled } from '@/lib/flags';
+import { gh, git, run } from './lib/proc';
 
-const exec = promisify(execFile);
 const SIGNATURE = 'container-or-placeholder';
 const CONTAINER_FILE = 'src/tmdb/container.ts';
 const CONTAINER_TEST = 'src/tmdb/container.test.ts';
-
-async function gh(args: string[], cwd?: string): Promise<string> {
-  const { stdout } = await exec('gh', args, { maxBuffer: 10 * 1024 * 1024, cwd });
-  return stdout.trim();
-}
-
-async function git(args: string[], cwd?: string): Promise<string> {
-  const { stdout } = await exec('git', args, { maxBuffer: 10 * 1024 * 1024, cwd });
-  return stdout.trim();
-}
 
 interface Issue {
   number: number;
   title: string;
   body: string;
   labels: string[];
+}
+
+interface RawIssue {
+  number: number;
+  title: string;
+  body: string;
+  labels: { name: string }[];
+}
+
+function toIssue(j: RawIssue): Issue {
+  return {
+    number: j.number,
+    title: j.title,
+    body: j.body,
+    labels: j.labels.map((l) => l.name),
+  };
 }
 
 async function pickIssue(explicit: number | null): Promise<Issue | null> {
@@ -64,13 +69,7 @@ async function pickIssue(explicit: number | null): Promise<Issue | null> {
       '--json',
       'number,title,body,labels',
     ]);
-    const j = JSON.parse(raw);
-    return {
-      number: j.number,
-      title: j.title,
-      body: j.body,
-      labels: j.labels.map((l: { name: string }) => l.name),
-    };
+    return toIssue(JSON.parse(raw) as RawIssue);
   }
   const raw = await gh([
     'issue',
@@ -86,20 +85,8 @@ async function pickIssue(explicit: number | null): Promise<Issue | null> {
     '--json',
     'number,title,body,labels',
   ]);
-  const arr = JSON.parse(raw) as {
-    number: number;
-    title: string;
-    body: string;
-    labels: { name: string }[];
-  }[];
-  if (arr.length === 0) return null;
-  const j = arr[0];
-  return {
-    number: j.number,
-    title: j.title,
-    body: j.body,
-    labels: j.labels.map((l) => l.name),
-  };
+  const arr = JSON.parse(raw) as RawIssue[];
+  return arr.length > 0 ? toIssue(arr[0]) : null;
 }
 
 /** The most recent PR for a branch, in any state, or null if none exists. */
@@ -156,7 +143,8 @@ async function safetyCheck(
     .map((f) => f.scrapedTitle)
     .filter((t) => {
       if (!t || isNonFilmContainer(t)) return false; // already skipped anyway
-      return newPatterns.some((re) => re.test(stripSearchNoise(t)));
+      const stripped = stripSearchNoise(t);
+      return newPatterns.some((re) => re.test(stripped));
     });
   return { ok: casualties.length === 0, casualties };
 }
@@ -204,7 +192,7 @@ async function main() {
   }
   console.log(`Actor 2 · issue #${issue.number} — ${issue.title}`);
 
-  if (!issue.body.includes(`afiche-pattern-sig: ${SIGNATURE}`)) {
+  if (readSignature(issue.body) !== SIGNATURE) {
     console.log(`Issue #${issue.number} is not a ${SIGNATURE} issue — left for a human.`);
     return;
   }
@@ -256,7 +244,7 @@ async function main() {
   // pull). node_modules is symlinked from the main repo so the suite can run.
   const repoRoot = await git(['rev-parse', '--show-toplevel']);
   const wt = join(tmpdir(), `afiche-actor2-${issue.number}-${Date.now()}`);
-  await exec('git', ['fetch', '--quiet', 'origin', 'main'], { cwd: repoRoot });
+  await git(['fetch', '--quiet', 'origin', 'main'], repoRoot);
   await git(['worktree', 'add', '--force', '-B', branch, wt, 'origin/main'], repoRoot);
 
   try {
@@ -284,8 +272,8 @@ async function main() {
     );
 
     console.log('Running the full test suite…');
-    await exec('npx', ['vitest', 'run'], { maxBuffer: 40 * 1024 * 1024, cwd: wt });
-    await exec('npx', ['prettier', '--write', CONTAINER_FILE, CONTAINER_TEST], {
+    await run('npx', ['vitest', 'run'], { cwd: wt, maxBuffer: 40 * 1024 * 1024 });
+    await run('npx', ['prettier', '--write', CONTAINER_FILE, CONTAINER_TEST], {
       cwd: wt,
     });
     console.log('Suite green.');
@@ -331,9 +319,7 @@ async function main() {
     console.log(`\nPR opened for your review + merge: ${prUrl}`);
     console.log('Actor 2 will not touch this issue again while the PR exists.');
   } finally {
-    await exec('git', ['worktree', 'remove', '--force', wt], { cwd: repoRoot }).catch(
-      () => {},
-    );
+    await git(['worktree', 'remove', '--force', wt], repoRoot).catch(() => {});
   }
 }
 

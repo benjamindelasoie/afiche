@@ -14,6 +14,7 @@
  */
 
 import { stripSearchNoise } from '@/tmdb/similarity';
+import { signatureComment } from '@/scrapers/issue-protocol';
 
 /** A film that Layer 1 could not match (no candidate, or the judge declined). */
 export interface Miss {
@@ -86,7 +87,6 @@ export function classifyMiss(m: Miss): MissCauseKey {
 }
 
 interface CauseTemplate {
-  signature: string;
   labels: string[];
   title: (n: number) => string;
   intro: string;
@@ -95,7 +95,6 @@ interface CauseTemplate {
 
 const TEMPLATES: Record<Exclude<MissCauseKey, 'unfixable'>, CauseTemplate> = {
   'container-or-placeholder': {
-    signature: 'container-or-placeholder',
     labels: ['matcher-pattern', 'ready-for-agent'],
     title: (n) => `matcher: ${n} container/placeholder titles not classified to skipTmdb`,
     intro:
@@ -106,7 +105,6 @@ const TEMPLATES: Record<Exclude<MissCauseKey, 'unfixable'>, CauseTemplate> = {
     fix: 'Extend `CONTAINER_PATTERNS` in `src/tmdb/container.ts` to cover these shapes, then re-run `npm run db:classify-containers`.',
   },
   'localized-title-miss': {
-    signature: 'localized-title-miss',
     labels: ['matcher-pattern', 'ready-for-human'],
     title: (n) => `matcher: ${n} films with a known director return no TMDB candidate`,
     intro:
@@ -147,15 +145,15 @@ export function groupMisses(misses: Miss[]): PatternGroup[] {
     if (films.length < PATTERN_MIN_FILMS) continue;
     const t = TEMPLATES[cause];
     const body =
-      `<!-- afiche-pattern-sig: ${t.signature} -->\n\n` +
+      `${signatureComment(cause)}\n\n` +
       `**Pattern:** ${t.intro}\n\n` +
       `**Suspected fix:** ${t.fix}\n\n` +
       `**Example films (id — title):**\n${filmList(films)}\n\n` +
       `**Reproduce:** these show as no-candidate / declined in \`npm run db:self-heal:prod\`.\n\n` +
-      `_Auto-filed by self-heal Layer 2. Dedup key: \`${t.signature}\`._`;
+      `_Auto-filed by self-heal Layer 2. Dedup key: \`${cause}\`._`;
     groups.push({
       cause,
-      signature: t.signature,
+      signature: cause,
       title: t.title(films.length),
       body,
       labels: t.labels,

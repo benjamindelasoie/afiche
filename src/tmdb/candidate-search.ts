@@ -19,7 +19,7 @@ export interface SearchableFilm {
 }
 
 /** The distinct search queries for a film, in priority order. */
-export function candidateQueries(f: SearchableFilm): string[] {
+function candidateQueries(f: SearchableFilm): string[] {
   const queries = [f.scrapedTitle];
   if (f.titleOriginal && f.titleOriginal !== f.scrapedTitle)
     queries.push(f.titleOriginal);
@@ -30,10 +30,15 @@ export function candidateQueries(f: SearchableFilm): string[] {
 
 export async function searchCandidates(f: SearchableFilm): Promise<TmdbMovieSummary[]> {
   const year = f.scrapedYear ?? undefined;
+  // The 2-3 queries are independent — run them together, then dedup by id in
+  // query-priority order (the same order a sequential loop would produce).
+  const perQuery = await Promise.all(
+    candidateQueries(f).map((q) => searchMovies(q, year)),
+  );
   const seen = new Set<number>();
   const out: TmdbMovieSummary[] = [];
-  for (const q of candidateQueries(f)) {
-    for (const r of await searchMovies(q, year)) {
+  for (const results of perQuery) {
+    for (const r of results) {
       if (!seen.has(r.id)) {
         seen.add(r.id);
         out.push(r);

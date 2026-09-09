@@ -137,6 +137,7 @@ export function classifyProposal(
 
   const yearOk = yearCorroborates(p.scrapedYear, candidate.year);
   const directorOk = directorCorroborates(scrapedDirector, candidate.directors);
+  const titleOk = titleCorroborates(p.scrapedTitle, candidate);
 
   if (p.confidence >= AUTO_APPLY_MIN_CONFIDENCE && (yearOk || directorOk)) {
     return { action: 'auto-apply' };
@@ -148,7 +149,7 @@ export function classifyProposal(
     scrapedDirector != null && candidate.directors.length > 0 && !directorOk;
   if (
     p.confidence >= TITLE_AUTO_APPLY_MIN_CONFIDENCE &&
-    titleCorroborates(p.scrapedTitle, candidate) &&
+    titleOk &&
     !yearContradicts &&
     !directorContradicts
   ) {
@@ -161,10 +162,7 @@ export function classifyProposal(
       reason: `confidence ${p.confidence.toFixed(2)} < ${AUTO_APPLY_MIN_CONFIDENCE} bar`,
     };
   }
-  if (
-    titleCorroborates(p.scrapedTitle, candidate) &&
-    p.confidence < TITLE_AUTO_APPLY_MIN_CONFIDENCE
-  ) {
+  if (titleOk && p.confidence < TITLE_AUTO_APPLY_MIN_CONFIDENCE) {
     return {
       action: 'queue',
       reason: `title-exact but confidence ${p.confidence.toFixed(2)} < ${TITLE_AUTO_APPLY_MIN_CONFIDENCE}`,

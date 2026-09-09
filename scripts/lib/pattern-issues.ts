@@ -10,11 +10,9 @@
  * breaking the scrape/heal that called it.
  */
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import type { PatternGroup } from '@/scrapers/heal-patterns';
-
-const exec = promisify(execFile);
+import { readSignature } from '@/scrapers/issue-protocol';
+import { gh } from './proc';
 
 /** Labels the loop uses that may not exist on a fresh repo. */
 const ENSURE_LABELS: { name: string; color: string; description: string }[] = [
@@ -40,16 +38,13 @@ export interface OpenResult {
   skipped: { signature: string; reason: string }[];
 }
 
-async function gh(args: string[]): Promise<string> {
-  const { stdout } = await exec('gh', args, { maxBuffer: 10 * 1024 * 1024 });
-  return stdout.trim();
-}
-
 async function ensureLabels(): Promise<void> {
-  for (const l of ENSURE_LABELS) {
-    try {
-      // --force updates the label if it already exists; create is idempotent.
-      await gh([
+  // The three creates are independent and idempotent (--force upserts) — fire
+  // them together. A repo without label-write permission still works if the
+  // labels exist; if they do not, the issue create below surfaces the error.
+  await Promise.all(
+    ENSURE_LABELS.map((l) =>
+      gh([
         'label',
         'create',
         l.name,
@@ -58,12 +53,9 @@ async function ensureLabels(): Promise<void> {
         '--description',
         l.description,
         '--force',
-      ]);
-    } catch {
-      // A repo without label-write permission still works if the labels exist;
-      // if they do not, the create below will surface the real error.
-    }
-  }
+      ]).catch(() => {}),
+    ),
+  );
 }
 
 /** A just-fixed cause is on cooldown: don't re-file while the fix propagates. */
@@ -97,12 +89,12 @@ async function takenSignatures(now: Date): Promise<Set<string>> {
       closedAt: string | null;
     }[];
     for (const i of issues) {
-      const m = i.body?.match(/afiche-pattern-sig:\s*([a-z0-9-]+)/i);
-      if (!m) continue;
+      const sig = readSignature(i.body);
+      if (!sig) continue;
       const isOpen = i.state?.toUpperCase() === 'OPEN';
       const recentlyClosed =
         i.closedAt != null && new Date(i.closedAt).getTime() >= cooldownStart;
-      if (isOpen || recentlyClosed) sigs.add(m[1]);
+      if (isOpen || recentlyClosed) sigs.add(sig);
     }
   } catch {
     // Cannot list (auth/network) — treat as none taken; create may still fail

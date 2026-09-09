@@ -25,8 +25,8 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { db, films, screenings, cinemas } from '@/db';
-import { searchMovies, hasTmdbToken, type TmdbMovieSummary } from '@/tmdb/client';
-import { stripSearchNoise } from '@/tmdb/similarity';
+import { hasTmdbToken } from '@/tmdb/client';
+import { searchCandidates } from '@/tmdb/candidate-search';
 import {
   judgeCandidates,
   JUDGE_AUTO_ACCEPT_CONFIDENCE,
@@ -70,28 +70,6 @@ async function loadPending(): Promise<PendingFilm[]> {
     .orderBy(films.scrapedTitle);
 }
 
-/** Same query shaping enrichFilm uses, so the judge sees the same shortlist. */
-async function candidatesFor(f: PendingFilm): Promise<TmdbMovieSummary[]> {
-  const year = f.scrapedYear ?? undefined;
-  const queries = [f.scrapedTitle];
-  if (f.titleOriginal && f.titleOriginal !== f.scrapedTitle)
-    queries.push(f.titleOriginal);
-  const cleaned = stripSearchNoise(f.scrapedTitle);
-  if (cleaned !== f.scrapedTitle) queries.push(cleaned);
-
-  const seen = new Set<number>();
-  const out: TmdbMovieSummary[] = [];
-  for (const q of queries) {
-    for (const r of await searchMovies(q, year)) {
-      if (!seen.has(r.id)) {
-        seen.add(r.id);
-        out.push(r);
-      }
-    }
-  }
-  return out;
-}
-
 async function readOverrides(): Promise<{
   raw: Record<string, unknown>;
   list: OverrideEntry[];
@@ -131,7 +109,7 @@ async function main() {
     const year = f.scrapedYear ?? undefined;
     if (existing.has(overrideKey(f.scrapedTitle, year))) continue;
 
-    const candidates = await candidatesFor(f);
+    const candidates = await searchCandidates(f);
     if (candidates.length === 0) {
       noCandidates++;
       console.log(`· ${f.scrapedTitle} — no TMDB candidates; needs a manual override`);
