@@ -3,24 +3,30 @@
  *
  * Consumes a container-or-placeholder issue that Layer 2 filed, writes the
  * mechanical fix (new skip words in `src/tmdb/container.ts`), adds a regression
- * test, runs the full suite, and opens a PR that links the issue — for HUMAN
- * merge (self-healing Decision #10: no auto-merge until the gate is redesigned).
+ * test, runs the full suite in an isolated worktree, and opens a PR that links
+ * the issue. With --merge it auto-merges the mechanical lane (safe: the fix only
+ * moves films unmatched->skipped and the safety gate proves no matched film
+ * flips); without it, the PR waits for a human.
  *
- * Safety gate (adapted Decision #10 "only adds matches, never damages"): before
- * writing, it checks every already-matched film against the NEW patterns. If any
- * matched film would become a skip, it aborts and leaves the issue for a human.
+ * Safety gate (narrow, sound version of Decision #10): before writing, it checks
+ * every already-matched film against the NEW patterns (mirroring production on
+ * the noise-stripped title). If any matched film would flip to skip, it aborts
+ * and leaves the issue for a human.
  *
- *   npm run actor2:fix            # first open ready-for-agent issue
- *   npm run actor2:fix -- 58      # a specific issue number
- *   npm run actor2:fix -- 58 --dry-run
+ *   npm run actor2:fix -- 58              # open a PR for issue 58
+ *   npm run actor2:fix -- 58 --dry-run    # classify + safety-check only
+ *   npm run actor2:fix:prod -- --merge    # first open issue, fix + auto-merge
  *
- * Runs on a dev machine. The safety check reads the catalog READ-ONLY.
+ * Runs in a throwaway git worktree so it never disturbs the live checkout — safe
+ * to chain after the scrape. The safety check reads the catalog READ-ONLY.
  */
 
 import 'dotenv/config';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, symlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { isNotNull } from 'drizzle-orm';
 import { db, films } from '@/db';
 import { isNonFilmContainer } from '@/tmdb/container';
@@ -32,13 +38,13 @@ const SIGNATURE = 'container-or-placeholder';
 const CONTAINER_FILE = 'src/tmdb/container.ts';
 const CONTAINER_TEST = 'src/tmdb/container.test.ts';
 
-async function gh(args: string[]): Promise<string> {
-  const { stdout } = await exec('gh', args, { maxBuffer: 10 * 1024 * 1024 });
+async function gh(args: string[], cwd?: string): Promise<string> {
+  const { stdout } = await exec('gh', args, { maxBuffer: 10 * 1024 * 1024, cwd });
   return stdout.trim();
 }
 
-async function git(args: string[]): Promise<string> {
-  const { stdout } = await exec('git', args, { maxBuffer: 10 * 1024 * 1024 });
+async function git(args: string[], cwd?: string): Promise<string> {
+  const { stdout } = await exec('git', args, { maxBuffer: 10 * 1024 * 1024, cwd });
   return stdout.trim();
 }
 
@@ -161,6 +167,10 @@ function appendTest(source: string, titles: string[], issueNum: number): string 
 async function main() {
   const args = process.argv.slice(2).filter((a) => a !== '--');
   const dryRun = args.includes('--dry-run');
+  // --merge auto-merges the mechanical container-lane PR (suite + safety gate
+  // already proved it only moves films unmatched->skipped). Off by default so a
+  // manual run just opens a PR; the scrape cron passes --merge for zero-touch.
+  const autoMerge = args.includes('--merge');
   const numArg = args.find((a) => /^\d+$/.test(a));
   const issue = await pickIssue(numArg ? Number(numArg) : null);
 
@@ -205,69 +215,99 @@ async function main() {
     return;
   }
 
-  const originalBranch = await git(['branch', '--show-current']);
+  // Work in a throwaway worktree so we never touch the live checkout's branch
+  // (on the scrape box, a stray branch switch would break the next --ff-only
+  // pull). node_modules is symlinked from the main repo so the suite can run.
+  const repoRoot = await git(['rev-parse', '--show-toplevel']);
   const branch = `actor2/container-issue-${issue.number}`;
-  await exec('git', ['fetch', '--quiet', 'origin', 'main']);
-  await git(['checkout', '-B', branch, 'origin/main']);
+  const wt = join(tmpdir(), `afiche-actor2-${issue.number}-${Date.now()}`);
+  await exec('git', ['fetch', '--quiet', 'origin', 'main'], { cwd: repoRoot });
+  await git(['worktree', 'add', '--force', '-B', branch, wt, 'origin/main'], repoRoot);
 
   try {
-    const containerSrc = await readFile(CONTAINER_FILE, 'utf8');
+    await symlink(join(repoRoot, 'node_modules'), join(wt, 'node_modules'), 'dir').catch(
+      () => {},
+    );
+
+    const containerPath = join(wt, CONTAINER_FILE);
+    const testPath = join(wt, CONTAINER_TEST);
     await writeFile(
-      CONTAINER_FILE,
+      containerPath,
       insertPatterns(
-        containerSrc,
+        await readFile(containerPath, 'utf8'),
         suggestions.map((s) => s.regexSource),
         issue.number,
       ),
     );
-    const testSrc = await readFile(CONTAINER_TEST, 'utf8');
     await writeFile(
-      CONTAINER_TEST,
+      testPath,
       appendTest(
-        testSrc,
+        await readFile(testPath, 'utf8'),
         titles.filter((t) => !uncovered.includes(t)),
         issue.number,
       ),
     );
 
     console.log('Running the full test suite…');
-    await exec('npx', ['vitest', 'run'], { maxBuffer: 40 * 1024 * 1024 });
-    await exec('npx', ['prettier', '--write', CONTAINER_FILE, CONTAINER_TEST]);
+    await exec('npx', ['vitest', 'run'], { maxBuffer: 40 * 1024 * 1024, cwd: wt });
+    await exec('npx', ['prettier', '--write', CONTAINER_FILE, CONTAINER_TEST], {
+      cwd: wt,
+    });
     console.log('Suite green.');
 
-    await git(['add', CONTAINER_FILE, CONTAINER_TEST]);
-    await git([
-      'commit',
-      '-m',
-      `fix(tmdb): classify container/placeholder titles (Closes #${issue.number})\n\n` +
-        `Add skip words ${suggestions.map((s) => s.keyword).join(', ')} to CONTAINER_PATTERNS so the\n` +
-        `titles named in #${issue.number} stop re-queuing. Regression test added. Safety-checked:\n` +
-        `no already-matched film is affected.\n\n` +
-        `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`,
-    ]);
-    await git(['push', '--force-with-lease', 'origin', `HEAD:${branch}`]);
+    await git(['add', CONTAINER_FILE, CONTAINER_TEST], wt);
+    await git(
+      [
+        'commit',
+        '-m',
+        `fix(tmdb): classify container/placeholder titles (Closes #${issue.number})\n\n` +
+          `Add skip words ${suggestions.map((s) => s.keyword).join(', ')} to CONTAINER_PATTERNS so the\n` +
+          `titles named in #${issue.number} stop re-queuing. Regression test added. Safety-checked:\n` +
+          `no already-matched film is affected.\n\n` +
+          `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`,
+      ],
+      wt,
+    );
+    // Force is safe: Actor 2 is the sole writer of actor2/* branches, and each
+    // run rebuilds the branch from origin/main in a fresh worktree.
+    await git(['push', '--force', 'origin', `HEAD:${branch}`], wt);
 
-    const prUrl = await gh([
-      'pr',
-      'create',
-      '--base',
-      'main',
-      '--head',
-      branch,
-      '--title',
-      `fix(tmdb): container skip words for #${issue.number}`,
-      '--body',
-      `Closes #${issue.number}.\n\nMechanical fix by Actor 2: adds ${suggestions
-        .map((s) => '`' + s.keyword + '`')
-        .join(
-          ', ',
-        )} to \`CONTAINER_PATTERNS\`. Regression test added; full suite passes; safety check confirmed no already-matched film flips to skip.\n\n**Human merge** (auto-merge gate not yet redesigned — Decision #10).`,
-      '--label',
-      'matcher-pattern',
-    ]);
-    console.log(`\nPR opened for human merge: ${prUrl}`);
+    const mergeNote = autoMerge
+      ? 'Auto-merged by Actor 2: mechanical container lane, full suite green, safety check confirmed no already-matched film flips to skip.'
+      : '**Human merge** (run with --merge to auto-merge the mechanical lane).';
+    const prUrl = await gh(
+      [
+        'pr',
+        'create',
+        '--base',
+        'main',
+        '--head',
+        branch,
+        '--title',
+        `fix(tmdb): container skip words for #${issue.number}`,
+        '--body',
+        `Closes #${issue.number}.\n\nMechanical fix by Actor 2: adds ${suggestions
+          .map((s) => '`' + s.keyword + '`')
+          .join(
+            ', ',
+          )} to \`CONTAINER_PATTERNS\`. Regression test added; full suite passes; safety check confirmed no already-matched film flips to skip.\n\n${mergeNote}`,
+        '--label',
+        'matcher-pattern',
+      ],
+      wt,
+    );
+    console.log(`\nPR: ${prUrl}`);
+
+    if (autoMerge) {
+      await gh(['pr', 'merge', branch, '--squash', '--delete-branch'], wt);
+      console.log(`Auto-merged and closed #${issue.number}. Next scrape pulls the fix.`);
+    } else {
+      console.log('Opened for human merge.');
+    }
   } finally {
-    if (originalBranch) await git(['checkout', originalBranch]);
+    await exec('git', ['worktree', 'remove', '--force', wt], { cwd: repoRoot }).catch(
+      () => {},
+    );
   }
 }
 
