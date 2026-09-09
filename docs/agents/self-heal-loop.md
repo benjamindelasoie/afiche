@@ -4,6 +4,62 @@ The scraper enriches films deterministically (TMDB match). Some films still miss
 This loop enriches the miss with an agent, and improves the deterministic code so
 the miss shrinks over time. Three actors, two layers.
 
+## Architecture
+
+The design is one idea: a **deterministic harness around a single narrow LLM call**.
+The model (the judge) only *proposes*; the harness *decides and writes*. Every write
+(DB overrides, GitHub issues, PRs) is plain, tested code with no model in the loop.
+
+```mermaid
+flowchart TD
+    cron(["launchd · 2×/day on m1air"]) --> cronsh["scrape-cron.sh<br/>git pull main · migrate if needed"]
+    cronsh --> scrape["scrape:prod<br/>deterministic scrapers → ingest → TMDB match"]
+
+    subgraph A1["ACTOR 1 · self-heal:prod (agent harness)"]
+      direction TB
+      audit["Audit · audit.ts<br/>active-stuck pool"]
+      search["searchCandidates<br/>parallel multi-query"]
+      judge{{"Judge — the only LLM<br/>zod-validated · retry · hallucination guard"}}
+      gate{"classifyProposal<br/>SAFETY GATE"}
+      overrides[("tmdb_overrides<br/>durable · re-opens film")]
+      queue["queue → Telegram digest"]
+      group["Layer 2 · group misses by cause<br/>heal-patterns.ts"]
+      ghissue[/"open matcher-pattern issue<br/>dedup + 14d cooldown"/]
+      metrics[("heal_runs · 7-day trend")]
+      audit --> search --> judge --> gate
+      gate -->|"conf ≥ 0.90 + year/director<br/>or ≥ 0.95 + dominant title"| overrides
+      gate -->|"uncorroborated"| queue
+      judge -->|"no candidate / declined"| group
+      group -->|"fixable · ≥ 2 films"| ghissue
+      gate --> metrics
+    end
+
+    subgraph A2["ACTOR 2 · actor2-fix.ts"]
+      direction TB
+      a2["pick issue"]
+      safe{"safety check<br/>no matched film flips?"}
+      wt["throwaway worktree<br/>fix container.ts + test · run full suite"]
+      pr[/"open PR · never merges · idempotent"/]
+      leave["leave for a human"]
+      a2 --> safe
+      safe -->|"ok"| wt --> pr
+      safe -->|"casualties"| leave
+    end
+
+    subgraph A3["ACTOR 3 · you"]
+      you["review + merge PRs<br/>triage the queue"]
+    end
+
+    scrape --> audit
+    ghissue -->|"ready-for-agent"| a2
+    ghissue -->|"ready-for-human"| you
+    pr --> you
+    you -->|"merge → next scrape pulls the fix"| cronsh
+```
+
+The loop closes at the bottom edge: you merge a fix, the next scrape's `git pull`
+picks it up, and the tail is smaller — the deterministic layer converges over time.
+
 ## Layer 1 — heal the data (runs after every scrape)
 
 `scripts/self-heal.ts` (`npm run db:self-heal:prod -- --write`) runs on the scrape
