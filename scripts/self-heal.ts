@@ -26,35 +26,13 @@ import {
   type HealFilm,
   type CandidateFacts,
 } from '@/scrapers/self-heal';
-import { searchMovies, getMovie, extractDirectors, hasTmdbToken } from '@/tmdb/client';
+import { getMovie, extractDirectors, hasTmdbToken } from '@/tmdb/client';
 import { judgeCandidates } from '@/tmdb/judge';
-import { stripSearchNoise } from '@/tmdb/similarity';
+import { searchCandidates } from '@/tmdb/candidate-search';
 import { isNonFilmContainer } from '@/tmdb/container';
 import { groupMisses, type Miss } from '@/scrapers/heal-patterns';
 import { openPatternIssues } from './lib/pattern-issues';
 import type { AuditAlert } from '@/scrapers/audit';
-
-/** Same multi-query shaping the judge-unmatched script uses. */
-async function searchCandidates(f: HealFilm) {
-  const year = f.scrapedYear ?? undefined;
-  const queries = [f.scrapedTitle];
-  if (f.titleOriginal && f.titleOriginal !== f.scrapedTitle)
-    queries.push(f.titleOriginal);
-  const cleaned = stripSearchNoise(f.scrapedTitle);
-  if (cleaned !== f.scrapedTitle) queries.push(cleaned);
-
-  const seen = new Set<number>();
-  const out = [];
-  for (const q of queries) {
-    for (const r of await searchMovies(q, year)) {
-      if (!seen.has(r.id)) {
-        seen.add(r.id);
-        out.push(r);
-      }
-    }
-  }
-  return out;
-}
 
 async function candidateFacts(tmdbId: number): Promise<CandidateFacts> {
   const d = await getMovie(tmdbId);
