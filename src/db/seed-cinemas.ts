@@ -1,7 +1,7 @@
 /**
  * Prod-safe cinema seed.
  *
- * Inserts (idempotently) the 11 indie cinemas the scraper needs as
+ * Inserts (idempotently) the 12 indie cinemas the scraper needs as
  * foreign-key targets. Does NOT touch films or screenings. Safe to run
  * against Turso or any environment without wiping real data.
  *
@@ -112,6 +112,21 @@ const CINEMAS: CinemaInsert[] = [
     // therefore the "Sitio oficial" target.
     address: 'Nicaragua 6048',
     ticketingBaseUrl: 'https://www.eventbrite.com/o/club-lucero-34315560147',
+  },
+  {
+    id: 'cinta',
+    name: 'Cinta',
+    neighborhood: 'Palermo',
+    type: 'indie',
+    // Address per CINTA's own Instagram bio ("cine al aire libre en la terraza
+    // de @espacio_cinta 📍gurruchaga 1791, palermo") and the producer footer on
+    // their Passline site. The terrace has traded under more than one name —
+    // Passline still files the functions under "Crepas Palermo" — but the
+    // street address has not moved.
+    address: 'Gurruchaga 1791',
+    // Their Instagram bio links here as the one official surface: they have no
+    // site of their own, so the Passline producer page IS the venue's home.
+    ticketingBaseUrl: 'https://www.passline.com/sitio/cinta-proyecciones',
   },
 ];
 

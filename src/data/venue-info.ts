@@ -113,6 +113,21 @@ export const VENUE_INFO: Record<string, VenueInfo> = {
     ticketing:
       'Entradas por Eventbrite, función por función: muchas son gratuitas y otras pagas. El precio de cada una figura en su propia página.',
   },
+  cinta: {
+    // BORRADOR (reescribir): el voice final es de Benjamin. Datos tomados el
+    // 2026-09-08 de la bio de @cintaproyecciones ("CINTA™ es un cine al aire
+    // libre en la terraza de @espacio_cinta · gurruchaga 1791, palermo") y de
+    // su propia cartelera de Passline, única superficie oficial: no tienen
+    // sitio propio. De ahí salen la terraza, los dos turnos por noche y que
+    // cada función se agota. El ciclo cambia mes a mes.
+    blurb:
+      'Un cine al aire libre en una terraza de Palermo. Proyectan a cielo abierto, en ciclos que cambian mes a mes y en dos turnos por noche.',
+    // Precio omitido a propósito, según la postura del registro: no está
+    // publicado fuera de la página de cada función. El precio real de cada una
+    // figura en su página de Passline, a la que linkea la cartelera.
+    ticketing:
+      'Entradas por Passline, función por función, y conviene sacarlas con tiempo: las funciones se agotan. Dos turnos por noche, uno temprano y otro más tarde.',
+  },
 };
 
 /** Editorial info for a venue, or null if none is curated yet. */

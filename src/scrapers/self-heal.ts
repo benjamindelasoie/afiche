@@ -14,7 +14,11 @@
 
 import { eq } from 'drizzle-orm';
 import { db, films } from '@/db';
-import { YEAR_TOLERANCE } from '@/tmdb/match';
+import {
+  YEAR_TOLERANCE,
+  TITLE_DOMINANCE_RATIO,
+  TITLE_MIN_VOTE_COUNT,
+} from '@/tmdb/match';
 import { stripDiacritics, jaroWinkler } from '@/tmdb/similarity';
 import { upsertOverride } from '@/tmdb/overrides';
 import type { TmdbMovieSummary } from '@/tmdb/client';
@@ -26,15 +30,12 @@ export const AUTO_APPLY_MIN_CONFIDENCE = 0.9;
 /** Title-only path has no year/director to lean on, so it demands more of the judge. */
 export const TITLE_AUTO_APPLY_MIN_CONFIDENCE = 0.95;
 
-/** A candidate below this vote count is long-tail — never an "unambiguous" title match. */
-export const TITLE_MIN_VOTE_COUNT = 100;
-
-/**
- * How far the chosen exact-title match must outweigh the next same-title film by
- * vote count to count as "the" film. Several films can share a title (Metropolis
- * 1927 vs the 2001 anime vs obscure namesakes); the canonical one dominates.
- */
-export const TITLE_DOMINANCE_RATIO = 4;
+// The vote floor and dominance ratio this gate applies now live in
+// `@/tmdb/match`, which reached the same rule for the same reason one layer
+// down (a title tie the matcher itself must break). Re-exported so existing
+// importers of the self-heal names keep working and the two layers cannot
+// drift to different numbers.
+export { TITLE_DOMINANCE_RATIO, TITLE_MIN_VOTE_COUNT };
 
 export interface HealProposal {
   filmId: number;
