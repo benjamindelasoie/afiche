@@ -66,9 +66,18 @@ async function ensureLabels(): Promise<void> {
   }
 }
 
-/** Signatures that already have an OPEN matcher-pattern issue. */
-async function openSignatures(): Promise<Set<string>> {
+/** A just-fixed cause is on cooldown: don't re-file while the fix propagates. */
+const CLOSED_COOLDOWN_DAYS = 14;
+
+/**
+ * Signatures that are "taken": an OPEN matcher-pattern issue, OR one closed
+ * within the cooldown. The cooldown closes the window where a fix PR has merged
+ * (closing the issue) but the scrape box has not yet pulled the fix, so one more
+ * run would otherwise re-open a duplicate of a cause that is already handled.
+ */
+async function takenSignatures(now: Date): Promise<Set<string>> {
   const sigs = new Set<string>();
+  const cooldownStart = now.getTime() - CLOSED_COOLDOWN_DAYS * 86_400_000;
   try {
     const raw = await gh([
       'issue',
@@ -76,19 +85,27 @@ async function openSignatures(): Promise<Set<string>> {
       '--label',
       'matcher-pattern',
       '--state',
-      'open',
+      'all',
       '--limit',
       '100',
       '--json',
-      'body',
+      'body,state,closedAt',
     ]);
-    const issues = JSON.parse(raw) as { body: string }[];
+    const issues = JSON.parse(raw) as {
+      body: string;
+      state: string;
+      closedAt: string | null;
+    }[];
     for (const i of issues) {
       const m = i.body?.match(/afiche-pattern-sig:\s*([a-z0-9-]+)/i);
-      if (m) sigs.add(m[1]);
+      if (!m) continue;
+      const isOpen = i.state?.toUpperCase() === 'OPEN';
+      const recentlyClosed =
+        i.closedAt != null && new Date(i.closedAt).getTime() >= cooldownStart;
+      if (isOpen || recentlyClosed) sigs.add(m[1]);
     }
   } catch {
-    // Cannot list (auth/network) — treat as none open; create may still fail
+    // Cannot list (auth/network) — treat as none taken; create may still fail
     // per-issue, which we catch and record as skipped.
   }
   return sigs;
@@ -105,12 +122,15 @@ export async function openPatternIssues(
   const result: OpenResult = { created: [], skipped: [] };
   if (groups.length === 0) return result;
 
-  const existing = await openSignatures();
+  const existing = await takenSignatures(new Date());
 
   if (!opts.write) {
     for (const g of groups) {
       if (existing.has(g.signature)) {
-        result.skipped.push({ signature: g.signature, reason: 'open issue exists' });
+        result.skipped.push({
+          signature: g.signature,
+          reason: 'open or recently-fixed issue exists',
+        });
       } else {
         result.created.push({ signature: g.signature, url: '(dry-run — would create)' });
       }
@@ -121,7 +141,10 @@ export async function openPatternIssues(
   await ensureLabels();
   for (const g of groups) {
     if (existing.has(g.signature)) {
-      result.skipped.push({ signature: g.signature, reason: 'open issue exists' });
+      result.skipped.push({
+        signature: g.signature,
+        reason: 'open or recently-fixed issue exists',
+      });
       continue;
     }
     try {

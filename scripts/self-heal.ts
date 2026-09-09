@@ -31,6 +31,7 @@ import { judgeCandidates } from '@/tmdb/judge';
 import { searchCandidates } from '@/tmdb/candidate-search';
 import { isNonFilmContainer } from '@/tmdb/container';
 import { groupMisses, type Miss } from '@/scrapers/heal-patterns';
+import { recordHealRun, healTrend } from '@/scrapers/heal-metrics';
 import { openPatternIssues } from './lib/pattern-issues';
 import type { AuditAlert } from '@/scrapers/audit';
 
@@ -169,11 +170,26 @@ async function main() {
   // Layer 2 write: open a matcher-pattern issue per new fixable cause.
   const issues = await openPatternIssues(patternGroups, { write: true });
 
+  // Observability: record this run and read the trailing trend.
+  await recordHealRun({
+    stuck: stuck.length,
+    applied: applied.length,
+    queued: queued.length,
+    noCandidate: noCandidate.length,
+    declined: declined.length,
+    errored: errored.length,
+    issuesOpened: issues.created.length,
+    alerts: brief.alerts.length,
+  });
+  const trend = await healTrend(new Date());
+
   const digest =
     `afiche self-heal\n` +
     `applied: ${applied.length} · queued: ${queued.length} · ` +
     `no-candidate: ${noCandidate.length} · errored: ${errored.length} · ` +
     `alerts: ${brief.alerts.length}\n` +
+    `7-day: ${trend.applied} applied · ${trend.issuesOpened} issues · ` +
+    `${trend.errored} errored · ${trend.runs} runs\n` +
     applied.map((p) => `✓ ${p.scrapedTitle} → tmdb ${p.tmdbId}`).join('\n') +
     (queued.length
       ? `\nqueue:\n${queued.map((q) => `· ${q.proposal.scrapedTitle} (${q.reason})`).join('\n')}`
