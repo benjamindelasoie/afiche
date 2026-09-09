@@ -2,6 +2,54 @@
 
 All notable changes to Afiche are documented here.
 
+## [1.1.0.0] - 2026-09-09
+
+**The pipeline now repairs itself between releases.** Every version until this one fixed the matcher the same way: a film reached the cartelera unenriched, someone eventually noticed, someone shipped a rule. The gap between the miss and the fix was however long it took a human to look. This release closes that loop. After every scrape an agent audits the run, judges the films still stuck, writes the matches it can corroborate, and files an issue describing the ones it cannot — and a second agent opens a pull request against those issues. Nothing merges without a human reading it.
+
+Two venues joined the cartelera in the same window, and the matcher went from v5 to v8 clearing the backlog they exposed.
+
+### Added
+
+- **Actor 1, Layer 1 — the data heal.** `scripts/self-heal.ts` runs after every scrape, pass or fail, because a failed run is exactly what the audit needs to see. It reads the run, judges each film that is still `none-attempted` against the shortlist the matcher already fetched, and applies only what it can corroborate. Dry-run is the default; the cron passes `--write`. Best-effort by construction: the heal's exit code never overrides the scrape's, so a broken heal cannot mask or fail a good scrape.
+- **The corroboration gate, which is the whole safety design.** An agent proposal becomes a live override only when two independent invariants hold. A web-researched proposal is **never** auto-applied, checked first so no confidence score can bypass it — there is no candidate set behind it and therefore no hallucination guard. A candidate-judged proposal auto-applies at confidence ≥ 0.90 *and* with director-or-year corroboration, because membership in a plausible shortlist is not the same thing as being correct. Everything else is queued for a human. Both invariants are pinned by tests.
+- **A durable store for machine-written matches** (`tmdb_overrides`, migration 0012). `reset-programming` drops the films table, so a bare `films.tmdb_id` write was erased on the next rescrape and the agent's work with it. Overrides now union two layers — the hand-curated JSON seed and the machine-written table — with the JSON file winning on key conflict, so a human correction always beats a machine one. Nothing is ever dropped, so there was no risky seed-then-flip migration.
+- **Actor 1, Layer 2 — pattern issues.** Misses that no single override fixes get grouped by cause and filed as matcher-pattern issues with a `ready-for-agent` label. Deduplicated on a signature marker, with a 14-day cooldown on closed causes so a merged fix that the scrape box has not pulled yet cannot re-open a duplicate.
+- **Actor 2 — the fix pull request.** Picks the first `ready-for-agent` issue, prepares the change in a throwaway worktree so it never touches the live checkout's branch, and opens a PR. It never merges. Idempotent: if a PR for that branch exists in any state — open, merged, or closed — the issue is skipped, so the cron cannot spam.
+- **A pre-write circuit breaker against schedule wipes.** `replaceFutureScreenings` deletes a venue's live future schedule before writing the new one, so a scraper that silently broke against a site redesign published an **empty venue** with no way back. When the fetch is empty and future rows exist, the replace is now refused, the last good schedule stands, and the run reports `circuitBroke` for the audit and digest. Empty-only on purpose: a smaller-but-nonzero fetch is genuinely ambiguous, since a winding-down cycle looks exactly like a half-broken scraper.
+- **A container classifier** so non-film titles leave the queue instead of being judged forever. Programme and competition containers — shorts blocks, "PROGRAMA I", competition selections — have no TMDB entry to find. `isNonFilmContainer` runs on the prefix- and suffix-stripped title, so "CONVOCATORIA DE CORTOS: PROGRAMA I" is flagged while "FESTIVAL ESCENARIO: WE ARE THE SHAGS", a real film, is not. Conservative by design: the numeral is required, so a real "El Programa" is safe.
+- **A judge eval harness with a frozen golden set** (`npm run eval:judge`). Roughly 110 human-verified listing-to-`tmdbId` pairs, with the candidate lists frozen so the eval is deterministic in everything but the model. Baseline: precision 0.907, recall 0.863, **4 high-confidence false positives**. Those four confident-wrong picks are the quantified argument for the corroboration gate — they are exactly what confidence alone would have auto-written. Exits non-zero on regression, so it can gate CI.
+- **Loop observability** (`heal_runs`, migration 0013). One row per heal write with the run's counts, and a 7-day trend in the digest, so a shrinking tail or a spike in errors is visible instead of buried in a log.
+- **Operational kill switches.** `SELF_HEAL_ENABLED`, `SELF_HEAL_APPLY_ENABLED`, `LAYER2_ISSUES_ENABLED` and `ACTOR2_ENABLED` pause any stage without a code change or a cron edit. Default-on, off only on an explicit falsy value.
+- **Cineclub Lucero**, via the Eventbrite organizer feed, with every published title pinned in a golden corpus — which immediately caught a bug in the cycle gate.
+- **CINTA**, the open-air terrace cinema in Palermo. It has no site of its own; its Instagram bio points at a Passline producer page, so that listing is both the venue's home and the only thing to scrape. Passline fronts every page with a fingerprint-based Cloudflare challenge, so a plain fetch gets 403 whatever headers it sends, and even a real `cf_clearance` cookie still 403s because it is bound to Chrome's TLS fingerprint. Rather than pull a headless browser into a repo where every other provider is fetch plus cheerio, the provider tries the origin first and falls back to a reader proxy that returns the post-challenge DOM — the same markup, so the parse uses Passline's own selectors either way. The fallback is recorded as a run warning, so the day the origin starts answering we can see it and drop the proxy.
+- **Agent readiness.** Markdown content negotiation: an `Accept: text/markdown` request for `/`, `/cartelera` or `/acerca` is rewritten to a markdown route serving the same content at the same public URL. Plus site-identity JSON-LD (an Organization node with address and contact point), `llms.txt` with call guidance for the MCP tools, canonical and OpenGraph metadata, and an agent-friendly 404 that links to the cartelera, the sitemap and `llms.txt`.
+
+### Changed
+
+- **The matcher went v5 → v8**, each bump re-opening the rows it targets on the next enrich pass rather than leaving them locked.
+  - **v6** — the director pivot now fires after the title axis returned candidates but none verified, not only on zero candidates, so a film buried under wrong title hits is still findable by director. Its uniqueness count now requires a concrete in-window release date, because an undated project cannot be placed in a year and must not dilute "exactly one". Trailing ALL-CAPS festival tags joined by a dash are stripped.
+  - **v7** — the leading cycle prefix is stripped, mirroring the trailing suffix v6 handled. It consumes only up to the first colon, so a real title like "Kill Bill: Volume 1" is untouched.
+  - **v8** — **vote dominance breaks a title tie no director can.** The ambiguity guard refuses to auto-pick when two candidates tie on title similarity, so the director rescue can disambiguate against credits. That is right when a director hint exists; with none, the guard had nothing to hand off to and the film became a permanent miss. Every film with a namesake from a source publishing neither year nor director hit this. Now, absent a hint, the tie breaks on **vote count** — not popularity, which is a buzz score that decays with age and is what picked Eggers 2024 over Herzog 1979 in the first place. Measured against live TMDB, the ratio separates the populations cleanly: *Midnight in Paris* 7870:0, *Lost in Translation* 8296:0, *Walter Mitty* 8460:142 and *Metropolis* 3187:579 all resolve, while *Nosferatu* at 3944:2523 stays held. A director hint still wins outright.
+- **The LLM judge validates its own output.** Verdicts are checked against a schema rather than hand-rolled field checks, a malformed reply is retried with a corrective nudge, and a per-film failure is isolated in its own bucket so one bad reply can no longer abort a whole heal run.
+- **A judged verdict must name an id from the shortlist it was given.** Enforced in code, not requested in the prompt. That bounds the worst case to picking the wrong film off a plausible list — the same failure mode a threshold nudge has — instead of inventing an id pointing at an unrelated film.
+
+### Fixed
+
+- **Museum activities were landing in the films table** from the Lumitón listing.
+- **Markdown was being served to HTML crawlers.** The markdown shares a public URL with the HTML page through a proxy rewrite, so leaving it shared-cacheable let the CDN hand cached markdown to an HTML crawler. It now responds `no-store`.
+- **The middleware was never running.** With a `src/` directory, Next 16 requires `proxy.ts` to sit beside `app/`; at the repo root it silently loaded nothing.
+- **CI formatting.** The self-healing sources were committed without a prettier pass and broke `format:check` on main.
+
+### Removed
+
+- `conductor.json` and the Conductor references in the agent guidance. No longer in use.
+
+### Notes
+
+- Actor 2 needs an authenticated `gh` on the machine that runs the scrape. Until that exists it is a clean no-op, not a failure.
+- The self-heal and judge stages need an Anthropic API key in the scrape environment, the same one the existing judge step already uses.
+- Deliberately left for their own change rather than folded into cleanup: unifying the three container vocabularies into one tiered source, and carrying a machine-readable payload in the issue body instead of parsing markdown back out of it.
+
 ## [1.0.0.1] - 2026-07-28
 
 **Hotfix.** 1.0.0.0 took the site down. For roughly an hour every visitor to afiche.ar got the global error boundary — "La cartelera no está disponible." — and nothing else.
