@@ -1,0 +1,893 @@
+<html class="js no-touch history boxshadow csstransforms3d csstransitions video svg webkit chrome linux js sticky-header-enabled sticky-header-negative" style=""><head>
+    <!-- Basic -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>
+        CINTA PROYECCIONES - Passline    </title>
+    <meta name="keywords" content="Passline">
+    <meta name="description" content="CINTA PROYECCIONES - Passline">
+    
+    <meta name="author" content="passline.com">
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="../favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" href="../favicon.ico">
+
+
+    <!-- Mobile Metas -->
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Web Fonts  -->
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700,800%7CShadows+Into+Light" rel="stylesheet" type="text/css">
+    <!-- carga bootstrap si viene de un mobile device -->
+    <style type="text/css">
+        .corner-ribbon {
+            font-size: 22px;
+            width: 200px;
+            background: #e43;
+            position: absolute;
+            top: 25px;
+            left: -50px;
+            text-align: center;
+            line-height: 50px;
+            letter-spacing: 1px;
+            color: #f0f0f0;
+            transform: rotate(-45deg);
+            -webkit-transform: rotate(-45deg);
+        }
+
+        .corner-ribbon.sticky {
+            position: fixed;
+        }
+
+        .corner-ribbon.shadow {
+            box-shadow: 0 0 3px rgba(0, 0, 0, .3);
+        }
+
+        .corner-ribbon.top-left {
+            top: 25px;
+            left: -50px;
+            transform: rotate(-45deg);
+            -webkit-transform: rotate(-45deg);
+        }
+
+        .corner-ribbon.top-right {
+            top: 25px;
+            right: -50px;
+            left: auto;
+            transform: rotate(45deg);
+            -webkit-transform: rotate(45deg);
+        }
+
+        .corner-ribbon.bottom-left {
+            top: auto;
+            bottom: 25px;
+            left: -50px;
+            transform: rotate(45deg);
+            -webkit-transform: rotate(45deg);
+        }
+
+        .corner-ribbon.bottom-right {
+            top: auto;
+            right: -50px;
+            bottom: 25px;
+            left: auto;
+            transform: rotate(-45deg);
+            -webkit-transform: rotate(-45deg);
+        }
+
+        .corner-ribbon.white {
+            background: #f0f0f0;
+            color: #555;
+        }
+
+        .corner-ribbon.black {
+            background: #333;
+        }
+
+        .corner-ribbon.grey {
+            background: #999;
+        }
+
+        .corner-ribbon.blue {
+            background: #39d;
+        }
+
+        .corner-ribbon.green {
+            background: #2c7;
+        }
+
+        .corner-ribbon.turquoise {
+            background: #1b9;
+        }
+
+        .corner-ribbon.purple {
+            background: #95b;
+        }
+
+        .corner-ribbon.red {
+            background: #e43;
+        }
+
+        .corner-ribbon.orange {
+            background: #e82;
+        }
+
+        .corner-ribbon.yellow {
+            color: #000 !important;
+            background: #ffb700 !important;
+        }
+
+        .social-icons {
+            margin-top: 4% !important
+        }
+        
+
+        @media only screen and (max-width: 480px) {
+            .social-icons {
+                margin-top: 3% !important
+            }
+        }
+
+        @media (max-width: 479px) {
+            .page-header h1 {
+                font-size: 21px !important;
+                line-height: 26px !important;
+            }
+        }
+
+        .topo {
+            margin: 0px !important;
+            padding: 0px !important;
+            width: 100% !important;
+            display: block !important;
+        }
+
+        @media only screen and (max-width: 700px) {
+            .topo {
+                margin: 0px !important;
+                padding: 0px !important;
+                width: 100% !important;
+                /*display: none !important;*/
+            }
+        }
+
+        section.section {
+            padding: 1px 0px !important;
+        }
+    </style>
+    <!-- Vendor CSS -->
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/font-awesome-5.4.1/css/all.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/font-awesome-5.4.1/css/v4-shims.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/simple-line-icons/css/simple-line-icons.min.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/owl.carousel/assets/owl.carousel.min.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/owl.carousel/assets/owl.theme.default.min.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/magnific-popup/magnific-popup.min.css">
+    <!-- Theme CSS -->
+    <link rel="stylesheet" type="text/css" href="../site-static/css/theme.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/css/theme-elements.css">
+    <!-- Current Page CSS -->
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/rs-plugin/css/settings.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/rs-plugin/css/layers.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/rs-plugin/css/navigation.css">
+    <!-- Skin CSS -->
+    <link rel="stylesheet" type="text/css" href="../site-static/css/skins/default.css">
+    <!-- Theme Custom CSS -->
+    <link rel="stylesheet" type="text/css" href="../site-static/css/custom.css">
+    <!-- Theme Skin CSS -->
+    <link rel="stylesheet" type="text/css" href="../site-static/css/index.php">
+    <style type="text/css">
+        section.section-dark.dark-black {
+            background-color: #2b2b2b !important;
+            background-image: url('https://www.passline.com/imagenes/mi-sitio/fondo/cinta-proyecciones_4.png') !important;
+        }
+
+        h4 {
+            line-height: 12px;
+        }
+    </style>
+    <script type="text/javascript" src="https://passline.queue-it.net/javascriptqueue/passline/passlineevent2/1788912827146?t=https%3A%2F%2Fwww.passline.com%2Fsitio%2Fcinta-proyecciones&amp;ver=js2.0.61&amp;cid=es-CL" async=""></script><script src="https://connect.facebook.net/signals/config/189377128114082?v=2.9.396&amp;r=stable&amp;domain=www.passline.com&amp;hme=e8cce016f121f9a0e2517d0fa5bcd24ff6154c97c60c9c1ec9a8003d21c1cd28&amp;ex_m=115%2C227%2C166%2C26%2C80%2C81%2C158%2C76%2C75%2C11%2C176%2C100%2C20%2C150%2C138%2C45%2C83%2C88%2C146%2C171%2C178%2C31%2C17%2C30%2C18%2C32%2C33%2C34%2C36%2C54%2C159%2C85%2C123%2C22%2C24%2C50%2C46%2C48%2C47%2C93%2C102%2C106%2C121%2C157%2C160%2C52%2C122%2C28%2C25%2C130%2C77%2C42%2C162%2C161%2C163%2C154%2C152%2C29%2C41%2C65%2C120%2C173%2C78%2C21%2C125%2C91%2C74%2C23%2C95%2C96%2C127%2C94%2C148%2C147%2C151%2C107%2C172%2C175%2C40%2C55%2C124%2C53%2C8%2C4%2C5%2C7%2C6%2C3%2C101%2C112%2C180%2C179%2C194%2C241%2C82%2C255%2C254%2C253%2C14%2C27%2C39%2C61%2C114%2C67%2C10%2C71%2C108%2C109%2C110%2C116%2C141%2C37%2C35%2C143%2C144%2C145%2C140%2C139%2C167%2C84%2C170%2C168%2C169%2C56%2C66%2C134%2C19%2C174%2C51%2C304%2C305%2C306%2C303%2C319%2C341%2C234%2C223%2C68%2C224%2C222%2C344%2C335%2C58%2C235%2C118%2C142%2C90%2C132%2C60%2C131%2C137%2C136%2C64%2C72%2C70%2C164%2C86%2C87%2C126%2C43%2C38%2C59%2C62%2C111%2C177%2C1%2C135%2C16%2C133%2C12%2C2%2C63%2C103%2C15%2C73%2C69%2C129%2C99%2C98%2C182%2C183%2C104%2C105%2C9%2C113%2C181%2C57%2C155%2C97%2C89%2C79%2C128%2C117%2C49%2C156%2C0%2C92%2C149%2C153%2C165%2C44%2C119%2C13%2C184" async=""></script><script async="" src="https://connect.facebook.net/en_US/fbevents.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-PXGXNB66CK&amp;cx=c&amp;gtm=4e6930"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-8B0QP50RN4&amp;cx=c&amp;gtm=4e6930"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=AW-612736909&amp;cx=c&amp;gtm=4e6930"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=AW-16773100422&amp;cx=c&amp;gtm=4e6930"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=AW-10805647016&amp;cx=c&amp;gtm=4e6930"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-WC36Z77RZT&amp;cx=c&amp;gtm=4e6930"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-345MW6FPRF&amp;cx=c&amp;gtm=4e6930"></script><script async="" src="https://www.googletagmanager.com/gtm.js?id=GTM-NZLNCS8"></script><script type="text/javascript" src="//static.queue-it.net/script/queueclient.min.js"></script>
+    <script data-queueit-c="passline" type="text/javascript" src="//static.queue-it.net/script/queueconfigloader.min.js"></script><script type="text/javascript" src="https://assets.queue-it.net/passline/integrationconfig/javascript/queueclientConfig.js?versionTimestamp=202609090002"></script>
+
+    <!-- Head Libs -->
+    <script src="../site-static/vendor/modernizr/modernizr.min.js"></script>
+    <script language="javascript">
+        window.onload = function() {
+            var owl = $('.owl-carousel');
+            $(".owl-nav").removeClass("disabled");
+            $(".owl-dots").removeClass("disabled");
+            $(".owl-prev").addClass('added-class');
+            $(".owl-prev").html("<");
+            $(".owl-next").addClass('added-class');
+            $(".owl-next").html(">");
+            $(".owl-prev").click(function() {
+                $(".owl-nav").removeClass("disabled");
+                $(".owl-dots").removeClass("disabled");
+            });
+            $(".owl-next").click(function() {
+                $(".owl-nav").removeClass("disabled");
+                $(".owl-dots").removeClass("disabled");
+            });
+            owl.trigger('play.owl.autoplay', [2000]);
+            owl.on('changed.owl.carousel', function(event) {
+                $(".owl-nav").removeClass("disabled");
+                $(".owl-dots").removeClass("disabled");
+                owl.trigger('play.owl.autoplay');
+            })
+        }
+    </script>
+
+        
+
+    <script>
+        (function(w, d, s, l, i) {
+            w[l] = w[l] || [];
+            w[l].push({
+                'gtm.start': new Date().getTime(),
+                event: 'gtm.js'
+            });
+            var f = d.getElementsByTagName(s)[0],
+                j = d.createElement(s),
+                dl = l != 'dataLayer' ? '&l=' + l : '';
+            j.async = true;
+            j.src =
+                'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+            f.parentNode.insertBefore(j, f);
+        })(window, document, 'script', 'dataLayer', 'GTM-NZLNCS8');
+    </script>
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NZLNCS8" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+
+    <script type="text/javascript">
+		(function testMetaDataLayerPush() {
+		  window.dataLayer = window.dataLayer || [];
+
+		  const mockData = {
+		    event: 'page_context',
+		    event_id: '0',
+		    country: 'argentina',
+		    pixel_ids_meta: [''], 
+		    pixel_ids_tiktok: [''], 
+            pixel_ids_ga: [''],
+		    currency: 'ARP'
+		  };
+
+		  console.log('Enviando dataLayer push de prueba:', mockData);
+		  dataLayer.push(mockData);
+
+		  // Confirmar visualmente
+		  console.log(' Último push en dataLayer:', dataLayer[dataLayer.length - 1]);
+		})();
+	</script>
+
+         
+<script type="text/javascript" async="" src="https://googleads.g.doubleclick.net/pagead/viewthroughconversion/16773100422/?random=1788912827214&amp;cv=11&amp;fst=1788912827214&amp;bg=ffffff&amp;guid=ON&amp;async=1&amp;en=gtag.config&amp;gtm=45be6930v9200635995z89119782713za20gzb9119782713zd9119782713xec&amp;gcd=13l3l3l3l1l1&amp;dma=0&amp;tag_exp=115938466~115938469~117776796~118131809~118897920~118897930~120213116~120385423~120469145~120469153&amp;u_w=1280&amp;u_h=1280&amp;url=https%3A%2F%2Fwww.passline.com%2Fsitio%2Fcinta-proyecciones&amp;rcb=14&amp;frm=0&amp;tiba=CINTA%20PROYECCIONES%20-%20Passline&amp;hn=www.googleadservices.com&amp;npa=0&amp;pscdl=noapi&amp;auid=624691823.1788912827&amp;uaa=x86&amp;uab=64&amp;uafvl=Chromium%3B152.0.7977.82%7CNot%253FA_Brand%3B24.0.0.0%7CGoogle%2520Chrome%3B152.0.7977.82&amp;uamb=0&amp;uam=&amp;uap=Linux&amp;uapv=&amp;uaw=0&amp;data=event%3Dgtag.config&amp;ept=9&amp;rfmt=3&amp;fmt=4"></script><script type="text/javascript" async="" src="https://googleads.g.doubleclick.net/pagead/viewthroughconversion/612736909/?random=1788912827249&amp;cv=11&amp;fst=1788912827249&amp;bg=ffffff&amp;guid=ON&amp;async=1&amp;en=gtag.config&amp;gtm=45be6930v9200635995z89119782713za20gzb9119782713zd9119782713xec&amp;gcd=13l3l3l3l1l1&amp;dma=0&amp;tag_exp=115938466~115938469~117776796~118131809~118897920~118897930~120213116~120385423~120469145~120469153&amp;u_w=1280&amp;u_h=1280&amp;url=https%3A%2F%2Fwww.passline.com%2Fsitio%2Fcinta-proyecciones&amp;rcb=14&amp;frm=0&amp;tiba=CINTA%20PROYECCIONES%20-%20Passline&amp;hn=www.googleadservices.com&amp;npa=0&amp;pscdl=noapi&amp;auid=624691823.1788912827&amp;uaa=x86&amp;uab=64&amp;uafvl=Chromium%3B152.0.7977.82%7CNot%253FA_Brand%3B24.0.0.0%7CGoogle%2520Chrome%3B152.0.7977.82&amp;uamb=0&amp;uam=&amp;uap=Linux&amp;uapv=&amp;uaw=0&amp;data=event%3Dgtag.config&amp;ept=9&amp;rfmt=3&amp;fmt=4"></script><script type="text/javascript" async="" src="https://googleads.g.doubleclick.net/pagead/viewthroughconversion/16773100422/?random=1788912827264&amp;cv=11&amp;fst=1788912827264&amp;bg=ffffff&amp;guid=ON&amp;async=1&amp;gtm=45be6930v9200635995z89119782713za20gzb9119782713zd9119782713xea&amp;gcd=13l3l3l3l1l1&amp;dma=0&amp;tag_exp=115938466~115938469~117776796~118131809~118897920~118897930~120213116~120385423~120469145~120469153&amp;u_w=1280&amp;u_h=1280&amp;url=https%3A%2F%2Fwww.passline.com%2Fsitio%2Fcinta-proyecciones&amp;rcb=14&amp;frm=0&amp;tiba=CINTA%20PROYECCIONES%20-%20Passline&amp;hn=www.googleadservices.com&amp;npa=0&amp;pscdl=noapi&amp;auid=624691823.1788912827&amp;uaa=x86&amp;uab=64&amp;uafvl=Chromium%3B152.0.7977.82%7CNot%253FA_Brand%3B24.0.0.0%7CGoogle%2520Chrome%3B152.0.7977.82&amp;uamb=0&amp;uam=&amp;uap=Linux&amp;uapv=&amp;uaw=0&amp;_tu=CA&amp;ept=9&amp;rfmt=3&amp;fmt=4"></script><script type="text/javascript" async="" src="https://googleads.g.doubleclick.net/pagead/viewthroughconversion/10805647016/?random=1788912827518&amp;cv=11&amp;fst=1788912827518&amp;bg=ffffff&amp;guid=ON&amp;async=1&amp;en=gtag.config&amp;gtm=45be6930v9212713559z89119782713za20gzb9119782713zd9119782713xec&amp;gcd=13l3l3l3l1l1&amp;dma=0&amp;tag_exp=115938466~115938469~117776796~118131809~118897920~118897930~120213116~120385423~120469145~120469153&amp;u_w=1280&amp;u_h=1280&amp;url=https%3A%2F%2Fwww.passline.com%2Fsitio%2Fcinta-proyecciones&amp;rcb=5&amp;frm=0&amp;tiba=CINTA%20PROYECCIONES%20-%20Passline&amp;hn=www.googleadservices.com&amp;npa=0&amp;pscdl=noapi&amp;auid=624691823.1788912827&amp;uaa=x86&amp;uab=64&amp;uafvl=Chromium%3B152.0.7977.82%7CNot%253FA_Brand%3B24.0.0.0%7CGoogle%2520Chrome%3B152.0.7977.82&amp;uamb=0&amp;uam=&amp;uap=Linux&amp;uapv=&amp;uaw=0&amp;data=event%3Dgtag.config&amp;ept=9&amp;rfmt=3&amp;fmt=4"></script></head>
+
+<body class="one-page" data-target="#header" data-spy="scroll" data-offset="150">
+        <div class="body">
+        
+                <header id="header" class="header-mobile-nav-only" data-plugin-options="{&quot;stickyEnabled&quot;: true, &quot;stickyEnableOnBoxed&quot;: false, &quot;stickyEnableOnMobile&quot;: true, &quot;stickyStartAt&quot;: 50, &quot;stickySetTop&quot;: &quot;-30px&quot;, &quot;stickyChangeLogo&quot;: true}" style="min-height: 125px;">
+                    <div class="header-body">
+                        <div class="header-container container">
+                            <div class="header-row">
+                                <div class="header-column pt-lg">
+                                    <div class="header-logo" style="width: 275px; height: 85px;">
+                                        <a href="#">
+                                                                                            <img alt="Catalina Spangenberg Casasco" width="260" height="55" data-sticky-width="260" data-sticky-height="55" data-sticky-top="12" src="https://imagenes.passline.com/mi-sitio/logo/cinta-proyecciones.jpeg">
+                                                                                    </a>
+                                        <!-- <div style="font-size: 0.5em;margin-top: -5px;">Powered By Passline.com</div> -->
+                                    </div>
+                                </div>
+                                <div class="header-column">
+                                    <div class="header-row">
+                                        <div class="header-nav">
+                                            <button class="btn header-btn-collapse-nav" data-toggle="collapse" data-target=".header-nav-main">
+                                                <i class="fa fa-bars"></i>
+                                            </button>
+                                            <div class="header-nav-main header-nav-main-square header-nav-main-effect-3 header-nav-main-sub-effect-1 collapse">
+                                                <nav>
+                                                    <ul class="nav nav-pills" id="mainNav">
+                                                        <li id="bothome2">
+                                                            <a data-offset="120" id="bothome" style="background: #555555 !important;color:#fff !important;" href="#home" class="navtop-go" data-toggle="collapse" data-target=".header-nav-main">Home</a>
+                                                        </li>
+                                                                                                                    <li>
+                                                                <a data-offset="95" href="#next-event" class="navtop-go" data-toggle="collapse" data-target=".header-nav-main">Nuestros Eventos</a>
+                                                            </li>
+                                                                                                            </ul>
+                                                </nav>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                        <div class="container topo">
+                <div id="myCarousel" class="carousel slide" data-ride="carousel">
+                    <!-- Indicators -->
+                    <ol class="carousel-indicators" style="visibility: hidden; display: none;">
+                                            </ol>
+                    <!-- Wrapper for slides -->
+                    <div class="carousel-inner">
+                                            </div>
+                                    </div>
+            </div>
+
+
+                <div role="main" class="main" id="home">
+
+            <section class="section section-dark dark-black mt-none pt-none mb-none " style="background-repeat: repeat-y;">
+                <div class="container" style="margin-top: 30px;">
+                                    </div>
+            </section>
+
+            <section class="section section-dark dark-black mt-none pt-none mb-none " style="background-repeat: repeat-y;">
+
+                <div class="container" style="margin-top: 30px;">
+                    <div class="row row-white-transparent mt-eventos-home">
+                        <div class="masonry" data-plugin-masonry="" data-plugin-options="{&quot;itemSelector&quot;: &quot;.masonry-item&quot;}" style="position: relative; height: 1982.19px;">
+                                                                        <div class="col-md-3 col-sm-12 col-xs-12 masonry-item" style="position: absolute; left: 0px; top: 0px;">
+                                                <a href="https://www.passline.com/sitio-evento/midnight-in-paris-0909-primer-turno">
+                                                    <span class="thumb-info thumb-info-centered-info thumb-info-no-borders">
+                                                        <span class="thumb-info-wrapper">
+                                                                                                                                <div style="z-index: 1;" class="corner-ribbon top-left red shadow">
+                                                                        <strong>SOLD OUT</strong>
+                                                                    </div>
+                                                                                                                                <img src="https://www.passline.com/imagenes/eventos/-786109-rec.jpg" class="img-responsive">
+                                                                                                                            <span class="thumb-info-title">
+                                                                <span class="thumb-info-type"><i class="fa fa-ticket" aria-hidden="true"></i>
+                                                                    Adquirir                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </a>
+                                                <div class="p-lg border-bottom descripcion-evento">
+                                                    <span class="h4" title="Midnight in Paris 09/09 - Primer Turno">
+                                                        Midnight in Paris 09/09 - Primer Turno                                                    </span>
+                                                    <ul class="list list-icons list-primary list-borders" style="margin-bottom: 0 !important;">
+                                                                                                                    <li class="fecha-site" style="height:53px;"><i class="fa fa-calendar"></i>
+
+                                                                09 de Septiembre 2026 a las 19:10                                                            </li>
+                                                        
+                                                        <li class="lugar-site"><i class="fa fa-map-marker"></i>
+                                                            <div style="overflow: hidden;display: -webkit-box;-webkit-line-clamp: 1 !important;-webkit-box-orient: vertical;">
+                                                                Crepas Palermo                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <a href="https://www.passline.com/sitio-evento/midnight-in-paris-0909-primer-turno" class="btn btn-primary btn-lg mr-xs mb-sm btn-w" style="font-size: 13px !important;">
+                                                    <i class="fa fa-ticket" aria-hidden="true"></i>
+                                                    AGOTADAS                                                </a>
+                                            </div>
+                                                                                    <div class="col-md-3 col-sm-12 col-xs-12 masonry-item" style="position: absolute; left: 292px; top: 0px;">
+                                                <a href="https://www.passline.com/sitio-evento/midnight-in-paris-0909-segundo-turno">
+                                                    <span class="thumb-info thumb-info-centered-info thumb-info-no-borders">
+                                                        <span class="thumb-info-wrapper">
+                                                                                                                                <div style="z-index: 1;" class="corner-ribbon top-left red shadow">
+                                                                        <strong>SOLD OUT</strong>
+                                                                    </div>
+                                                                                                                                <img src="https://www.passline.com/imagenes/eventos/midnight-in-paris-0909-segundo-turno-rec.jpg" class="img-responsive">
+                                                                                                                            <span class="thumb-info-title">
+                                                                <span class="thumb-info-type"><i class="fa fa-ticket" aria-hidden="true"></i>
+                                                                    Adquirir                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </a>
+                                                <div class="p-lg border-bottom descripcion-evento">
+                                                    <span class="h4" title="Midnight in Paris 09/09 - Segundo Turno">
+                                                        Midnight in Paris 09/09 - Segundo Turno                                                    </span>
+                                                    <ul class="list list-icons list-primary list-borders" style="margin-bottom: 0 !important;">
+                                                                                                                    <li class="fecha-site" style="height:53px;"><i class="fa fa-calendar"></i>
+
+                                                                09 de Septiembre 2026 a las 21:15                                                            </li>
+                                                        
+                                                        <li class="lugar-site"><i class="fa fa-map-marker"></i>
+                                                            <div style="overflow: hidden;display: -webkit-box;-webkit-line-clamp: 1 !important;-webkit-box-orient: vertical;">
+                                                                Crepas Palermo                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <a href="https://www.passline.com/sitio-evento/midnight-in-paris-0909-segundo-turno" class="btn btn-primary btn-lg mr-xs mb-sm btn-w" style="font-size: 13px !important;">
+                                                    <i class="fa fa-ticket" aria-hidden="true"></i>
+                                                    AGOTADAS                                                </a>
+                                            </div>
+                                                                                    <div class="col-md-3 col-sm-12 col-xs-12 masonry-item" style="position: absolute; left: 585px; top: 0px;">
+                                                <a href="https://www.passline.com/sitio-evento/lost-in-translation-1009-primer-turno">
+                                                    <span class="thumb-info thumb-info-centered-info thumb-info-no-borders">
+                                                        <span class="thumb-info-wrapper">
+                                                                                                                                <div style="z-index: 1;" class="corner-ribbon top-left red shadow">
+                                                                        <strong>SOLD OUT</strong>
+                                                                    </div>
+                                                                                                                                <img src="https://www.passline.com/imagenes/eventos/-786114-rec.jpg" class="img-responsive">
+                                                                                                                            <span class="thumb-info-title">
+                                                                <span class="thumb-info-type"><i class="fa fa-ticket" aria-hidden="true"></i>
+                                                                    Adquirir                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </a>
+                                                <div class="p-lg border-bottom descripcion-evento">
+                                                    <span class="h4" title="Lost in Translation 10/09 - Primer Turno">
+                                                        Lost in Translation 10/09 - Primer Turno                                                    </span>
+                                                    <ul class="list list-icons list-primary list-borders" style="margin-bottom: 0 !important;">
+                                                                                                                    <li class="fecha-site" style="height:53px;"><i class="fa fa-calendar"></i>
+
+                                                                10 de Septiembre 2026 a las 19:15                                                            </li>
+                                                        
+                                                        <li class="lugar-site"><i class="fa fa-map-marker"></i>
+                                                            <div style="overflow: hidden;display: -webkit-box;-webkit-line-clamp: 1 !important;-webkit-box-orient: vertical;">
+                                                                Crepas Palermo                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <a href="https://www.passline.com/sitio-evento/lost-in-translation-1009-primer-turno" class="btn btn-primary btn-lg mr-xs mb-sm btn-w" style="font-size: 13px !important;">
+                                                    <i class="fa fa-ticket" aria-hidden="true"></i>
+                                                    AGOTADAS                                                </a>
+                                            </div>
+                                                                                    <div class="col-md-3 col-sm-12 col-xs-12 masonry-item" style="position: absolute; left: 877px; top: 0px;">
+                                                <a href="https://www.passline.com/sitio-evento/lost-in-translation-1009-segundo-turno">
+                                                    <span class="thumb-info thumb-info-centered-info thumb-info-no-borders">
+                                                        <span class="thumb-info-wrapper">
+                                                                                                                                <div style="z-index: 1;" class="corner-ribbon top-left red shadow">
+                                                                        <strong>SOLD OUT</strong>
+                                                                    </div>
+                                                                                                                                <img src="https://www.passline.com/imagenes/eventos/lost-in-translation-1009-segundo-turno-rec.jpg" class="img-responsive">
+                                                                                                                            <span class="thumb-info-title">
+                                                                <span class="thumb-info-type"><i class="fa fa-ticket" aria-hidden="true"></i>
+                                                                    Adquirir                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </a>
+                                                <div class="p-lg border-bottom descripcion-evento">
+                                                    <span class="h4" title="Lost in Translation 10/09 - Segundo Turno">
+                                                        Lost in Translation 10/09 - Segundo Turno                                                    </span>
+                                                    <ul class="list list-icons list-primary list-borders" style="margin-bottom: 0 !important;">
+                                                                                                                    <li class="fecha-site" style="height:53px;"><i class="fa fa-calendar"></i>
+
+                                                                10 de Septiembre 2026 a las 21:20                                                            </li>
+                                                        
+                                                        <li class="lugar-site"><i class="fa fa-map-marker"></i>
+                                                            <div style="overflow: hidden;display: -webkit-box;-webkit-line-clamp: 1 !important;-webkit-box-orient: vertical;">
+                                                                Crepas Palermo                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <a href="https://www.passline.com/sitio-evento/lost-in-translation-1009-segundo-turno" class="btn btn-primary btn-lg mr-xs mb-sm btn-w" style="font-size: 13px !important;">
+                                                    <i class="fa fa-ticket" aria-hidden="true"></i>
+                                                    AGOTADAS                                                </a>
+                                            </div>
+                                                                                    <div class="col-md-3 col-sm-12 col-xs-12 masonry-item" style="position: absolute; left: 0px; top: 495px;">
+                                                <a href="https://www.passline.com/sitio-evento/the-secret-life-of-walter-mitty-1309-primer-turno">
+                                                    <span class="thumb-info thumb-info-centered-info thumb-info-no-borders">
+                                                        <span class="thumb-info-wrapper">
+                                                                                                                                <div style="z-index: 1;" class="corner-ribbon top-left red shadow">
+                                                                        <strong>SOLD OUT</strong>
+                                                                    </div>
+                                                                                                                                <img src="https://www.passline.com/imagenes/eventos/-786118-rec.jpg" class="img-responsive">
+                                                                                                                            <span class="thumb-info-title">
+                                                                <span class="thumb-info-type"><i class="fa fa-ticket" aria-hidden="true"></i>
+                                                                    Adquirir                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </a>
+                                                <div class="p-lg border-bottom descripcion-evento">
+                                                    <span class="h4" title="The Secret Life of Walter Mitty 13/09 - Primer Turno">
+                                                        The Secret Life of Walter Mitty 13/09 - Primer Turno                                                    </span>
+                                                    <ul class="list list-icons list-primary list-borders" style="margin-bottom: 0 !important;">
+                                                                                                                    <li class="fecha-site" style="height:53px;"><i class="fa fa-calendar"></i>
+
+                                                                13 de Septiembre 2026 a las 19:10                                                            </li>
+                                                        
+                                                        <li class="lugar-site"><i class="fa fa-map-marker"></i>
+                                                            <div style="overflow: hidden;display: -webkit-box;-webkit-line-clamp: 1 !important;-webkit-box-orient: vertical;">
+                                                                Crepas Palermo                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <a href="https://www.passline.com/sitio-evento/the-secret-life-of-walter-mitty-1309-primer-turno" class="btn btn-primary btn-lg mr-xs mb-sm btn-w" style="font-size: 13px !important;">
+                                                    <i class="fa fa-ticket" aria-hidden="true"></i>
+                                                    AGOTADAS                                                </a>
+                                            </div>
+                                                                                    <div class="col-md-3 col-sm-12 col-xs-12 masonry-item" style="position: absolute; left: 292px; top: 495px;">
+                                                <a href="https://www.passline.com/sitio-evento/the-secret-life-of-walter-mitty-1309-segundo-turno">
+                                                    <span class="thumb-info thumb-info-centered-info thumb-info-no-borders">
+                                                        <span class="thumb-info-wrapper">
+                                                                                                                                <div style="z-index: 1;" class="corner-ribbon top-left red shadow">
+                                                                        <strong>SOLD OUT</strong>
+                                                                    </div>
+                                                                                                                                <img src="https://www.passline.com/imagenes/eventos/the-secret-life-of-walter-mitty-1309-segundo-turno-rec.jpg" class="img-responsive">
+                                                                                                                            <span class="thumb-info-title">
+                                                                <span class="thumb-info-type"><i class="fa fa-ticket" aria-hidden="true"></i>
+                                                                    Adquirir                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </a>
+                                                <div class="p-lg border-bottom descripcion-evento">
+                                                    <span class="h4" title="The Secret Life of Walter Mitty 13/09 - Segundo Turno">
+                                                        The Secret Life of Walter Mitty 13/09 - Segundo Turno                                                    </span>
+                                                    <ul class="list list-icons list-primary list-borders" style="margin-bottom: 0 !important;">
+                                                                                                                    <li class="fecha-site" style="height:53px;"><i class="fa fa-calendar"></i>
+
+                                                                13 de Septiembre 2026 a las 21:35                                                            </li>
+                                                        
+                                                        <li class="lugar-site"><i class="fa fa-map-marker"></i>
+                                                            <div style="overflow: hidden;display: -webkit-box;-webkit-line-clamp: 1 !important;-webkit-box-orient: vertical;">
+                                                                Crepas Palermo                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <a href="https://www.passline.com/sitio-evento/the-secret-life-of-walter-mitty-1309-segundo-turno" class="btn btn-primary btn-lg mr-xs mb-sm btn-w" style="font-size: 13px !important;">
+                                                    <i class="fa fa-ticket" aria-hidden="true"></i>
+                                                    AGOTADAS                                                </a>
+                                            </div>
+                                                                                    <div class="col-md-3 col-sm-12 col-xs-12 masonry-item" style="position: absolute; left: 585px; top: 495px;">
+                                                <a href="https://www.passline.com/sitio-evento/500-days-of-summer-1409-primer-turno">
+                                                    <span class="thumb-info thumb-info-centered-info thumb-info-no-borders">
+                                                        <span class="thumb-info-wrapper">
+                                                                                                                                <div style="z-index: 1;" class="corner-ribbon top-left red shadow">
+                                                                        <strong>SOLD OUT</strong>
+                                                                    </div>
+                                                                                                                                <img src="https://www.passline.com/imagenes/eventos/-786121-rec.jpg" class="img-responsive">
+                                                                                                                            <span class="thumb-info-title">
+                                                                <span class="thumb-info-type"><i class="fa fa-ticket" aria-hidden="true"></i>
+                                                                    Adquirir                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </a>
+                                                <div class="p-lg border-bottom descripcion-evento">
+                                                    <span class="h4" title="(500) Days of Summer 14/09 - Primer Turno">
+                                                        (500) Days of Summer 14/09 - Primer Turno                                                    </span>
+                                                    <ul class="list list-icons list-primary list-borders" style="margin-bottom: 0 !important;">
+                                                                                                                    <li class="fecha-site" style="height:53px;"><i class="fa fa-calendar"></i>
+
+                                                                14 de Septiembre 2026 a las 19:15                                                            </li>
+                                                        
+                                                        <li class="lugar-site"><i class="fa fa-map-marker"></i>
+                                                            <div style="overflow: hidden;display: -webkit-box;-webkit-line-clamp: 1 !important;-webkit-box-orient: vertical;">
+                                                                Crepas Palermo                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <a href="https://www.passline.com/sitio-evento/500-days-of-summer-1409-primer-turno" class="btn btn-primary btn-lg mr-xs mb-sm btn-w" style="font-size: 13px !important;">
+                                                    <i class="fa fa-ticket" aria-hidden="true"></i>
+                                                    AGOTADAS                                                </a>
+                                            </div>
+                                                                                    <div class="col-md-3 col-sm-12 col-xs-12 masonry-item" style="position: absolute; left: 877px; top: 495px;">
+                                                <a href="https://www.passline.com/sitio-evento/500-days-of-summer-1409-segundo-turno">
+                                                    <span class="thumb-info thumb-info-centered-info thumb-info-no-borders">
+                                                        <span class="thumb-info-wrapper">
+                                                                                                                                <div style="z-index: 1;" class="corner-ribbon top-left red shadow">
+                                                                        <strong>SOLD OUT</strong>
+                                                                    </div>
+                                                                                                                                <img src="https://www.passline.com/imagenes/eventos/500-days-of-summer-1409-segundo-turno-rec.jpg" class="img-responsive">
+                                                                                                                            <span class="thumb-info-title">
+                                                                <span class="thumb-info-type"><i class="fa fa-ticket" aria-hidden="true"></i>
+                                                                    Adquirir                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </a>
+                                                <div class="p-lg border-bottom descripcion-evento">
+                                                    <span class="h4" title="(500) Days of Summer 14/09 - Segundo Turno">
+                                                        (500) Days of Summer 14/09 - Segundo Turno                                                    </span>
+                                                    <ul class="list list-icons list-primary list-borders" style="margin-bottom: 0 !important;">
+                                                                                                                    <li class="fecha-site" style="height:53px;"><i class="fa fa-calendar"></i>
+
+                                                                14 de Septiembre 2026 a las 21:15                                                            </li>
+                                                        
+                                                        <li class="lugar-site"><i class="fa fa-map-marker"></i>
+                                                            <div style="overflow: hidden;display: -webkit-box;-webkit-line-clamp: 1 !important;-webkit-box-orient: vertical;">
+                                                                Crepas Palermo                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <a href="https://www.passline.com/sitio-evento/500-days-of-summer-1409-segundo-turno" class="btn btn-primary btn-lg mr-xs mb-sm btn-w" style="font-size: 13px !important;">
+                                                    <i class="fa fa-ticket" aria-hidden="true"></i>
+                                                    AGOTADAS                                                </a>
+                                            </div>
+                                                                                    <div class="col-md-3 col-sm-12 col-xs-12 masonry-item" style="position: absolute; left: 0px; top: 991px;">
+                                                <a href="https://www.passline.com/sitio-evento/the-perks-of-being-a-wallflower-1609-primer-turno">
+                                                    <span class="thumb-info thumb-info-centered-info thumb-info-no-borders">
+                                                        <span class="thumb-info-wrapper">
+                                                                                                                            <img src="https://www.passline.com/imagenes/eventos/-786126-rec.jpg" class="img-responsive">
+                                                                                                                            <span class="thumb-info-title">
+                                                                <span class="thumb-info-type"><i class="fa fa-ticket" aria-hidden="true"></i>
+                                                                    Comprar                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </a>
+                                                <div class="p-lg border-bottom descripcion-evento">
+                                                    <span class="h4" title="The Perks of Being a Wallflower 16/09 - Primer Turno">
+                                                        The Perks of Being a Wallflower 16/09 - Primer Turno                                                    </span>
+                                                    <ul class="list list-icons list-primary list-borders" style="margin-bottom: 0 !important;">
+                                                                                                                    <li class="fecha-site" style="height:53px;"><i class="fa fa-calendar"></i>
+
+                                                                16 de Septiembre 2026 a las 19:15                                                            </li>
+                                                        
+                                                        <li class="lugar-site"><i class="fa fa-map-marker"></i>
+                                                            <div style="overflow: hidden;display: -webkit-box;-webkit-line-clamp: 1 !important;-webkit-box-orient: vertical;">
+                                                                Crepas Palermo                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <a href="https://www.passline.com/sitio-evento/the-perks-of-being-a-wallflower-1609-primer-turno" class="btn btn-primary btn-lg mr-xs mb-sm btn-w" style="font-size: 13px !important;">
+                                                    <i class="fa fa-ticket" aria-hidden="true"></i>
+                                                    Comprar                                                </a>
+                                            </div>
+                                                                                    <div class="col-md-3 col-sm-12 col-xs-12 masonry-item" style="position: absolute; left: 292px; top: 991px;">
+                                                <a href="https://www.passline.com/sitio-evento/the-perks-of-being-a-wallflower-1609-segundo-turno">
+                                                    <span class="thumb-info thumb-info-centered-info thumb-info-no-borders">
+                                                        <span class="thumb-info-wrapper">
+                                                                                                                            <img src="https://www.passline.com/imagenes/eventos/the-perks-of-being-a-wallflower-1609-segundo-turno-rec.jpg" class="img-responsive">
+                                                                                                                            <span class="thumb-info-title">
+                                                                <span class="thumb-info-type"><i class="fa fa-ticket" aria-hidden="true"></i>
+                                                                    Comprar                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </a>
+                                                <div class="p-lg border-bottom descripcion-evento">
+                                                    <span class="h4" title="The Perks of Being a Wallflower 16/09 - Segundo Turno">
+                                                        The Perks of Being a Wallflower 16/09 - Segundo Turno                                                    </span>
+                                                    <ul class="list list-icons list-primary list-borders" style="margin-bottom: 0 !important;">
+                                                                                                                    <li class="fecha-site" style="height:53px;"><i class="fa fa-calendar"></i>
+
+                                                                16 de Septiembre 2026 a las 21:25                                                            </li>
+                                                        
+                                                        <li class="lugar-site"><i class="fa fa-map-marker"></i>
+                                                            <div style="overflow: hidden;display: -webkit-box;-webkit-line-clamp: 1 !important;-webkit-box-orient: vertical;">
+                                                                Crepas Palermo                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <a href="https://www.passline.com/sitio-evento/the-perks-of-being-a-wallflower-1609-segundo-turno" class="btn btn-primary btn-lg mr-xs mb-sm btn-w" style="font-size: 13px !important;">
+                                                    <i class="fa fa-ticket" aria-hidden="true"></i>
+                                                    Comprar                                                </a>
+                                            </div>
+                                                                                    <div class="col-md-3 col-sm-12 col-xs-12 masonry-item" style="position: absolute; left: 585px; top: 991px;">
+                                                <a href="https://www.passline.com/sitio-evento/punchdrunklove-2709-primer-turno">
+                                                    <span class="thumb-info thumb-info-centered-info thumb-info-no-borders">
+                                                        <span class="thumb-info-wrapper">
+                                                                                                                                <div style="z-index: 1;" class="corner-ribbon top-left red shadow">
+                                                                        <strong>SOLD OUT</strong>
+                                                                    </div>
+                                                                                                                                <img src="https://www.passline.com/imagenes/eventos/-786131-rec.jpg" class="img-responsive">
+                                                                                                                            <span class="thumb-info-title">
+                                                                <span class="thumb-info-type"><i class="fa fa-ticket" aria-hidden="true"></i>
+                                                                    Adquirir                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </a>
+                                                <div class="p-lg border-bottom descripcion-evento">
+                                                    <span class="h4" title="Punch-Drunk-Love 27/09 - Primer Turno">
+                                                        Punch-Drunk-Love 27/09 - Primer Turno                                                    </span>
+                                                    <ul class="list list-icons list-primary list-borders" style="margin-bottom: 0 !important;">
+                                                                                                                    <li class="fecha-site" style="height:53px;"><i class="fa fa-calendar"></i>
+
+                                                                27 de Septiembre 2026 a las 19:15                                                            </li>
+                                                        
+                                                        <li class="lugar-site"><i class="fa fa-map-marker"></i>
+                                                            <div style="overflow: hidden;display: -webkit-box;-webkit-line-clamp: 1 !important;-webkit-box-orient: vertical;">
+                                                                Crepas Palermo                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <a href="https://www.passline.com/sitio-evento/punchdrunklove-2709-primer-turno" class="btn btn-primary btn-lg mr-xs mb-sm btn-w" style="font-size: 13px !important;">
+                                                    <i class="fa fa-ticket" aria-hidden="true"></i>
+                                                    AGOTADAS                                                </a>
+                                            </div>
+                                                                                    <div class="col-md-3 col-sm-12 col-xs-12 masonry-item" style="position: absolute; left: 877px; top: 991px;">
+                                                <a href="https://www.passline.com/sitio-evento/punchdrunklove-2709-segundo-turno">
+                                                    <span class="thumb-info thumb-info-centered-info thumb-info-no-borders">
+                                                        <span class="thumb-info-wrapper">
+                                                                                                                            <img src="https://www.passline.com/imagenes/eventos/punchdrunklove-2709-segundo-turno-rec.jpg" class="img-responsive">
+                                                                                                                            <span class="thumb-info-title">
+                                                                <span class="thumb-info-type"><i class="fa fa-ticket" aria-hidden="true"></i>
+                                                                    Comprar                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </a>
+                                                <div class="p-lg border-bottom descripcion-evento">
+                                                    <span class="h4" title="Punch-Drunk-Love 27/09 - Segundo Turno">
+                                                        Punch-Drunk-Love 27/09 - Segundo Turno                                                    </span>
+                                                    <ul class="list list-icons list-primary list-borders" style="margin-bottom: 0 !important;">
+                                                                                                                    <li class="fecha-site" style="height:53px;"><i class="fa fa-calendar"></i>
+
+                                                                27 de Septiembre 2026 a las 21:15                                                            </li>
+                                                        
+                                                        <li class="lugar-site"><i class="fa fa-map-marker"></i>
+                                                            <div style="overflow: hidden;display: -webkit-box;-webkit-line-clamp: 1 !important;-webkit-box-orient: vertical;">
+                                                                Crepas Palermo                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <a href="https://www.passline.com/sitio-evento/punchdrunklove-2709-segundo-turno" class="btn btn-primary btn-lg mr-xs mb-sm btn-w" style="font-size: 13px !important;">
+                                                    <i class="fa fa-ticket" aria-hidden="true"></i>
+                                                    Comprar                                                </a>
+                                            </div>
+                                                                                    <div class="col-md-3 col-sm-12 col-xs-12 masonry-item" style="position: absolute; left: 0px; top: 1486px;">
+                                                <a href="https://www.passline.com/sitio-evento/the-spectacular-now-3009-primer-turno">
+                                                    <span class="thumb-info thumb-info-centered-info thumb-info-no-borders">
+                                                        <span class="thumb-info-wrapper">
+                                                                                                                            <img src="https://www.passline.com/imagenes/eventos/-786134-rec.jpg" class="img-responsive">
+                                                                                                                            <span class="thumb-info-title">
+                                                                <span class="thumb-info-type"><i class="fa fa-ticket" aria-hidden="true"></i>
+                                                                    Comprar                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </a>
+                                                <div class="p-lg border-bottom descripcion-evento">
+                                                    <span class="h4" title="The Spectacular Now 30/09 - Primer Turno">
+                                                        The Spectacular Now 30/09 - Primer Turno                                                    </span>
+                                                    <ul class="list list-icons list-primary list-borders" style="margin-bottom: 0 !important;">
+                                                                                                                    <li class="fecha-site" style="height:53px;"><i class="fa fa-calendar"></i>
+
+                                                                30 de Septiembre 2026 a las 19:15                                                            </li>
+                                                        
+                                                        <li class="lugar-site"><i class="fa fa-map-marker"></i>
+                                                            <div style="overflow: hidden;display: -webkit-box;-webkit-line-clamp: 1 !important;-webkit-box-orient: vertical;">
+                                                                Crepas Palermo                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <a href="https://www.passline.com/sitio-evento/the-spectacular-now-3009-primer-turno" class="btn btn-primary btn-lg mr-xs mb-sm btn-w" style="font-size: 13px !important;">
+                                                    <i class="fa fa-ticket" aria-hidden="true"></i>
+                                                    Comprar                                                </a>
+                                            </div>
+                                                                                    <div class="col-md-3 col-sm-12 col-xs-12 masonry-item" style="position: absolute; left: 292px; top: 1486px;">
+                                                <a href="https://www.passline.com/sitio-evento/the-spectacular-now-3009-segundo-turno">
+                                                    <span class="thumb-info thumb-info-centered-info thumb-info-no-borders">
+                                                        <span class="thumb-info-wrapper">
+                                                                                                                            <img src="https://www.passline.com/imagenes/eventos/the-spectacular-now-3009-segundo-turno-rec.jpg" class="img-responsive">
+                                                                                                                            <span class="thumb-info-title">
+                                                                <span class="thumb-info-type"><i class="fa fa-ticket" aria-hidden="true"></i>
+                                                                    Comprar                                                                </span>
+                                                            </span>
+                                                        </span>
+                                                    </span>
+                                                </a>
+                                                <div class="p-lg border-bottom descripcion-evento">
+                                                    <span class="h4" title="The Spectacular Now 30/09 - Segundo Turno">
+                                                        The Spectacular Now 30/09 - Segundo Turno                                                    </span>
+                                                    <ul class="list list-icons list-primary list-borders" style="margin-bottom: 0 !important;">
+                                                                                                                    <li class="fecha-site" style="height:53px;"><i class="fa fa-calendar"></i>
+
+                                                                30 de Septiembre 2026 a las 21:15                                                            </li>
+                                                        
+                                                        <li class="lugar-site"><i class="fa fa-map-marker"></i>
+                                                            <div style="overflow: hidden;display: -webkit-box;-webkit-line-clamp: 1 !important;-webkit-box-orient: vertical;">
+                                                                Crepas Palermo                                                            </div>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <a href="https://www.passline.com/sitio-evento/the-spectacular-now-3009-segundo-turno" class="btn btn-primary btn-lg mr-xs mb-sm btn-w" style="font-size: 13px !important;">
+                                                    <i class="fa fa-ticket" aria-hidden="true"></i>
+                                                    Comprar                                                </a>
+                                            </div>
+                                                                </div>
+                    </div>
+                </div>
+                            </section>
+
+            <section class="page-header page-header-color page-header-center page-header-primary m-none " id="contact">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <ul class="social-icons" style="font-size: 20px;">
+                                                                    <li class="social-icons-instagram"><a href="https://www.instagram.com/cintaproyecciones/" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a></li>
+                                                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+                            <section class="page-header page-header-color page-header-center page-header-primary page-header-more-padding m-none hidden" id="maps" style="border-bottom: 0px solid !important">
+                                    <div class="container" style="font-size: 10px;">
+                        <div class="row">
+                                                            <div class="col-md-12 hidden-xs">
+                                    <p>
+                                    </p><h1>Gurruchaga 1791</h1>
+                                    <p></p>
+                                    <p>
+                                    </p><h1>tommy.perazzo@gmail.com</h1>
+                                    <p></p>
+                                    <p>
+                                    </p><h1>1128230756</h1>
+                                    <p></p>
+                                </div>
+                                <div class="col-md-12 visible-xs-* hidden-sm  hidden-md  hidden-lg">
+                                    <p>
+                                    </p><h1>Gurruchaga 1791</h1>
+                                    <p></p>
+                                    <p>
+                                    </p><h1>tommy.perazzo@gmail.com</h1>
+                                    <p></p>
+                                    <p>
+                                    </p><h1>1128230756</h1>
+                                    <p></p>
+                                </div>
+                                                    </div>
+                    </div>
+                    </section>
+        </div>
+
+                    <footer class="short light mt-none" id="footer" style="border-bottom: 0px solid #0088CC;">
+                <div class="container  hidden-xs">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <!-- <img src="https://imagenes.passline.com/mi-sitio/logo/cinta-proyecciones.jpeg" class="img-w-50"/> -->
+                            <img src="../site-static/img/log-pass.png" class="img-w-50">
+                        </div>
+                        <div class="col-md-8">
+                            <p>Importante: Passline no se hace responsable de la calidad o satisfacción de los eventos publicados. Passline es un sistema que presta el servicio de venta de entradas online. Al usar este sitio usted acepta los términos y condiciones de la aplicación.</p>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+            </div>
+
+    <!-- Vendor -->
+    <script type="text/javascript" src="../site-static/vendor/jquery/jquery.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/jquery.appear/jquery.appear.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/jquery.easing/jquery.easing.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/jquery-cookie/jquery-cookie.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/bootstrap/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/common/common.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/jquery.validation/jquery.validation.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/jquery.easy-pie-chart/jquery.easy-pie-chart.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/jquery.gmap/jquery.gmap.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/jquery.lazyload/jquery.lazyload.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/isotope/jquery.isotope.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/owl.carousel/owl.carousel.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/magnific-popup/jquery.magnific-popup.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/vide/vide.min.js"></script>
+
+    <!-- Theme Base, Components and Settings -->
+    <script type="text/javascript" src="../site-static/js/theme.js"></script>
+    <!-- Current Page Vendor and Views -->
+    <script type="text/javascript" src="../site-static/vendor/rs-plugin/js/jquery.themepunch.tools.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/rs-plugin/js/jquery.themepunch.revolution.min.js"></script>
+    <script type="text/javascript" src="../site-static/js/views/view.contact.js"></script>
+    <!-- Theme Initialization Files -->
+    <script type="text/javascript" src="../site-static/js/theme.init.js"></script><a class="scroll-to-top hidden-mobile" href="#"><i class="fa fa-chevron-up"></i></a>
+    <!-- Theme Custom -->
+    <script type="text/javascript" src="../site-static/js/custom.js"></script>
+    <!-- Examples -->
+    <script type="text/javascript" src="../site-static/js/examples/examples.portfolio.js"></script>
+    <!-- Examples -->
+    <script type="text/javascript" src="../site-static/js/examples/examples.carousels.js"></script>
+
+    <script type="text/javascript">
+        window.onload = function() {
+            setTimeout(hide_slider_pointer(), 200);
+            setTimeout(hide_slider_pointer(), 500);
+            setTimeout(hide_slider_pointer(), 1000);
+        }
+
+        function hide_slider_pointer() {
+            try {
+                document.getElementsByClassName("carousel-indicators")[0].style.visibility = "hidden";
+                document.getElementsByClassName("carousel-indicators")[0].style.display = "none";
+            } catch (e) {}
+        }
+    </script>
+
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a381fd1c88ad39a6',t:'MTc4ODkxMjgyMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><iframe height="1" width="1" style="position: absolute; top: 0px; left: 0px; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; visibility: hidden;"></iframe>
+
+<script type="text/javascript" id="" charset="">(function(){if(!window.__ttqInitDone){window.__ttqInitDone=!0;window.TiktokAnalyticsObject="ttq";var a=window.ttq=window.ttq||[];a.methods="page track identify instances debug on off once ready alias group enableCookie disableCookie".split(" ");a.setAndDefer=function(b,c){b[c]=function(){b.push([c].concat([].slice.call(arguments)))}};for(var e=0;e<a.methods.length;e++)a.setAndDefer(a,a.methods[e]);a.instance=function(b){a._i=a._i||{};a._i[b]=a._i[b]||[];b=a._i[b];for(var c=0;c<a.methods.length;c++)a.setAndDefer(b,
+a.methods[c]);return b};a.load=function(b){a._i=a._i||{};a._t=a._t||{};a._i[b]=a._i[b]||[];a._t[b]=+new Date;var c="https://analytics.tiktok.com/i18n/pixel/events.js?sdkid\x3d"+encodeURIComponent(b)+"\x26lib\x3dttq";if(!document.querySelector('script[src\x3d"'+c+'"]')){var d=document.createElement("script");d.async=!0;d.src=c;d.onload=function(){console.log("[TT] sdk loaded",b)};d.onerror=function(f){console.log("[TT] sdk load error",b,f)};document.head.appendChild(d)}}}})();</script><script type="text/javascript" id="" charset="">(function(){function m(){for(var b=window.dataLayer||[],a=b.length-1;a>=0;a--)if(b[a].country)return b[a].country;return(b=document.querySelector("[data-country]"))?b.getAttribute("data-country"):"unknown"}function n(b){for(;b&&b!==document.body;){var a=b.className||"";if(a.indexOf("slider-container-mobile")>-1||a.indexOf("slider-container")>-1)return"slider_principal";if(a.indexOf("marquee")>-1&&a.indexOf("col-marquee")===-1)return"thumbnails";b=b.parentElement}return"sin_seccion"}function p(b){var a=
+b.dataset.index;return a===void 0||a===""||(a=parseInt(a,10),isNaN(a))?typeof b._bannerIndex==="number"?b._bannerIndex:0:a}function q(){document.querySelectorAll(".slider-container, .slider-container-mobile").forEach(function(b){b.querySelectorAll("a.event-slider-passline").forEach(function(a,e){a._bannerIndex=e})});document.querySelectorAll(".marquee").forEach(function(b){b.querySelectorAll("a.event-carousel-passline").forEach(function(a,e){a._bannerIndex=e})})}function h(b){if(!b._bannerObserved){b._bannerObserved=
+!0;var a=null,e=new IntersectionObserver(function(c){c.forEach(function(f){f.isIntersecting?a=setTimeout(function(){var d=f.target,g=m(),k=n(d),l=d.dataset.itemname||"sin_nombre",t=d.dataset.itemid||"sin_id",u=p(d);d=d.dataset.datalocation||k;window.dataLayer=window.dataLayer||[];window.dataLayer.push({ecommerce:null});window.dataLayer.push({event:"banner_impression_individual",banner_name:l,banner_id:t,banner_index:u,banner_section:k,banner_location:d,country:g})},v):a&&(clearTimeout(a),a=null)})},
+{threshold:w});e.observe(b);b.addEventListener("click",function(){var c=b,f=m(),d=n(c),g=c.dataset.itemname||"sin_nombre",k=c.dataset.itemid||"sin_id",l=p(c);c=c.dataset.datalocation||d;window.dataLayer=window.dataLayer||[];window.dataLayer.push({event:"banner_click_dl",banner_name:g,banner_id:k,banner_index:l,banner_section:d,banner_location:c,country:f})},!0)}}function r(){q();document.querySelectorAll("a.event-slider-passline").forEach(h);document.querySelectorAll("a.event-carousel-passline").forEach(h)}
+var w=.5,v=800;document.readyState==="loading"?document.addEventListener("DOMContentLoaded",r):r();var x=new MutationObserver(function(b){var a=!1;b.forEach(function(e){e.addedNodes.forEach(function(c){if(c.nodeType===1){var f=c.classList&&c.classList.contains("event-slider-passline"),d=c.classList&&c.classList.contains("event-carousel-passline");if(f||d)a=!0,h(c);c.querySelectorAll&&c.querySelectorAll("a.event-slider-passline, a.event-carousel-passline").forEach(function(g){a=!0;h(g)})}})});a&&q()});
+x.observe(document.body,{childList:!0,subtree:!0})})();</script><script type="text/javascript" id="" charset="">(function(){var b=google_tag_manager["rm"]["119782713"](10)||[];Array.isArray(b)||(b=b?[b]:[]);var a=google_tag_manager["rm"]["119782713"](11)||"";a=function(d){if(!d)return[];d=String(d).split(",");var g=[],e,h;for(e=0;e<d.length;e++)(h=(d[e]||"").trim())&&g.indexOf(h)===-1&&g.push(h);return g}(a);var f=b.concat(a);b=[];var l;for(a=0;a<f.length;a++)(l=f[a]!=null?String(f[a]).trim():"")&&b.indexOf(l)===-1&&b.push(l);if(b.length){window.fbq||!function(d,g,e,h,c,k,m){d.fbq||(c=d.fbq=function(){c.callMethod?c.callMethod.apply(c,arguments):
+c.queue.push(arguments)},d._fbq||(d._fbq=c),c.push=c,c.loaded=!0,c.version="2.0",c.queue=[],k=g.createElement(e),k.async=!0,k.src=h,m=g.getElementsByTagName(e)[0],m.parentNode.insertBefore(k,m))}(window,document,"script","https://connect.facebook.net/en_US/fbevents.js");window.__fbqInited=window.__fbqInited||{};for(a=0;a<b.length;a++)f=b[a],window.__fbqInited[f]||(fbq("init",f),window.__fbqInited[f]=!0);fbq("track","PageView")}})();</script><script type="text/javascript" id="" charset="">(function(){var b=google_tag_manager["rm"]["119782713"](12)||"";b=function(c){if(!c)return[];c=String(c).split(",");var h=[],g,k;for(g=0;g<c.length;g++)(k=(c[g]||"").trim())&&h.indexOf(k)===-1&&h.push(k);return h}(b);var a=google_tag_manager["rm"]["119782713"](13),d=[];if(Array.isArray(a))for(var e=0;e<a.length;e++)d.push(String(a[e]).trim());else a&&d.push(String(a).trim());b=b.concat(d);var f=[];a={};for(d=0;d<b.length;d++)(e=(b[d]||"").trim())&&!a[e]&&(a[e]=!0,f.push(e));if(f.length){window.__ttqInited=window.__ttqInited||{};for(b=0;b<
+f.length;b++)a=f[b],window.__ttqInited[a]||(window.ttq.load(a),window.__ttqInited[a]=!0);window.ttq.ready(function(){for(var c=0;c<f.length;c++)window.ttq.instance(f[c]).page()})}})();</script></body></html>
