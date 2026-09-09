@@ -31,6 +31,7 @@ import { db, films } from '@/db';
 import { isNonFilmContainer } from '@/tmdb/container';
 import { stripSearchNoise } from '@/tmdb/similarity';
 import { suggestContainerPatterns, uncoveredTitles } from '@/scrapers/container-suggest';
+import { flagEnabled } from '@/lib/flags';
 
 const exec = promisify(execFile);
 const SIGNATURE = 'container-or-placeholder';
@@ -188,6 +189,10 @@ function appendTest(source: string, titles: string[], issueNum: number): string 
 }
 
 async function main() {
+  if (!flagEnabled('ACTOR2_ENABLED')) {
+    console.log('Actor 2 disabled via ACTOR2_ENABLED=off — skipping.');
+    return;
+  }
   const args = process.argv.slice(2).filter((a) => a !== '--');
   const dryRun = args.includes('--dry-run');
   const numArg = args.find((a) => /^\d+$/.test(a));

@@ -32,6 +32,7 @@ import { searchCandidates } from '@/tmdb/candidate-search';
 import { isNonFilmContainer } from '@/tmdb/container';
 import { groupMisses, type Miss } from '@/scrapers/heal-patterns';
 import { recordHealRun, healTrend } from '@/scrapers/heal-metrics';
+import { flagEnabled } from '@/lib/flags';
 import { openPatternIssues } from './lib/pattern-issues';
 import type { AuditAlert } from '@/scrapers/audit';
 
@@ -84,6 +85,10 @@ async function triggerRevalidate(): Promise<void> {
 
 async function main() {
   const write = process.argv.includes('--write');
+  if (!flagEnabled('SELF_HEAL_ENABLED')) {
+    console.log('self-heal disabled via SELF_HEAL_ENABLED=off — skipping.');
+    return;
+  }
   if (!hasTmdbToken()) throw new Error('TMDB_API_TOKEN is not set');
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is not set');
 
@@ -162,13 +167,22 @@ async function main() {
     return;
   }
 
-  const { applied, queued } = await processProposals(proposals, async (p) => ({
-    scrapedDirector: filmById.get(p.filmId)?.director ?? null,
-    candidate: await resolveFacts(p),
-  }));
+  // Kill switch: pause auto-writes but keep judging + queueing + reporting.
+  const applyEnabled = flagEnabled('SELF_HEAL_APPLY_ENABLED');
+  const { applied, queued } = applyEnabled
+    ? await processProposals(proposals, async (p) => ({
+        scrapedDirector: filmById.get(p.filmId)?.director ?? null,
+        candidate: await resolveFacts(p),
+      }))
+    : {
+        applied: [],
+        queued: proposals.map((p) => ({ proposal: p, reason: 'apply disabled (flag)' })),
+      };
 
   // Layer 2 write: open a matcher-pattern issue per new fixable cause.
-  const issues = await openPatternIssues(patternGroups, { write: true });
+  const issues = flagEnabled('LAYER2_ISSUES_ENABLED')
+    ? await openPatternIssues(patternGroups, { write: true })
+    : { created: [], skipped: [] };
 
   // Observability: record this run and read the trailing trend.
   await recordHealRun({
