@@ -126,13 +126,11 @@ async function main() {
     }));
 
   console.log(`\n— Judging ${stuck.length} active-stuck film(s) (containers excluded)\n`);
-  const { proposals, noCandidate, declined, summaryFacts } = await buildHealProposals(
-    stuck,
-    {
+  const { proposals, noCandidate, declined, errored, summaryFacts } =
+    await buildHealProposals(stuck, {
       searchCandidates,
       judge: judgeCandidates,
-    },
-  );
+    });
   const filmById = new Map(stuck.map((s) => [s.id, s]));
 
   /** Merge the movie-detail facts (directors/year) with the search summary facts. */
@@ -167,8 +165,11 @@ async function main() {
     }
     console.log(
       `\n${proposals.length} judged · ${noCandidate.length} no-candidate · ` +
-        `${declined.length} declined`,
+        `${declined.length} declined · ${errored.length} errored`,
     );
+    if (errored.length) {
+      console.log(`  errored: ${errored.map((f) => f.scrapedTitle).join(', ')}`);
+    }
     if (patternGroups.length > 0) {
       console.log(`\n— Layer 2: ${patternGroups.length} fixable pattern(s) →`);
       for (const g of patternGroups) {
@@ -193,13 +194,17 @@ async function main() {
   const digest =
     `afiche self-heal\n` +
     `applied: ${applied.length} · queued: ${queued.length} · ` +
-    `no-candidate: ${noCandidate.length} · alerts: ${brief.alerts.length}\n` +
+    `no-candidate: ${noCandidate.length} · errored: ${errored.length} · ` +
+    `alerts: ${brief.alerts.length}\n` +
     applied.map((p) => `✓ ${p.scrapedTitle} → tmdb ${p.tmdbId}`).join('\n') +
     (queued.length
       ? `\nqueue:\n${queued.map((q) => `· ${q.proposal.scrapedTitle} (${q.reason})`).join('\n')}`
       : '') +
     (noCandidate.length
       ? `\nno-candidate:\n${noCandidate.map((f) => `? ${f.scrapedTitle}`).join('\n')}`
+      : '') +
+    (errored.length
+      ? `\nerrored:\n${errored.map((f) => `‼️ ${f.scrapedTitle}`).join('\n')}`
       : '') +
     (issues.created.length
       ? `\nissues:\n${issues.created.map((c) => `🐛 ${c.signature} → ${c.url}`).join('\n')}`

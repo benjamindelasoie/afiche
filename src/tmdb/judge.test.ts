@@ -14,6 +14,8 @@ import {
   parseJudgeResponse,
   buildUserPrompt,
   JUDGE_MODEL,
+  JUDGE_MAX_ATTEMPTS,
+  JudgeParseError,
 } from './judge';
 
 function candidate(overrides: Partial<TmdbMovieSummary>): TmdbMovieSummary {
@@ -36,6 +38,14 @@ function candidate(overrides: Partial<TmdbMovieSummary>): TmdbMovieSummary {
 /** Minimal stand-in for the Anthropic SDK returning one text block. */
 function stubClient(text: string) {
   const create = vi.fn().mockResolvedValue({ content: [{ type: 'text', text }] });
+  return { client: { messages: { create } } as unknown as Anthropic, create };
+}
+
+/** Stub that returns a different reply per call, for retry tests. */
+function stubClientSeq(texts: string[]) {
+  const create = vi.fn();
+  for (const text of texts)
+    create.mockResolvedValueOnce({ content: [{ type: 'text', text }] });
   return { client: { messages: { create } } as unknown as Anthropic, create };
 }
 
@@ -84,7 +94,19 @@ describe('parseJudgeResponse', () => {
 
   it('throws rather than silently reading a malformed verdict as "no match"', () => {
     expect(() => parseJudgeResponse('I think it is Reservoir Dogs')).toThrow(/non-JSON/);
-    expect(() => parseJudgeResponse('{"tmdb_id": "500"}')).toThrow(/non-integer/);
+    // A string id, or a missing confidence, both violate the schema.
+    expect(() => parseJudgeResponse('{"tmdb_id": "500", "confidence": 1}')).toThrow(
+      /schema/,
+    );
+    expect(() => parseJudgeResponse('{"tmdb_id": 500}')).toThrow(/schema/);
+  });
+
+  it('defaults a missing reasoning but still requires id + confidence', () => {
+    expect(parseJudgeResponse('{"tmdb_id": 500, "confidence": 0.9}')).toEqual({
+      tmdbId: 500,
+      confidence: 0.9,
+      reasoning: '',
+    });
   });
 });
 
@@ -151,5 +173,23 @@ describe('judgeCandidates — hallucination guard', () => {
     const r = await judgeCandidates(input, [], client);
     expect(r.tmdbId).toBeNull();
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it('retries a malformed reply, then accepts the corrected one', async () => {
+    const { client, create } = stubClientSeq([
+      'sorry, I think it is number 500',
+      '{"tmdb_id": 500, "confidence": 0.9, "reasoning": "corrected"}',
+    ]);
+    const r = await judgeCandidates(input, [RESERVOIR, DECOY], client);
+    expect(r.tmdbId).toBe(500);
+    expect(create).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws after exhausting retries on persistent garbage', async () => {
+    const { client, create } = stubClientSeq(Array(JUDGE_MAX_ATTEMPTS).fill('not json'));
+    await expect(
+      judgeCandidates(input, [RESERVOIR, DECOY], client),
+    ).rejects.toBeInstanceOf(JudgeParseError);
+    expect(create).toHaveBeenCalledTimes(JUDGE_MAX_ATTEMPTS);
   });
 });

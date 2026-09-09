@@ -249,6 +249,20 @@ describe('buildHealProposals', () => {
     expect(res.proposals).toEqual([]);
   });
 
+  it('isolates a throwing judge into errored, without aborting the run', async () => {
+    const good = { ...HEAL_FILM, id: 2, scrapedTitle: 'Good' };
+    const res = await buildHealProposals([HEAL_FILM, good], {
+      searchCandidates: async () => ONE_CANDIDATE,
+      judge: async (input) => {
+        if (input.scrapedTitle === 'Stuck') throw new Error('judge blew up');
+        return { tmdbId: 100, confidence: 0.9, reasoning: 'ok' };
+      },
+    });
+    expect(res.errored).toEqual([HEAL_FILM]);
+    expect(res.proposals).toHaveLength(1);
+    expect(res.proposals[0].filmId).toBe(2);
+  });
+
   it('builds a candidate-judged proposal when the judge picks an id', async () => {
     const res = await buildHealProposals([HEAL_FILM], {
       searchCandidates: async () => ONE_CANDIDATE,

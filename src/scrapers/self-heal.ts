@@ -228,6 +228,8 @@ export interface BuildResult {
   noCandidate: HealFilm[];
   /** Films the judge actively declined (candidates existed, none matched). */
   declined: HealFilm[];
+  /** Films the judge threw on (e.g. unparseable after retries) — isolated, not fatal. */
+  errored: HealFilm[];
   /** Per-proposal (keyed by filmId) summary facts, merged into CandidateFacts. */
   summaryFacts: Map<number, CandidateSummaryFacts>;
 }
@@ -243,6 +245,7 @@ export async function buildHealProposals(
   const proposals: HealProposal[] = [];
   const noCandidate: HealFilm[] = [];
   const declined: HealFilm[] = [];
+  const errored: HealFilm[] = [];
   const summaryFacts = new Map<number, CandidateSummaryFacts>();
 
   for (const f of filmsToHeal) {
@@ -251,15 +254,23 @@ export async function buildHealProposals(
       noCandidate.push(f);
       continue;
     }
-    const judged = await deps.judge(
-      {
-        scrapedTitle: f.scrapedTitle,
-        year: f.scrapedYear ?? undefined,
-        director: f.director ?? undefined,
-        titleOriginal: f.titleOriginal ?? undefined,
-      },
-      candidates,
-    );
+    let judged;
+    try {
+      judged = await deps.judge(
+        {
+          scrapedTitle: f.scrapedTitle,
+          year: f.scrapedYear ?? undefined,
+          director: f.director ?? undefined,
+          titleOriginal: f.titleOriginal ?? undefined,
+        },
+        candidates,
+      );
+    } catch {
+      // One film's judge failure (unparseable after retries, transient API
+      // error) must not abort the whole heal run — isolate and continue.
+      errored.push(f);
+      continue;
+    }
     if (judged.tmdbId === null) {
       declined.push(f);
       continue;
@@ -297,7 +308,7 @@ export async function buildHealProposals(
         chosenVotes >= TITLE_DOMINANCE_RATIO * rivalVotes,
     });
   }
-  return { proposals, noCandidate, declined, summaryFacts };
+  return { proposals, noCandidate, declined, errored, summaryFacts };
 }
 
 /**

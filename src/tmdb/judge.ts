@@ -26,6 +26,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { z } from 'zod';
 import type { TmdbMovieSummary } from './client';
 
 /**
@@ -40,6 +41,21 @@ export const JUDGE_MODEL = 'claude-haiku-4-5-20251001';
 export const JUDGE_MAX_TOKENS = 1024;
 /** Deterministic-as-possible: this is a classification, not a generation. */
 export const JUDGE_TEMPERATURE = 0;
+/** Total attempts (initial + retries) to get a well-formed verdict per film. */
+export const JUDGE_MAX_ATTEMPTS = 3;
+
+/**
+ * The verdict contract. tmdb_id and confidence are decision-critical, so a reply
+ * missing or mistyping them is malformed and triggers a retry; reasoning is
+ * advisory and defaults to empty. Extra keys are ignored. Confidence is clamped
+ * to [0,1] after validation — an out-of-range number is a value bug, not a
+ * format bug, and does not warrant a retry.
+ */
+const JudgeResponseSchema = z.object({
+  tmdb_id: z.union([z.number().int(), z.null()]),
+  confidence: z.number(),
+  reasoning: z.string().default(''),
+});
 
 /**
  * Below this the proposal is printed for review but never written. Set high:
@@ -103,10 +119,14 @@ export function buildUserPrompt(
   return lines.join('\n');
 }
 
+/** Thrown when a reply cannot be parsed into a valid verdict — retriable. */
+export class JudgeParseError extends Error {}
+
 /**
- * Parse the judge's reply. Tolerant of ```json fences because models add them
- * despite instructions; strict about everything else, since a malformed
- * verdict must not become a silent "no match".
+ * Parse the judge's reply against the verdict schema. Tolerant of ```json fences
+ * because models add them despite instructions; strict about the contract, since
+ * a malformed verdict must not become a silent "no match". Throws JudgeParseError
+ * on any format violation so the caller can retry.
  */
 export function parseJudgeResponse(raw: string): JudgeProposal {
   const cleaned = raw
@@ -119,30 +139,21 @@ export function parseJudgeResponse(raw: string): JudgeProposal {
   try {
     parsed = JSON.parse(cleaned);
   } catch {
-    throw new Error(`judge returned non-JSON: ${raw.slice(0, 200)}`);
-  }
-  if (typeof parsed !== 'object' || parsed === null) {
-    throw new Error('judge returned a non-object');
+    throw new JudgeParseError(`judge returned non-JSON: ${raw.slice(0, 200)}`);
   }
 
-  const o = parsed as Record<string, unknown>;
-  const rawId = o.tmdb_id;
-  const tmdbId =
-    rawId === null || rawId === undefined
-      ? null
-      : typeof rawId === 'number' && Number.isInteger(rawId)
-        ? rawId
-        : (() => {
-            throw new Error(`judge returned a non-integer tmdb_id: ${String(rawId)}`);
-          })();
-
-  const confidence = typeof o.confidence === 'number' ? o.confidence : 0;
-  const reasoning = typeof o.reasoning === 'string' ? o.reasoning.trim() : '';
+  const result = JudgeResponseSchema.safeParse(parsed);
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((i) => `${i.path.join('.')}: ${i.message}`)
+      .join('; ');
+    throw new JudgeParseError(`judge verdict failed schema: ${issues}`);
+  }
 
   return {
-    tmdbId,
-    confidence: Math.min(1, Math.max(0, confidence)),
-    reasoning,
+    tmdbId: result.data.tmdb_id,
+    confidence: Math.min(1, Math.max(0, result.data.confidence)),
+    reasoning: result.data.reasoning.trim(),
   };
 }
 
@@ -164,30 +175,53 @@ export async function judgeCandidates(
   }
 
   const anthropic = client ?? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
-  const message = await anthropic.messages.create({
-    model: JUDGE_MODEL,
-    max_tokens: JUDGE_MAX_TOKENS,
-    temperature: JUDGE_TEMPERATURE,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: buildUserPrompt(input, candidates) }],
-  });
-
-  const textBlock = message.content.find((b) => b.type === 'text');
-  if (!textBlock || textBlock.type !== 'text') {
-    throw new Error('judge response had no text content');
-  }
-
-  const proposal = parseJudgeResponse(textBlock.text);
-  if (proposal.tmdbId === null) return proposal;
-
   const allowed = new Set(candidates.map((c) => c.id));
-  if (!allowed.has(proposal.tmdbId)) {
-    return {
-      tmdbId: null,
-      confidence: 0,
-      reasoning: `rejected out-of-set id ${proposal.tmdbId} (model said: ${proposal.reasoning})`,
-    };
-  }
 
-  return proposal;
+  // Retry only on a malformed reply — a formatting blip, not a verdict. A valid
+  // verdict (including a rejected out-of-set id) returns immediately.
+  const messages: Anthropic.MessageParam[] = [
+    { role: 'user', content: buildUserPrompt(input, candidates) },
+  ];
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= JUDGE_MAX_ATTEMPTS; attempt++) {
+    const message = await anthropic.messages.create({
+      model: JUDGE_MODEL,
+      max_tokens: JUDGE_MAX_TOKENS,
+      temperature: JUDGE_TEMPERATURE,
+      system: SYSTEM_PROMPT,
+      messages,
+    });
+    const textBlock = message.content.find((b) => b.type === 'text');
+    const text = textBlock && textBlock.type === 'text' ? textBlock.text : '';
+
+    try {
+      const proposal = parseJudgeResponse(text);
+      if (proposal.tmdbId === null) return proposal;
+      if (!allowed.has(proposal.tmdbId)) {
+        return {
+          tmdbId: null,
+          confidence: 0,
+          reasoning: `rejected out-of-set id ${proposal.tmdbId} (model said: ${proposal.reasoning})`,
+        };
+      }
+      return proposal;
+    } catch (err) {
+      if (!(err instanceof JudgeParseError)) throw err;
+      lastError = err;
+      if (attempt < JUDGE_MAX_ATTEMPTS) {
+        messages.push({ role: 'assistant', content: text || '(empty)' });
+        messages.push({ role: 'user', content: RETRY_NUDGE });
+      }
+    }
+  }
+  throw new JudgeParseError(
+    `judge produced no valid verdict in ${JUDGE_MAX_ATTEMPTS} attempts: ${
+      lastError instanceof Error ? lastError.message : String(lastError)
+    }`,
+  );
 }
+
+const RETRY_NUDGE =
+  'Your previous reply was not valid. Respond with ONLY a JSON object of the form ' +
+  '{"tmdb_id": <number|null>, "confidence": <0..1>, "reasoning": "<one sentence>"} — ' +
+  'no markdown fences, no commentary.';
