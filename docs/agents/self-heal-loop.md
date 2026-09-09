@@ -34,20 +34,29 @@ signature marker in the issue body, so a cause is filed once.
 - `localized-title-miss` → `ready-for-human` (the Spanish title diverges from TMDB).
 - `unfixable` (not in TMDB) never files.
 
-## Actor 2 — fix the bug (dev machine)
+## Actor 2 — fix the bug (chained after self-heal)
 
-`scripts/actor2-fix.ts` (`npm run actor2:fix:prod -- <issue#>`) consumes a
-`ready-for-agent` `matcher-pattern` issue:
+`scripts/actor2-fix.ts` (`npm run actor2:fix:prod -- --merge`) runs after
+self-heal on the same box and consumes the first `ready-for-agent`
+`matcher-pattern` issue:
 
 1. Parse the failing titles, compute the mechanical fix
    (`src/scrapers/container-suggest.ts`).
 2. Safety check: mirror production (`isNonFilmContainer` on the noise-stripped
    title) and confirm NO already-matched film flips to skip. Abort if any would.
-3. Edit `src/tmdb/container.ts` + a regression test, run the full suite.
-4. Open a PR that closes the issue — for **human merge** (auto-merge is deferred
-   until the merge gate is redesigned).
+3. In a throwaway git worktree (never the live checkout): edit
+   `src/tmdb/container.ts` + a regression test, run the full suite.
+4. Open a PR that closes the issue. With `--merge` (the cron passes it), squash-merge
+   the mechanical container lane automatically — the suite is green and the safety
+   check proved no matched film flips, so it is sound to merge unattended. Without
+   `--merge`, the PR waits for a human. `ready-for-human` issues (localized-title
+   misses) are never auto-fixed.
+
+Requires `gh auth login` (repo scope) once on the box — without it, issue/PR calls
+no-op and the loop stalls at "file the issue".
 
 ## Actor 3 — you
 
-Merge the human-gated PRs. Triage the digest queue (fix or skip-forever). The next
-scrape pulls the merged fix and the tail is smaller.
+Nothing routine: the mechanical lane is zero-touch (fix → PR → auto-merge → next
+scrape pulls it). You still merge `ready-for-human` PRs and triage the digest queue
+(fix or skip-forever). Every auto-merge is a normal PR + `git revert` if wrong.
