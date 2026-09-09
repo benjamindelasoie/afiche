@@ -152,14 +152,14 @@ else
   log "self-heal FAILED (exit $?) — non-fatal, scrape result stands"
 fi
 
-# --- Actor 2 (auto-fix) ----------------------------------------------------
-# After self-heal files matcher-pattern issues, fix the first ready-for-agent
-# (mechanical container) one and auto-merge it — the next scrape pulls the fix.
+# --- Actor 2 (open a fix PR) -----------------------------------------------
+# After self-heal files matcher-pattern issues, prepare the fix for the first
+# ready-for-agent (mechanical container) one as a PR for a HUMAN to review and
+# merge — Actor 2 never merges, and is idempotent (skips if a PR already exists).
 # Runs in a throwaway worktree, so it never disturbs THIS checkout's branch.
-# Best-effort and never changes the scrape's exit code; a missing/!authed gh
-# just makes it a no-op. Needs `gh auth login` (repo scope) once on this box.
-log "starting actor2 auto-fix"
-if npm run actor2:fix:prod -- --merge >>"$LOG" 2>&1; then
+# Best-effort and never changes the scrape's exit code.
+log "starting actor2 (open fix PR)"
+if npm run actor2:fix:prod >>"$LOG" 2>&1; then
   log "actor2 OK"
 else
   log "actor2 FAILED (exit $?) — non-fatal, scrape result stands"
