@@ -88,6 +88,8 @@ function mkRow(opts: {
       popularity: opts.popularity ?? null,
       voteAverage: null,
       voteCount: opts.voteCount ?? null,
+      tmdbId: null,
+      imdbId: null,
       createdAt: opts.createdAt ?? new Date('2026-01-01T00:00:00Z'),
     },
     cinema: {
@@ -426,6 +428,8 @@ async function seedFilm(
       year: opts.year ?? null,
       popularity: opts.popularity ?? null,
       voteCount: opts.voteCount ?? null,
+      tmdbId: null,
+      imdbId: null,
       // Default OLD so seeded films aren't "nuevo" against a past fixture now.
       createdAt: opts.createdAt ?? new Date('2026-01-01T00:00:00Z'),
     })

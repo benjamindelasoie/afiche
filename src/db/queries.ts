@@ -75,6 +75,17 @@ export interface ScreeningRow {
     voteAverage: number | null;
     /** TMDB vote count (notability). Null pre-enrichment. Ranks the classic slot. */
     voteCount: number | null;
+    /**
+     * TMDB's canonical id. Null until matched. Carried here purely so
+     * /pelicula can build the Letterboxd link (letterboxd.com/tmdb/<id>/
+     * redirects to the canonical film page — Letterboxd sources its film
+     * data from TMDB, so the id is their key too). Scalar column, so it
+     * fans out nothing: the hazard in this file is joining a table with
+     * many rows per film onto fetchRows, not selecting more columns.
+     */
+    tmdbId: number | null;
+    /** IMDb cross-reference from TMDB. Null until matched. Builds the IMDb link. */
+    imdbId: string | null;
     /** When the film row first entered the DB (first-seen). Drives "nuevo en cartelera". */
     createdAt: Date;
   };
@@ -185,6 +196,8 @@ const fetchRowsCached = cache(
         popularity: row.film.popularity ?? null,
         voteAverage: row.film.voteAverage ?? null,
         voteCount: row.film.voteCount ?? null,
+        tmdbId: row.film.tmdbId ?? null,
+        imdbId: row.film.imdbId ?? null,
         createdAt: row.film.createdAt,
       },
       cinema: {
@@ -496,6 +509,8 @@ export async function getScreeningById(id: number): Promise<ScreeningRow | null>
       popularity: row.film.popularity ?? null,
       voteAverage: row.film.voteAverage ?? null,
       voteCount: row.film.voteCount ?? null,
+      tmdbId: row.film.tmdbId ?? null,
+      imdbId: row.film.imdbId ?? null,
       createdAt: row.film.createdAt,
     },
     cinema: {
@@ -1323,6 +1338,8 @@ export async function getFilmBySlug(slug: string): Promise<ScreeningRow['film'] 
     popularity: row.popularity ?? null,
     voteAverage: row.voteAverage ?? null,
     voteCount: row.voteCount ?? null,
+    tmdbId: row.tmdbId ?? null,
+    imdbId: row.imdbId ?? null,
     createdAt: row.createdAt,
   };
 }

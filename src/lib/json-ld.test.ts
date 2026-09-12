@@ -54,6 +54,8 @@ function makeFilm(overrides: Partial<ScreeningRow['film']> = {}): ScreeningRow['
     popularity: null,
     voteAverage: null,
     voteCount: null,
+    tmdbId: null,
+    imdbId: null,
     createdAt: new Date('2026-01-01T00:00:00Z'),
     ...overrides,
   };

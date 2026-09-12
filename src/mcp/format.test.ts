@@ -29,6 +29,8 @@ function film(over: Partial<ScreeningRow['film']> = {}): ScreeningRow['film'] {
     popularity: 1,
     voteAverage: 7.7,
     voteCount: 100,
+    tmdbId: null,
+    imdbId: null,
     createdAt: new Date('2026-06-01T00:00:00Z'),
     ...over,
   };
@@ -89,6 +91,32 @@ describe('format helpers', () => {
     expect(dto.url).toBeNull();
     expect(dto.cast).toEqual([]);
     expect(dto.genres).toEqual([]);
+  });
+
+  it('toFilmDTO does not leak tmdbId / imdbId into the public MCP contract', () => {
+    // ScreeningRow['film'] gained tmdbId + imdbId so /pelicula can build its
+    // aggregator links. toFilmDTO picks its fields explicitly, so the agent-
+    // facing payload must be unchanged — adding a field to the shared film
+    // shape must never silently widen a published contract.
+    const dto = toFilmDTO(film({ tmdbId: 1018, imdbId: 'tt0166924' }));
+
+    expect(Object.keys(dto).sort()).toEqual([
+      'cast',
+      'country',
+      'director',
+      'genres',
+      'posterUrl',
+      'runtimeMin',
+      'slug',
+      'synopsis',
+      'title',
+      'titleOriginal',
+      'url',
+      'voteAverage',
+      'year',
+    ]);
+    expect(dto).not.toHaveProperty('tmdbId');
+    expect(dto).not.toHaveProperty('imdbId');
   });
 
   it('filmUrl returns null for a null slug', () => {
