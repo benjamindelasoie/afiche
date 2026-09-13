@@ -17,11 +17,13 @@ describe('buildFilmLinks', () => {
 
     expect(links).toEqual([
       {
+        source: 'letterboxd',
         label: 'Letterboxd',
         href: 'https://letterboxd.com/tmdb/1018/',
         ariaLabel: 'Ver «Mulholland Drive» en Letterboxd',
       },
       {
+        source: 'imdb',
         label: 'IMDb',
         href: 'https://www.imdb.com/title/tt0166924/',
         ariaLabel: 'Ver «Mulholland Drive» en IMDb',

@@ -21,7 +21,11 @@
  */
 
 export interface FilmLinkTarget {
-  /** Display label, rendered in the micro-caps register. */
+  /** Which mark to render. Switching on this rather than on the display label
+   *  keeps the component's choice independent of user-facing copy. */
+  source: 'letterboxd' | 'imdb';
+  /** Brand name. Not rendered — the mark carries it — but it builds the
+   *  accessible name and keeps the source human-readable in tests. */
   label: string;
   href: string;
   /** Spanish-native, names the destination rather than the action. */
@@ -43,6 +47,7 @@ export function buildFilmLinks(
 
   if (tmdbId !== null) {
     links.push({
+      source: 'letterboxd',
       label: 'Letterboxd',
       href: `https://letterboxd.com/tmdb/${tmdbId}/`,
       ariaLabel: `Ver «${title}» en Letterboxd`,
@@ -51,6 +56,7 @@ export function buildFilmLinks(
 
   if (imdbId !== null) {
     links.push({
+      source: 'imdb',
       label: 'IMDb',
       href: `https://www.imdb.com/title/${imdbId}/`,
       ariaLabel: `Ver «${title}» en IMDb`,
