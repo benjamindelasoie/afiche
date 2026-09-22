@@ -11,9 +11,13 @@
 #     scraper fixes the way it did through July 2026,
 #   - staleness guard: skips if a scrape already succeeded in the last STALE_HOURS,
 #     so frequent wake-ups don't re-scrape and a just-woken Mac still catches up,
+#   - preflights DNS before doing anything that needs the network, because a
+#     dead resolver is the one failure that makes every other error message lie,
 #   - logs to .scrape-cron.log,
-#   - pings on FAILURE: a macOS notification AND (if configured) a Telegram
-#     message, so a silent stale-out becomes a visible one even when you're away.
+#   - pings on FAILURE *and on ABSENCE*: a macOS notification AND (if configured)
+#     a Telegram message, so a silent stale-out becomes a visible one even when
+#     you're away. The Telegram path deliberately does not depend on the system
+#     resolver — see notify().
 #
 # PUBLIC-REPO SAFE: there are no secrets in this file. The Telegram bot token +
 # chat id are read from .env.prod (gitignored) as TELEGRAM_BOT_TOKEN /
@@ -48,6 +52,16 @@ notify() { # notify "<message>"
   command -v osascript >/dev/null 2>&1 &&
     osascript -e "display notification \"$1\" with title \"afiche scrape\"" >/dev/null 2>&1 || true
   if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_CHAT_ID:-}" ]; then
+    # --doh-url resolves api.telegram.org itself, over HTTPS, addressed by IP
+    # literal (1.1.1.1) — it never touches the system resolver. Deliberate:
+    # the 2026-09-15 outage was the system resolver dying, so a notify() that
+    # also depends on it can't be trusted to report the failure it exists to
+    # report. Falls back to the system resolver if this curl is too old for
+    # --doh-url (harmless — that's just today's behavior).
+    curl -fsS --max-time 15 --doh-url https://1.1.1.1/dns-query \
+      "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+      --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+      --data-urlencode "text=$1" >/dev/null 2>&1 ||
     curl -fsS --max-time 15 \
       "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
       --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
@@ -71,11 +85,33 @@ if [ -s "$NVM_DIR/nvm.sh" ]; then
   . "$NVM_DIR/nvm.sh" >/dev/null 2>&1
   nvm use >/dev/null 2>&1 || true   # reads the repo's .nvmrc (Node 22)
 fi
-command -v node >/dev/null 2>&1 || export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+# Homebrew's bin dirs are ALWAYS added, not just as a node fallback: launchd's
+# bare env means gh (needed by actor2:fix:prod) is invisible otherwise even
+# when nvm already supplied node — this was `spawn gh ENOENT` on every run.
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 if ! command -v node >/dev/null 2>&1; then
   log "node not found on PATH; cannot scrape"
   notify "⚠️ afiche scrape couldn't start: node not found"
   exit 1
+fi
+
+# --- DNS preflight -----------------------------------------------------------
+# A dead system resolver makes every subsequent step fail with a different,
+# misleading error (git fetch "origin unreachable", 12 separate scraper
+# "fetch failed" stack traces, self-heal, actor2) instead of one clear one.
+# Root-caused 2026-09-21: this box's resolver #1 (100.100.100.100, Tailscale
+# MagicDNS) stopped answering on 2026-09-15; every DB/network call failed
+# with ENOTFOUND for a week before anyone noticed (see notify() above for
+# why the alert itself didn't fire). Check once, up front, and bail loud.
+if command -v dig >/dev/null 2>&1; then
+  DNS_PROBE_HOST="${AFICHE_DNS_PROBE_HOST:-github.com}"
+  if ! dig +short +time=3 +tries=1 "$DNS_PROBE_HOST" 2>/dev/null | grep -q .; then
+    log "DNS PREFLIGHT FAILED: system resolver can't resolve $DNS_PROBE_HOST — aborting before scrape (avoids a wall of misleading 'fetch failed' errors downstream)"
+    notify "⚠️ afiche: DNS is broken on the scrape box (can't resolve $DNS_PROBE_HOST). Scrape aborted before it started — check the Tailscale MagicDNS resolver / networksetup -getdnsservers."
+    exit 1
+  fi
+else
+  log "dig not found; skipping DNS preflight"
 fi
 
 # --- sync source -----------------------------------------------------------
@@ -90,17 +126,34 @@ fi
 # last-known-good code beats not scraping at all — stale data is the worse
 # outcome (see the 7-day silent gap in the same investigation). The one thing
 # we refuse to do is fail silently, which is what got us here.
-if command -v git >/dev/null 2>&1 && [ -d "$REPO_DIR/.git" ]; then
-  before=$(git rev-parse HEAD 2>/dev/null || echo unknown)
-  if git fetch --quiet origin main 2>>"$LOG" &&
-     git merge --ff-only --quiet origin/main 2>>"$LOG"; then
-    after=$(git rev-parse HEAD 2>/dev/null || echo unknown)
+#
+# GIT_BIN: /usr/bin/git is Apple's shim — if Xcode's license was never
+# accepted (this box, since 2026-09-15) it refuses to run at all and every
+# call below silently looks like "origin unreachable", masking the real
+# cause. The Command Line Tools ship a real git for the same reason; prefer
+# it when the shim is blocked.
+GIT_BIN="git"
+if ! git --version >/dev/null 2>&1; then
+  if [ -x /Library/Developer/CommandLineTools/usr/bin/git ] &&
+     /Library/Developer/CommandLineTools/usr/bin/git --version >/dev/null 2>&1; then
+    GIT_BIN="/Library/Developer/CommandLineTools/usr/bin/git"
+    log "system git blocked (Xcode license not accepted?) — using CommandLineTools git instead"
+  else
+    log "git unusable (system git blocked and no working CommandLineTools git found)"
+  fi
+fi
+
+if command -v "$GIT_BIN" >/dev/null 2>&1 && [ -d "$REPO_DIR/.git" ]; then
+  before=$("$GIT_BIN" rev-parse HEAD 2>/dev/null || echo unknown)
+  if "$GIT_BIN" fetch --quiet origin main 2>>"$LOG" &&
+     "$GIT_BIN" merge --ff-only --quiet origin/main 2>>"$LOG"; then
+    after=$("$GIT_BIN" rev-parse HEAD 2>/dev/null || echo unknown)
     if [ "$before" != "$after" ]; then
       log "pulled main: ${before:0:8} → ${after:0:8}"
 
       # New/changed deps — node_modules must match the lockfile or the
       # scrape fails on a missing import. Only when the lockfile moved.
-      if ! git diff --quiet "$before" "$after" -- package-lock.json 2>/dev/null; then
+      if ! "$GIT_BIN" diff --quiet "$before" "$after" -- package-lock.json 2>/dev/null; then
         log "package-lock.json changed; running npm ci"
         npm ci >>"$LOG" 2>&1 ||
           { log "npm ci FAILED"; notify "⚠️ afiche: npm ci failed after pull"; }
@@ -109,7 +162,7 @@ if command -v git >/dev/null 2>&1 && [ -d "$REPO_DIR/.git" ]; then
       # Pending schema migrations — apply BEFORE scraping. Code that expects
       # a column prod doesn't have crashes mid-run; drizzle's journal makes
       # this a no-op when there's nothing new.
-      if ! git diff --quiet "$before" "$after" -- drizzle 2>/dev/null; then
+      if ! "$GIT_BIN" diff --quiet "$before" "$after" -- drizzle 2>/dev/null; then
         log "drizzle migrations changed; applying to prod"
         if npm run db:migrate:prod >>"$LOG" 2>&1; then
           log "migrations applied"
@@ -131,13 +184,24 @@ fi
 # --- run -------------------------------------------------------------------
 log "starting scrape:prod (node $(node --version))"
 if npm run scrape:prod >>"$LOG" 2>&1; then
-  date +%s >"$STAMP"
-  log "scrape OK"
   scrape_rc=0
+  log "scrape OK"
 else
   scrape_rc=$?
   log "scrape FAILED (exit $scrape_rc)"
   notify "⚠️ afiche scrape failed (exit $scrape_rc) — data may be going stale. tail $LOG"
+fi
+
+# scrape:prod exits non-zero on ANY provider failure, even when most of them
+# succeeded — right for the exit code (a partial run deserves the FAILED log
+# line and the notify above) but wrong for the staleness guard, which only
+# cares whether fresh screenings actually landed. Without this the guard was
+# dead from 2026-07-31 onward: most runs before the 09-15 outage landed
+# 10/12 providers but still exited non-zero, so STAMP never advanced.
+providers_ok=$(grep -o 'Done\. [0-9]\+/[0-9]\+ providers ok\.' "$LOG" | tail -1 | grep -o '^Done\. [0-9]\+' | grep -o '[0-9]\+$')
+if [ -n "${providers_ok:-}" ] && [ "$providers_ok" -gt 0 ] 2>/dev/null; then
+  date +%s >"$STAMP"
+  [ "$scrape_rc" -eq 0 ] || log "partial success ($providers_ok providers ok) — staleness stamp updated despite exit $scrape_rc"
 fi
 
 # --- self-heal -------------------------------------------------------------
