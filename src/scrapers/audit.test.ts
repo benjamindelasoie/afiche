@@ -119,6 +119,27 @@ describe('activeStuckFilms — canonical predicate', () => {
     expect(stuck[0].venues).toEqual(['MALBA']);
   });
 
+  it('carries synopsisEs and runtimeMin through, for the judge to use', async () => {
+    const id = await addFilm({
+      scrapedTitle: 'Stuck With Plot',
+      tmdbId: null,
+      synopsisEs: 'Joe y Angela...',
+      runtimeMin: 107,
+    });
+    await addFutureScreening(id);
+    const stuck = await activeStuckFilms(NOW);
+    expect(stuck[0].synopsisEs).toBe('Joe y Angela...');
+    expect(stuck[0].runtimeMin).toBe(107);
+  });
+
+  it('reports null synopsisEs/runtimeMin when the provider never captured them', async () => {
+    const id = await addFilm({ scrapedTitle: 'Stuck No Plot', tmdbId: null });
+    await addFutureScreening(id);
+    const stuck = await activeStuckFilms(NOW);
+    expect(stuck[0].synopsisEs).toBeNull();
+    expect(stuck[0].runtimeMin).toBeNull();
+  });
+
   it('excludes a matched film', async () => {
     const id = await addFilm({ scrapedTitle: 'Matched', tmdbId: 42 });
     await addFutureScreening(id);

@@ -128,6 +128,25 @@ describe('buildUserPrompt', () => {
     expect(p).not.toContain('Listing year');
     expect(p).not.toContain('Listing director');
     expect(p).not.toContain('Programmed by');
+    expect(p).not.toContain('Listing synopsis');
+    expect(p).not.toContain('Listing runtime');
+  });
+
+  it('includes the listing synopsis in full, unbroken by the 180-char candidate-overview cap', () => {
+    const longSynopsis =
+      'Joe y Angela están en una situación de pareja muy delicada y esta noche podría ser cuando todo se termine de derrumbar. Sus vecinos de arriba llegan para cenar y todo lo que puede salir mal, sale aún peor.';
+    const p = buildUserPrompt(
+      { scrapedTitle: 'LA INVITACIÓN', synopsisEs: longSynopsis },
+      [RESERVOIR],
+    );
+    expect(p).toContain(`Listing synopsis: ${longSynopsis}`);
+  });
+
+  it('includes the listing runtime in minutes', () => {
+    const p = buildUserPrompt({ scrapedTitle: 'LOS VENCEDORES', runtimeMin: 100 }, [
+      RESERVOIR,
+    ]);
+    expect(p).toContain('Listing runtime: 100 min');
   });
 });
 

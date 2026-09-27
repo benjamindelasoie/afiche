@@ -42,6 +42,15 @@ interface Seed {
   titleOriginal: string | null;
   venues: string[];
   expectedTmdbId: number;
+  /**
+   * Frozen at the time of a manual fix, so the golden set records what the
+   * judge SHOULD have used at decision time, not whatever's in the row now
+   * (TMDB enrichment overwrites synopsisEs/runtimeMin after a match — see
+   * enrichment.ts's provider-fields-win note re synopsis specifically, but
+   * runtimeMin has no such guard and gets replaced outright).
+   */
+  synopsisEs: string | null;
+  runtimeMin: number | null;
 }
 
 async function manualFilmSeeds(): Promise<Seed[]> {
@@ -53,6 +62,8 @@ async function manualFilmSeeds(): Promise<Seed[]> {
       director: films.director,
       titleOriginal: films.titleOriginal,
       tmdbId: films.tmdbId,
+      synopsisEs: films.synopsisEs,
+      runtimeMin: films.runtimeMin,
       venues: sql<string | null>`group_concat(distinct ${cinemas.name})`,
     })
     .from(films)
@@ -72,6 +83,15 @@ async function manualFilmSeeds(): Promise<Seed[]> {
       titleOriginal: r.titleOriginal,
       venues: r.venues ? r.venues.split(',') : [],
       expectedTmdbId: r.tmdbId!,
+      // NOTE: by the time a row is matchSource='manual', enrichment has
+      // already run and may have overwritten runtimeMin with TMDB's own
+      // value (synopsisEs is protected — see the enrichment.ts comment —
+      // runtimeMin is not). So this is best-effort: it captures the field
+      // correctly for a row not yet re-enriched, and captures TMDB's own
+      // (usually near-identical) runtime otherwise. Good enough for an eval
+      // signal; not claimed as the exact venue-scraped value.
+      synopsisEs: r.synopsisEs,
+      runtimeMin: r.runtimeMin,
     }));
 }
 
@@ -93,6 +113,9 @@ async function jsonOverrideSeeds(): Promise<Seed[]> {
         titleOriginal: null,
         venues: [],
         expectedTmdbId: o.tmdbId,
+        // The JSON file never carried a synopsis/runtime — nothing to seed.
+        synopsisEs: null,
+        runtimeMin: null,
       }));
   } catch {
     return [];
@@ -120,6 +143,8 @@ async function main() {
     if (s.director) input.director = s.director;
     if (s.titleOriginal) input.titleOriginal = s.titleOriginal;
     if (s.venues.length) input.venues = s.venues;
+    if (s.synopsisEs) input.synopsisEs = s.synopsisEs;
+    if (s.runtimeMin != null) input.runtimeMin = s.runtimeMin;
     fixtures.push({
       filmId: s.filmId,
       source: s.source,

@@ -41,6 +41,7 @@ async function candidateFacts(tmdbId: number): Promise<CandidateFacts> {
   return {
     directors: extractDirectors(d),
     year: d?.release_date ? Number(d.release_date.slice(0, 4)) : null,
+    runtime: d?.runtime ?? null,
   };
 }
 
@@ -107,6 +108,8 @@ async function main() {
       scrapedYear: f.scrapedYear,
       director: f.director,
       titleOriginal: f.titleOriginal,
+      synopsisEs: f.synopsisEs,
+      runtimeMin: f.runtimeMin,
     }));
 
   console.log(`\n— Judging ${stuck.length} active-stuck film(s) (containers excluded)\n`);

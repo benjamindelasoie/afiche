@@ -11,6 +11,22 @@
  *   npm run eval:judge:prod -- --update-baseline
  *
  * Needs ANTHROPIC_API_KEY (real Haiku calls, ~one per case, pennies).
+ *
+ * SCOPE NOTE: "high-confidence false positives" here grades the JUDGE ALONE —
+ * it does not run the candidate through classifyProposal's post-judge
+ * corroboration gate (director/year/title/runtime), because that needs a live
+ * TMDB movie-detail fetch per candidate and would break the "deterministic in
+ * everything but the model" guarantee above (a TMDB-side data change could
+ * move the metric with no judge/prompt change). So this number is a strict
+ * upper bound on real risk, not the risk itself: a case counted here as a
+ * false positive can still be safely queued, never auto-applied, by the
+ * runtime/director veto downstream. Confirmed by hand for the one open case
+ * as of 2026-09-27 ("Shot Reverse Shot" — the judge's wrong pick has a real
+ * runtime 7min off the listing, past RUNTIME_TOLERANCE_MIN, so
+ * classifyProposal queues it). If this number needs to reflect the REAL gate
+ * exactly rather than an upper bound, freeze each candidate's director/
+ * runtime into the golden fixture at build time (one more getMovie call per
+ * candidate in build-golden.ts) rather than fetching live here.
  */
 
 import 'dotenv/config';

@@ -1,5 +1,5 @@
 {
-  "precision": 0.907,
-  "recall": 0.863,
-  "falsePositivesHighConf": 4
+  "precision": 0.98,
+  "recall": 0.952,
+  "falsePositivesHighConf": 1
 }

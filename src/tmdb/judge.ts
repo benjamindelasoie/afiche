@@ -72,6 +72,29 @@ export interface JudgeInput {
   titleOriginal?: string;
   /** Venue names programming the film — real context for a local-cinema call. */
   venues?: string[];
+  /**
+   * Venue-scraped plot summary, when the provider captured one. This is the
+   * single strongest signal available on a same-title collision (several
+   * TMDB entries sharing a localized title, e.g. "La invitación" has SEVEN) —
+   * it corroborates or contradicts a candidate's `overview` independent of
+   * title/director/year plausibility, which is exactly the axis "arthouse
+   * cinema, so pick the obscure retrospective" reasoning has nothing else to
+   * check itself against. Found via a manual audit (2026-09): the judge
+   * confidently (0.72-0.92) picked the wrong film for "LA INVITACIÓN" and
+   * "LOS VENCEDORES" at Cacodelphia — both cases where this field, already
+   * sitting in the same DB row, would have made the mismatch obvious.
+   */
+  synopsisEs?: string;
+  /**
+   * Venue-scraped runtime in minutes. A real signal even though the candidate
+   * list carries no per-candidate runtime (TMDB's search endpoint doesn't
+   * return it) — the model's own world knowledge of a well-known candidate's
+   * approximate length is enough to flag a gross mismatch (a 100-minute
+   * listing cannot be a 175-minute war epic). The hard, data-driven version
+   * of this check runs after judging, in self-heal.ts's runtimeCorroborates —
+   * this is a second, independent line of defense, not a replacement for it.
+   */
+  runtimeMin?: number;
 }
 
 export interface JudgeProposal {
@@ -88,9 +111,11 @@ You will be given the listing as the venue printed it, plus a numbered list of T
 Rules:
 - Answer with a tmdb_id from the candidate list, or null. NEVER write a tmdb_id that is not in the list, even if you believe you know the correct one — a missing entry is a valid and useful answer.
 - Argentine and Spanish release titles often differ completely from the original. "Perros de la calle" is Reservoir Dogs. Use that knowledge.
-- The venues are indie/arthouse cinemas and cineclubs. A retrospective classic or a festival documentary is far more likely than a blockbuster with a coincidentally similar title.
+- The venues are indie/arthouse cinemas and cineclubs. A retrospective classic or a festival documentary is far more likely than a blockbuster with a coincidentally similar title. BUT this is a prior, not a verdict — a same-title collision is common (some titles have 5+ distinct TMDB entries), and "arthouse cinema, so pick the obscure one" is exactly the reasoning that has been caught picking the wrong film. Treat it as a tiebreaker of last resort, never as a substitute for checking the plot.
 - A year in the listing is the venue's claim about the film's production year, not the screening date. It can be off by one, or wrong.
-- Be decisive about confidence. Use >0.85 only when the identification is essentially certain. Use <0.5 when you are guessing.
+- If a listing synopsis is given, it is the decisive signal: read every candidate's overview and compare. A candidate whose overview clearly describes the same plot, same character names, or same real-world event is very likely correct even if it seemed like an unlikely pick on title/director alone. A candidate whose overview clearly describes a DIFFERENT plot is very likely wrong even at high title-similarity — do not pick it just because it "fits the venue's vibe" better. When the synopsis decisively confirms one candidate over the others, that alone justifies confidence above 0.85.
+- If a listing runtime is given, treat it as a hard fact about the correct film. A candidate you know (from training knowledge, not the candidate list) to run dramatically longer or shorter than the listing — e.g. a listing of 100 minutes cannot be a well-known ~3-hour epic — is very likely wrong regardless of how well the title or venue-fit matches.
+- Be decisive about confidence. Use >0.85 only when the identification is essentially certain. Use <0.5 when you are guessing. A synopsis or runtime contradiction should pull confidence down even if title/director/year all point the same way — corroborating signals agreeing with each other is not the same as agreeing with the truth.
 
 Respond with ONLY a JSON object, no markdown fences, no commentary:
 {"tmdb_id": <number|null>, "confidence": <0..1>, "reasoning": "<one sentence>"}`;
@@ -114,7 +139,14 @@ export function buildUserPrompt(
   if (input.year !== undefined) lines.push(`Listing year: ${input.year}`);
   if (input.director) lines.push(`Listing director: ${input.director}`);
   if (input.titleOriginal) lines.push(`Listing original title: ${input.titleOriginal}`);
+  if (input.runtimeMin !== undefined)
+    lines.push(`Listing runtime: ${input.runtimeMin} min`);
   if (input.venues?.length) lines.push(`Programmed by: ${input.venues.join(', ')}`);
+  // Synopsis last and unbroken (no length cap, unlike candidate overviews) —
+  // it's the decisive signal per the system prompt, so it gets the most
+  // room and the most attention, right before the candidate list it's meant
+  // to be checked against.
+  if (input.synopsisEs) lines.push('', `Listing synopsis: ${input.synopsisEs}`);
   lines.push('', 'TMDB candidates:', ...candidates.map(formatCandidate));
   return lines.join('\n');
 }

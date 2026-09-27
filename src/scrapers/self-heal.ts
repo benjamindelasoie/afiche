@@ -45,13 +45,19 @@ export interface HealProposal {
   confidence: number;
   kind: 'candidate-judged' | 'web-researched';
   reasoning: string;
+  /**
+   * Venue-scraped runtime, when available — see runtimeCorroborates. Optional
+   * so existing call sites/tests that predate this field stay valid; absent
+   * runtime just means this axis contributes nothing, same as absent year.
+   */
+  scrapedRuntimeMin?: number | null;
 }
 
 /**
  * TMDB metadata for the proposed film, used to corroborate the match. The
- * director/year come from the movie detail; the title fields come from the
- * search summary and are optional so callers that only corroborate on
- * year/director (and older tests) stay valid.
+ * director/year/runtime come from the movie detail; the title fields come
+ * from the search summary and are optional so callers that only corroborate
+ * on year/director (and older tests) stay valid.
  */
 export interface CandidateFacts {
   directors: string[];
@@ -65,6 +71,8 @@ export interface CandidateFacts {
    * True with no rivals; false when a comparable same-title film exists.
    */
   titleDominant?: boolean;
+  /** TMDB's runtime for the candidate, in minutes. Only in the movie detail. */
+  runtime?: number | null;
 }
 
 export type HealDecision = { action: 'auto-apply' } | { action: 'queue'; reason: string };
@@ -82,6 +90,31 @@ export function yearCorroborates(
 ): boolean {
   if (scrapedYear == null || candidateYear == null) return false;
   return Math.abs(scrapedYear - candidateYear) <= YEAR_TOLERANCE;
+}
+
+/**
+ * Minutes of slack for a runtime match — covers theatrical-vs-extended cuts,
+ * a venue rounding to the nearest 5, and TMDB/venue disagreeing on whether
+ * credits count. Found empirically: the Los Vencedores incident (2026-09) had
+ * a scraped 100 vs TMDB's 99 for the CORRECT film — a real match, 1 minute
+ * apart. The WRONG film that had been picked was 175 min: nothing this loose
+ * would paper over a genuine mismatch of that size.
+ */
+export const RUNTIME_TOLERANCE_MIN = 5;
+
+/**
+ * Independent of title/director/year: a runtime disagreement is strong
+ * evidence of a wrong pick even when everything else lines up, because two
+ * unrelated films sharing a title AND a near-identical runtime is rare.
+ * Requires both sides present — absent data corroborates nothing, same as
+ * yearCorroborates.
+ */
+export function runtimeCorroborates(
+  scrapedRuntimeMin: number | null | undefined,
+  candidateRuntime: number | null | undefined,
+): boolean {
+  if (scrapedRuntimeMin == null || candidateRuntime == null) return false;
+  return Math.abs(scrapedRuntimeMin - candidateRuntime) <= RUNTIME_TOLERANCE_MIN;
 }
 
 export function directorCorroborates(
@@ -135,15 +168,41 @@ export function classifyProposal(
     return { action: 'queue', reason: 'web-researched: never auto-applies' };
   }
 
+  // Runtime is checked FIRST and unconditionally — unlike year/director,
+  // which only veto the title-shortcut path below, a runtime contradiction
+  // overrides every auto-apply path including a plain year-or-director match.
+  // Rationale: two unrelated films sharing a title AND a production year (or
+  // a common director's-name false-positive) is a real coincidence the
+  // existing gate already has to tolerate, but sharing a title AND a
+  // near-identical runtime while being different films essentially never
+  // happens. Found via the Los Vencedores incident (2026-09): the judge
+  // proposed a 175-minute film for a listing that scraped as 100 minutes —
+  // a mismatch this large, on its own, is sufficient to know the pick is
+  // wrong, independent of whatever else lined up.
+  if (
+    p.scrapedRuntimeMin != null &&
+    candidate.runtime != null &&
+    !runtimeCorroborates(p.scrapedRuntimeMin, candidate.runtime)
+  ) {
+    return {
+      action: 'queue',
+      reason:
+        `runtime mismatch: listing ${p.scrapedRuntimeMin}min vs ` +
+        `candidate ${candidate.runtime}min`,
+    };
+  }
+
   const yearOk = yearCorroborates(p.scrapedYear, candidate.year);
   const directorOk = directorCorroborates(scrapedDirector, candidate.directors);
   const titleOk = titleCorroborates(p.scrapedTitle, candidate);
+  const runtimeOk = runtimeCorroborates(p.scrapedRuntimeMin, candidate.runtime);
 
-  if (p.confidence >= AUTO_APPLY_MIN_CONFIDENCE && (yearOk || directorOk)) {
+  if (p.confidence >= AUTO_APPLY_MIN_CONFIDENCE && (yearOk || directorOk || runtimeOk)) {
     return { action: 'auto-apply' };
   }
 
   // Title path: a scraped year/director that exists but disagrees is a veto.
+  // (A runtime contradiction already returned above, unconditionally.)
   const yearContradicts = p.scrapedYear != null && candidate.year != null && !yearOk;
   const directorContradicts =
     scrapedDirector != null && candidate.directors.length > 0 && !directorOk;
@@ -168,7 +227,7 @@ export function classifyProposal(
       reason: `title-exact but confidence ${p.confidence.toFixed(2)} < ${TITLE_AUTO_APPLY_MIN_CONFIDENCE}`,
     };
   }
-  return { action: 'queue', reason: 'no director/year/title corroboration' };
+  return { action: 'queue', reason: 'no director/year/title/runtime corroboration' };
 }
 
 /**
@@ -204,6 +263,10 @@ export interface HealFilm {
   scrapedYear: number | null;
   director: string | null;
   titleOriginal: string | null;
+  /** See JudgeInput.synopsisEs — optional, most providers don't capture one. */
+  synopsisEs?: string | null;
+  /** See JudgeInput.runtimeMin / HealProposal.scrapedRuntimeMin. */
+  runtimeMin?: number | null;
 }
 
 /** Injected side-effects, so the proposal builder stays unit-testable. */
@@ -236,6 +299,43 @@ export interface BuildResult {
  * Turn stuck films into candidate-judged proposals via the existing SDK judge.
  * No auto-apply happens here — this only proposes; processProposals gates.
  */
+/**
+ * Derive the title/vote-dominance facts `titleCorroborates` needs, from the
+ * SAME candidate set + chosen id both call sites already have. Extracted so
+ * `buildHealProposals` and `judge-unmatched.ts`'s manual-review path compute
+ * this identically — the two used to duplicate this inline, and drifted: the
+ * manual tool had no corroboration gate at all (see classifyProposal's
+ * history). One implementation now, so they can't drift apart again.
+ */
+export function computeSummaryFacts(
+  scrapedTitle: string,
+  candidates: TmdbMovieSummary[],
+  chosenId: number,
+): CandidateSummaryFacts {
+  const chosen = candidates.find((c) => c.id === chosenId);
+  const sNorm = normalizeName(scrapedTitle);
+  const exact = candidates.filter(
+    (c) =>
+      normalizeName(c.title ?? '') === sNorm ||
+      normalizeName(c.original_title ?? '') === sNorm,
+  );
+  const chosenVotes = chosen?.vote_count ?? 0;
+  const chosenIsExact = exact.some((c) => c.id === chosenId);
+  const rivalVotes = Math.max(
+    0,
+    ...exact.filter((c) => c.id !== chosenId).map((c) => c.vote_count ?? 0),
+  );
+  return {
+    title: chosen?.title ?? '',
+    originalTitle: chosen?.original_title ?? '',
+    voteCount: chosenVotes,
+    titleDominant:
+      sNorm.length > 0 &&
+      chosenIsExact &&
+      chosenVotes >= TITLE_DOMINANCE_RATIO * rivalVotes,
+  };
+}
+
 export async function buildHealProposals(
   filmsToHeal: HealFilm[],
   deps: HealDeps,
@@ -260,6 +360,8 @@ export async function buildHealProposals(
           year: f.scrapedYear ?? undefined,
           director: f.director ?? undefined,
           titleOriginal: f.titleOriginal ?? undefined,
+          synopsisEs: f.synopsisEs ?? undefined,
+          runtimeMin: f.runtimeMin ?? undefined,
         },
         candidates,
       );
@@ -277,34 +379,17 @@ export async function buildHealProposals(
       filmId: f.id,
       scrapedTitle: f.scrapedTitle,
       scrapedYear: f.scrapedYear,
+      scrapedRuntimeMin: f.runtimeMin ?? null,
       tmdbId: judged.tmdbId,
       confidence: judged.confidence,
       kind: 'candidate-judged',
       reasoning: judged.reasoning,
     });
 
-    const chosen = candidates.find((c) => c.id === judged.tmdbId);
-    const sNorm = normalizeName(f.scrapedTitle);
-    const exact = candidates.filter(
-      (c) =>
-        normalizeName(c.title ?? '') === sNorm ||
-        normalizeName(c.original_title ?? '') === sNorm,
+    summaryFacts.set(
+      f.id,
+      computeSummaryFacts(f.scrapedTitle, candidates, judged.tmdbId),
     );
-    const chosenVotes = chosen?.vote_count ?? 0;
-    const chosenIsExact = exact.some((c) => c.id === judged.tmdbId);
-    const rivalVotes = Math.max(
-      0,
-      ...exact.filter((c) => c.id !== judged.tmdbId).map((c) => c.vote_count ?? 0),
-    );
-    summaryFacts.set(f.id, {
-      title: chosen?.title ?? '',
-      originalTitle: chosen?.original_title ?? '',
-      voteCount: chosenVotes,
-      titleDominant:
-        sNorm.length > 0 &&
-        chosenIsExact &&
-        chosenVotes >= TITLE_DOMINANCE_RATIO * rivalVotes,
-    });
   }
   return { proposals, noCandidate, declined, errored, summaryFacts };
 }
