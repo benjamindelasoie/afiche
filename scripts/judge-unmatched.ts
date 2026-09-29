@@ -37,6 +37,7 @@ import { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { db, films, screenings, cinemas } from '@/db';
 import { hasTmdbToken, getMovie, extractDirectors } from '@/tmdb/client';
 import { searchCandidates } from '@/tmdb/candidate-search';
+import { normalizeTitle } from '@/tmdb/similarity';
 import { judgeCandidates, JUDGE_MODEL, type JudgeProposal } from '@/tmdb/judge';
 import {
   classifyProposal,
@@ -107,8 +108,11 @@ async function readOverrides(): Promise<{
   return { raw, list: (raw.overrides as OverrideEntry[] | undefined) ?? [] };
 }
 
+// Same normalized key src/tmdb/overrides.ts's findOverride uses — otherwise
+// this dry-run "already have an override" check can drift from what actually
+// matches at enrichment time (e.g. an accent variant it'd wrongly re-judge).
 function overrideKey(title: string, year?: number): string {
-  return `${title.toLowerCase()}::${year ?? ''}`;
+  return `${normalizeTitle(title)}::${year ?? ''}`;
 }
 
 async function main() {

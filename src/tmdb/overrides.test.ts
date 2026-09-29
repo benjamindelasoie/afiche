@@ -39,6 +39,14 @@ describe('tmdb overrides — DB table layer', () => {
     expect(await findOverride('mixed case title', 2019)).toBe(777);
   });
 
+  it('matches across accent variants — same film scraped by different providers', async () => {
+    // Cacodelphia scraped "LA INVITACIÓN", Cine Lorca later scraped
+    // "LA INVITACION" (no accent) for what may be the same film. A
+    // hand-verified override for one spelling must also cover the other.
+    await upsertOverride({ scrapedTitle: 'LA INVITACIÓN', year: null, tmdbId: 950028 });
+    expect(await findOverride('LA INVITACION', undefined)).toBe(950028);
+  });
+
   it('falls back to a year-agnostic (null-year) override', async () => {
     await upsertOverride({ scrapedTitle: 'Yearless Override', year: null, tmdbId: 888 });
     // Looked up with a concrete year — must fall back to the any-year slot.
