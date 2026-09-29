@@ -198,6 +198,8 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
               src={film.backdropUrl}
               alt=""
               fill
+              loading="eager"
+              fetchPriority="high"
               sizes="(min-width: 1024px) 1024px, 100vw"
               className="object-cover"
             />
