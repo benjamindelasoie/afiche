@@ -299,8 +299,9 @@ third-party account or key.
 
 - **You caught me running on empty context.** *"I feel like that question is as
   though we hadn't had any office hours yet on the afiche project. Is it?"* You
-  were right, and it turned up five design docs stranded on the m1air under the
-  old `kino`-era slug, two of which your own source comments cite by filename.
+  were right, and it turned up five design docs stranded on another machine
+  under the old `kino`-era slug, two of which this repo's own source comments
+  cite by filename.
 - **You cut the two biggest things in the plan on sight.** *"It's an horrendous
   use case"* killed a 1.7-million-row join that had survived three adversarial
   reviews and an outside model, all of which optimised it instead of asking
