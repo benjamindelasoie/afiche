@@ -25,7 +25,7 @@
 
 const TMDB_PATH = /^(https:\/\/image\.tmdb\.org\/t\/p\/)w?(\d+|original)(\/.+)$/;
 const TMDB_WIDTHS = [92, 154, 185, 300, 342, 500, 780, 1280] as const;
-const MAX_WIDTH = 1280;
+const MAX_WIDTH = TMDB_WIDTHS[TMDB_WIDTHS.length - 1];
 
 export default function tmdbImageLoader({
   src,

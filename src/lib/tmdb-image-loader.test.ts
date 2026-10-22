@@ -9,9 +9,13 @@
  *   - Works the same for poster and backdrop paths
  *   - Implements width for Next's dev probe (no "missing width" warning)
  *   - Passes non-TMDB srcs through untouched
+ *   - next.config.ts wires this loader in (no fallback to /_next/image)
  */
 
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
+import nextConfig from '../../next.config';
 import tmdbImageLoader from './tmdb-image-loader';
 
 const POSTER = 'https://image.tmdb.org/t/p/w342/4k4nCzJctpi2kKFIDIfddi2zXIQ.jpg';
@@ -29,6 +33,10 @@ describe('tmdbImageLoader', () => {
     [92, 'w92'],
     [96, 'w154'],
     [128, 'w154'],
+    // Value: protects=the w185 rung of the ladder; fails_when=185 is dropped
+    // or mistyped in TMDB_WIDTHS; why_new=no other row lands on w185;
+    // seam=none; no_claim=TMDB actually serving w185 (checked by hand)
+    [160, 'w185'],
     [256, 'w300'],
     [342, 'w342'],
     [384, 'w342'],
@@ -55,8 +63,30 @@ describe('tmdbImageLoader', () => {
   it('implements width for the probe Next runs in dev', () => {
     // Next warns when the loader returns the src unchanged for the image's
     // `width` prop (or 400 for `fill`). Every poster slot is ≤ 232px wide.
-    expect(load(POSTER, 232)).not.toBe(POSTER);
-    expect(load(BACKDROP, 400)).not.toBe(BACKDROP);
+    expect(load(POSTER, 232)).toBe(poster('w300'));
+    expect(load(BACKDROP, 400)).toBe(backdrop('w500'));
+  });
+
+  it('is the loader next.config.ts uses for every next/image', () => {
+    // Dropping this (or re-adding `remotePatterns` without a loader) silently
+    // routes TMDB images back through Vercel Image Optimization.
+    expect(nextConfig.images?.loader).toBe('custom');
+    const loaderFile = nextConfig.images?.loaderFile ?? '';
+    expect(resolve(loaderFile)).toBe(resolve('src/lib/tmdb-image-loader.ts'));
+    expect(existsSync(loaderFile)).toBe(true);
+  });
+
+  it('configures srcset widths that are exactly TMDB sizes', () => {
+    // Each configured width must come back as that same TMDB size, or the
+    // srcset `w` descriptor lies about the file and the browser over-fetches.
+    const widths = [
+      ...(nextConfig.images?.imageSizes ?? []),
+      ...(nextConfig.images?.deviceSizes ?? []),
+    ];
+    expect(widths.length).toBeGreaterThan(0);
+    for (const width of widths) {
+      expect(load(poster('original'), width)).toBe(poster(`w${width}`));
+    }
   });
 
   it('passes non-TMDB srcs through untouched', () => {
