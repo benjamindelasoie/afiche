@@ -2,6 +2,24 @@
 
 All notable changes to Afiche are documented here.
 
+## [1.2.0.0] - 2026-10-22
+
+**The cartelera reaches its first sala outside Buenos Aires.** El Cairo Cine Público in Rosario — the Santa Fe province's public cinema, open since 1945 and recovered by the provincial government in 2009 — now has its own page and its functions in the listings. How a non-Buenos Aires sala is presented across the rest of the site is deliberately left for a product pass; this release makes the data and the venue page correct.
+
+### Added
+
+- **El Cairo Cine Público (Rosario).** Its site runs WordPress with The Events Calendar, so the schedule comes from that plugin's public REST API — structured JSON with explicit UTC times — rather than scraped HTML. Each film's page is read once per series for the ficha técnica: director, year, runtime, country, original title and synopsis.
+  - **Double bills** list each film at the shared start time, under the programme's title.
+  - **Audience-vote duels** (the Zoom / Versus cycle, where the room picks one of two films) list once under their own title and are never matched to TMDB, because neither film can honestly be named in advance.
+  - **A film whose page can't be read is left out of that run** rather than listed without its year, which would have forked a second copy of the film. If most pages fail, or most lose their year, the run fails and the last good schedule stays up.
+- **"Sobre la sala" for El Cairo**: its history, the 400-seat public sala, and how tickets work (box office only, no reservations, free functions every week), sourced from the venue's own site, the provincial government and Rosario's tourism office.
+- **Providers can mark a listing as not-a-film.** A new `skipTmdb` hint is applied when the film row is first created, so TMDB never tries to match it; an operator's later choice in the admin still wins.
+
+### Fixed
+
+- **A sala outside Buenos Aires gets its own city** in the Maps link, the page's visible address and description, and the structured data search engines read. Every venue used to be pinned to "Buenos Aires", which would have sent Rosario's Santa Fe 1120 to the avenue of the same name in Buenos Aires.
+- **Two real films stop being mistaken for competition blocks.** The container rule flagged any title with the word "competencia", which caught Ettore Scola's *Competencia desleal* and Duprat & Cohn's *Competencia oficial*. It now matches competition sections by their shape, and the self-heal loop uses the same rule, so it can no longer propose the bare word back.
+
 ## [1.1.0.0] - 2026-09-09
 
 **The pipeline now repairs itself between releases.** Every version until this one fixed the matcher the same way: a film reached the cartelera unenriched, someone eventually noticed, someone shipped a rule. The gap between the miss and the fix was however long it took a human to look. This release closes that loop. After every scrape an agent audits the run, judges the films still stuck, writes the matches it can corroborate, and files an issue describing the ones it cannot — and a second agent opens a pull request against those issues. Nothing merges without a human reading it.
