@@ -66,9 +66,10 @@ const nextConfig: NextConfig = {
     loader: 'custom',
     loaderFile: './src/lib/tmdb-image-loader.ts',
     // srcset widths = TMDB's own size ladder (the loader's TMDB_WIDTHS), so
-    // each candidate's `w` descriptor is the real width of the file it names
-    // and the browser can pick w185 for an 80px@2x slot. Next's defaults
-    // (32, 48, … 3840) never land on w185 and over-fetch w300 instead.
+    // up to the src's stored size each candidate's `w` descriptor is the real
+    // width of the file it names, and an 80px@2x slot picks w185. Wider
+    // candidates repeat the capped file (a w342 poster also appears as 500w,
+    // 780w, 1280w). Next's defaults (32 … 3840) never land on w185.
     imageSizes: [92, 154, 185, 300, 342],
     deviceSizes: [500, 780, 1280],
   },
