@@ -119,6 +119,8 @@ async function upsertFilmRow(s: ScrapedScreening): Promise<UpsertResult> {
     runtimeMin: s.runtimeMin,
     synopsisEs: s.synopsisEs,
     matchSource: 'none',
+    // Insert-only: never in buildUpdateSet, so an operator's later toggle wins.
+    skipTmdb: s.skipTmdb ?? false,
     slug: null,
   };
   const updateSet = buildUpdateSet(s);

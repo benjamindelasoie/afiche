@@ -2474,3 +2474,53 @@ describe('upsertFilms — match_source reset on meaningful field change (TODO #2
     expect(await getMatchSource(id)).toBe('manual');
   });
 });
+
+// ---------------------------------------------------------------------------
+// upsertFilms — provider skipTmdb hint
+// ---------------------------------------------------------------------------
+
+describe('upsertFilms — provider skipTmdb hint', () => {
+  beforeEach(async () => {
+    testDb = await makeInMemoryDb();
+  });
+
+  // El Cairo's audience-vote duels: the room decides which of two films
+  // screens, so the listing must never be matched to either one.
+  const duel = (overrides: Partial<ScrapedScreening> = {}): ScrapedScreening => ({
+    cinemaId: 'el-cairo',
+    filmTitle: 'FELICIDAD VS. MI VIDA ES MI VIDA',
+    startsAtUtc: futureDate(),
+    tags: ['cycle'],
+    sourceUrl:
+      'https://elcairocinepublico.gob.ar/pelicula-de-sala/felicidad-vs-mi-vida-es-mi-vida/',
+    skipTmdb: true,
+    ...overrides,
+  });
+
+  async function skipOf(title: string): Promise<boolean | undefined> {
+    const [row] = await testDb.select().from(films).where(eq(films.scrapedTitle, title));
+    return row?.skipTmdb;
+  }
+
+  it('creates the film row with skip_tmdb set', async () => {
+    await upsertFilms([duel()]);
+    expect(await skipOf('FELICIDAD VS. MI VIDA ES MI VIDA')).toBe(true);
+  });
+
+  it('leaves skip_tmdb false when the provider does not ask', async () => {
+    await upsertFilms([
+      duel({ filmTitle: 'LOS CALVOS', year: 2024, skipTmdb: undefined }),
+    ]);
+    expect(await skipOf('LOS CALVOS')).toBe(false);
+  });
+
+  it('never overrides an operator toggle on an existing row', async () => {
+    await upsertFilms([duel()]);
+    await testDb
+      .update(films)
+      .set({ skipTmdb: false })
+      .where(eq(films.scrapedTitle, 'FELICIDAD VS. MI VIDA ES MI VIDA'));
+    await upsertFilms([duel()]); // re-scrape still sends the hint
+    expect(await skipOf('FELICIDAD VS. MI VIDA ES MI VIDA')).toBe(false);
+  });
+});
