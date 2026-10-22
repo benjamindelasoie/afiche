@@ -26,6 +26,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { z } from 'zod';
 import type { TmdbMovieSummary } from './client';
 
 /**
@@ -40,6 +41,21 @@ export const JUDGE_MODEL = 'claude-haiku-4-5-20251001';
 export const JUDGE_MAX_TOKENS = 1024;
 /** Deterministic-as-possible: this is a classification, not a generation. */
 export const JUDGE_TEMPERATURE = 0;
+/** Total attempts (initial + retries) to get a well-formed verdict per film. */
+export const JUDGE_MAX_ATTEMPTS = 3;
+
+/**
+ * The verdict contract. tmdb_id and confidence are decision-critical, so a reply
+ * missing or mistyping them is malformed and triggers a retry; reasoning is
+ * advisory and defaults to empty. Extra keys are ignored. Confidence is clamped
+ * to [0,1] after validation — an out-of-range number is a value bug, not a
+ * format bug, and does not warrant a retry.
+ */
+const JudgeResponseSchema = z.object({
+  tmdb_id: z.union([z.number().int(), z.null()]),
+  confidence: z.number(),
+  reasoning: z.string().default(''),
+});
 
 /**
  * Below this the proposal is printed for review but never written. Set high:
@@ -56,6 +72,29 @@ export interface JudgeInput {
   titleOriginal?: string;
   /** Venue names programming the film — real context for a local-cinema call. */
   venues?: string[];
+  /**
+   * Venue-scraped plot summary, when the provider captured one. This is the
+   * single strongest signal available on a same-title collision (several
+   * TMDB entries sharing a localized title, e.g. "La invitación" has SEVEN) —
+   * it corroborates or contradicts a candidate's `overview` independent of
+   * title/director/year plausibility, which is exactly the axis "arthouse
+   * cinema, so pick the obscure retrospective" reasoning has nothing else to
+   * check itself against. Found via a manual audit (2026-09): the judge
+   * confidently (0.72-0.92) picked the wrong film for "LA INVITACIÓN" and
+   * "LOS VENCEDORES" at Cacodelphia — both cases where this field, already
+   * sitting in the same DB row, would have made the mismatch obvious.
+   */
+  synopsisEs?: string;
+  /**
+   * Venue-scraped runtime in minutes. A real signal even though the candidate
+   * list carries no per-candidate runtime (TMDB's search endpoint doesn't
+   * return it) — the model's own world knowledge of a well-known candidate's
+   * approximate length is enough to flag a gross mismatch (a 100-minute
+   * listing cannot be a 175-minute war epic). The hard, data-driven version
+   * of this check runs after judging, in self-heal.ts's runtimeCorroborates —
+   * this is a second, independent line of defense, not a replacement for it.
+   */
+  runtimeMin?: number;
 }
 
 export interface JudgeProposal {
@@ -72,9 +111,11 @@ You will be given the listing as the venue printed it, plus a numbered list of T
 Rules:
 - Answer with a tmdb_id from the candidate list, or null. NEVER write a tmdb_id that is not in the list, even if you believe you know the correct one — a missing entry is a valid and useful answer.
 - Argentine and Spanish release titles often differ completely from the original. "Perros de la calle" is Reservoir Dogs. Use that knowledge.
-- The venues are indie/arthouse cinemas and cineclubs. A retrospective classic or a festival documentary is far more likely than a blockbuster with a coincidentally similar title.
+- The venues are indie/arthouse cinemas and cineclubs. A retrospective classic or a festival documentary is far more likely than a blockbuster with a coincidentally similar title. BUT this is a prior, not a verdict — a same-title collision is common (some titles have 5+ distinct TMDB entries), and "arthouse cinema, so pick the obscure one" is exactly the reasoning that has been caught picking the wrong film. Treat it as a tiebreaker of last resort, never as a substitute for checking the plot.
 - A year in the listing is the venue's claim about the film's production year, not the screening date. It can be off by one, or wrong.
-- Be decisive about confidence. Use >0.85 only when the identification is essentially certain. Use <0.5 when you are guessing.
+- If a listing synopsis is given, it is the decisive signal: read every candidate's overview and compare. A candidate whose overview clearly describes the same plot, same character names, or same real-world event is very likely correct even if it seemed like an unlikely pick on title/director alone. A candidate whose overview clearly describes a DIFFERENT plot is very likely wrong even at high title-similarity — do not pick it just because it "fits the venue's vibe" better. When the synopsis decisively confirms one candidate over the others, that alone justifies confidence above 0.85.
+- If a listing runtime is given, treat it as a hard fact about the correct film. A candidate you know (from training knowledge, not the candidate list) to run dramatically longer or shorter than the listing — e.g. a listing of 100 minutes cannot be a well-known ~3-hour epic — is very likely wrong regardless of how well the title or venue-fit matches.
+- Be decisive about confidence. Use >0.85 only when the identification is essentially certain. Use <0.5 when you are guessing. A synopsis or runtime contradiction should pull confidence down even if title/director/year all point the same way — corroborating signals agreeing with each other is not the same as agreeing with the truth.
 
 Respond with ONLY a JSON object, no markdown fences, no commentary:
 {"tmdb_id": <number|null>, "confidence": <0..1>, "reasoning": "<one sentence>"}`;
@@ -98,15 +139,26 @@ export function buildUserPrompt(
   if (input.year !== undefined) lines.push(`Listing year: ${input.year}`);
   if (input.director) lines.push(`Listing director: ${input.director}`);
   if (input.titleOriginal) lines.push(`Listing original title: ${input.titleOriginal}`);
+  if (input.runtimeMin !== undefined)
+    lines.push(`Listing runtime: ${input.runtimeMin} min`);
   if (input.venues?.length) lines.push(`Programmed by: ${input.venues.join(', ')}`);
+  // Synopsis last and unbroken (no length cap, unlike candidate overviews) —
+  // it's the decisive signal per the system prompt, so it gets the most
+  // room and the most attention, right before the candidate list it's meant
+  // to be checked against.
+  if (input.synopsisEs) lines.push('', `Listing synopsis: ${input.synopsisEs}`);
   lines.push('', 'TMDB candidates:', ...candidates.map(formatCandidate));
   return lines.join('\n');
 }
 
+/** Thrown when a reply cannot be parsed into a valid verdict — retriable. */
+export class JudgeParseError extends Error {}
+
 /**
- * Parse the judge's reply. Tolerant of ```json fences because models add them
- * despite instructions; strict about everything else, since a malformed
- * verdict must not become a silent "no match".
+ * Parse the judge's reply against the verdict schema. Tolerant of ```json fences
+ * because models add them despite instructions; strict about the contract, since
+ * a malformed verdict must not become a silent "no match". Throws JudgeParseError
+ * on any format violation so the caller can retry.
  */
 export function parseJudgeResponse(raw: string): JudgeProposal {
   const cleaned = raw
@@ -119,30 +171,21 @@ export function parseJudgeResponse(raw: string): JudgeProposal {
   try {
     parsed = JSON.parse(cleaned);
   } catch {
-    throw new Error(`judge returned non-JSON: ${raw.slice(0, 200)}`);
-  }
-  if (typeof parsed !== 'object' || parsed === null) {
-    throw new Error('judge returned a non-object');
+    throw new JudgeParseError(`judge returned non-JSON: ${raw.slice(0, 200)}`);
   }
 
-  const o = parsed as Record<string, unknown>;
-  const rawId = o.tmdb_id;
-  const tmdbId =
-    rawId === null || rawId === undefined
-      ? null
-      : typeof rawId === 'number' && Number.isInteger(rawId)
-        ? rawId
-        : (() => {
-            throw new Error(`judge returned a non-integer tmdb_id: ${String(rawId)}`);
-          })();
-
-  const confidence = typeof o.confidence === 'number' ? o.confidence : 0;
-  const reasoning = typeof o.reasoning === 'string' ? o.reasoning.trim() : '';
+  const result = JudgeResponseSchema.safeParse(parsed);
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((i) => `${i.path.join('.')}: ${i.message}`)
+      .join('; ');
+    throw new JudgeParseError(`judge verdict failed schema: ${issues}`);
+  }
 
   return {
-    tmdbId,
-    confidence: Math.min(1, Math.max(0, confidence)),
-    reasoning,
+    tmdbId: result.data.tmdb_id,
+    confidence: Math.min(1, Math.max(0, result.data.confidence)),
+    reasoning: result.data.reasoning.trim(),
   };
 }
 
@@ -164,30 +207,53 @@ export async function judgeCandidates(
   }
 
   const anthropic = client ?? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
-  const message = await anthropic.messages.create({
-    model: JUDGE_MODEL,
-    max_tokens: JUDGE_MAX_TOKENS,
-    temperature: JUDGE_TEMPERATURE,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: buildUserPrompt(input, candidates) }],
-  });
-
-  const textBlock = message.content.find((b) => b.type === 'text');
-  if (!textBlock || textBlock.type !== 'text') {
-    throw new Error('judge response had no text content');
-  }
-
-  const proposal = parseJudgeResponse(textBlock.text);
-  if (proposal.tmdbId === null) return proposal;
-
   const allowed = new Set(candidates.map((c) => c.id));
-  if (!allowed.has(proposal.tmdbId)) {
-    return {
-      tmdbId: null,
-      confidence: 0,
-      reasoning: `rejected out-of-set id ${proposal.tmdbId} (model said: ${proposal.reasoning})`,
-    };
-  }
 
-  return proposal;
+  // Retry only on a malformed reply — a formatting blip, not a verdict. A valid
+  // verdict (including a rejected out-of-set id) returns immediately.
+  const messages: Anthropic.MessageParam[] = [
+    { role: 'user', content: buildUserPrompt(input, candidates) },
+  ];
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= JUDGE_MAX_ATTEMPTS; attempt++) {
+    const message = await anthropic.messages.create({
+      model: JUDGE_MODEL,
+      max_tokens: JUDGE_MAX_TOKENS,
+      temperature: JUDGE_TEMPERATURE,
+      system: SYSTEM_PROMPT,
+      messages,
+    });
+    const textBlock = message.content.find((b) => b.type === 'text');
+    const text = textBlock && textBlock.type === 'text' ? textBlock.text : '';
+
+    try {
+      const proposal = parseJudgeResponse(text);
+      if (proposal.tmdbId === null) return proposal;
+      if (!allowed.has(proposal.tmdbId)) {
+        return {
+          tmdbId: null,
+          confidence: 0,
+          reasoning: `rejected out-of-set id ${proposal.tmdbId} (model said: ${proposal.reasoning})`,
+        };
+      }
+      return proposal;
+    } catch (err) {
+      if (!(err instanceof JudgeParseError)) throw err;
+      lastError = err;
+      if (attempt < JUDGE_MAX_ATTEMPTS) {
+        messages.push({ role: 'assistant', content: text || '(empty)' });
+        messages.push({ role: 'user', content: RETRY_NUDGE });
+      }
+    }
+  }
+  throw new JudgeParseError(
+    `judge produced no valid verdict in ${JUDGE_MAX_ATTEMPTS} attempts: ${
+      lastError instanceof Error ? lastError.message : String(lastError)
+    }`,
+  );
 }
+
+const RETRY_NUDGE =
+  'Your previous reply was not valid. Respond with ONLY a JSON object of the form ' +
+  '{"tmdb_id": <number|null>, "confidence": <0..1>, "reasoning": "<one sentence>"} — ' +
+  'no markdown fences, no commentary.';

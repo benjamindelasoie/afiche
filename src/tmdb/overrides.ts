@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { and, eq, isNull } from 'drizzle-orm';
 import { db, tmdbOverrides } from '@/db';
+import { normalizeTitle } from './similarity';
 
 interface OverrideEntry {
   scrapedTitle: string;
@@ -127,8 +128,17 @@ async function loadOverrides(): Promise<Map<string, number>> {
   return map;
 }
 
+/**
+ * Was plain `title.toLowerCase().trim()` — accent-sensitive, so a seeded
+ * override for "LA INVITACIÓN" silently missed a re-scrape of the same film
+ * spelled "LA INVITACION" (no accent), which providers do inconsistently.
+ * `normalizeTitle` is the exact equivalence `src/tmdb/match.ts`'s
+ * deterministic matcher already uses (ADR-0002 calls for this override/
+ * decision-key to use the same normalized match key; this had drifted from
+ * that since the self-healing rewrite). One title, one key, everywhere.
+ */
 function makeKey(title: string, year: number | undefined): string {
-  return `${title.toLowerCase().trim()}::${year ?? 'any'}`;
+  return `${normalizeTitle(title)}::${year ?? 'any'}`;
 }
 
 /** Reset the cache — useful in tests. */

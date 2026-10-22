@@ -18,3 +18,12 @@ describe('isNonFilmContainer', () => {
     expect(isNonFilmContainer('El Programa')).toBe(false);
   });
 });
+
+describe('container classifier — issue #58 regressions', () => {
+  it.each([
+    ['FESTIVAL INTERNACIONAL DE ANIMACIÓN DE URUGUAY', true],
+    ['¡Película sorpresa!', true],
+  ])('classifies %j as container=%s', (title, expected) => {
+    expect(isNonFilmContainer(title as string)).toBe(expected);
+  });
+});

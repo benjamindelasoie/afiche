@@ -15,9 +15,12 @@ import { describe, it, expect } from 'vitest';
 import {
   pickBestMatch,
   scoreCandidates,
+  dominantByVotes,
   MATCH_CONFIDENCE_THRESHOLD,
   TITLE_AMBIGUITY_EPSILON,
+  TITLE_MIN_VOTE_COUNT,
   titleForms,
+  type MatchResult,
 } from './match';
 import type { TmdbMovieSummary } from './client';
 
@@ -172,12 +175,16 @@ describe('pickBestMatch — title ambiguity guard', () => {
   // force a null return so the caller disambiguates via director or
   // surfaces as 'low-confidence' (operator-actionable miss).
   it('returns null when top-2 candidates tie at high confidence (identical localized titles)', () => {
+    // Vote counts are the real ones (TMDB, 2026-09-08). They matter: the tie
+    // must hold on genuine ambiguity, not merely because the fixtures are
+    // vote-less. 3944 / 2523 = 1.6x, far under TITLE_DOMINANCE_RATIO.
     const eggers = candidate({
       id: 426063,
       title: 'Nosferatu',
       original_title: 'Nosferatu',
       release_date: '2024-12-25',
       popularity: 500.0,
+      vote_count: 3944,
     });
     const murnau = candidate({
       id: 653,
@@ -185,6 +192,7 @@ describe('pickBestMatch — title ambiguity guard', () => {
       original_title: 'Nosferatu, eine Symphonie des Grauens',
       release_date: '1922-03-04',
       popularity: 30.0,
+      vote_count: 2523,
     });
     const m = pickBestMatch([eggers, murnau], 'Nosferatu', undefined);
     expect(m).toBeNull();
@@ -257,6 +265,187 @@ describe('pickBestMatch — title ambiguity guard', () => {
     expect(sorted[0].confidence - sorted[1].confidence).toBeGreaterThan(
       TITLE_AMBIGUITY_EPSILON,
     );
+  });
+});
+
+describe('pickBestMatch — vote dominance breaks a tie no director can', () => {
+  // A source that publishes neither a year nor a director (Passline, which
+  // backs CINTA) leaves the ambiguity guard nothing to hand off to, so every
+  // film with a namesake used to die as a permanent 'none-attempted' miss.
+  // Vote-count dominance resolves the ones that are not really ambiguous.
+  //
+  // All vote counts below are the real TMDB figures, read 2026-09-08.
+
+  const midnightAllen = candidate({
+    id: 59436,
+    title: 'Midnight in Paris',
+    original_title: 'Midnight in Paris',
+    release_date: '2011-05-11',
+    popularity: 8,
+    vote_count: 7870,
+  });
+  const midnightNamesake = candidate({
+    id: 580576,
+    title: 'Midnight in Paris',
+    original_title: 'Midnight in Paris',
+    release_date: '2019-06-19',
+    popularity: 0,
+    vote_count: 0,
+  });
+
+  it('picks the canonical film over a vote-less namesake', () => {
+    const m = pickBestMatch(
+      [midnightNamesake, midnightAllen],
+      'Midnight in Paris',
+      undefined,
+    );
+    expect(m?.candidate.id).toBe(59436);
+  });
+
+  it('picks the famous remake over the older film of the same name', () => {
+    // Both are real releases TMDB knows; 8460 / 142 = 60x is decisive.
+    const stiller = candidate({
+      id: 116745,
+      title: 'La vida secreta de Walter Mitty',
+      original_title: 'The Secret Life of Walter Mitty',
+      release_date: '2013-12-18',
+      vote_count: 8460,
+    });
+    const mcleod = candidate({
+      id: 27723,
+      title: 'La vida secreta de Walter Mitty',
+      original_title: 'The Secret Life of Walter Mitty',
+      release_date: '1947-08-14',
+      vote_count: 142,
+    });
+    const m = pickBestMatch([mcleod, stiller], 'The Secret Life of Walter Mitty');
+    expect(m?.candidate.id).toBe(116745);
+  });
+
+  it('ranks by votes, not by the popularity the incoming sort used', () => {
+    // The namesake is the more POPULAR of the two (popularity is a buzz score
+    // that decays with age, which is exactly why it is the wrong signal here).
+    // Dominance must still return the film the audience actually voted on.
+    const classic = candidate({
+      id: 1,
+      title: 'Metropolis',
+      original_title: 'Metropolis',
+      release_date: '1927-01-10',
+      popularity: 3,
+      vote_count: 3187,
+    });
+    const buzzy = candidate({
+      id: 2,
+      title: 'Metropolis',
+      original_title: 'Metropolis',
+      release_date: '2024-01-01',
+      popularity: 900,
+      vote_count: 40,
+    });
+    const sorted = scoreCandidates([classic, buzzy], 'Metropolis');
+    expect(sorted[0].candidate.id).toBe(2); // popularity won the sort…
+    expect(pickBestMatch([classic, buzzy], 'Metropolis')?.candidate.id).toBe(1); // …votes won the pick
+  });
+
+  it('stands down for the director rescue whenever a director hint exists', () => {
+    // The hint is better evidence than any vote count, and it is what lets a
+    // venue screening the 1947 Walter Mitty get the 1947 Walter Mitty. Same
+    // candidates as the decisive case above — only the hint changes.
+    const stiller = candidate({
+      id: 116745,
+      title: 'The Secret Life of Walter Mitty',
+      original_title: 'The Secret Life of Walter Mitty',
+      release_date: '2013-12-18',
+      vote_count: 8460,
+    });
+    const mcleod = candidate({
+      id: 27723,
+      title: 'The Secret Life of Walter Mitty',
+      original_title: 'The Secret Life of Walter Mitty',
+      release_date: '1947-08-14',
+      vote_count: 142,
+    });
+    const hinted = pickBestMatch(
+      [mcleod, stiller],
+      'The Secret Life of Walter Mitty',
+      undefined,
+      { director: 'Norman Z. McLeod' },
+    );
+    expect(hinted).toBeNull();
+  });
+
+  it('holds when two tied films are comparably notable', () => {
+    const a = candidate({
+      id: 1,
+      title: 'Solaris',
+      original_title: 'Solaris',
+      release_date: '1972-01-01',
+      vote_count: 2000,
+    });
+    const b = candidate({
+      id: 2,
+      title: 'Solaris',
+      original_title: 'Solaris',
+      release_date: '2002-01-01',
+      vote_count: 1000, // 2x — under TITLE_DOMINANCE_RATIO
+    });
+    expect(pickBestMatch([a, b], 'Solaris')).toBeNull();
+  });
+
+  it('holds when the whole tied band is long-tail, however lopsided', () => {
+    // 30x, but on 30 votes against 1: a runaway ratio between two unknowns
+    // says nothing about which is "the" film.
+    const a = candidate({
+      id: 1,
+      title: 'Cortometraje',
+      original_title: 'Cortometraje',
+      release_date: '2015-01-01',
+      vote_count: 30,
+    });
+    const b = candidate({
+      id: 2,
+      title: 'Cortometraje',
+      original_title: 'Cortometraje',
+      release_date: '2019-01-01',
+      vote_count: 1,
+    });
+    expect(pickBestMatch([a, b], 'Cortometraje')).toBeNull();
+  });
+});
+
+describe('dominantByVotes', () => {
+  const withVotes = (id: number, vote_count: number): MatchResult => ({
+    candidate: candidate({ id, vote_count }),
+    confidence: 1,
+    matchedAgainst: 'title',
+  });
+
+  it('returns null for an empty band', () => {
+    expect(dominantByVotes([])).toBeNull();
+  });
+
+  it('accepts a lone notable candidate (no rival to outweigh)', () => {
+    expect(dominantByVotes([withVotes(1, 500)])?.candidate.id).toBe(1);
+  });
+
+  it('rejects a lone candidate under the vote floor', () => {
+    expect(dominantByVotes([withVotes(1, TITLE_MIN_VOTE_COUNT - 1)])).toBeNull();
+  });
+
+  it('treats the ratio as inclusive at exactly TITLE_DOMINANCE_RATIO', () => {
+    const band = [withVotes(1, 400), withVotes(2, 100)]; // exactly 4x
+    expect(dominantByVotes(band)?.candidate.id).toBe(1);
+  });
+
+  it('rejects just under the ratio', () => {
+    const band = [withVotes(1, 399), withVotes(2, 100)];
+    expect(dominantByVotes(band)).toBeNull();
+  });
+
+  it('measures against the strongest rival, not the first one listed', () => {
+    // 1000 dominates the 10, but not the 900 further down the band.
+    const band = [withVotes(1, 1000), withVotes(2, 10), withVotes(3, 900)];
+    expect(dominantByVotes(band)).toBeNull();
   });
 });
 
@@ -409,12 +598,16 @@ describe('pickBestMatch — subtitled Spanish release titles (the PAPRIKA case)'
     // Herzog's Spanish title truncates to exactly Eggers' title. Both reach
     // ~1.0, so the ambiguity guard must fire and hand off to director rescue
     // rather than letting popularity decide (TODOS.md #18).
+    // Real vote counts again (3944 / 1120 = 3.5x): the pair sits just under
+    // the dominance ratio, so the guard holds on notability alone even before
+    // the director hint gets involved.
     const eggers = candidate({
       id: 426063,
       title: 'Nosferatu',
       original_title: 'Nosferatu',
       release_date: '2024-12-25',
       popularity: 500,
+      vote_count: 3944,
     });
     const herzog = candidate({
       id: 24173,
@@ -422,6 +615,7 @@ describe('pickBestMatch — subtitled Spanish release titles (the PAPRIKA case)'
       original_title: 'Nosferatu: Phantom der Nacht',
       release_date: '1979-01-17',
       popularity: 12,
+      vote_count: 1120,
     });
     expect(pickBestMatch([eggers, herzog], 'Nosferatu', undefined)).toBeNull();
   });

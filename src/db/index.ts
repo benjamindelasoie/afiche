@@ -13,6 +13,7 @@ export {
   providers,
   scrapeRuns,
   tmdbOverrides,
+  healRuns,
   TAG_LABELS_ES,
   GENRE_LABELS_ES,
 } from './schema';
@@ -30,4 +31,6 @@ export type {
   ScreeningTag,
   TmdbOverride,
   TmdbOverrideInsert,
+  HealRun,
+  HealRunInsert,
 } from './schema';

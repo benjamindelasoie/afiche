@@ -379,6 +379,31 @@ export const tmdbOverrides = sqliteTable(
 );
 
 // ---------------------------------------------------------------------------
+// heal_runs — one row per self-heal invocation, for observability + trends
+// ---------------------------------------------------------------------------
+export const healRuns = sqliteTable(
+  'heal_runs',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    ranAt: integer('ran_at', { mode: 'timestamp' })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    // The size of the active-stuck pool this run judged.
+    stuck: integer('stuck').notNull().default(0),
+    applied: integer('applied').notNull().default(0),
+    queued: integer('queued').notNull().default(0),
+    noCandidate: integer('no_candidate').notNull().default(0),
+    declined: integer('declined').notNull().default(0),
+    // Films the judge threw on (unparseable after retries / transient error).
+    errored: integer('errored').notNull().default(0),
+    // matcher-pattern issues opened this run (Layer 2).
+    issuesOpened: integer('issues_opened').notNull().default(0),
+    alerts: integer('alerts').notNull().default(0),
+  },
+  (t) => [index('heal_runs_ran_at_idx').on(t.ranAt)],
+);
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -459,3 +484,5 @@ export type ScrapeRun = typeof scrapeRuns.$inferSelect;
 export type ScrapeRunInsert = typeof scrapeRuns.$inferInsert;
 export type TmdbOverride = typeof tmdbOverrides.$inferSelect;
 export type TmdbOverrideInsert = typeof tmdbOverrides.$inferInsert;
+export type HealRun = typeof healRuns.$inferSelect;
+export type HealRunInsert = typeof healRuns.$inferInsert;

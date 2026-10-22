@@ -73,6 +73,14 @@ One recorded invocation of the pipeline for one venue — an immutable history
 row (`scrape_runs`) with counts, timing, status, and warnings. Distinct from
 the `providers` table, which holds only latest-state health per venue.
 
+**Circuit breaker**:
+The pre-write refusal in ingest that protects a venue's live schedule. Replacing
+future screenings deletes the venue's existing ones first, so a provider that
+silently broke against a site redesign would publish an empty venue; when the
+fetch is empty and future rows exist, the replace is refused, the last good
+schedule stands, and the run reports `circuitBroke`. Empty-only on purpose — a
+smaller-but-nonzero fetch is genuinely ambiguous.
+
 ### Film identity, matching & operator decisions
 
 **Scraped title**:
@@ -112,6 +120,50 @@ sorpresa", a cycle label — and must never be matched against TMDB (`skip_tmdb`
 A kind of Decision, so it too survives re-scrapes.
 _Avoid_: `none` / `none-attempted` (those mean "a film we haven't matched", not
 "not a film").
+
+### Self-heal loop
+
+**Stuck film**:
+A film in the active-stuck pool — no TMDB match, at least one future screening,
+not skipped and not hidden. The pool the heal works on, and the tail the loop
+exists to shrink. A stuck film is a film we failed to match, never "not a film"
+(that is Skip).
+
+**Proposal**:
+One judge output about one stuck film — a TMDB id, a confidence, and a
+provenance: `candidate-judged` (picked off the shortlist the matcher already
+fetched) or `web-researched` (found outside it). Provenance is load-bearing, not
+metadata: only a candidate-judged proposal can ever be auto-applied.
+_Avoid_: reading a proposal as a match — it is a suggestion until the gate rules
+on it.
+
+**Corroboration gate**:
+The deterministic classifier (`classifyProposal`) that turns a Proposal into
+either an auto-apply or a queued item for a human. The model proposes; the gate
+decides. Confidence alone never suffices — a second, independent signal (the
+year or the director agreeing, or an exact dominant title) has to hold too.
+_Avoid_: "the model decides" — no write in the loop has a model in it.
+
+**Machine override**:
+A row in `tmdb_overrides` written by the heal when a Proposal clears the gate.
+Durable across `reset-programming`, unioned with the hand-curated
+`tmdb-overrides.json` seed, and always the loser on a key conflict — a human
+correction outranks a machine one by construction.
+_Avoid_: conflating it with a Decision (an operator judgment) — same seam,
+different authority.
+
+**Heal run**:
+One recorded invocation of the heal (`heal_runs`) with its applied / queued /
+error counts — the loop's own history row, read back as a 7-day trend in the
+digest. The `scrape_runs` analogue for the healing pass.
+
+**Non-film container**:
+A scraped title that names a programme or competition rather than a work —
+a shorts block, "PROGRAMA I", a competition selection. It has no TMDB entry to
+find, so it leaves the queue instead of being judged forever
+(`isNonFilmContainer`).
+_Avoid_: Skip (an operator's judgment on one title) — a container is recognized
+by rule, on the noise-stripped title.
 
 ### Screening tags vs. program
 

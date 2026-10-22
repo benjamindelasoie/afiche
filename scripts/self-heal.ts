@@ -26,39 +26,22 @@ import {
   type HealFilm,
   type CandidateFacts,
 } from '@/scrapers/self-heal';
-import { searchMovies, getMovie, extractDirectors, hasTmdbToken } from '@/tmdb/client';
+import { getMovie, extractDirectors, hasTmdbToken } from '@/tmdb/client';
 import { judgeCandidates } from '@/tmdb/judge';
-import { stripSearchNoise } from '@/tmdb/similarity';
+import { searchCandidates } from '@/tmdb/candidate-search';
 import { isNonFilmContainer } from '@/tmdb/container';
+import { groupMisses, type Miss } from '@/scrapers/heal-patterns';
+import { recordHealRun, healTrend } from '@/scrapers/heal-metrics';
+import { flagEnabled } from '@/lib/flags';
+import { openPatternIssues } from './lib/pattern-issues';
 import type { AuditAlert } from '@/scrapers/audit';
-
-/** Same multi-query shaping the judge-unmatched script uses. */
-async function searchCandidates(f: HealFilm) {
-  const year = f.scrapedYear ?? undefined;
-  const queries = [f.scrapedTitle];
-  if (f.titleOriginal && f.titleOriginal !== f.scrapedTitle)
-    queries.push(f.titleOriginal);
-  const cleaned = stripSearchNoise(f.scrapedTitle);
-  if (cleaned !== f.scrapedTitle) queries.push(cleaned);
-
-  const seen = new Set<number>();
-  const out = [];
-  for (const q of queries) {
-    for (const r of await searchMovies(q, year)) {
-      if (!seen.has(r.id)) {
-        seen.add(r.id);
-        out.push(r);
-      }
-    }
-  }
-  return out;
-}
 
 async function candidateFacts(tmdbId: number): Promise<CandidateFacts> {
   const d = await getMovie(tmdbId);
   return {
     directors: extractDirectors(d),
     year: d?.release_date ? Number(d.release_date.slice(0, 4)) : null,
+    runtime: d?.runtime ?? null,
   };
 }
 
@@ -103,6 +86,10 @@ async function triggerRevalidate(): Promise<void> {
 
 async function main() {
   const write = process.argv.includes('--write');
+  if (!flagEnabled('SELF_HEAL_ENABLED')) {
+    console.log('self-heal disabled via SELF_HEAL_ENABLED=off — skipping.');
+    return;
+  }
   if (!hasTmdbToken()) throw new Error('TMDB_API_TOKEN is not set');
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is not set');
 
@@ -121,21 +108,41 @@ async function main() {
       scrapedYear: f.scrapedYear,
       director: f.director,
       titleOriginal: f.titleOriginal,
+      synopsisEs: f.synopsisEs,
+      runtimeMin: f.runtimeMin,
     }));
 
   console.log(`\n— Judging ${stuck.length} active-stuck film(s) (containers excluded)\n`);
-  const { proposals, noCandidate, declined } = await buildHealProposals(stuck, {
-    searchCandidates,
-    judge: judgeCandidates,
-  });
+  const { proposals, noCandidate, declined, errored, summaryFacts } =
+    await buildHealProposals(stuck, {
+      searchCandidates,
+      judge: judgeCandidates,
+    });
   const filmById = new Map(stuck.map((s) => [s.id, s]));
+
+  /** Merge the movie-detail facts (directors/year) with the search summary facts. */
+  const resolveFacts = async (
+    p: (typeof proposals)[number],
+  ): Promise<CandidateFacts> => ({
+    ...(await candidateFacts(p.tmdbId)),
+    ...summaryFacts.get(p.filmId),
+  });
+
+  // Layer 2: group the films that STILL missed into fixable-in-code causes.
+  const misses: Miss[] = [...noCandidate, ...declined].map((f) => ({
+    id: f.id,
+    scrapedTitle: f.scrapedTitle,
+    scrapedYear: f.scrapedYear,
+    director: f.director,
+  }));
+  const patternGroups = groupMisses(misses);
 
   if (!write) {
     for (const p of proposals) {
       const decision = classifyProposal(
         p,
         filmById.get(p.filmId)?.director ?? null,
-        await candidateFacts(p.tmdbId),
+        await resolveFacts(p),
       );
       const mark = decision.action === 'auto-apply' ? '✓ APPLY ' : '· queue ';
       const why = decision.action === 'queue' ? ` (${decision.reason})` : '';
@@ -145,26 +152,73 @@ async function main() {
     }
     console.log(
       `\n${proposals.length} judged · ${noCandidate.length} no-candidate · ` +
-        `${declined.length} declined\nDry run — nothing written.`,
+        `${declined.length} declined · ${errored.length} errored`,
     );
+    if (errored.length) {
+      console.log(`  errored: ${errored.map((f) => f.scrapedTitle).join(', ')}`);
+    }
+    if (patternGroups.length > 0) {
+      console.log(`\n— Layer 2: ${patternGroups.length} fixable pattern(s) →`);
+      for (const g of patternGroups) {
+        console.log(`  [${g.cause}] ${g.films.length} films — "${g.title}"`);
+      }
+      const preview = await openPatternIssues(patternGroups, { write: false });
+      for (const c of preview.created) console.log(`  would file: ${c.signature}`);
+      for (const s of preview.skipped) console.log(`  skip ${s.signature}: ${s.reason}`);
+    }
+    console.log('\nDry run — nothing written.');
     return;
   }
 
-  const { applied, queued } = await processProposals(proposals, async (p) => ({
-    scrapedDirector: filmById.get(p.filmId)?.director ?? null,
-    candidate: await candidateFacts(p.tmdbId),
-  }));
+  // Kill switch: pause auto-writes but keep judging + queueing + reporting.
+  const applyEnabled = flagEnabled('SELF_HEAL_APPLY_ENABLED');
+  const { applied, queued } = applyEnabled
+    ? await processProposals(proposals, async (p) => ({
+        scrapedDirector: filmById.get(p.filmId)?.director ?? null,
+        candidate: await resolveFacts(p),
+      }))
+    : {
+        applied: [],
+        queued: proposals.map((p) => ({ proposal: p, reason: 'apply disabled (flag)' })),
+      };
+
+  // Layer 2 write: open a matcher-pattern issue per new fixable cause.
+  const issues = flagEnabled('LAYER2_ISSUES_ENABLED')
+    ? await openPatternIssues(patternGroups, { write: true })
+    : { created: [], skipped: [] };
+
+  // Observability: record this run and read the trailing trend.
+  await recordHealRun({
+    stuck: stuck.length,
+    applied: applied.length,
+    queued: queued.length,
+    noCandidate: noCandidate.length,
+    declined: declined.length,
+    errored: errored.length,
+    issuesOpened: issues.created.length,
+    alerts: brief.alerts.length,
+  });
+  const trend = await healTrend(new Date());
 
   const digest =
     `afiche self-heal\n` +
     `applied: ${applied.length} · queued: ${queued.length} · ` +
-    `no-candidate: ${noCandidate.length} · alerts: ${brief.alerts.length}\n` +
+    `no-candidate: ${noCandidate.length} · errored: ${errored.length} · ` +
+    `alerts: ${brief.alerts.length}\n` +
+    `7-day: ${trend.applied} applied · ${trend.issuesOpened} issues · ` +
+    `${trend.errored} errored · ${trend.runs} runs\n` +
     applied.map((p) => `✓ ${p.scrapedTitle} → tmdb ${p.tmdbId}`).join('\n') +
     (queued.length
       ? `\nqueue:\n${queued.map((q) => `· ${q.proposal.scrapedTitle} (${q.reason})`).join('\n')}`
       : '') +
     (noCandidate.length
       ? `\nno-candidate:\n${noCandidate.map((f) => `? ${f.scrapedTitle}`).join('\n')}`
+      : '') +
+    (errored.length
+      ? `\nerrored:\n${errored.map((f) => `‼️ ${f.scrapedTitle}`).join('\n')}`
+      : '') +
+    (issues.created.length
+      ? `\nissues:\n${issues.created.map((c) => `🐛 ${c.signature} → ${c.url}`).join('\n')}`
       : '') +
     (brief.alerts.length
       ? `\nalerts:\n${brief.alerts.map((a) => `⚠️ ${a.cinemaId}: ${a.kind}`).join('\n')}`

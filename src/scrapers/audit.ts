@@ -33,6 +33,17 @@ export interface StuckFilm {
   director: string | null;
   titleOriginal: string | null;
   venues: string[];
+  /**
+   * Venue-scraped plot summary, when the provider captures one (Cacodelphia's
+   * adro.studio API does; most HTML/OCR scrapers don't). The single strongest
+   * disambiguation signal available: it corroborates or contradicts a
+   * candidate's TMDB overview independent of title/director/year, which is
+   * exactly the axis a same-title collision (multiple TMDB entries sharing a
+   * localized title) has nothing else to lean on. See judge.ts's prompt.
+   */
+  synopsisEs: string | null;
+  /** Venue-scraped runtime in minutes, same availability caveat as above. */
+  runtimeMin: number | null;
 }
 
 export interface AuditBrief {
@@ -111,6 +122,8 @@ export async function activeStuckFilms(now: Date): Promise<StuckFilm[]> {
       year: films.year,
       director: films.director,
       titleOriginal: films.titleOriginal,
+      synopsisEs: films.synopsisEs,
+      runtimeMin: films.runtimeMin,
       venues: sql<string | null>`group_concat(distinct ${cinemas.name})`,
     })
     .from(films)
@@ -134,6 +147,8 @@ export async function activeStuckFilms(now: Date): Promise<StuckFilm[]> {
     year: r.year,
     director: r.director,
     titleOriginal: r.titleOriginal,
+    synopsisEs: r.synopsisEs,
+    runtimeMin: r.runtimeMin,
     venues: r.venues ? r.venues.split(',') : [],
   }));
 }

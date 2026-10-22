@@ -4,7 +4,21 @@ import {
   stripDiacritics,
   levenshteinAtMostOne,
   stripSearchNoise,
+  normalizeTitle,
 } from './similarity';
+
+describe('normalizeTitle', () => {
+  it('folds accented and unaccented spellings of the same title to one key', () => {
+    // The real bug: "LA INVITACIÓN" (Cacodelphia) vs "LA INVITACION" (Cine
+    // Lorca) — same film, inconsistent accent — used to produce two
+    // different override-lookup keys.
+    expect(normalizeTitle('LA INVITACIÓN')).toBe(normalizeTitle('LA INVITACION'));
+  });
+
+  it('case-folds and strips punctuation', () => {
+    expect(normalizeTitle('El Jockey!')).toBe(normalizeTitle('el jockey'));
+  });
+});
 
 // ---------------------------------------------------------------------------
 // stripDiacritics — NFD-decomposable accents PLUS the extended-Latin map

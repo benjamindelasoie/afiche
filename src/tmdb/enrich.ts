@@ -176,9 +176,13 @@ export async function enrichFilm(
     }
 
     // 3. Fuzzy match with both title hints.
+    // The director hint is passed through so the ambiguity guard can tell
+    // whether step 4's rescue is available to break a title tie. It is never
+    // matched on here — verification against TMDB credits happens below.
     const match = pickBestMatch(candidates, scrapedTitle, year, {
       titleOriginal: hints.titleOriginal,
       cleanedTitle,
+      director: hints.director,
     });
 
     // Cache the already-fetched top details so step 4 doesn't re-fetch

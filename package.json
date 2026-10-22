@@ -1,6 +1,6 @@
 {
   "name": "afiche",
-  "version": "1.0.0.1",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -40,6 +40,12 @@
     "db:classify-containers:prod": "dotenv -e .env.prod -- tsx scripts/classify-containers.ts",
     "db:self-heal": "dotenv -e .env.local -- tsx scripts/self-heal.ts",
     "db:self-heal:prod": "dotenv -e .env.prod -- tsx scripts/self-heal.ts",
+    "actor2:fix": "dotenv -e .env.local -- tsx scripts/actor2-fix.ts",
+    "actor2:fix:prod": "dotenv -e .env.prod -- tsx scripts/actor2-fix.ts",
+    "eval:judge:build": "dotenv -e .env.local -- tsx scripts/eval/build-golden.ts",
+    "eval:judge:build:prod": "dotenv -e .env.prod -- tsx scripts/eval/build-golden.ts",
+    "eval:judge": "dotenv -e .env.local -- tsx scripts/eval/run-judge-eval.ts",
+    "eval:judge:prod": "dotenv -e .env.prod -- tsx scripts/eval/run-judge-eval.ts",
     "db:ia-stats": "dotenv -e .env.local -- tsx scripts/ia-stats.ts",
     "db:ia-stats:prod": "dotenv -e .env.prod -- tsx scripts/ia-stats.ts",
     "scrape:prod": "./scripts/scrape-prod.sh",

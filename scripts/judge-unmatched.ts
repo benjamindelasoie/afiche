@@ -3,10 +3,20 @@
  * propose `tmdb-overrides.json` entries.
  *
  * Dry-run by default — it prints proposals and writes nothing. `--write`
- * persists the confident ones to tmdb-overrides.json, which means the approval
- * gate is a git diff and the write path is the override lookup that already
- * runs first inside enrichFilm. No new DB column, no new match_source, and
- * `git revert` undoes a bad batch.
+ * persists the ones that clear `classifyProposal`'s corroboration gate (the
+ * SAME gate `scripts/self-heal.ts`'s automated pipeline uses — see that
+ * import) to tmdb-overrides.json, which means the approval gate is a git diff
+ * and the write path is the override lookup that already runs first inside
+ * enrichFilm. No new DB column, no new match_source, and `git revert` undoes
+ * a bad batch.
+ *
+ * Confidence alone is NOT the accept bar — a confident judge verdict still
+ * needs director, year, title, or runtime corroboration against the real
+ * TMDB movie detail before it writes anything. Until 2026-09 this tool used
+ * bare `confidence >= 0.85` with no corroboration at all: the Los Vencedores
+ * incident (a real 0.92 miss, no year/director in the listing to check
+ * against) would have gone straight into the committed overrides file had
+ * anyone run `--write` on it that day. It didn't, only because nobody had.
  *
  * Only films with a FUTURE screening are considered — the same "active" pool
  * the operator sees on the site, since a stale film costs nobody anything.
@@ -25,14 +35,16 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { db, films, screenings, cinemas } from '@/db';
-import { searchMovies, hasTmdbToken, type TmdbMovieSummary } from '@/tmdb/client';
-import { stripSearchNoise } from '@/tmdb/similarity';
+import { hasTmdbToken, getMovie, extractDirectors } from '@/tmdb/client';
+import { searchCandidates } from '@/tmdb/candidate-search';
+import { normalizeTitle } from '@/tmdb/similarity';
+import { judgeCandidates, JUDGE_MODEL, type JudgeProposal } from '@/tmdb/judge';
 import {
-  judgeCandidates,
-  JUDGE_AUTO_ACCEPT_CONFIDENCE,
-  JUDGE_MODEL,
-  type JudgeProposal,
-} from '@/tmdb/judge';
+  classifyProposal,
+  computeSummaryFacts,
+  type HealProposal,
+  type CandidateFacts,
+} from '@/scrapers/self-heal';
 
 const OVERRIDES_PATH = resolve(process.cwd(), 'tmdb-overrides.json');
 
@@ -49,6 +61,8 @@ interface PendingFilm {
   scrapedYear: number | null;
   director: string | null;
   titleOriginal: string | null;
+  synopsisEs: string | null;
+  runtimeMin: number | null;
   venues: string;
 }
 
@@ -60,6 +74,8 @@ async function loadPending(): Promise<PendingFilm[]> {
       scrapedYear: films.scrapedYear,
       director: films.director,
       titleOriginal: films.titleOriginal,
+      synopsisEs: films.synopsisEs,
+      runtimeMin: films.runtimeMin,
       venues: sql<string>`group_concat(distinct ${cinemas.name})`,
     })
     .from(films)
@@ -70,26 +86,15 @@ async function loadPending(): Promise<PendingFilm[]> {
     .orderBy(films.scrapedTitle);
 }
 
-/** Same query shaping enrichFilm uses, so the judge sees the same shortlist. */
-async function candidatesFor(f: PendingFilm): Promise<TmdbMovieSummary[]> {
-  const year = f.scrapedYear ?? undefined;
-  const queries = [f.scrapedTitle];
-  if (f.titleOriginal && f.titleOriginal !== f.scrapedTitle)
-    queries.push(f.titleOriginal);
-  const cleaned = stripSearchNoise(f.scrapedTitle);
-  if (cleaned !== f.scrapedTitle) queries.push(cleaned);
-
-  const seen = new Set<number>();
-  const out: TmdbMovieSummary[] = [];
-  for (const q of queries) {
-    for (const r of await searchMovies(q, year)) {
-      if (!seen.has(r.id)) {
-        seen.add(r.id);
-        out.push(r);
-      }
-    }
-  }
-  return out;
+/** Same shape scripts/self-heal.ts's candidateFacts fetches — kept in sync by
+ * hand since the two scripts don't share a runner, only the library code. */
+async function candidateFacts(tmdbId: number): Promise<CandidateFacts> {
+  const d = await getMovie(tmdbId);
+  return {
+    directors: extractDirectors(d),
+    year: d?.release_date ? Number(d.release_date.slice(0, 4)) : null,
+    runtime: d?.runtime ?? null,
+  };
 }
 
 async function readOverrides(): Promise<{
@@ -103,8 +108,11 @@ async function readOverrides(): Promise<{
   return { raw, list: (raw.overrides as OverrideEntry[] | undefined) ?? [] };
 }
 
+// Same normalized key src/tmdb/overrides.ts's findOverride uses — otherwise
+// this dry-run "already have an override" check can drift from what actually
+// matches at enrichment time (e.g. an accent variant it'd wrongly re-judge).
 function overrideKey(title: string, year?: number): string {
-  return `${title.toLowerCase()}::${year ?? ''}`;
+  return `${normalizeTitle(title)}::${year ?? ''}`;
 }
 
 async function main() {
@@ -124,14 +132,14 @@ async function main() {
   const accepted: OverrideEntry[] = [];
   const judged: number[] = [];
   let noCandidates = 0;
-  let lowConfidence = 0;
+  let queued = 0;
   let declined = 0;
 
   for (const f of pending) {
     const year = f.scrapedYear ?? undefined;
     if (existing.has(overrideKey(f.scrapedTitle, year))) continue;
 
-    const candidates = await candidatesFor(f);
+    const candidates = await searchCandidates(f);
     if (candidates.length === 0) {
       noCandidates++;
       console.log(`· ${f.scrapedTitle} — no TMDB candidates; needs a manual override`);
@@ -146,6 +154,8 @@ async function main() {
           year,
           director: f.director ?? undefined,
           titleOriginal: f.titleOriginal ?? undefined,
+          synopsisEs: f.synopsisEs ?? undefined,
+          runtimeMin: f.runtimeMin ?? undefined,
           venues: f.venues ? f.venues.split(',') : undefined,
         },
         candidates,
@@ -162,14 +172,40 @@ async function main() {
     }
 
     const picked = candidates.find((c) => c.id === proposal.tmdbId)!;
-    const mark = proposal.confidence >= JUDGE_AUTO_ACCEPT_CONFIDENCE ? '✓' : '?';
+
+    // Same safety gate the automated self-heal pipeline enforces before
+    // writing anything — director/year/title/runtime corroboration, not
+    // confidence alone. This tool used to accept on bare confidence >= 0.85
+    // with no corroboration at all: a wrong-but-confident pick (the Los
+    // Vencedores incident, 2026-09 — a real 0.92 miss with neither year nor
+    // director present) would have been written straight to the committed
+    // overrides file. `classifyProposal` is the one place that decision is
+    // made now, so this tool and the automated pipeline cannot drift apart.
+    const healProposal: HealProposal = {
+      filmId: f.id,
+      scrapedTitle: f.scrapedTitle,
+      scrapedYear: f.scrapedYear,
+      scrapedRuntimeMin: f.runtimeMin,
+      tmdbId: proposal.tmdbId,
+      confidence: proposal.confidence,
+      kind: 'candidate-judged',
+      reasoning: proposal.reasoning,
+    };
+    const candidateFactsResult: CandidateFacts = {
+      ...(await candidateFacts(proposal.tmdbId)),
+      ...computeSummaryFacts(f.scrapedTitle, candidates, proposal.tmdbId),
+    };
+    const decision = classifyProposal(healProposal, f.director, candidateFactsResult);
+
+    const mark = decision.action === 'auto-apply' ? '✓' : '?';
+    const why = decision.action === 'queue' ? ` (${decision.reason})` : '';
     console.log(
       `${mark} ${f.scrapedTitle}${year ? ` (${year})` : ''} → ${picked.title} ` +
-        `[tmdb ${picked.id}] conf=${proposal.confidence.toFixed(2)}\n    ${proposal.reasoning}`,
+        `[tmdb ${picked.id}] conf=${proposal.confidence.toFixed(2)}${why}\n    ${proposal.reasoning}`,
     );
 
-    if (proposal.confidence < JUDGE_AUTO_ACCEPT_CONFIDENCE) {
-      lowConfidence++;
+    if (decision.action !== 'auto-apply') {
+      queued++;
       continue;
     }
     judged.push(f.id);
@@ -184,8 +220,8 @@ async function main() {
   }
 
   console.log(
-    `\n── ${accepted.length} accepted · ${lowConfidence} below the ` +
-      `${JUDGE_AUTO_ACCEPT_CONFIDENCE} bar · ${declined} declined · ` +
+    `\n── ${accepted.length} accepted · ${queued} queued (corroboration gate) · ` +
+      `${declined} declined · ` +
       `${noCandidates} with no candidates`,
   );
 

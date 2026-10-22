@@ -16,6 +16,9 @@
 import { stripSearchNoise } from './similarity';
 
 const CONTAINER_PATTERNS: RegExp[] = [
+  // Added by Actor 2 (issue #58): container/placeholder skip words.
+  /\bFESTIVAL\b/i,
+  /\bSORPRESA\b/i,
   // "PROGRAMA I".."X", "PROGRAMA 1", "PROGRAMA DOBLE" — but NOT a film titled
   // "El Programa": the numeral/DOBLE token is required.
   /\bPROGRAMA\s+(?:\d+|I{1,3}|IV|VI{0,3}|IX|XI{0,3}|X|DOBLE)\b/i,

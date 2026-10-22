@@ -63,8 +63,8 @@ export function stripDiacritics(s: string): string {
 }
 
 export function jaroWinkler(a: string, b: string): number {
-  const s1 = normalize(a);
-  const s2 = normalize(b);
+  const s1 = normalizeTitle(a);
+  const s2 = normalizeTitle(b);
   if (s1.length === 0 && s2.length === 0) return 1;
   if (s1.length === 0 || s2.length === 0) return 0;
 
@@ -210,7 +210,15 @@ export function stripSearchNoise(title: string): string {
   return cleaned.length > 0 ? cleaned : title;
 }
 
-function normalize(s: string): string {
+/**
+ * Case-fold + strip diacritics + strip punctuation \u2014 the "same title"
+ * comparison key used by the deterministic matcher (`jaroWinkler`). Exported
+ * so any OTHER title-keyed lookup (e.g. `tmdb-overrides.json` / the
+ * `tmdb_overrides` table) can use the exact same equivalence the matcher
+ * already relies on, instead of a separate, weaker ad-hoc key that silently
+ * treats "LA INVITACI\u00d3N" and "LA INVITACION" as different films.
+ */
+export function normalizeTitle(s: string): string {
   // stripDiacritics handles both NFD-decomposable accents AND precomposed
   // extended-Latin letters (Polish \u0142, Danish \u00f8, etc.) \u2014 see the helper's
   // module-level docstring above for why both layers matter.

@@ -73,8 +73,12 @@ export const YEAR_TOLERANCE = 1;
  *   7 — `stripSearchNoise` also drops the LEADING festival/cycle prefix
  *       ("FESTIVAL ESCENARIO: X" → "X"), the mirror of (6c). Bumping re-opens
  *       the none-attempted rows the prefix had stuck at zero candidates.
+ *   8 — vote-count dominance breaks a title tie when — and only when — there
+ *       is no director hint, so a year-less, director-less source (Passline
+ *       carries neither) stops parking canonical films in /admin/unmatched.
+ *       See dominantByVotes below.
  */
-export const MATCHER_VERSION = 7;
+export const MATCHER_VERSION = 8;
 /**
  * Two candidates whose confidence scores are within this band are considered
  * tied on title — the matcher cannot disambiguate them by title similarity
@@ -91,6 +95,40 @@ export const MATCHER_VERSION = 7;
  */
 export const TITLE_AMBIGUITY_EPSILON = 0.01;
 
+/**
+ * How far the leading candidate must outweigh the best of its title-tied
+ * rivals, by TMDB vote count, to be treated as "the" film of that name.
+ *
+ * Vote count, NOT popularity. Popularity is a recency/buzz score that decays
+ * with age — it is what picked Eggers 2024 over Herzog 1979 and is explicitly
+ * the wrong signal for a repertory cartelera. Vote count is a notability
+ * proxy that does not decay, so a 1927 classic keeps its weight.
+ *
+ * Measured against real TMDB data on 2026-09-08, the ratio separates the two
+ * populations cleanly:
+ *
+ *   Midnight in Paris  2011 vs 2019    7870 : 0     — one film, one namesake
+ *   Lost in Translation 2003 vs 2018   8296 : 0     — idem
+ *   Walter Mitty       2013 vs 1947    8460 : 142   — the remake dwarfs it
+ *   Metropolis         1927 vs 2001     3187 : 579  — the canonical one
+ *   Nosferatu          2024 vs 1922     3944 : 2523 — GENUINELY ambiguous
+ *
+ * Nosferatu lands at 1.6x and stays held, which is the whole point: the
+ * bug class this guard was built for (TODOS.md #18) survives the change.
+ *
+ * Shared with the self-heal apply gate (`src/scrapers/self-heal.ts`), which
+ * arrived at the same rule for the same reason one layer up; the constants
+ * live here so the two cannot drift apart.
+ */
+export const TITLE_DOMINANCE_RATIO = 4;
+
+/**
+ * A candidate below this vote count is long-tail — never "the" film of its
+ * name, however far it outweighs an even more obscure namesake. Without the
+ * floor, a band of unknowns produces meaningless ratios (12 votes to 1).
+ */
+export const TITLE_MIN_VOTE_COUNT = 100;
+
 export interface MatchHints {
   /** Original-language title from the scrape (e.g. "The Misfits"). */
   titleOriginal?: string;
@@ -101,6 +139,14 @@ export interface MatchHints {
    * "LA QUIMERA DEL ORO", not the noisy "…CON MÚSICA EN VIVO". Never stored.
    */
   cleanedTitle?: string;
+  /**
+   * Director from the scrape, when the venue published one. `pickBestMatch`
+   * never matches ON it — verifying against TMDB credits is enrich.ts's job.
+   * It only needs to know whether a director rescue is AVAILABLE, because a
+   * director is better evidence than a vote count and must be given the first
+   * chance to disambiguate a title tie.
+   */
+  director?: string;
 }
 
 export interface MatchResult {
@@ -178,21 +224,65 @@ export function pickBestMatch(
 
   // Title-ambiguity guard: if a runner-up clears the confidence threshold
   // AND ties the top within TITLE_AMBIGUITY_EPSILON, the matcher cannot
-  // disambiguate by title similarity alone. Return null so enrich.ts's
-  // director-fallback rescue can resolve via TMDB credits. When no director
-  // hint is provided, the caller surfaces this as 'low-confidence' (visible
-  // operator-actionable miss), which beats silently mismatching on
-  // popularity (the Nosferatu / Eggers vs Herzog bug class — TODOS.md #18).
+  // disambiguate by title similarity alone.
   const runnerUp = sorted[1];
   if (
     runnerUp &&
     runnerUp.confidence >= MATCH_CONFIDENCE_THRESHOLD &&
     best.confidence - runnerUp.confidence <= TITLE_AMBIGUITY_EPSILON
   ) {
-    return null;
+    // A director hint is better evidence than any notability signal, so when
+    // one exists we still stand down and let enrich.ts's director-fallback
+    // rescue resolve the tie against TMDB credits. This is what keeps a venue
+    // screening Herzog's Nosferatu — or the 1947 Walter Mitty — from being
+    // handed the more famous namesake.
+    if (hints?.director) return null;
+
+    // No director to rescue with. Rather than park a canonical film in
+    // /admin/unmatched forever, accept it when it decisively out-weighs its
+    // title-tied rivals on vote count. Sources like Passline publish neither
+    // a year nor a director, so without this every one of their films with a
+    // namesake is a permanent miss.
+    return dominantByVotes(tiedBand(sorted, best));
   }
 
   return best;
+}
+
+/** The leading candidate plus every rival tied with it on title similarity. */
+function tiedBand(sorted: MatchResult[], best: MatchResult): MatchResult[] {
+  return sorted.filter(
+    (s) =>
+      s.confidence >= MATCH_CONFIDENCE_THRESHOLD &&
+      best.confidence - s.confidence <= TITLE_AMBIGUITY_EPSILON,
+  );
+}
+
+/**
+ * The one film in a title-tied band that TMDB's audience treats as canonical,
+ * or null when two of them are comparable.
+ *
+ * Ranks by vote count rather than trusting `sorted[0]`: within a tie band the
+ * incoming sort orders by POPULARITY, which is the signal this rule exists to
+ * avoid. Requires both a decisive margin (TITLE_DOMINANCE_RATIO) and real
+ * notability (TITLE_MIN_VOTE_COUNT) — a runaway ratio between two unknowns
+ * says nothing.
+ */
+export function dominantByVotes(band: MatchResult[]): MatchResult | null {
+  if (band.length === 0) return null;
+
+  const byVotes = [...band].sort(
+    (a, b) => (b.candidate.vote_count ?? 0) - (a.candidate.vote_count ?? 0),
+  );
+  const champion = byVotes[0];
+  const championVotes = champion.candidate.vote_count ?? 0;
+  if (championVotes < TITLE_MIN_VOTE_COUNT) return null;
+
+  const rivalVotes = byVotes[1]?.candidate.vote_count ?? 0;
+  // max(…, 1) so a zero-vote namesake yields a decisive ratio, not Infinity.
+  if (championVotes / Math.max(rivalVotes, 1) < TITLE_DOMINANCE_RATIO) return null;
+
+  return champion;
 }
 
 /**

@@ -21,6 +21,7 @@ import { cacodelphiaProvider } from '@/providers/cacodelphia';
 import { cineGaumontProvider } from '@/providers/cine-gaumont';
 import { centroCulturalBorgesProvider } from '@/providers/centro-cultural-borges';
 import { cineclubLuceroProvider } from '@/providers/cineclub-lucero';
+import { cintaProvider } from '@/providers/cinta';
 import type { Provider } from '@/providers/types';
 import { db, films } from '@/db';
 import { ingest, type IngestSummary } from './ingest';
@@ -38,6 +39,7 @@ const providers: Provider[] = [
   cineGaumontProvider,
   centroCulturalBorgesProvider,
   cineclubLuceroProvider,
+  cintaProvider,
 ];
 
 async function main() {
