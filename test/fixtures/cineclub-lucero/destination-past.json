@@ -1,0 +1,3828 @@
+{
+  "events": [
+    {
+      "id": "2003212773330",
+      "eid": "exgcrtwd",
+      "eventbrite_event_id": "2003212773330",
+      "name": "ONIBABA Dir. Kaneto Shindō · Japón · 1964 ·",
+      "summary": "ONIBABA Dir. Kaneto Shindō · Japón · 1964 ·",
+      "start_time": "23:00",
+      "end_time": "01:00",
+      "start_date": "2026-10-21",
+      "end_date": "2026-10-22",
+      "published": "2026-10-09T17:19:23Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/onibaba-dir-kaneto-shindo-japon-1964-tickets-2003212773330",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003212773330",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299781966",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1195465447",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003212647955",
+      "eid": "exgcrtpg",
+      "eventbrite_event_id": "2003212647955",
+      "name": "VIDEODROME Dir. David Cronenberg · Canadá · 1983 ·",
+      "summary": "VIDEOLASER PRESENTA: VIDEODROME Dir. David Cronenberg · Canadá · 1983 ·",
+      "start_time": "21:00",
+      "end_time": "23:00",
+      "start_date": "2026-10-21",
+      "end_date": "2026-10-21",
+      "published": "2026-10-09T17:16:25Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/videodrome-dir-david-cronenberg-canada-1983-tickets-2003212647955",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003212647955",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299781887",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1195465181",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2002096778359",
+      "eid": "exfyhtrx",
+      "eventbrite_event_id": "2002096778359",
+      "name": "DJ WEREN -NOCHES DE SABADUKI",
+      "summary": "DJ WEREN en nuestros sábados a puro fuego",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-10-17",
+      "end_date": "2026-10-18",
+      "published": "2026-09-22T20:57:42Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-weren-noches-de-sabaduki-tickets-2002096778359",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2002096778359",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299544072",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Party or Social Gathering",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/11"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "miercoles",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/miercoles"
+        },
+        {
+          "_type": "tag",
+          "display_name": "preferiado",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/preferiado"
+        },
+        {
+          "_type": "tag",
+          "display_name": "la_malibu",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/la_malibu"
+        }
+      ],
+      "image_id": "1183854217",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2002096512564",
+      "eid": "exfyhtdb",
+      "eventbrite_event_id": "2002096512564",
+      "name": "DJ IAN, en nuestros viernes de volate la peluca",
+      "summary": "DJ IAN, en nuestros viernes de volate la peluca",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-10-16",
+      "end_date": "2026-10-17",
+      "published": "2026-09-22T20:49:18Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-ian-en-nuestros-viernes-de-volate-la-peluca-tickets-2002096512564",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2002096512564",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299543915",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Concert or Performance",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/6"
+        },
+        {
+          "_type": "tag",
+          "display_name": "fiesta",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/fiesta"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj_ian",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj_ian"
+        },
+        {
+          "_type": "tag",
+          "display_name": "viernes_de_volate",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/viernes_de_volate"
+        }
+      ],
+      "image_id": "1194139999",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003212463403",
+      "eid": "exgcrtdd",
+      "eventbrite_event_id": "2003212463403",
+      "name": "VENECIA ROJO SHOCKING Dir. Nicolas Roeg · Reino Unido / Italia · 1973",
+      "summary": "VENECIA ROJO SHOCKING Dir. Nicolas Roeg · Reino Unido / Italia · 1973",
+      "start_time": "23:00",
+      "end_time": "01:00",
+      "start_date": "2026-10-15",
+      "end_date": "2026-10-16",
+      "published": "2026-10-09T17:08:21Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/venecia-rojo-shocking-dir-nicolas-roeg-reino-unido-italia-1973-tickets-2003212463403",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003212463403",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299781786",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1195464618",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2002975811571",
+      "eid": "exgbwrmk",
+      "eventbrite_event_id": "2002975811571",
+      "name": "Elvira: Mistress of the Dark (1988)",
+      "summary": "Elvira: Mistress of the Dark (1988)",
+      "start_time": "21:00",
+      "end_time": "23:00",
+      "start_date": "2026-10-15",
+      "end_date": "2026-10-15",
+      "published": "2026-10-05T22:53:54Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/elvira-mistress-of-the-dark-1988-tickets-2002975811571",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2002975811571",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299720129",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "laberinto",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/laberinto"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1986",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1986"
+        },
+        {
+          "_type": "tag",
+          "display_name": "rock_music",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/rock_music"
+        },
+        {
+          "_type": "tag",
+          "display_name": "ciclo_on_the_rocks",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/ciclo_on_the_rocks"
+        }
+      ],
+      "image_id": "1195127667",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003212298911",
+      "eid": "exgcrrym",
+      "eventbrite_event_id": "2003212298911",
+      "name": "PERFECT BLUE Dir. Satoshi Kon · Japón · 1997",
+      "summary": "PERFECT BLUE\nDir. Satoshi Kon · Japón · 1997",
+      "start_time": "19:00",
+      "end_time": "21:00",
+      "start_date": "2026-10-15",
+      "end_date": "2026-10-15",
+      "published": "2026-10-09T17:03:59Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/perfect-blue-dir-satoshi-kon-japon-1997-tickets-2003212298911",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003212298911",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299781726",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1195464259",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003212099314",
+      "eid": "exgcrrqh",
+      "eventbrite_event_id": "2003212099314",
+      "name": "SCREAM Dir. Wes Craven · Estados Unidos · 1996",
+      "summary": "SCREAM\nDir. Wes Craven · Estados Unidos · 1996",
+      "start_time": "23:00",
+      "end_time": "01:00",
+      "start_date": "2026-10-14",
+      "end_date": "2026-10-15",
+      "published": "2026-10-09T16:59:23Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/scream-dir-wes-craven-estados-unidos-1996-tickets-2003212099314",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003212099314",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299781634",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1195463784",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003208745282",
+      "eid": "exgcrhdh",
+      "eventbrite_event_id": "2003208745282",
+      "name": "PEEPING TOM Dir. Michael Powell · Reino Unido · 1960 ·",
+      "summary": "PEEPING TOM Dir. Michael Powell · Reino Unido · 1960 ·",
+      "start_time": "21:00",
+      "end_time": "23:00",
+      "start_date": "2026-10-14",
+      "end_date": "2026-10-14",
+      "published": "2026-10-09T15:18:33Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/peeping-tom-dir-michael-powell-reino-unido-1960-tickets-2003208745282",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003208745282",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299780084",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1195455639",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003211740240",
+      "eid": "exgcrqrg",
+      "eventbrite_event_id": "2003211740240",
+      "name": "AKIRA Dir. Katsuhiro Ōtomo · Japón · 1988 ·",
+      "summary": "AKIRA Dir. Katsuhiro Ōtomo · Japón · 1988 ·",
+      "start_time": "19:00",
+      "end_time": "21:00",
+      "start_date": "2026-10-14",
+      "end_date": "2026-10-14",
+      "published": "2026-10-09T16:40:19Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/akira-dir-katsuhiro-otomo-japon-1988-tickets-2003211740240",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003211740240",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299781371",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1195462356",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2002096713164",
+      "eid": "exfyhtqk",
+      "eventbrite_event_id": "2002096713164",
+      "name": "DJ ZOE -NOCHES DE SABADUKI",
+      "summary": "DJ ZOE en nuestros sábados a puro fuego",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-10-10",
+      "end_date": "2026-10-11",
+      "published": "2026-09-22T20:56:06Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-zoe-noches-de-sabaduki-tickets-2002096713164",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2002096713164",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299544041",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Party or Social Gathering",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/11"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "miercoles",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/miercoles"
+        },
+        {
+          "_type": "tag",
+          "display_name": "preferiado",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/preferiado"
+        },
+        {
+          "_type": "tag",
+          "display_name": "la_malibu",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/la_malibu"
+        }
+      ],
+      "image_id": "1183854217",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2002096446366",
+      "eid": "exfyhtcb",
+      "eventbrite_event_id": "2002096446366",
+      "name": "DJ IAN, en nuestros viernes de volate la peluca",
+      "summary": "DJ IAN, en nuestros viernes de volate la peluca",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-10-09",
+      "end_date": "2026-10-10",
+      "published": "2026-09-22T20:48:18Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-ian-en-nuestros-viernes-de-volate-la-peluca-tickets-2002096446366",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2002096446366",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299543889",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Concert or Performance",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/6"
+        },
+        {
+          "_type": "tag",
+          "display_name": "fiesta",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/fiesta"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj_ian",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj_ian"
+        },
+        {
+          "_type": "tag",
+          "display_name": "viernes_de_volate",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/viernes_de_volate"
+        }
+      ],
+      "image_id": "1194139815",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003166043560",
+      "eid": "exgcmqpt",
+      "eventbrite_event_id": "2003166043560",
+      "name": "THE HUNGER / EL ANSIA Dir. Tony Scott · 1983 · 97 min",
+      "summary": "THE HUNGER / EL ANSIA Dir. Tony Scott · 1983 · 97 min",
+      "start_time": "23:00",
+      "end_time": "01:00",
+      "start_date": "2026-10-08",
+      "end_date": "2026-10-09",
+      "published": "2026-10-08T20:29:36Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/the-hunger-el-ansia-dir-tony-scott-1983-97-min-tickets-2003166043560",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003166043560",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299767699",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1019674963",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003164921203",
+      "eid": "exgcmpxw",
+      "eventbrite_event_id": "2003164921203",
+      "name": "LOS OJOS SIN ROSTRO Dir. Georges Franju · 1960",
+      "summary": "LOS OJOS SIN ROSTRO Dir. Georges Franju · 1960 · 90 min",
+      "start_time": "21:00",
+      "end_time": "23:00",
+      "start_date": "2026-10-08",
+      "end_date": "2026-10-08",
+      "published": "2026-10-08T18:13:44Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/los-ojos-sin-rostro-dir-georges-franju-1960-tickets-2003164921203",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003164921203",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299767504",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1195390267",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003164508970",
+      "eid": "exgcmpgw",
+      "eventbrite_event_id": "2003164508970",
+      "name": "SUSPIRA de Dario Argento (1977)",
+      "summary": "SUSPIRA de Dario Argento (1977)",
+      "start_time": "19:00",
+      "end_time": "21:00",
+      "start_date": "2026-10-08",
+      "end_date": "2026-10-08",
+      "published": "2026-10-08T18:08:17Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/suspira-de-dario-argento-1977-tickets-2003164508970",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003164508970",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299767348",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1195389484",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2002976678163",
+      "eid": "exgbwtdc",
+      "eventbrite_event_id": "2002976678163",
+      "name": "THE ROCKY HORROR PICTURE SHOW\"",
+      "summary": "\"THE ROCKY HORROR PICTURE SHOW\"",
+      "start_time": "23:00",
+      "end_time": "01:00",
+      "start_date": "2026-10-07",
+      "end_date": "2026-10-08",
+      "published": "2026-10-05T22:59:53Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/the-rocky-horror-picture-show-tickets-2002976678163",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2002976678163",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299720329",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Musical",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/5002"
+        },
+        {
+          "display_name": "Performing & Visual Arts",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/105",
+          "localized": {
+            "display_name": "Performing & Visual Arts"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "music",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/music"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "rocky_horror",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/rocky_horror"
+        },
+        {
+          "_type": "tag",
+          "display_name": "picture_show",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/picture_show"
+        },
+        {
+          "_type": "tag",
+          "display_name": "especial_musicales",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/especial_musicales"
+        }
+      ],
+      "image_id": "887136913",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2002913835198",
+      "eid": "exgbpkzg",
+      "eventbrite_event_id": "2002913835198",
+      "name": "DUELO DE VHS: KIDS O MI MUNDO PRIVADO",
+      "summary": "VIDEO LÁSER: VIDEOCLUB EN PANTALLA GRANDE PRESENTA:\nDUELO DE VHS",
+      "start_time": "21:00",
+      "end_time": "23:00",
+      "start_date": "2026-10-07",
+      "end_date": "2026-10-07",
+      "published": "2026-10-04T15:47:31Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/duelo-de-vhs-kids-o-mi-mundo-privado-tickets-2002913835198",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2002913835198",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299702799",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "laberinto",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/laberinto"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1986",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1986"
+        },
+        {
+          "_type": "tag",
+          "display_name": "rock_music",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/rock_music"
+        },
+        {
+          "_type": "tag",
+          "display_name": "ciclo_on_the_rocks",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/ciclo_on_the_rocks"
+        }
+      ],
+      "image_id": "1192730677",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999443921593",
+      "eid": "exfrkyrb",
+      "eventbrite_event_id": "1999443921593",
+      "name": "DJ LIS -NOCHES DE SABADUKI",
+      "summary": "DJ LIS  en nuestros sábados a puro fuego",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-10-03",
+      "end_date": "2026-10-04",
+      "published": "2026-09-02T01:30:57Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-lis-noches-de-sabaduki-tickets-1999443921593",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999443921593",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299244080",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Party or Social Gathering",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/11"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "miercoles",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/miercoles"
+        },
+        {
+          "_type": "tag",
+          "display_name": "preferiado",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/preferiado"
+        },
+        {
+          "_type": "tag",
+          "display_name": "la_malibu",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/la_malibu"
+        }
+      ],
+      "image_id": "1183854217",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2002094257820",
+      "eid": "exfyhpgm",
+      "eventbrite_event_id": "2002094257820",
+      "name": "DJ IAN, en nuestros viernes de volate la peluca",
+      "summary": "DJ IAN, en nuestros viernes de volate la peluca",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-10-02",
+      "end_date": "2026-10-03",
+      "published": "2026-09-22T20:05:53Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-ian-en-nuestros-viernes-de-volate-la-peluca-tickets-2002094257820",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2002094257820",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299543047",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Concert or Performance",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/6"
+        },
+        {
+          "_type": "tag",
+          "display_name": "fiesta",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/fiesta"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj_ian",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj_ian"
+        },
+        {
+          "_type": "tag",
+          "display_name": "viernes_de_volate",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/viernes_de_volate"
+        }
+      ],
+      "image_id": "1019604663",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2002423325069",
+      "eid": "exfzghhq",
+      "eventbrite_event_id": "2002423325069",
+      "name": "MARATON ANTES DEL AMANECER: \"ANTES DE LA MEDIANOCHE\" (2013)",
+      "summary": "MARATON ANTES DEL AMANECER: \"ANTES DEL ANOCHECER\" (2013)",
+      "start_time": "23:00",
+      "end_time": "23:30",
+      "start_date": "2026-10-01",
+      "end_date": "2026-10-01",
+      "published": "2026-09-28T10:49:46Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/maraton-antes-del-amanecer-antes-de-la-medianoche-2013-tickets-2002423325069",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2002423325069",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299611664",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "running",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/running"
+        },
+        {
+          "_type": "tag",
+          "display_name": "marathon",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/marathon"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2013",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2013"
+        },
+        {
+          "_type": "tag",
+          "display_name": "before_dawn",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/before_dawn"
+        },
+        {
+          "_type": "tag",
+          "display_name": "before_nightfall",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/before_nightfall"
+        }
+      ],
+      "image_id": "1194505404",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2002423312030",
+      "eid": "exfzghgq",
+      "eventbrite_event_id": "2002423312030",
+      "name": "MARATON ANTES DEL AMANECER: \"ANTES DEL ATARDECER\" (2004)",
+      "summary": "MARATON ANTES DEL AMANECER: \"ANTES DEL ATARDECER\" (2004)",
+      "start_time": "21:00",
+      "end_time": "23:00",
+      "start_date": "2026-10-01",
+      "end_date": "2026-10-01",
+      "published": "2026-09-28T10:45:15Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/maraton-antes-del-amanecer-antes-del-atardecer-2004-tickets-2002423312030",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2002423312030",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299611658",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1194505343",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2002423280937",
+      "eid": "exfzghff",
+      "eventbrite_event_id": "2002423280937",
+      "name": "MARATON ANTES DEL AMANECER: \"ANTES DEL AMANECER\" (1995)",
+      "summary": "MARATON ANTES DEL AMANECER: \"ANTES DEL AMANECER\" (1995)",
+      "start_time": "19:00",
+      "end_time": "21:00",
+      "start_date": "2026-10-01",
+      "end_date": "2026-10-01",
+      "published": "2026-09-28T10:43:24Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/maraton-antes-del-amanecer-antes-del-amanecer-1995-tickets-2002423280937",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2002423280937",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299611639",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "marathon",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/marathon"
+        },
+        {
+          "_type": "tag",
+          "display_name": "romantic",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/romantic"
+        },
+        {
+          "_type": "tag",
+          "display_name": "trilogy",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/trilogy"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1995",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1995"
+        },
+        {
+          "_type": "tag",
+          "display_name": "before_dawn",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/before_dawn"
+        }
+      ],
+      "image_id": "1194505244",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999463354718",
+      "eid": "exfrmgtc",
+      "eventbrite_event_id": "1999463354718",
+      "name": "FIEBRE DE SÁBADO POR LA NOCHE John Badham, 1977",
+      "summary": "FIEBRE DE SÁBADO POR LA NOCHE John Badham, 1977",
+      "start_time": "23:00",
+      "end_time": "01:00",
+      "start_date": "2026-09-30",
+      "end_date": "2026-10-01",
+      "published": "2026-09-02T04:46:56Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/fiebre-de-sabado-por-la-noche-john-badham-1977-tickets-1999463354718",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999463354718",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299245849",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "laberinto",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/laberinto"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1986",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1986"
+        },
+        {
+          "_type": "tag",
+          "display_name": "rock_music",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/rock_music"
+        },
+        {
+          "_type": "tag",
+          "display_name": "ciclo_on_the_rocks",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/ciclo_on_the_rocks"
+        }
+      ],
+      "image_id": "1192443775",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999818770777",
+      "eid": "exftdffg",
+      "eventbrite_event_id": "1999818770777",
+      "name": "\"TINY FURNITURE\" (2010)",
+      "summary": "\"TINY FURNITURE\" (2010)",
+      "start_time": "21:00",
+      "end_time": "23:00",
+      "start_date": "2026-09-30",
+      "end_date": "2026-09-30",
+      "published": "2026-09-05T00:45:13Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/tiny-furniture-2010-tickets-1999818770777",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999818770777",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299298245",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "eventtitle",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/eventtitle"
+        },
+        {
+          "_type": "tag",
+          "display_name": "uniquekeywords",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/uniquekeywords"
+        },
+        {
+          "_type": "tag",
+          "display_name": "ciclotresinicios",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/ciclotresinicios"
+        },
+        {
+          "_type": "tag",
+          "display_name": "tresgenias",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/tresgenias"
+        },
+        {
+          "_type": "tag",
+          "display_name": "hannatakesstairs",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/hannatakesstairs"
+        }
+      ],
+      "image_id": "1192736278",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999442154307",
+      "eid": "exfrkybw",
+      "eventbrite_event_id": "1999442154307",
+      "name": "DJ WEREN -NOCHES DE SABADUKI",
+      "summary": "DJ WEREN en nuestros sábados a puro fuego",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-09-26",
+      "end_date": "2026-09-27",
+      "published": "2026-09-02T01:16:10Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-weren-noches-de-sabaduki-tickets-1999442154307",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999442154307",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299243887",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Party or Social Gathering",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/11"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "miercoles",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/miercoles"
+        },
+        {
+          "_type": "tag",
+          "display_name": "preferiado",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/preferiado"
+        },
+        {
+          "_type": "tag",
+          "display_name": "la_malibu",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/la_malibu"
+        }
+      ],
+      "image_id": "1183854217",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999439547510",
+      "eid": "exfrkxmq",
+      "eventbrite_event_id": "1999439547510",
+      "name": "DJ IAN, en nuestros viernes de volate la peluca",
+      "summary": "DJ IAN, en nuestros viernes de volate la peluca",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-09-25",
+      "end_date": "2026-09-26",
+      "published": "2026-09-02T00:58:08Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-ian-en-nuestros-viernes-de-volate-la-peluca-tickets-1999439547510",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999439547510",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299243702",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Concert or Performance",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/6"
+        },
+        {
+          "_type": "tag",
+          "display_name": "fiesta",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/fiesta"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj_ian",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj_ian"
+        },
+        {
+          "_type": "tag",
+          "display_name": "viernes_de_volate",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/viernes_de_volate"
+        }
+      ],
+      "image_id": "1192431711",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999468561291",
+      "eid": "exfrmkfh",
+      "eventbrite_event_id": "1999468561291",
+      "name": "CON ÁNIMO DE AMAR — Wong Kar-wai, 2000",
+      "summary": "CON ÁNIMO DE AMAR — Wong Kar-wai, 2000",
+      "start_time": "23:00",
+      "end_time": "01:00",
+      "start_date": "2026-09-24",
+      "end_date": "2026-09-25",
+      "published": "2026-09-02T19:08:24Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/con-animo-de-amar-wong-kar-wai-2000-tickets-1999468561291",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999468561291",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299246250",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "laberinto",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/laberinto"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1986",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1986"
+        },
+        {
+          "_type": "tag",
+          "display_name": "rock_music",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/rock_music"
+        },
+        {
+          "_type": "tag",
+          "display_name": "ciclo_on_the_rocks",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/ciclo_on_the_rocks"
+        }
+      ],
+      "image_id": "1192445763",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999467927395",
+      "eid": "exfrmkbx",
+      "eventbrite_event_id": "1999467927395",
+      "name": "AS TEARS GO BY — Wong Kar-wai, 1988",
+      "summary": "AS TEARS GO BY — Wong Kar-wai, 1988",
+      "start_time": "21:00",
+      "end_time": "23:00",
+      "start_date": "2026-09-24",
+      "end_date": "2026-09-24",
+      "published": "2026-09-02T05:51:48Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/as-tears-go-by-wong-kar-wai-1988-tickets-1999467927395",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999467927395",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299246212",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "laberinto",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/laberinto"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1986",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1986"
+        },
+        {
+          "_type": "tag",
+          "display_name": "rock_music",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/rock_music"
+        },
+        {
+          "_type": "tag",
+          "display_name": "ciclo_on_the_rocks",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/ciclo_on_the_rocks"
+        }
+      ],
+      "image_id": "1192445624",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1997724060442",
+      "eid": "exfkrkzg",
+      "eventbrite_event_id": "1997724060442",
+      "name": "CURSO INTRO AL GUIÓN X MICAELA LIBSON: \"VOLVER AL FUTURO\" (1985)",
+      "summary": "\"VOLVER AL FUTURO\"",
+      "start_time": "19:00",
+      "end_time": "21:00",
+      "start_date": "2026-09-24",
+      "end_date": "2026-09-24",
+      "published": "2026-08-12T16:33:31Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/curso-intro-al-guion-x-micaela-libson-volver-al-futuro-1985-tickets-1997724060442",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1997724060442",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "298963249",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "marathon",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/marathon"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1985",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1985"
+        },
+        {
+          "_type": "tag",
+          "display_name": "timetravel",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/timetravel"
+        },
+        {
+          "_type": "tag",
+          "display_name": "delorean",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/delorean"
+        },
+        {
+          "_type": "tag",
+          "display_name": "backtothefuture",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/backtothefuture"
+        }
+      ],
+      "image_id": "1041153943",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999462045803",
+      "eid": "exfrmfrq",
+      "eventbrite_event_id": "1999462045803",
+      "name": "MOULIN ROUGE! (Baz Luhrmann, 2001)",
+      "summary": "MOULIN ROUGE! (Baz Luhrmann, 2001)",
+      "start_time": "23:00",
+      "end_time": "01:00",
+      "start_date": "2026-09-23",
+      "end_date": "2026-09-24",
+      "published": "2026-09-02T04:10:10Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/moulin-rouge-baz-luhrmann-2001-tickets-1999462045803",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999462045803",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299245589",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "laberinto",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/laberinto"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1986",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1986"
+        },
+        {
+          "_type": "tag",
+          "display_name": "rock_music",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/rock_music"
+        },
+        {
+          "_type": "tag",
+          "display_name": "ciclo_on_the_rocks",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/ciclo_on_the_rocks"
+        }
+      ],
+      "image_id": "1192442490",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2001765732191",
+      "eid": "exfxxrbc",
+      "eventbrite_event_id": "2001765732191",
+      "name": "LA NOCHE DE LOS MUERTOS VIVOS (G. Romero, 1968)",
+      "summary": "VIDEO LÁSER: VIDEOCLUB EN PANTALLA GRANDE PRESENTA:LA NOCHE DE LOS MUERTOS VIVOS",
+      "start_time": "21:00",
+      "end_time": "23:00",
+      "start_date": "2026-09-23",
+      "end_date": "2026-09-23",
+      "published": "2026-09-20T11:14:29Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/la-noche-de-los-muertos-vivos-g-romero-1968-tickets-2001765732191",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2001765732191",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299505632",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "laberinto",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/laberinto"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1986",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1986"
+        },
+        {
+          "_type": "tag",
+          "display_name": "rock_music",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/rock_music"
+        },
+        {
+          "_type": "tag",
+          "display_name": "ciclo_on_the_rocks",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/ciclo_on_the_rocks"
+        }
+      ],
+      "image_id": "1193942637",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999440849404",
+      "eid": "exfrkxtd",
+      "eventbrite_event_id": "1999440849404",
+      "name": "DJ LA MALIBU-NOCHES DE SABADUKI",
+      "summary": "DJ LAMALIBU en nuestros sábados a puro fuego",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-09-19",
+      "end_date": "2026-09-20",
+      "published": "2026-09-02T01:05:05Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-la-malibu-noches-de-sabaduki-tickets-1999440849404",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999440849404",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299243770",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Party or Social Gathering",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/11"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "miercoles",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/miercoles"
+        },
+        {
+          "_type": "tag",
+          "display_name": "preferiado",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/preferiado"
+        },
+        {
+          "_type": "tag",
+          "display_name": "la_malibu",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/la_malibu"
+        }
+      ],
+      "image_id": "1192432073",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999439508393",
+      "eid": "exfrkxkp",
+      "eventbrite_event_id": "1999439508393",
+      "name": "DJ IAN, en nuestros viernes de volate la peluca",
+      "summary": "DJ IAN, en nuestros viernes de volate la peluca",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-09-18",
+      "end_date": "2026-09-19",
+      "published": "2026-09-02T00:56:17Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-ian-en-nuestros-viernes-de-volate-la-peluca-tickets-1999439508393",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999439508393",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299243685",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Concert or Performance",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/6"
+        },
+        {
+          "_type": "tag",
+          "display_name": "fiesta",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/fiesta"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj_ian",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj_ian"
+        },
+        {
+          "_type": "tag",
+          "display_name": "viernes_de_volate",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/viernes_de_volate"
+        }
+      ],
+      "image_id": "1192431654",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999467319577",
+      "eid": "exfrmhyx",
+      "eventbrite_event_id": "1999467319577",
+      "name": "FITZCARRALDO — Werner Herzog, 1982",
+      "summary": "FITZCARRALDO — Werner Herzog, 1982",
+      "start_time": "21:00",
+      "end_time": "23:00",
+      "start_date": "2026-09-17",
+      "end_date": "2026-09-17",
+      "published": "2026-09-02T05:45:32Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/fitzcarraldo-werner-herzog-1982-tickets-1999467319577",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999467319577",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299246177",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "laberinto",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/laberinto"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1986",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1986"
+        },
+        {
+          "_type": "tag",
+          "display_name": "rock_music",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/rock_music"
+        },
+        {
+          "_type": "tag",
+          "display_name": "ciclo_on_the_rocks",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/ciclo_on_the_rocks"
+        }
+      ],
+      "image_id": "1192445482",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1997794354694",
+      "eid": "exfktpfx",
+      "eventbrite_event_id": "1997794354694",
+      "name": "CURSO INTRO AL GUIÓN X MICAELA LIBSON: \"LITTLE MISS SUNSHINE\"",
+      "summary": "\"LITTLE MISS SUNSHINE\"",
+      "start_time": "19:00",
+      "end_time": "21:00",
+      "start_date": "2026-09-17",
+      "end_date": "2026-09-17",
+      "published": "2026-08-12T22:04:19Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/curso-intro-al-guion-x-micaela-libson-little-miss-sunshine-tickets-1997794354694",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1997794354694",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "298968285",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "marathon",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/marathon"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1985",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1985"
+        },
+        {
+          "_type": "tag",
+          "display_name": "timetravel",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/timetravel"
+        },
+        {
+          "_type": "tag",
+          "display_name": "delorean",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/delorean"
+        },
+        {
+          "_type": "tag",
+          "display_name": "backtothefuture",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/backtothefuture"
+        }
+      ],
+      "image_id": "1190932956",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999459509216",
+      "eid": "exfrmfbz",
+      "eventbrite_event_id": "1999459509216",
+      "name": "A LA CAMA CON MADONNA / TRUTH OR DARE (Alek Keshishian, 1991)",
+      "summary": "A LA CAMA CON MADONNA / TRUTH OR DARE (Alek Keshishian, 1991)",
+      "start_time": "23:00",
+      "end_time": "01:00",
+      "start_date": "2026-09-16",
+      "end_date": "2026-09-17",
+      "published": "2026-09-02T04:02:15Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/a-la-cama-con-madonna-truth-or-dare-alek-keshishian-1991-tickets-1999459509216",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999459509216",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299245405",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "laberinto",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/laberinto"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1986",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1986"
+        },
+        {
+          "_type": "tag",
+          "display_name": "rock_music",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/rock_music"
+        },
+        {
+          "_type": "tag",
+          "display_name": "ciclo_on_the_rocks",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/ciclo_on_the_rocks"
+        }
+      ],
+      "image_id": "1192442219",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999818734669",
+      "eid": "1999818734669",
+      "eventbrite_event_id": "1999818734669",
+      "name": "FLEABAG, EL MONÓLOGO + PILOTO DE LA SERIE",
+      "summary": "FLEABAG, EL MONÓLOGO + PILOTO DE LA SERIE",
+      "start_time": "21:00",
+      "end_time": "23:00",
+      "start_date": "2026-09-16",
+      "end_date": "2026-09-16",
+      "published": "2026-09-14T14:32:22Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "es-ar",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/fleabag-el-monologo-piloto-de-la-serie-tickets-1999818734669",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999818734669",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299298231",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        }
+      ],
+      "image_id": "1183877153",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999443891503",
+      "eid": "exfrkyqb",
+      "eventbrite_event_id": "1999443891503",
+      "name": "DJ RESIDENTE -NOCHES DE SABADUKI",
+      "summary": "DJ RESIDENTE en nuestros sábados a puro fuego",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-09-12",
+      "end_date": "2026-09-13",
+      "published": "2026-09-02T01:28:42Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-residente-noches-de-sabaduki-tickets-1999443891503",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999443891503",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299244057",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Party or Social Gathering",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/11"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "miercoles",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/miercoles"
+        },
+        {
+          "_type": "tag",
+          "display_name": "preferiado",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/preferiado"
+        },
+        {
+          "_type": "tag",
+          "display_name": "la_malibu",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/la_malibu"
+        }
+      ],
+      "image_id": "1183854217",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999439452225",
+      "eid": "exfrkxhf",
+      "eventbrite_event_id": "1999439452225",
+      "name": "DJ IAN, en nuestros viernes de volate la peluca",
+      "summary": "DJ IAN, en nuestros viernes de volate la peluca",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-09-11",
+      "end_date": "2026-09-12",
+      "published": "2026-09-02T00:54:15Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-ian-en-nuestros-viernes-de-volate-la-peluca-tickets-1999439452225",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999439452225",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299243661",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Concert or Performance",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/6"
+        },
+        {
+          "_type": "tag",
+          "display_name": "fiesta",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/fiesta"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj_ian",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj_ian"
+        },
+        {
+          "_type": "tag",
+          "display_name": "viernes_de_volate",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/viernes_de_volate"
+        }
+      ],
+      "image_id": "1192431512",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999818641390",
+      "eid": "exftdfct",
+      "eventbrite_event_id": "1999818641390",
+      "name": "SESIONES CLUB LUCERO: EL LADO OSCURO DE OZ",
+      "summary": "SESIONES CLUB LUCERO: EL LADO OSCURO DE OZ",
+      "start_time": "23:00",
+      "end_time": "01:00",
+      "start_date": "2026-09-10",
+      "end_date": "2026-09-11",
+      "published": "2026-09-05T00:39:14Z",
+      "hide_start_date": false,
+      "hide_end_date": true,
+      "language": "es-ar",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/sesiones-club-lucero-el-lado-oscuro-de-oz-tickets-1999818641390",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999818641390",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299298219",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "club",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/club"
+        },
+        {
+          "_type": "tag",
+          "display_name": "oscuro",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/oscuro"
+        },
+        {
+          "_type": "tag",
+          "display_name": "lado",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/lado"
+        },
+        {
+          "_type": "tag",
+          "display_name": "sesiones",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/sesiones"
+        },
+        {
+          "_type": "tag",
+          "display_name": "lucero",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/lucero"
+        }
+      ],
+      "image_id": "1192735911",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999800481072",
+      "eid": "exftcmmm",
+      "eventbrite_event_id": "1999800481072",
+      "name": "The Dirties (2013) de Matt Johnson",
+      "summary": "The Dirties (2013) de Matt Johnson",
+      "start_time": "21:00",
+      "end_time": "23:00",
+      "start_date": "2026-09-10",
+      "end_date": "2026-09-10",
+      "published": "2026-09-04T19:17:33Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/the-dirties-2013-de-matt-johnson-tickets-1999800481072",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999800481072",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299294945",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "laberinto",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/laberinto"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1986",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1986"
+        },
+        {
+          "_type": "tag",
+          "display_name": "rock_music",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/rock_music"
+        },
+        {
+          "_type": "tag",
+          "display_name": "ciclo_on_the_rocks",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/ciclo_on_the_rocks"
+        }
+      ],
+      "image_id": "1192710465",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1997781595531",
+      "eid": "exfkthzy",
+      "eventbrite_event_id": "1997781595531",
+      "name": "CURSO INTRO AL GUIÓN X MICAELA LIBSON: \" CUANDO HARRY CONOCIO A SALLY\"",
+      "summary": "\" CUANDO HARRY CONOCIO A SALLY\"",
+      "start_time": "19:00",
+      "end_time": "22:00",
+      "start_date": "2026-09-10",
+      "end_date": "2026-09-10",
+      "published": "2026-08-12T21:10:59Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/curso-intro-al-guion-x-micaela-libson-cuando-harry-conocio-a-sally-tickets-1997781595531",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1997781595531",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "298967562",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "marathon",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/marathon"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1985",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1985"
+        },
+        {
+          "_type": "tag",
+          "display_name": "timetravel",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/timetravel"
+        },
+        {
+          "_type": "tag",
+          "display_name": "delorean",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/delorean"
+        },
+        {
+          "_type": "tag",
+          "display_name": "backtothefuture",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/backtothefuture"
+        }
+      ],
+      "image_id": "1190928684",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999456226397",
+      "eid": "exfrmdby",
+      "eventbrite_event_id": "1999456226397",
+      "name": "DIRTY DANCING (Emile Ardolino, 1987)",
+      "summary": "DIRTY DANCING (Emile Ardolino, 1987)",
+      "start_time": "23:00",
+      "end_time": "01:00",
+      "start_date": "2026-09-09",
+      "end_date": "2026-09-10",
+      "published": "2026-09-02T03:18:14Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dirty-dancing-emile-ardolino-1987-tickets-1999456226397",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999456226397",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299245079",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "laberinto",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/laberinto"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1986",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1986"
+        },
+        {
+          "_type": "tag",
+          "display_name": "rock_music",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/rock_music"
+        },
+        {
+          "_type": "tag",
+          "display_name": "ciclo_on_the_rocks",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/ciclo_on_the_rocks"
+        }
+      ],
+      "image_id": "1192439583",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999812837029",
+      "eid": "exftczmd",
+      "eventbrite_event_id": "1999812837029",
+      "name": "VIDEO LÁSER: VIDEOCLUB EN PANTALLA GRANDE PRESENTA: DUELO DE VHS",
+      "summary": "VIDEO LÁSER: VIDEOCLUB EN PANTALLA GRANDE PRESENTA:\nDUELO DE VHS",
+      "start_time": "21:00",
+      "end_time": "23:00",
+      "start_date": "2026-09-09",
+      "end_date": "2026-09-09",
+      "published": "2026-09-04T23:21:40Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/video-laser-videoclub-en-pantalla-grande-presenta-duelo-de-vhs-tickets-1999812837029",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999812837029",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299297238",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "laberinto",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/laberinto"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1986",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1986"
+        },
+        {
+          "_type": "tag",
+          "display_name": "rock_music",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/rock_music"
+        },
+        {
+          "_type": "tag",
+          "display_name": "ciclo_on_the_rocks",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/ciclo_on_the_rocks"
+        }
+      ],
+      "image_id": "1192730677",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1998359040685",
+      "eid": "exfmqzyq",
+      "eventbrite_event_id": "1998359040685",
+      "name": "CURSO DE IMPRO - SEPTIEMBRE - 4 CLASES DESDE CERO",
+      "summary": "Aprendé impro en Club Lucero. Un ambiente divertido, dinámico y relajado para aprender los fundamentos de la comedia inventada en el momento",
+      "start_time": "18:30",
+      "end_time": "21:00",
+      "start_date": "2026-09-09",
+      "end_date": "2026-09-30",
+      "published": "2026-08-18T12:40:10Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "es-ar",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/curso-de-impro-septiembre-4-clases-desde-cero-registration-1998359040685",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1998359040685",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299036281",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Comedy",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/5010"
+        },
+        {
+          "display_name": "Performing & Visual Arts",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/105",
+          "localized": {
+            "display_name": "Performing & Visual Arts"
+          }
+        },
+        {
+          "display_name": "Class, Training, or Workshop",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/9"
+        },
+        {
+          "_type": "tag",
+          "display_name": "comedy",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/comedy"
+        },
+        {
+          "_type": "tag",
+          "display_name": "improv",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/improv"
+        },
+        {
+          "_type": "tag",
+          "display_name": "performance",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/performance"
+        },
+        {
+          "_type": "tag",
+          "display_name": "theatre",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/theatre"
+        },
+        {
+          "_type": "tag",
+          "display_name": "standupcomedy",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/standupcomedy"
+        }
+      ],
+      "image_id": "1191328092",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999441407072",
+      "eid": "exfrkxwx",
+      "eventbrite_event_id": "1999441407072",
+      "name": "DJ ZOE -NOCHES DE SABADUKI",
+      "summary": "DJ ZOE en nuestros sábados a puro fuego",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-09-05",
+      "end_date": "2026-09-06",
+      "published": "2026-09-02T01:09:44Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-zoe-noches-de-sabaduki-tickets-1999441407072",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999441407072",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299243806",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Party or Social Gathering",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/11"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "miercoles",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/miercoles"
+        },
+        {
+          "_type": "tag",
+          "display_name": "preferiado",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/preferiado"
+        },
+        {
+          "_type": "tag",
+          "display_name": "la_malibu",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/la_malibu"
+        }
+      ],
+      "image_id": "1183854217",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999429420219",
+      "eid": "exfrkrhh",
+      "eventbrite_event_id": "1999429420219",
+      "name": "DJ IAN, en nuestros viernes de volate la peluca",
+      "summary": "DJ IAN, en nuestros viernes de volate la peluca",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-09-04",
+      "end_date": "2026-09-05",
+      "published": "2026-09-01T23:39:06Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-ian-en-nuestros-viernes-de-volate-la-peluca-tickets-1999429420219",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999429420219",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299242821",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Concert or Performance",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/6"
+        },
+        {
+          "_type": "tag",
+          "display_name": "fiesta",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/fiesta"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj_ian",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj_ian"
+        },
+        {
+          "_type": "tag",
+          "display_name": "viernes_de_volate",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/viernes_de_volate"
+        }
+      ],
+      "image_id": "1192427123",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999464073869",
+      "eid": "exfrmgym",
+      "eventbrite_event_id": "1999464073869",
+      "name": "UNA MUJER BAJO LA INFLUENCIA — John Cassavetes, 1974",
+      "summary": "UNA MUJER BAJO LA INFLUENCIA — John Cassavetes, 1974",
+      "start_time": "21:00",
+      "end_time": "23:00",
+      "start_date": "2026-09-03",
+      "end_date": "2026-09-03",
+      "published": "2026-09-02T05:13:37Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/una-mujer-bajo-la-influencia-john-cassavetes-1974-tickets-1999464073869",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999464073869",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299245911",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "laberinto",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/laberinto"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1986",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1986"
+        },
+        {
+          "_type": "tag",
+          "display_name": "rock_music",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/rock_music"
+        },
+        {
+          "_type": "tag",
+          "display_name": "ciclo_on_the_rocks",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/ciclo_on_the_rocks"
+        }
+      ],
+      "image_id": "1192444554",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1997781028836",
+      "eid": "exfkthmc",
+      "eventbrite_event_id": "1997781028836",
+      "name": "CURSO INTRO AL GUIÓN X MICAELA LIBSON: \"DURO DE MATAR\" (1988)",
+      "summary": "\"DURO DE MATAR\"",
+      "start_time": "19:00",
+      "end_time": "22:00",
+      "start_date": "2026-09-03",
+      "end_date": "2026-09-03",
+      "published": "2026-08-12T21:02:30Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/curso-intro-al-guion-x-micaela-libson-duro-de-matar-1988-tickets-1997781028836",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1997781028836",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "298967412",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "marathon",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/marathon"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1985",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1985"
+        },
+        {
+          "_type": "tag",
+          "display_name": "timetravel",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/timetravel"
+        },
+        {
+          "_type": "tag",
+          "display_name": "delorean",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/delorean"
+        },
+        {
+          "_type": "tag",
+          "display_name": "backtothefuture",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/backtothefuture"
+        }
+      ],
+      "image_id": "1190927962",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    },
+    {
+      "id": "1999446995788",
+      "eid": "exfrkzwz",
+      "eventbrite_event_id": "1999446995788",
+      "name": "REALITY BITES ( BEN STILLER, 1994)",
+      "summary": "\"LABERINTO\" (1986)",
+      "start_time": "23:00",
+      "end_time": "01:00",
+      "start_date": "2026-09-02",
+      "end_date": "2026-09-03",
+      "published": "2026-09-02T02:58:18Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/reality-bites-ben-stiller-1994-tickets-1999446995788",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=1999446995788",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299244428",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "laberinto",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/laberinto"
+        },
+        {
+          "_type": "tag",
+          "display_name": "1986",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/1986"
+        },
+        {
+          "_type": "tag",
+          "display_name": "rock_music",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/rock_music"
+        },
+        {
+          "_type": "tag",
+          "display_name": "ciclo_on_the_rocks",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/ciclo_on_the_rocks"
+        }
+      ],
+      "image_id": "1192436723",
+      "checkout_flow": "widget",
+      "status": "completed",
+      "_type": "destination_event"
+    }
+  ],
+  "pagination": {
+    "page_number": 1,
+    "page_size": 50,
+    "continuation": null,
+    "object_count": 50,
+    "has_more_items": false,
+    "page_count": 1
+  }
+}

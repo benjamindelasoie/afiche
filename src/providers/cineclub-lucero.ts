@@ -5,27 +5,29 @@
  *
  * Strategy: they have no site of their own worth scraping — clublucero.com is
  * 410 Gone and the @cineclublucero IG account has been removed. Their own
- * Linktree points "ENTRADAS CINE" straight at an Eventbrite organizer page,
- * which is backed by a clean JSON endpoint:
+ * Linktree points "ENTRADAS CINE" straight at an Eventbrite organizer page.
+ * Two JSON calls, no HTML parsing:
  *
- *   GET /org/<orgId>/showmore/?page_size=50&type=future&page=N
- *     -> { data: { events: [...], has_next_page: bool } }
+ *  1. The organizer page's own listing API (what its "Show more" button
+ *     calls) gives the ids of every upcoming event. It carries no format.
+ *  2. Eventbrite's public destination API, asked for exactly those ids, adds
+ *     the `EventbriteFormat/<id>` tag the feature-only filter needs.
  *
- * No HTML parsing and no detail-page walk: the listing carries everything we
- * need (name, start.utc, url, format, venue). Event detail pages add nothing —
- * Eventbrite renders the long description client-side and past events collapse
- * it entirely, so the listing IS the richest available source.
+ * Originally a single `/org/<orgId>/showmore/` call did both. By 2026-10 Eventbrite
+ * rebuilt the organizer page and that endpoint now answers 403 from CloudFront
+ * for every query variant. The organizer page itself no longer references it.
  *
- * TIMEZONE: unlike most providers, no +3h math is needed — Eventbrite emits a
- * real UTC instant in `start.utc` (cross-checked against `start.local`, which
- * is BA wall-clock). We still keep a local->UTC fallback for the day the
- * `utc` field goes missing, using the standard Argentina UTC-3 shift.
+ * TIMEZONE: neither API gives a UTC instant any more, only the event's
+ * wall-clock (`start_date` + `start_time`) and its IANA zone. Lucero's events
+ * are all in America/Argentina/Buenos_Aires, so the standard +3h shift applies
+ * (Argentina is UTC-3, no DST); an event in any other zone is skipped with a
+ * warning rather than mis-timed.
  *
  * SCOPE (v1): features only. The organizer publishes DJ nights, impro courses
  * and parties alongside screenings, plus a handful of non-feature events filed
  * under the same "Screening" format. See FEATURE-ONLY FILTER below.
  *
- * The listing gives no runtime/country/synopsis; TMDB enrichment fills those.
+ * Neither API gives runtime/country/synopsis; TMDB enrichment fills those.
  */
 
 import { type Provider, type ProviderRunResult, type ScrapedScreening } from './types';
@@ -33,18 +35,20 @@ import type { ScreeningTag } from '@/db';
 
 const CINEMA_ID = 'cineclub-lucero'; // our cinemas.id
 const ORG_ID = '34315560147'; // Club Lucero on Eventbrite
-const API_BASE = `https://www.eventbrite.com/org/${ORG_ID}/showmore/`;
+const ORG_EVENTS_URL = `https://www.eventbrite.com/organizer-profile/api/organizers/${ORG_ID}/events/`;
+const DESTINATION_URL = 'https://www.eventbrite.com/api/v3/destination/events/';
 const ORG_URL = `https://www.eventbrite.com/o/club-lucero-${ORG_ID}`;
-const PAGE_SIZE = 50;
-const MAX_PAGES = 10; // backstop; the future feed has never exceeded one page
-const PAGE_DELAY_MS = 300;
+const PAGE_SIZE = 50; // also the destination API's page size, so one id batch = one page
+const MAX_PAGES = 10; // backstop; the upcoming feed has never exceeded one page
+const REQUEST_DELAY_MS = 300;
+const FETCH_TIMEOUT_MS = 20_000;
 
 /**
- * Eventbrite's format id for "Screening". Stable across categories — the
- * organizer files films under Film & Media (104), Arts (105) and even
- * Spirituality (114), but format_id is 7 for all of them. Filtering on
- * format_id instead of the category label is what keeps the Bergman /
- * Life of Brian night from being dropped.
+ * Eventbrite's format id for "Screening" (tag `EventbriteFormat/7`). Stable
+ * across categories — the organizer files films under Film & Media (104),
+ * Arts (105) and even Spirituality (114), but the format is 7 for all of them.
+ * Filtering on format instead of the category label is what keeps the
+ * Bergman / Life of Brian night from being dropped.
  */
 const SCREENING_FORMAT_ID = '7';
 
@@ -54,23 +58,25 @@ const USER_AGENT =
 
 // --- API response shapes (only the fields we use) --------------------------
 
-interface ApiEventStart {
-  utc?: string; // "2026-07-30T21:00:00Z" — a real UTC instant
-  local?: string; // "2026-07-30T18:00:00" — BA wall-clock
+/** GET /organizer-profile/api/organizers/<orgId>/events/?page=N&pageSize=50 */
+export interface OrgEventsResponse {
+  events?: Array<{ id?: string; is_cancelled?: boolean | null }>;
+  hasMore?: boolean;
 }
 
+/** One event from GET /api/v3/destination/events/?event_ids=<csv> */
 export interface ApiEvent {
-  name?: { text?: string };
+  id?: string;
+  name?: string;
   url?: string;
-  format_id?: string | null;
-  start?: ApiEventStart;
+  start_date?: string; // "2026-10-22" — wall-clock in `timezone`
+  start_time?: string; // "21:00"
+  timezone?: string; // "America/Argentina/Buenos_Aires"
+  tags?: Array<{ prefix?: string; tag?: string }>; // { prefix: 'EventbriteFormat', tag: 'EventbriteFormat/7' }
 }
 
-export interface ShowmoreResponse {
-  data?: {
-    events?: ApiEvent[];
-    has_next_page?: boolean;
-  };
+export interface DestinationResponse {
+  events?: ApiEvent[];
 }
 
 // ---------------------------------------------------------------------------
@@ -84,27 +90,27 @@ export const cineclubLuceroProvider: Provider = {
   async fetch(): Promise<ProviderRunResult> {
     const warnings: string[] = [];
     try {
-      const events: ApiEvent[] = [];
-      let sawEvents = false;
+      const ids: string[] = [];
+      let listed = 0;
 
       for (let page = 1; page <= MAX_PAGES; page++) {
-        const resp = await fetchJson<ShowmoreResponse>(
-          `${API_BASE}?page_size=${PAGE_SIZE}&type=future&page=${page}`,
+        const resp = await fetchJson<OrgEventsResponse>(
+          `${ORG_EVENTS_URL}?page=${page}&pageSize=${PAGE_SIZE}`,
         );
-        const pageEvents = resp.data?.events ?? [];
-        if (pageEvents.length > 0) sawEvents = true;
-        events.push(...pageEvents);
-
-        if (resp.data?.has_next_page !== true) break;
-        if (page === MAX_PAGES) {
-          warnings.push(
-            `stopped at MAX_PAGES=${MAX_PAGES} with has_next_page still true`,
-          );
+        const pageEvents = resp.events ?? [];
+        listed += pageEvents.length;
+        for (const e of pageEvents) {
+          if (e.id && e.is_cancelled !== true) ids.push(e.id);
         }
-        await sleep(PAGE_DELAY_MS);
+
+        if (resp.hasMore !== true) break;
+        if (page === MAX_PAGES) {
+          warnings.push(`stopped at MAX_PAGES=${MAX_PAGES} with hasMore still true`);
+        }
+        await sleep(REQUEST_DELAY_MS);
       }
 
-      if (!sawEvents) {
+      if (listed === 0) {
         // An organizer with literally zero upcoming events of ANY kind is the
         // signature of a moved/renamed org or a changed response shape — not
         // a quiet week. Fail loudly so it surfaces in the run log.
@@ -114,8 +120,25 @@ export const cineclubLuceroProvider: Provider = {
           success: false,
           warnings,
           error:
-            'showmore returned no events at all — org id or API shape may have changed.',
+            'organizer listing returned no events at all — org id or API shape may have changed.',
         };
+      }
+
+      const events: ApiEvent[] = [];
+      for (let i = 0; i < ids.length; i += PAGE_SIZE) {
+        const batch = ids.slice(i, i + PAGE_SIZE);
+        await sleep(REQUEST_DELAY_MS);
+        const resp = await fetchJson<DestinationResponse>(
+          `${DESTINATION_URL}?event_ids=${batch.join(',')}&page_size=${PAGE_SIZE}`,
+        );
+        events.push(...(resp.events ?? []));
+      }
+      if (events.length < ids.length) {
+        // Not fatal (what did come back is still good), but a silent shortfall
+        // would hide films, so say how many went missing.
+        warnings.push(
+          `destination API returned ${events.length} of ${ids.length} listed events`,
+        );
       }
 
       const screenings = parseEvents(events, new Date(), warnings);
@@ -150,12 +173,10 @@ export const cineclubLuceroProvider: Provider = {
 /**
  * Non-feature events the organizer files under format "Screening".
  *
- * v1 scope decision: Afiche's cartelera carries feature films only. The
- * untyped bucket (events Eventbrite left with category_id/format_id/
- * subcategory_id ALL null — VIDEODROME and EL CASTILLO AMBULANTE sit there
- * next to FESTIVAL CANNABICO) is excluded wholesale by the format filter,
- * because nothing in the payload distinguishes a film from a party there.
- * Revisit if the operator wants that tail.
+ * v1 scope decision: Afiche's cartelera carries feature films only. Untyped
+ * events (no `EventbriteFormat` tag at all) are excluded wholesale by the
+ * format filter, because nothing in the payload distinguishes a film from a
+ * party there. Revisit if the operator wants that tail.
  */
 const NON_FEATURE_PATTERNS: ReadonlyArray<{ re: RegExp; why: string }> = [
   // Recurring free 23:00 session: The Wizard of Oz synced to Dark Side of
@@ -167,6 +188,9 @@ const NON_FEATURE_PATTERNS: ReadonlyArray<{ re: RegExp; why: string }> = [
   { re: /\bPILOTO\s+DE\s+LA\s+SERIE\b/i, why: 'TV pilot' },
   { re: /\bCAP[IÍ]TULOS?\s*\d/i, why: 'TV episodes' },
   { re: /\bTEMPORADA\s*\d/i, why: 'TV season' },
+  // Festival shorts blocks (FESTIVAL BITBANG! CORTOS INTERNACIONALES I..XII).
+  // Plural only: a singular CORTO can be a title word (Corto Maltés).
+  { re: /\b(CORTOS|CORTOMETRAJES)\b/i, why: 'shorts programme' },
 ];
 
 export function nonFeatureReason(title: string): string | undefined {
@@ -178,8 +202,8 @@ export function nonFeatureReason(title: string): string | undefined {
 // ---------------------------------------------------------------------------
 
 /**
- * Map a showmore payload's events to screenings. `now` is passed in (not read
- * from the clock) so tests can pin it.
+ * Map destination-API events to screenings. `now` is passed in (not read from
+ * the clock) so tests can pin it.
  */
 export function parseEvents(
   events: ApiEvent[],
@@ -189,9 +213,9 @@ export function parseEvents(
   const out: ScrapedScreening[] = [];
 
   for (const e of events) {
-    if (e.format_id !== SCREENING_FORMAT_ID) continue;
+    if (formatId(e) !== SCREENING_FORMAT_ID) continue;
 
-    const rawTitle = (e.name?.text ?? '').trim();
+    const rawTitle = (e.name ?? '').trim();
     if (!rawTitle) {
       warnings.push('event with no name — skipped');
       continue;
@@ -200,13 +224,19 @@ export function parseEvents(
     const skip = nonFeatureReason(rawTitle);
     if (skip) continue;
 
-    const startsAtUtc = toUtc(e.start);
-    if (!startsAtUtc) {
-      warnings.push(`${rawTitle}: unparseable start ${JSON.stringify(e.start)}`);
+    if (e.timezone && !e.timezone.startsWith('America/Argentina/')) {
+      warnings.push(`${rawTitle}: unexpected timezone ${e.timezone} — skipped`);
       continue;
     }
-    // The "future" feed occasionally retains an event whose start has already
-    // passed. Drop it: ingest only ever deletes FUTURE rows, so a past-dated
+    const startsAtUtc = toUtc(e);
+    if (!startsAtUtc) {
+      warnings.push(
+        `${rawTitle}: unparseable start ${JSON.stringify([e.start_date, e.start_time])}`,
+      );
+      continue;
+    }
+    // The upcoming feed keeps an event listed until it ENDS, so tonight's
+    // already-started session is still in it. Drop it: ingest only ever deletes FUTURE rows, so a past-dated
     // insert would become a permanent orphan no later scrape can clean up.
     if (startsAtUtc <= now) continue;
 
@@ -389,7 +419,11 @@ export function parseEventTitle(raw: string): ParsedTitle {
   if (!director) {
     const dirLabel = masked.match(DIR_LABEL_RE);
     if (dirLabel) {
-      director = dirLabel[1].trim().replace(/[.,;]+$/, '');
+      // Since Oct 2026 the credit runs on: `Dir. Name · País · 1990 · 97 min`.
+      // Only the first segment is the director; a bare 4-digit segment is the year.
+      const [name, ...credits] = dirLabel[1].split('·').map((part) => part.trim());
+      director = name.replace(/[.,;]+$/, '');
+      year ??= validYear(credits.find((part) => /^\d{4}$/.test(part)) ?? '');
       masked = masked.replace(DIR_LABEL_RE, ' ');
     }
   }
@@ -466,23 +500,22 @@ function validYear(raw: string): number | undefined {
 // Dates
 // ---------------------------------------------------------------------------
 
-/**
- * Eventbrite gives a true UTC instant in `start.utc`. Prefer it; fall back to
- * shifting the BA wall-clock in `start.local` by +3h (Argentina is UTC-3, no
- * DST) if that field ever goes missing.
- */
-export function toUtc(start: ApiEventStart | undefined): Date | null {
-  if (!start) return null;
-
-  if (start.utc) {
-    const d = new Date(start.utc);
-    if (!Number.isNaN(d.getTime())) return d;
-  }
-
-  return baLocalToUtc(start.local);
+/** `EventbriteFormat/7` -> "7"; undefined for an untyped event. */
+export function formatId(e: Pick<ApiEvent, 'tags'>): string | undefined {
+  const tag = e.tags?.find((t) => t.prefix === 'EventbriteFormat')?.tag;
+  return tag?.split('/')[1];
 }
 
-/** "2026-07-30T18:00:00" (BA wall-clock) -> true UTC Date. */
+/**
+ * The event's BA wall-clock (`start_date` + `start_time`) as a true UTC Date.
+ * Callers have already checked the zone is an Argentine one.
+ */
+export function toUtc(e: Pick<ApiEvent, 'start_date' | 'start_time'>): Date | null {
+  if (!e.start_date || !e.start_time) return null;
+  return baLocalToUtc(`${e.start_date}T${e.start_time}`);
+}
+
+/** "2026-07-30T18:00" (BA wall-clock, seconds optional) -> true UTC Date. */
 export function baLocalToUtc(raw: string | undefined): Date | null {
   if (!raw) return null;
   const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
@@ -498,12 +531,13 @@ export function baLocalToUtc(raw: string | undefined): Date | null {
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, {
     headers: {
-      // Eventbrite serves the showmore endpoint to browsers only; a bare or
-      // CI user-agent gets a challenge page instead of JSON.
+      // Both endpoints answer a bare user-agent today, but Eventbrite has
+      // challenged non-browser clients before; look like the page's own JS.
       'User-Agent': USER_AGENT,
       Accept: 'application/json',
       'Accept-Language': 'es-AR,es;q=0.9',
     },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   return res.json() as Promise<T>;
