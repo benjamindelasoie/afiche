@@ -11,6 +11,7 @@ import {
 } from '@/db/queries';
 import { TAG_LABELS_ES, GENRE_LABELS_ES } from '@/db';
 import { JsonLd, buildFilmPageJsonLd } from '@/lib/json-ld';
+import { FilmLinks } from '@/app/_components/FilmLinks';
 import { cn } from '@/lib/cn';
 import {
   PageShell,
@@ -181,6 +182,12 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
             {genreLabels.join(' · ')}
           </p>
         )}
+        {/* Outbound links to the aggregators, same micro-caps register as the
+            genre eyebrow above. Links only — no scores from any source. Both
+            hrefs derive from ids already on the film row, so nothing is fetched,
+            stored, or able to go stale. Renders nothing when the film has
+            neither id. */}
+        <FilmLinks title={film.title} tmdbId={film.tmdbId} imdbId={film.imdbId} />
       </header>
 
       {/* Editorial still — TMDB backdrop_path at 16:9. Sits between the

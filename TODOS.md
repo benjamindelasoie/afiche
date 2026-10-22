@@ -4,6 +4,77 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 40. MCP `get_film` publishes a six-vote TMDB average bare (found 2026-09-09, /plan-eng-review on the aggregator-links branch)
+
+**What:** `src/mcp/format.ts:145` puts `films.vote_average` into the public
+`FilmDTO` with no source label and no vote count. `src/mcp/tools.ts:78` pins it
+in `filmDetailSchema`.
+
+**Why it matters:** measured 2026-09-08 across the 113-film live catalog, TMDB's
+vote *count* has a median of **6**, and 55 even among the 65 films that have any
+vote at all. "La Negociación" reports 8.0 from a single vote; "A metros de
+distancia" reports 7.0 from four votes while IMDb reports 4.6 from a hundred and
+twenty. The web surface renders none of it, deliberately. The MCP surface ships
+it to agents as if it were a quality signal.
+
+**Pros:** removes the last live consumer of a number this project has decided is
+untrustworthy. Small blast radius.
+**Cons:** it is a published contract. Anything already consuming `get_film`
+breaks.
+
+**Context:** `filmDetailSchema` is referenced exactly once, at `tools.ts:310`.
+`toFilmDTO` is called exactly once, at `tools.ts:330`. Both inside `get_film` —
+`search_films` and `whats_on` declare their own inline schemas and do **not**
+carry the field, so the exposure is one tool, not three. Tests live at
+`src/mcp/format.test.ts:88` (an explicit `expect(dto.voteAverage).toBeNull()`
+zero-guard), `src/mcp/tools.test.ts:37`, `src/mcp/server.test.ts:47`.
+`src/app/agent-readiness.test.ts` does **not** cover it, despite an earlier
+draft claiming otherwise. Two options: drop the field, or replace it with a
+labelled `ratings` structure carrying source, value, scale and count.
+
+**Depends on / blocked by:** nothing. Deliberately kept off the aggregator-links
+branch, which touches no shared contract.
+
+**First-step action:** decide drop-vs-relabel, then one small PR touching
+`format.ts`, `tools.ts` and the three test files.
+
+---
+
+## 39. Manual `tmdb_id` patch in Drizzle Studio leaves `imdb_id` stale (found 2026-09-09, /plan-eng-review outside voice)
+
+**What:** `films.imdb_id` is a separate denormalized column. Repointing
+`films.tmdb_id` directly in Drizzle Studio does not update it, so the row keeps
+the previous film's IMDb identifier.
+
+**Why it matters:** today the visible symptom is a stale poster or title, which
+reads as "not enriched yet". Once `/pelicula` renders an outbound IMDb link
+(TODO: the aggregator-links work), it becomes a link that confidently sends a
+visitor to the wrong film. The admin panel path does **not** have this problem —
+`src/app/admin/(panel)/unmatched/[id]/actions.ts` re-enriches through
+`enrichByTmdbId`, which writes `tmdbId` and `imdbId` in one `.set()`. Only a
+direct Studio edit bypasses that.
+
+**Pros:** it is the one correctness risk the links feature introduces, and it is
+invisible until somebody clicks.
+**Cons:** requires a manual operator action that happens rarely, and the same
+edit already leaves other fields stale, so this is a pre-existing hazard made
+more visible rather than a new defect.
+
+**Context:** found by a Codex outside-voice pass during /plan-eng-review and
+verified against the schema. Three plausible fixes, none of which belonged in
+v1: re-enrich after a Studio patch (operator discipline), null `imdb_id`
+whenever `tmdb_id` changes (a DB-level or enrichment-level guard), or add a
+consistency check to the existing self-heal audit — which is already the right
+home for exactly this kind of drift detection.
+
+**Depends on / blocked by:** nothing, but only worth doing once the IMDb link
+actually ships.
+
+**First-step action:** add a check to `scripts/self-heal.ts`'s audit that flags
+any film whose `tmdb_id` changed without a matching `imdb_id` refresh.
+
+---
+
 ## 38. Run-block add-to-calendar — revisit if users miss the one-tap save (found 2026-06-09, weekly-run design review)
 
 **⬆ OPERATOR SIGNAL 2026-06-10 (P4→P3):** Benjamin flagged it unprompted — ".ics download is a cool feature, good to have it there." Not shipping yet, but the trigger is no longer hypothetical. Prod state validated 2026-06-10 (afiche.ar): `/sala/lorca` Por película = **0** Agendar links; `?vista=dia` = only single-showtime-that-day rows (rule: `screenings.length === 1` per film-day, `VenueAgenda.tsx` CollapsedRow); `/sala/malba` = all rows (repertory, always 1/day); `/pelicula` = every future screening row. The gap is exactly the weekly-run surfaces.

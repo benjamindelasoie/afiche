@@ -36,6 +36,8 @@ function film(over: Partial<ScreeningRow['film']> = {}): ScreeningRow['film'] {
     popularity: null,
     voteAverage: null,
     voteCount: null,
+    tmdbId: null,
+    imdbId: null,
     createdAt: new Date(),
     ...over,
   };

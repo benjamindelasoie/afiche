@@ -48,6 +48,8 @@ function film(overrides: Partial<ScreeningRow['film']> = {}): ScreeningRow['film
     popularity: null,
     voteAverage: null,
     voteCount: null,
+    tmdbId: null,
+    imdbId: null,
     createdAt: NOW,
     ...overrides,
   };
