@@ -23,6 +23,7 @@
  * their own <script> tags.
  */
 import { BA_TZ } from './date-ranges';
+import { venueCity } from './venue-city';
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION, SITE_SOURCE_URL } from './site';
 import type { ScreeningRow } from '@/db/queries';
 
@@ -133,12 +134,6 @@ export interface MovieTheaterJsonLd {
   address: PostalAddressJsonLd;
 }
 
-/**
- * Hardcoded locality for every BA cinema's MovieTheater.address. Schema.org
- * requires addressLocality on PostalAddress; Afiche's geographic scope is
- * BA-only, so the value is a constant.
- */
-const ADDRESS_LOCALITY = 'Buenos Aires';
 /** ISO 3166-1 alpha-2 country code for Argentina. */
 const ADDRESS_COUNTRY = 'AR';
 
@@ -207,14 +202,14 @@ export function buildMovie(film: ScreeningRow['film']): MovieJsonLd {
 /**
  * Schema.org MovieTheater. `address` is always a `PostalAddress` object —
  * Google's Event rich result classifies a plain-string `address` as
- * unstructured and downgrades validation. `addressLocality` and
- * `addressCountry` are always emitted (constants since Afiche is BA-only);
+ * unstructured and downgrades validation. `addressLocality` (the
+ * venue's city, see venueCity) and `addressCountry` are always emitted;
  * `streetAddress` is included when the cinema row has it.
  */
 export function buildMovieTheater(cinema: ScreeningRow['cinema']): MovieTheaterJsonLd {
   const address: PostalAddressJsonLd = {
     '@type': 'PostalAddress',
-    addressLocality: ADDRESS_LOCALITY,
+    addressLocality: venueCity(cinema.neighborhood),
     addressCountry: ADDRESS_COUNTRY,
   };
   if (cinema.address) address.streetAddress = cinema.address;
