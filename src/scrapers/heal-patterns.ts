@@ -14,6 +14,7 @@
  */
 
 import { stripSearchNoise } from '@/tmdb/similarity';
+import { COMPETITION_SECTION_PATTERNS } from '@/tmdb/container';
 import { signatureComment } from '@/scrapers/issue-protocol';
 
 /** A film that Layer 1 could not match (no candidate, or the judge declined). */
@@ -59,7 +60,7 @@ const CONTAINER_SHAPE: RegExp[] = [
   /\bCORTOS?\b/i,
   /\bCORTOMETRAJES?\b/i,
   /\bCONVOCATORIA\b/i,
-  /\bCOMPETENCIA\b/i,
+  ...COMPETITION_SECTION_PATTERNS,
   /\bPROGRAMA\s+(?:\d+|I{1,3}|IV|VI{0,3}|IX|XI{0,3}|X|DOBLE)\b/i,
   // Placeholders: "Película sorpresa", "Función sorpresa", "Preestreno sorpresa".
   /\b(?:PEL[IÍ]CULA|FUNCI[OÓ]N|PREESTRENO|FILM)\b[^.]{0,20}\bSORPRESA\b/i,

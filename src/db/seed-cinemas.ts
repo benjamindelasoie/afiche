@@ -1,7 +1,7 @@
 /**
  * Prod-safe cinema seed.
  *
- * Inserts (idempotently) the 12 indie cinemas the scraper needs as
+ * Inserts (idempotently) the 13 indie cinemas the scraper needs as
  * foreign-key targets. Does NOT touch films or screenings. Safe to run
  * against Turso or any environment without wiping real data.
  *
@@ -127,6 +127,18 @@ const CINEMAS: CinemaInsert[] = [
     // Their Instagram bio links here as the one official surface: they have no
     // site of their own, so the Passline producer page IS the venue's home.
     ticketingBaseUrl: 'https://www.passline.com/sitio/cinta-proyecciones',
+  },
+  {
+    id: 'el-cairo',
+    name: 'El Cairo Cine Público',
+    // The first venue outside Buenos Aires: the Santa Fe province's public
+    // cinema, in Rosario's centro. Address verbatim from the site footer
+    // ("Santa Fe 1120 - Rosario"); the city goes in `neighborhood` until the
+    // product decides how a non-BA sala is presented.
+    neighborhood: 'Rosario',
+    type: 'indie',
+    address: 'Santa Fe 1120',
+    ticketingBaseUrl: 'https://elcairocinepublico.gob.ar/cartelera-de-sala/',
   },
 ];
 

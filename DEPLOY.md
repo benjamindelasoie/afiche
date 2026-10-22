@@ -45,7 +45,7 @@ Verify:
 
 ```bash
 turso db shell afiche "SELECT id, name FROM cinemas;"
-# → you should see 12 rows
+# → you should see 13 rows
 ```
 
 > Note: schema migrations also run automatically on every Vercel deploy (`drizzle-kit migrate && next build` is the build command — see `package.json`). The manual `db:migrate:prod` is for first-time setup or running migrations out-of-band.

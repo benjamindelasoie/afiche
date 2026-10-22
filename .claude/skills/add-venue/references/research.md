@@ -27,7 +27,7 @@ Useful moves:
 |---|---|---|
 | Display name | `cinemas.name` | Exactly as the venue brands itself. |
 | Address | `cinemas.address` | **Verbatim from the source.** Drives the header Maps link. |
-| Neighborhood | `cinemas.neighborhood` | Barrio (Palermo, Munro, Olivos…). |
+| Neighborhood | `cinemas.neighborhood` | Barrio (Palermo, Munro, Olivos…). Outside Buenos Aires, the city (El Cairo: `Rosario`); see `src/lib/venue-city.ts`. |
 | Official URL | `cinemas.ticketingBaseUrl` | The page with programming/tickets. |
 | Programming identity | `venue-info.blurb` | What kind of cinema (auteur, restorations, free municipal…), year/history if notable. |
 | Ticket price | `venue-info.price` | Record what the site says, but see the price stance in `venue-info.md`. |
@@ -63,6 +63,9 @@ you'll copy in Phase 3 (`references/scraper.md` has the full table):
   providers, one parse.
 - **Day-of-week weekly grid?** (Cosmos) Anchor on the cycle's start weekday in
   BA time, map abbreviations to offsets.
+- **WordPress site running The Events Calendar (a `/wp-json/tribe/events/v1/`
+  endpoint)?** (El Cairo) Read the event list as JSON, then fetch each series'
+  detail page for the film data.
 - **Image-only cartelera (a poster JPG, no HTML data)?** (Cine Lorca) Last
   resort: Claude vision + image-hash caching. Only when there's genuinely no
   structured HTML to parse.

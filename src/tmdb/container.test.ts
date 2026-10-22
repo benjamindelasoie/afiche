@@ -16,6 +16,19 @@ describe('isNonFilmContainer', () => {
     expect(isNonFilmContainer('El Jockey')).toBe(false);
     // "El Programa" (a real doc) must NOT trip the PROGRAMA rule — no numeral.
     expect(isNonFilmContainer('El Programa')).toBe(false);
+    // Ettore Scola, 2001 — the word alone is not a competition section.
+    expect(isNonFilmContainer('COMPETENCIA DESLEAL')).toBe(false);
+    // Duprat & Cohn, 2021 — likewise a film, not a competition section.
+    expect(isNonFilmContainer('Competencia oficial')).toBe(false);
+  });
+
+  it('still flags competition sections by their shape', () => {
+    expect(isNonFilmContainer('Competencia Oficial Argentina')).toBe(true);
+    expect(isNonFilmContainer('Fuera de competencia')).toBe(true);
+    expect(isNonFilmContainer('Competencia Internacional – Programa 2')).toBe(true);
+    expect(isNonFilmContainer('COMPETENCIA DE LARGOMETRAJES')).toBe(true);
+    expect(isNonFilmContainer('Competencia oficial de largometrajes')).toBe(true);
+    expect(isNonFilmContainer('Competencia Protagonistas')).toBe(true);
   });
 });
 
