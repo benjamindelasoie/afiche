@@ -181,27 +181,66 @@ artefacts of the ratings design and go away with it.
 ### Render
 
 `FilmLinks` in `src/app/_components/`, mounted as the **last child of
-`<header>`** in `src/app/pelicula/[slug]/page.tsx` (the header closes at line
-184), after the conditional genre `<p>` and before the backdrop `<figure>`.
+`<header>`** in `src/app/pelicula/[slug]/page.tsx`, after the conditional genre
+`<p>` and before the backdrop `<figure>`.
+
+**Monotone marks, not words.** Shipped as the brands' marks drawn in
+`currentColor`, so they inherit ink-gray and flip to carmine on hover and focus
+like every other interactive element.
 
 ```
   «MULHOLLAND DRIVE»
   David Lynch · 2001 · EEUU · 147 min
   MISTERIO · SUSPENSO
-  LETTERBOXD ↗   ·   IMDB ↗
+  ●●●   [IMDb]
 ```
 
-- Tracked micro-caps, ink-gray, carmine on hover and focus (the same register
-  the genre eyebrow directly above already uses).
+Two earlier passes were built and rejected against the live page:
+
+1. **Tracked micro-caps** (`LETTERBOXD ↗ · IMDB ↗`) directly under the genre
+   eyebrow. Same ink-gray micro-caps register as the row above it, so the two
+   read as one repeated label strip and the header looked cluttered even though
+   nothing in it was redundant. Operator caught it on sight.
+2. **Italic serif** (`Ver en Letterboxd · IMDb`). Fixed the echo by borrowing a
+   register the header already used (the «original title» line), but it was
+   still a row of words for what is meant to be a quiet detail. Operator:
+   *"it's still text clutter, only on a different typography."*
+3. **Merging into the genre row** was measured and rejected separately: the
+   combined line wraps at 375px even with only two genres, leaving a dangling
+   separator and an ambiguous break between genres and links. Worse than either
+   on the phone-first surface.
+
+**On the marks.** Real brand colours are out — IMDb's `#F5C518` and Letterboxd's
+orange/green/blue would be the only saturated hues on a deliberately 4-hue page
+(DESIGN.md: "Restrained. 4 hues, 0 gradients") and they out-shout the film
+title. This was rendered and confirmed, not assumed.
+
+Monotone was initially argued against on the grounds that neither mark survives
+it. That was half right, and the half that was wrong matters:
+
+- **Letterboxd does survive, but only with compounding opacity.** Its identity
+  lives in three colours; flattened to one solid tone the circles merge into an
+  undifferentiated blob that reads as a bullet ornament. Drawn at `fillOpacity`
+  0.55 the overlaps darken on their own, rebuilding the multiply behaviour of
+  the real mark, and it stays legible as three distinct dots in a single hue.
+  The sub-1 opacity is load-bearing, not decoration.
+- **IMDb is a wordmark in a box,** so using the mark removes no text. It is
+  drawn as an outline rather than a filled box: a solid box is the heaviest
+  element in the header at this size, and hairline containers are already the
+  system's idiom (Pill's `ghost` variant).
+
+Mechanics:
+
 - `https://letterboxd.com/tmdb/<tmdbId>/` and
-  `https://www.imdb.com/title/<imdbId>/`.
-- Each link renders only when its identifier exists. Both missing renders
-  nothing — no label, no separator, no empty line.
-- `target="_blank"`, `rel="noopener noreferrer"`, `aria-label` naming the film
-  and the destination ("Ver «Mulholland Drive» en Letterboxd").
-- `↗` not `→`, since `→` reads as internal navigation elsewhere on the site.
-- At roughly 120px of natural width the row raises none of the 375px overflow
-  concerns the rating row did.
+  `https://www.imdb.com/title/<imdbId>/`, derived at render, never stored.
+- Each mark renders only when its identifier exists. Both missing renders
+  nothing — no mark, no separator, no empty line.
+- The marks are `aria-hidden`, so each link's `aria-label` is its entire
+  accessible name ("Ver «Mulholland Drive» en Letterboxd"). Without it the link
+  would announce as its bare URL.
+- `target="_blank"`, `rel="noopener noreferrer"`.
+- Verified at 375px with both marks present and four genres above them: no
+  horizontal overflow.
 
 ## Open Questions
 
