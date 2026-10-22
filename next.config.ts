@@ -59,17 +59,12 @@ const nextConfig: NextConfig = {
     ];
   },
   images: {
-    // TMDB serves poster images. We hotlink from their CDN rather than
-    // caching locally because /public is read-only at runtime on Vercel.
-    // next/image will still optimize, transcode to AVIF/WebP, and cache
-    // the transformed output at the edge.
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'image.tmdb.org',
-        pathname: '/t/p/**',
-      },
-    ],
+    // Every image is a hotlinked TMDB URL, already pre-resized by TMDB's CDN.
+    // The custom loader picks the TMDB size for each srcset width instead of
+    // routing through /_next/image, so Vercel Image Optimization (5,000
+    // transformations/month on Hobby) is never used. See the loader for why.
+    loader: 'custom',
+    loaderFile: './src/lib/tmdb-image-loader.ts',
   },
   experimental: {
     // Client-side Router Cache TTLs, in seconds. The homepage is force-dynamic,
