@@ -2,6 +2,19 @@
 
 All notable changes to Afiche are documented here.
 
+## [1.2.1.0] - 2026-10-22
+
+**Posters and backdrops now come straight from TMDB, so a traffic spike can no longer switch the site's images off.** Every image used to go through Vercel's optimizer, which the Hobby plan caps at 5,000 transformations a month — and Vercel counts one per image × width it has not cached yet. With fifteen widths offered per poster, a single crawl that fetched every candidate burned ~1,800 in one day (Oct 1), and the month reached 4,329. TMDB already serves each image pre-resized, so the optimizer was re-encoding files that did not need it.
+
+### Changed
+
+- **Images load from TMDB's CDN at TMDB's own sizes.** A custom `next/image` loader picks the smallest published TMDB size (w92 … w1280) that covers what the browser asked for, never larger than the size ingest stored (w342 posters, w1280 backdrops). Responsive `srcset` and lazy-loading work exactly as before; Vercel transforms nothing.
+- **The `srcset` offers TMDB's sizes instead of Next's generic list.** An 80px thumbnail on a retina screen now gets w185 (~13 KB) instead of w300 (~35 KB), and every candidate names a file TMDB actually serves.
+- **Phones stop downloading the film-page backdrop they never show.** It is hidden below tablet width but loads eagerly for desktop; a sizing hint now makes phones take the smallest version (w500) instead of the full w1280.
+- **The browser opens its connection to TMDB while the page is still parsing**, so the first poster or backdrop is not waiting on a cold handshake.
+
+Images are TMDB's JPEGs rather than Vercel's WebP re-encodes — a modest size cost on the backdrop, traded for a quota that no longer moves with traffic.
+
 ## [1.1.0.0] - 2026-09-09
 
 **The pipeline now repairs itself between releases.** Every version until this one fixed the matcher the same way: a film reached the cartelera unenriched, someone eventually noticed, someone shipped a rule. The gap between the miss and the fix was however long it took a human to look. This release closes that loop. After every scrape an agent audits the run, judges the films still stuck, writes the matches it can corroborate, and files an issue describing the ones it cannot — and a second agent opens a pull request against those issues. Nothing merges without a human reading it.
