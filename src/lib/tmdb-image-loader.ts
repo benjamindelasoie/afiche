@@ -23,7 +23,7 @@
  * Non-TMDB srcs are returned unchanged (served as-is, unoptimized).
  */
 
-const TMDB_PATH = /^(https:\/\/image\.tmdb\.org\/t\/p\/)w?(\d+|original)(\/.+)$/;
+const TMDB_PATH = /^(https:\/\/image\.tmdb\.org\/t\/p\/)(?:w(\d+)|original)(\/.+)$/;
 const TMDB_WIDTHS = [92, 154, 185, 300, 342, 500, 780, 1280] as const;
 const MAX_WIDTH = TMDB_WIDTHS[TMDB_WIDTHS.length - 1];
 
@@ -39,7 +39,7 @@ export default function tmdbImageLoader({
   if (!match) return src;
   const [, base, srcSize, file] = match;
   const ceiling =
-    srcSize === 'original' ? MAX_WIDTH : Math.min(Number(srcSize), MAX_WIDTH);
+    srcSize === undefined ? MAX_WIDTH : Math.min(Number(srcSize), MAX_WIDTH);
   const size = TMDB_WIDTHS.find((w) => w >= width && w <= ceiling) ?? ceiling;
   return `${base}w${size}${file}`;
 }

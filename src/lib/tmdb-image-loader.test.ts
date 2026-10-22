@@ -94,5 +94,10 @@ describe('tmdbImageLoader', () => {
     expect(load('https://example.com/t/p/w342/x.jpg', 256)).toBe(
       'https://example.com/t/p/w342/x.jpg',
     );
+    // A malformed TMDB size (no `w`) is left as stored, not silently repaired,
+    // so an ingest bug shows up instead of being masked by the srcset.
+    expect(load('https://image.tmdb.org/t/p/342/x.jpg', 256)).toBe(
+      'https://image.tmdb.org/t/p/342/x.jpg',
+    );
   });
 });
