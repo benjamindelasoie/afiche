@@ -13,12 +13,18 @@ A venue's identity lives in the `cinemas` DB table, seeded from
 {
   id: 'my-venue',                 // slug; MUST match your Provider.id + screening.cinemaId
   name: 'My Venue',               // exactly as the venue brands itself
-  neighborhood: 'Palermo',        // barrio
+  neighborhood: 'Palermo',        // barrio; outside BA, the city (see below)
   type: 'indie',                  // 'indie' (the product) — 'chain' only for legacy rows
   address: 'Calle Falsa 123',     // VERBATIM from the source (drives the Maps link)
   ticketingBaseUrl: 'https://…',  // official programming/tickets page
 }
 ```
+
+**A venue outside Buenos Aires** puts its city in `neighborhood` (there is no
+`city` column) and adds that city to `CITIES_OUTSIDE_BA` in
+`src/lib/venue-city.ts`. `venueCity()` drives the `/sala/[id]` metadata, Maps
+query and address line, and the JSON-LD `addressLocality`; a city missing from
+that set renders as a BA barrio. El Cairo (`Rosario`) is the first.
 
 Then seed:
 
@@ -86,6 +92,10 @@ set.director = sql`CASE WHEN ${films.matchSource} IN ('manual','auto','override'
 Same gate for `titleOriginal` and `runtimeMin`. `synopsisEs` is exempt — the
 venue's es-AR synopsis always wins over TMDB's peninsular Spanish. If you add a
 field that BOTH the scraper and enrichment write, gate it the same way.
+
+A provider's `skipTmdb` hint is insert-only: it seeds `films.skip_tmdb` when the
+row is created and is never in `buildUpdateSet`, so an operator's later toggle
+wins.
 
 **Screenings dedup key — `(filmId, cinemaId, startsAtUtc)`**
 (`uniqueIndex('screenings_unique_idx')`). Re-scrape uses `onConflictDoUpdate` to
