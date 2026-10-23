@@ -237,12 +237,38 @@ describe('cineGaumontProvider.fetch — run verdicts', () => {
     expect(result.error).toMatch(/listed 19 films but no showtimes matched/);
   });
 
-  it('keeps the good days when one day fails', async () => {
+  /** The captured day with showtime ids made unique per request, as the real API's are. */
+  const dayN = (i: number) => {
+    const day = json('funciones-2026-10-23.json') as {
+      data: { funciones: Array<{ _id: string }> };
+    };
+    return {
+      ...day,
+      data: {
+        ...day.data,
+        funciones: day.data.funciones.map((f) => ({ ...f, _id: `${f._id}-${i}` })),
+      },
+    };
+  };
+
+  // Value: protects=identical showtimes on two days fail the run; fails_when=
+  // the repeated-ids guard is dropped (one day's schedule copied across the
+  // week); why_new=no test returned the same day twice on purpose; seam=none;
+  // no_claim=how the real API would ignore fecha.
+  it('fails when two days return the very same showtimes (fecha ignored)', async () => {
     const day = json('funciones-2026-10-23.json');
+    const result = await run(() => jsonResponse(day));
+    expect(result.success).toBe(false);
+    expect(result.error).toBe(
+      'Cinexo API returned the same showtimes for 2026-10-23 and 2026-10-24 — the date parameter may be ignored.',
+    );
+  });
+
+  it('keeps the good days when one day fails', async () => {
     const calls: string[] = [];
     const result = await run((url, i) => {
       calls.push(url);
-      return i === 2 ? new Response('boom', { status: 500 }) : jsonResponse(day);
+      return i === 2 ? new Response('boom', { status: 500 }) : jsonResponse(dayN(i));
     });
     expect(result.success).toBe(true);
     expect(result.screenings).toHaveLength(14 * 6);

@@ -131,7 +131,17 @@ export const cineclubLuceroProvider: Provider = {
         const resp = await fetchJson<DestinationResponse>(
           `${DESTINATION_URL}?event_ids=${batch.join(',')}&page_size=${PAGE_SIZE}`,
         );
-        events.push(...(resp.events ?? []));
+        // Keep only what was asked for: if the endpoint ever ignored
+        // `event_ids`, other organizers' screenings would be filed as Lucero's.
+        const wanted = new Set(batch);
+        const returned = resp.events ?? [];
+        const ours = returned.filter((e) => e.id !== undefined && wanted.has(e.id));
+        if (ours.length < returned.length) {
+          warnings.push(
+            `destination API returned ${returned.length - ours.length} event(s) that were not requested — dropped`,
+          );
+        }
+        events.push(...ours);
       }
       if (events.length < ids.length) {
         // Not fatal (what did come back is still good), but a silent shortfall

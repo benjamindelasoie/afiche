@@ -470,10 +470,12 @@ describe('fetch (stubbed network, real future fixtures)', () => {
     vi.unstubAllGlobals();
   });
 
-  function stubNetwork(): string[] {
+  /** `ignoreIds`: the destination API answers with past events too, as if it ignored the filter. */
+  function stubNetwork({ ignoreIds = false } = {}): string[] {
     const calls: string[] = [];
     const orgEvents = readJson<OrgEventsResponse>('org-events.json');
     const destination = readJson<DestinationResponse>('destination-future.json');
+    const others = readJson<DestinationResponse>('destination-past.json').events!;
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: string | URL) => {
@@ -489,7 +491,8 @@ describe('fetch (stubbed network, real future fixtures)', () => {
         }
         if (url.includes('/api/v3/destination/events/')) {
           const ids = new Set(new URL(url).searchParams.get('event_ids')!.split(','));
-          return json({ events: destination.events!.filter((e) => ids.has(e.id!)) });
+          const asked = destination.events!.filter((e) => ids.has(e.id!));
+          return json({ events: ignoreIds ? [...asked, ...others] : asked });
         }
         // Everything else — notably the retired /org/<id>/showmore/ — is what
         // Eventbrite's CloudFront answers today.
@@ -521,6 +524,20 @@ describe('fetch (stubbed network, real future fixtures)', () => {
       ['CARRIE', '2026-10-23T02:00:00.000Z'],
       ['NANI: CICLO DE ANIMÉ × SAME Y AILÍN', '2026-10-29T03:00:00.000Z'],
       ['ESPECIAL HALLOWEN "LA VIRGEN DE LA TOSQUERA', '2026-10-31T23:00:00.000Z'],
+    ]);
+  });
+
+  // Value: protects=only requested event ids become Lucero screenings;
+  // fails_when=the id filter is dropped (an unfiltered feed files other
+  // events as Lucero's); why_new=the stub always honoured event_ids; seam=none;
+  // no_claim=how Eventbrite would actually misbehave.
+  it('drops events the destination API returned without being asked', async () => {
+    vi.useFakeTimers({ now: CAPTURED, toFake: ['Date'] });
+    stubNetwork({ ignoreIds: true });
+    const result = await cineclubLuceroProvider.fetch();
+    expect(result.screenings).toHaveLength(4);
+    expect(result.warnings).toEqual([
+      'destination API returned 50 event(s) that were not requested — dropped',
     ]);
   });
 

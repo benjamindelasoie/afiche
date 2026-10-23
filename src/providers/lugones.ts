@@ -133,7 +133,12 @@ export const lugonesProvider: Provider = {
         };
       }
 
-      return { cinemaId: CINEMA_ID, screenings, success: true, warnings };
+      // Ingest only ever replaces FUTURE rows, and its circuit breaker only
+      // trips on an empty fetch: a fetch of past-only dates (a stale card)
+      // would wipe the live schedule without tripping it. Send future only.
+      const now = new Date();
+      const upcoming = screenings.filter((s) => s.startsAtUtc > now);
+      return { cinemaId: CINEMA_ID, screenings: upcoming, success: true, warnings };
     } catch (err) {
       return {
         cinemaId: CINEMA_ID,

@@ -56,6 +56,7 @@ interface ApiFilm {
 }
 
 interface ApiFuncion {
+  _id?: string; // unique per showtime; never repeats across days
   codPelicula?: string;
   hora?: string; // "HH:MM", BA-local
   idUltracine?: string;
@@ -86,9 +87,25 @@ export const cineGaumontProvider: Provider = {
     let filmCount = 0;
     let daysOk = 0;
 
+    // Showtimes carry no date of their own; each is stamped with the date we
+    // asked for. If the API ever ignored `fecha`, every day would come back
+    // with the same showtimes, so two days with the same ids fail the run.
+    const daysByShowtimes = new Map<string, string>();
+    let repeatedDays: [string, string] | undefined;
+
     for (const date of baDateWindow(new Date(), WINDOW_DAYS)) {
       try {
         const day = await fetchJson<DayResponse>(dayUrl(date));
+        const ids = (day?.data?.funciones ?? [])
+          .map((fn) => fn?._id)
+          .filter((id): id is string => !!id)
+          .sort()
+          .join(',');
+        if (ids) {
+          const seen = daysByShowtimes.get(ids);
+          if (seen && !repeatedDays) repeatedDays = [seen, date];
+          daysByShowtimes.set(ids, date);
+        }
         const parsed = parseDay(day, date);
         screenings.push(...parsed.screenings);
         warnings.push(...parsed.warnings);
@@ -111,6 +128,11 @@ export const cineGaumontProvider: Provider = {
       error,
     });
     if (daysOk === 0) return fail('Every day request to the Cinexo API failed.');
+    if (repeatedDays) {
+      return fail(
+        `Cinexo API returned the same showtimes for ${repeatedDays[0]} and ${repeatedDays[1]} — the date parameter may be ignored.`,
+      );
+    }
     if (filmCount === 0) {
       return fail(
         'Cinexo API returned no films for any day — API shape may have changed.',

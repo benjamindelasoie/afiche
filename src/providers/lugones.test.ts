@@ -743,6 +743,26 @@ describe('lugonesProvider.fetch — run verdicts', () => {
     ]);
   });
 
+  // Value: protects=a past-only fetch is sent as empty so the ingest breaker
+  // keeps the live schedule; fails_when=the future filter is dropped (past
+  // rows make the fetch non-empty and the breaker never trips); why_new=no
+  // fetch test ran after a program's dates; seam=none; no_claim=none beyond protects.
+  it('sends no screenings once every listed date is past', async () => {
+    vi.useFakeTimers({ now: new Date('2026-11-20T12:00:00Z'), toFake: ['Date'] });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL) =>
+        String(input) === 'https://complejoteatral.gob.ar/'
+          ? new Response(card('cine', LUGONES, 'wenders'))
+          : new Response(fixture('wenders.html')),
+      ),
+    );
+    const result = await lugonesProvider.fetch();
+    vi.useRealTimers();
+    expect(result.success).toBe(true);
+    expect(result.screenings).toEqual([]);
+  });
+
   it('fails (without throwing) when the homepage itself errors', async () => {
     vi.stubGlobal(
       'fetch',
