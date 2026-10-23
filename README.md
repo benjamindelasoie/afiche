@@ -43,7 +43,7 @@ afiche pulls the weekly programming of Buenos Aires' independent and repertory c
 | Centro Cultural Borges | San Nicolás | indie / cultural center | centroculturalborges.gob.ar |
 | Cineclub Lucero | Palermo | indie / cineclub | eventbrite.com (organizer feed) |
 | Cinta | Palermo | indie / open-air terrace | passline.com (producer page) |
-| El Cairo Cine Público | Rosario | indie / public cinema (Santa Fe province) | elcairocinepublico.gob.ar (The Events Calendar REST API) |
+| El Cairo | Rosario | indie / public cinema (Santa Fe province) | elcairocinepublico.gob.ar (The Events Calendar REST API) |
 
 ## Architecture
 

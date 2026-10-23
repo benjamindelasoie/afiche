@@ -130,7 +130,7 @@ const CINEMAS: CinemaInsert[] = [
   },
   {
     id: 'el-cairo',
-    name: 'El Cairo Cine Público',
+    name: 'El Cairo',
     // The first venue outside Buenos Aires: the Santa Fe province's public
     // cinema, in Rosario's centro. Address verbatim from the site footer
     // ("Santa Fe 1120 - Rosario"); the city goes in `neighborhood` until the
