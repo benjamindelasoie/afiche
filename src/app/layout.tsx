@@ -83,6 +83,14 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} h-full antialiased`}
       data-scroll-behavior="smooth"
     >
+      <head>
+        {/* Posters and backdrops load straight from TMDB's CDN (see
+            src/lib/tmdb-image-loader.ts), a third-party origin. Opening the
+            connection during HTML parse keeps it off the LCP image's path.
+            A literal <link>: ReactDOM.preconnect() from this Server Component
+            only reached the RSC payload, never the SSR'd <head>. */}
+        <link rel="preconnect" href="https://image.tmdb.org" />
+      </head>
       <body className="bg-cream text-ink flex min-h-full flex-col">
         {children}
         {/* Vercel Web Analytics — cookieless pageview + referrer tracking.
