@@ -1,45 +1,52 @@
 /**
  * Tests for the Cineclub Lucero provider.
  *
- * Fixtures: test/fixtures/cineclub-lucero/*.json — captured 2026-08-02 from
- * the Eventbrite organizer endpoint that backs Club Lucero's listing page:
- *   - showmore-past.json    GET /org/34315560147/showmore/?type=past&page=1
- *   - showmore-future.json  GET /org/34315560147/showmore/?type=future&page=1
+ * Fixtures: test/fixtures/cineclub-lucero/*.json — captured 2026-10-22 from
+ * the two Eventbrite endpoints the provider reads:
+ *   - org-events.json          GET /organizer-profile/api/organizers/34315560147/events/?page=1&pageSize=50
+ *   - destination-future.json  GET /api/v3/destination/events/?event_ids=<the 23 ids above>&page_size=50
+ *   - destination-past.json    same endpoint, for the 50 ids of the organizer's
+ *                              past-events listing (2026-09-02 .. 2026-10-21)
  *
- * The PAST fixture is the interesting one: it's a real month of programming,
- * so it exercises the format filter, the non-feature exclusions and every
- * title shape the operator actually types. Tests pin `now` before those dates
- * so the same rows read as upcoming.
+ * The PAST fixture is the interesting one for the filter: a real seven weeks
+ * of programming, so it exercises the format filter, the non-feature
+ * exclusions and the title shapes the operator actually types. Tests pin
+ * `now` before those dates so the same rows read as upcoming.
  *
- * The FUTURE fixture is deliberately kept even though it contains no films —
- * it pins the real-world case where only DJ nights are published yet, which
- * must parse to zero screenings WITHOUT looking like a failure.
+ * The FUTURE pair drives the whole fetch() path through a stubbed `fetch`,
+ * including a festival of shorts blocks that are filed as Screenings.
  *
  * When Eventbrite changes the payload shape these tests fail and we refresh.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
+  cineclubLuceroProvider,
   parseEvents,
   parseEventTitle,
   nonFeatureReason,
+  formatId,
   toUtc,
   baLocalToUtc,
-  type ShowmoreResponse,
+  type DestinationResponse,
+  type OrgEventsResponse,
   type ApiEvent,
 } from './cineclub-lucero';
 
-function fixture(name: string): ApiEvent[] {
-  const json = JSON.parse(
+function readJson<T>(name: string): T {
+  return JSON.parse(
     readFileSync(resolve(__dirname, '../../test/fixtures/cineclub-lucero', name), 'utf8'),
-  ) as ShowmoreResponse;
-  return json.data?.events ?? [];
+  ) as T;
+}
+
+function fixture(name: string): ApiEvent[] {
+  return readJson<DestinationResponse>(name).events ?? [];
 }
 
 /** Before every screening in the past fixture, so they all read as upcoming. */
-const BEFORE_ALL = new Date(Date.UTC(2026, 5, 1)); // 2026-06-01
+const BEFORE_ALL = new Date(Date.UTC(2026, 8, 1)); // 2026-09-01
 
 describe('parseEventTitle', () => {
   it('uses the quoted span as the title when nothing else is left', () => {
@@ -156,6 +163,25 @@ describe('parseEventTitle', () => {
     });
   });
 
+  it('splits the "Dir. Name · País · Año" credit into director and year', () => {
+    expect(parseEventTitle('MISERY Dir. Rob Reiner · Estados Unidos · 1990')).toEqual({
+      filmTitle: 'MISERY',
+      director: 'Rob Reiner',
+      year: 1990,
+    });
+    expect(
+      parseEventTitle('THE HUNGER / EL ANSIA Dir. Tony Scott · 1983 · 97 min'),
+    ).toEqual({
+      filmTitle: 'THE HUNGER / EL ANSIA',
+      director: 'Tony Scott',
+      year: 1983,
+    });
+    expect(parseEventTitle('PET SEMATARY Dir. Mary Lambert · Estados Unidos ·')).toEqual({
+      filmTitle: 'PET SEMATARY',
+      director: 'Mary Lambert',
+    });
+  });
+
   it('treats lowercase "de" as a credit but uppercase "DE" as title text', () => {
     // This one distinction is what keeps PERROS DE LA CALLE intact.
     expect(parseEventTitle('PI de Darren Aronofsky (1998)')).toEqual({
@@ -234,6 +260,9 @@ describe('nonFeatureReason', () => {
     expect(nonFeatureReason('FLEABAG TEMPORADA 1- CAPITULOS 1 AL 3')).toBe(
       'theatre monologue + TV pilot',
     );
+    expect(nonFeatureReason('FESTIVAL BITBANG! CORTOS INTERNACIONALES IV')).toBe(
+      'shorts programme',
+    );
   });
 
   it('leaves features alone', () => {
@@ -241,6 +270,8 @@ describe('nonFeatureReason', () => {
     expect(nonFeatureReason('AKIRA (Katsuhiro Otomo, 1988)')).toBeUndefined();
     // "VHS ANIMÉ" is a cycle name, not a TV marker — must not be excluded.
     expect(nonFeatureReason('VHS ANIMÉ PRESENTA: SAILOR MOON')).toBeUndefined();
+    // Singular CORTO is a title word; only the plural marks a shorts block.
+    expect(nonFeatureReason('CORTO MALTÉS: LA PELÍCULA')).toBeUndefined();
   });
 });
 
@@ -261,7 +292,8 @@ describe('nonFeatureReason', () => {
  * `films.scraped_title` rather than letting a duplicate row appear.
  *
  * Fixture: test/fixtures/cineclub-lucero/title-corpus.json — 82 distinct
- * titles captured 2026-08-04 from the full `type=past` history.
+ * titles captured 2026-08-04 from the full `type=past` history, plus 12 in the
+ * "Dir. X · País · Año" credit form (2026-09/10 destination fixtures).
  */
 describe('parseEventTitle — golden corpus', () => {
   const { entries } = JSON.parse(
@@ -278,7 +310,7 @@ describe('parseEventTitle — golden corpus', () => {
   };
 
   it('covers the whole published history', () => {
-    expect(entries.length).toBe(82);
+    expect(entries.length).toBe(94);
     expect(new Set(entries.map((e) => e.raw)).size).toBe(entries.length);
   });
 
@@ -314,46 +346,57 @@ describe('parseEventTitle — golden corpus', () => {
 });
 
 describe('toUtc', () => {
-  it('prefers the UTC instant Eventbrite already provides', () => {
-    expect(
-      toUtc({ utc: '2026-07-31T00:00:00Z', local: '2026-07-30T21:00:00' })?.toISOString(),
-    ).toBe('2026-07-31T00:00:00.000Z');
-  });
-
-  it('falls back to shifting the BA wall-clock by +3h', () => {
-    expect(toUtc({ local: '2026-07-30T21:00:00' })?.toISOString()).toBe(
-      '2026-07-31T00:00:00.000Z',
+  it('shifts the BA wall-clock by +3h', () => {
+    expect(toUtc({ start_date: '2026-10-22', start_time: '21:00' })?.toISOString()).toBe(
+      '2026-10-23T00:00:00.000Z',
     );
     expect(baLocalToUtc('2026-07-30T19:00:00')?.toISOString()).toBe(
       '2026-07-30T22:00:00.000Z',
     );
+    expect(toUtc({ start_date: '2026-10-22' })).toBeNull();
     expect(baLocalToUtc(undefined)).toBeNull();
     expect(baLocalToUtc('nope')).toBeNull();
   });
 });
 
-describe('parseEvents (real fixture)', () => {
-  const events = fixture('showmore-past.json');
+describe('formatId', () => {
+  it('reads the EventbriteFormat tag', () => {
+    const [misery] = fixture('destination-future.json').filter((e) =>
+      e.name?.startsWith('MISERY'),
+    );
+    expect(formatId(misery)).toBe('7');
+    expect(
+      formatId({ tags: [{ prefix: 'EventbriteFormat', tag: 'EventbriteFormat/6' }] }),
+    ).toBe('6');
+    expect(formatId({ tags: [] })).toBeUndefined();
+    expect(formatId({})).toBeUndefined();
+  });
+});
+
+describe('parseEvents (real past fixture)', () => {
+  const events = fixture('destination-past.json');
   const screenings = parseEvents(events, BEFORE_ALL);
 
-  it('keeps only feature screenings out of a real month of programming', () => {
-    // 30 events in, 12 features out: DJ nights and the impro course are
-    // dropped by format_id, FLEABAG and SESIONES by the non-feature filter.
-    expect(events.length).toBe(30);
-    expect(screenings).toHaveLength(12);
+  it('keeps only feature screenings out of a real stretch of programming', () => {
+    // 50 events in, 33 out: 14 DJ nights (formats 6 and 11) and the impro
+    // course (format 9) are dropped by format, FLEABAG and SESIONES by the
+    // non-feature filter.
+    expect(events.length).toBe(50);
+    expect(screenings).toHaveLength(33);
 
     const titles = screenings.map((s) => s.filmTitle);
-    expect(titles).toContain('JEANNE DIELMAN, 23 QUAI DU COMMERCE, 1080 BRUXELLES');
-    expect(titles).toContain('SOLARIS');
+    expect(titles).toContain('ONIBABA');
+    expect(titles).toContain('DIRTY DANCING');
     expect(titles.some((t) => /FLEABAG/i.test(t))).toBe(false);
     expect(titles.some((t) => /SESIONES/i.test(t))).toBe(false);
     expect(titles.some((t) => /^DJ /i.test(t))).toBe(false);
+    expect(titles.some((t) => /IMPRO/i.test(t))).toBe(false);
   });
 
   it('emits UTC instants matching the BA wall-clock', () => {
-    const jeanne = screenings.find((s) => s.filmTitle.startsWith('JEANNE DIELMAN'));
-    // Eventbrite local 2026-07-30 21:00 in Buenos Aires (UTC-3).
-    expect(jeanne?.startsAtUtc.toISOString()).toBe('2026-07-31T00:00:00.000Z');
+    const dirty = screenings.find((s) => s.filmTitle === 'DIRTY DANCING');
+    // Eventbrite local 2026-09-09 23:00 in Buenos Aires (UTC-3).
+    expect(dirty?.startsAtUtc.toISOString()).toBe('2026-09-10T02:00:00.000Z');
 
     for (const s of screenings) {
       expect(s.startsAtUtc.getTime()).toBeGreaterThan(BEFORE_ALL.getTime());
@@ -376,18 +419,197 @@ describe('parseEvents (real fixture)', () => {
 
   it('drops events that already started', () => {
     // Same fixture, clock moved past most of it.
-    const late = parseEvents(events, new Date(Date.UTC(2026, 6, 20)));
+    const late = parseEvents(events, new Date(Date.UTC(2026, 9, 10)));
     expect(late.length).toBeLessThan(screenings.length);
     for (const s of late) {
-      expect(s.startsAtUtc.getTime()).toBeGreaterThan(Date.UTC(2026, 6, 20));
+      expect(s.startsAtUtc.getTime()).toBeGreaterThan(Date.UTC(2026, 9, 10));
     }
+  });
+
+  it('skips an event outside Argentina rather than mis-timing it', () => {
+    const [onibaba] = events.filter((e) => e.name?.startsWith('ONIBABA'));
+    const warnings: string[] = [];
+    const out = parseEvents(
+      [{ ...onibaba, timezone: 'Europe/Madrid' }],
+      BEFORE_ALL,
+      warnings,
+    );
+    expect(out).toEqual([]);
+    expect(warnings[0]).toMatch(/unexpected timezone Europe\/Madrid/);
+  });
+
+  it('publishes only an https Eventbrite event URL, else the organizer page', () => {
+    const [onibaba] = events.filter((e) => e.name?.startsWith('ONIBABA'));
+    const [ok] = parseEvents([onibaba], BEFORE_ALL);
+    expect(new URL(ok.sourceUrl!).hostname).toMatch(/eventbrite\.com/);
+    for (const url of [
+      'javascript:alert(1)',
+      'https://elsewhere.example/e/1',
+      'http://www.eventbrite.com/e/1',
+    ]) {
+      const [s] = parseEvents([{ ...onibaba, url }], BEFORE_ALL);
+      expect(s.sourceUrl).toBe('https://www.eventbrite.com/o/club-lucero-34315560147');
+    }
+  });
+
+  it('reads an event with no timezone as BA wall-clock', () => {
+    const [onibaba] = events.filter((e) => e.name?.startsWith('ONIBABA'));
+    const withZone = parseEvents([onibaba], BEFORE_ALL);
+    const out = parseEvents([{ ...onibaba, timezone: undefined }], BEFORE_ALL);
+    expect(out).toHaveLength(1);
+    expect(out[0].startsAtUtc).toEqual(withZone[0].startsAtUtc);
   });
 });
 
-describe('parseEvents (future fixture with no films published yet)', () => {
-  it('returns zero screenings without treating it as an error', () => {
-    const events = fixture('showmore-future.json');
-    expect(events.length).toBeGreaterThan(0); // DJ nights, impro course
-    expect(parseEvents(events, BEFORE_ALL)).toEqual([]);
+describe('fetch (stubbed network, real future fixtures)', () => {
+  /** Live capture time: 2026-10-22 20:45 BA, after PET SEMATARY's 19:00 start. */
+  const CAPTURED = new Date('2026-10-22T23:45:00Z');
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  /** `ignoreIds`: the destination API answers with past events too, as if it ignored the filter. */
+  function stubNetwork({ ignoreIds = false } = {}): string[] {
+    const calls: string[] = [];
+    const orgEvents = readJson<OrgEventsResponse>('org-events.json');
+    const destination = readJson<DestinationResponse>('destination-future.json');
+    const others = readJson<DestinationResponse>('destination-past.json').events!;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL) => {
+        const url = String(input);
+        calls.push(url);
+        const json = (body: unknown) =>
+          new Response(JSON.stringify(body), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        if (url.includes('/organizer-profile/api/organizers/34315560147/events/')) {
+          return json(orgEvents);
+        }
+        if (url.includes('/api/v3/destination/events/')) {
+          const ids = new Set(new URL(url).searchParams.get('event_ids')!.split(','));
+          const asked = destination.events!.filter((e) => ids.has(e.id!));
+          return json({ events: ignoreIds ? [...asked, ...others] : asked });
+        }
+        // Everything else — notably the retired /org/<id>/showmore/ — is what
+        // Eventbrite's CloudFront answers today.
+        return new Response('<H1>403 ERROR</H1>', { status: 403 });
+      }),
+    );
+    return calls;
+  }
+
+  it('lists the organizer, then asks the destination API for those ids', async () => {
+    vi.useFakeTimers({ now: CAPTURED, toFake: ['Date'] });
+    const calls = stubNetwork();
+
+    const result = await cineclubLuceroProvider.fetch();
+
+    expect(result.error).toBeUndefined();
+    expect(result.success).toBe(true);
+    expect(result.warnings).toEqual([]);
+    expect(calls).toHaveLength(2);
+    expect(calls[1]).toContain('event_ids=2003213221671,');
+
+    // 23 upcoming events: 4 DJ nights dropped by format, 15 BITBANG! shorts
+    // blocks by the non-feature filter, PET SEMATARY because it already
+    // started. Four features remain.
+    expect(
+      result.screenings.map((s) => [s.filmTitle, s.startsAtUtc.toISOString()]),
+    ).toEqual([
+      ['MISERY', '2026-10-23T00:00:00.000Z'],
+      ['CARRIE', '2026-10-23T02:00:00.000Z'],
+      ['NANI: CICLO DE ANIMÉ × SAME Y AILÍN', '2026-10-29T03:00:00.000Z'],
+      ['ESPECIAL HALLOWEN "LA VIRGEN DE LA TOSQUERA', '2026-10-31T23:00:00.000Z'],
+    ]);
+  });
+
+  // Value: protects=only requested event ids become Lucero screenings;
+  // fails_when=the id filter is dropped (an unfiltered feed files other
+  // events as Lucero's); why_new=the stub always honoured event_ids; seam=none;
+  // no_claim=how Eventbrite would actually misbehave.
+  it('drops events the destination API returned without being asked', async () => {
+    vi.useFakeTimers({ now: CAPTURED, toFake: ['Date'] });
+    stubNetwork({ ignoreIds: true });
+    const result = await cineclubLuceroProvider.fetch();
+    expect(result.screenings).toHaveLength(4);
+    expect(result.warnings).toEqual([
+      'destination API returned 50 event(s) that were not requested — dropped',
+    ]);
+  });
+
+  it('reports a quiet week (no films yet) as success with a warning', async () => {
+    vi.useFakeTimers({ now: CAPTURED, toFake: ['Date'] });
+    const onlyDjs = readJson<DestinationResponse>(
+      'destination-future.json',
+    ).events!.filter((e) => formatId(e) !== '7');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL) => {
+        const url = String(input);
+        const body = url.includes('/destination/')
+          ? { events: onlyDjs }
+          : readJson<OrgEventsResponse>('org-events.json');
+        return new Response(JSON.stringify(body), { status: 200 });
+      }),
+    );
+
+    const result = await cineclubLuceroProvider.fetch();
+    expect(result.success).toBe(true);
+    expect(result.screenings).toEqual([]);
+    expect(result.warnings.join('\n')).toMatch(/no feature screenings/);
+  });
+
+  // Generated by /ship test coverage audit.
+  // Value: protects=listing follows hasMore pages, drops cancelled ids, and warns on
+  // a destination shortfall; fails_when=is_cancelled is ignored, paging stops at page
+  // 1, or the shortfall goes silent; why_new=fixtures have one page, no cancellations;
+  // seam=none; no_claim=real Eventbrite paging semantics (fetch stubbed, fixture ids).
+  it('pages through hasMore, skips cancelled events and reports a shortfall', async () => {
+    vi.useFakeTimers({ now: CAPTURED, toFake: ['Date'] });
+    const destination = readJson<DestinationResponse>('destination-future.json');
+    const misery = destination.events!.find((e) => e.name?.startsWith('MISERY'))!;
+    const carrie = destination.events!.find((e) => e.name?.startsWith('CARRIE'))!;
+    const destinationCalls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL) => {
+        const url = new URL(String(input));
+        const body = (b: unknown) => new Response(JSON.stringify(b), { status: 200 });
+        if (url.pathname.includes('/organizer-profile/')) {
+          const page = url.searchParams.get('page');
+          if (page === '1') {
+            return body({
+              events: [{ id: misery.id }, { id: 'cancelled-1', is_cancelled: true }],
+              hasMore: true,
+            });
+          }
+          return body({ events: [{ id: carrie.id }, { id: 'gone-1' }], hasMore: false });
+        }
+        destinationCalls.push(url.searchParams.get('event_ids')!);
+        // 'gone-1' never comes back from the destination API.
+        return body({ events: [misery, carrie] });
+      }),
+    );
+
+    const result = await cineclubLuceroProvider.fetch();
+
+    expect(result.success).toBe(true);
+    expect(destinationCalls).toEqual([`${misery.id},${carrie.id},gone-1`]);
+    expect(result.screenings.map((s) => s.filmTitle)).toEqual(['MISERY', 'CARRIE']);
+    expect(result.warnings).toEqual(['destination API returned 2 of 3 listed events']);
+  });
+
+  it('fails loudly when the organizer lists nothing at all', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ events: [], hasMore: false }))),
+    );
+    const result = await cineclubLuceroProvider.fetch();
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/no events at all/);
   });
 });

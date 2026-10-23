@@ -9,10 +9,12 @@
  * separates them in the UI.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
+  fetchAndParse,
+  explainEmptyVenue,
   parseAgenda,
   parseEventDetail,
   enrichFromDetailPages,
@@ -383,5 +385,84 @@ describe('enrichFromDetailPages — dedup, merge, resilience', () => {
     await enrichFromDetailPages(screenings, [], fetcher);
 
     expect(screenings[0].synopsisEs).toBe('Agenda-provided synopsis (verbatim).');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Empty venue — quiet week vs broken scraper
+// ---------------------------------------------------------------------------
+
+describe('fetchAndParse — a venue whose only tiles are activities', () => {
+  // agenda-only-activity.html — captured 2026-10-22. Lumiton's own space has
+  // exactly one tile, "UNA VELADA CON NARCISO IBÁÑEZ MENTA": a talk with
+  // clips by two film historians (no `tipo-proyecciones`), while Cine York,
+  // Munro and Torre Ader carry 29 real screenings between them.
+  const onlyActivity = readFileSync(
+    resolve(__dirname, '../../test/fixtures/lumiton/agenda-only-activity.html'),
+    'utf8',
+  );
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  function stubAgenda(body: string) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(body, { status: 200 })),
+    );
+  }
+
+  it('succeeds with zero screenings and says why, instead of reporting a broken selector', async () => {
+    stubAgenda(onlyActivity);
+    const result = await fetchAndParse(VENUES.lumiton);
+    expect(result.success).toBe(true);
+    expect(result.error).toBeUndefined();
+    expect(result.screenings).toEqual([]);
+    expect(result.warnings).toContain(
+      'lumiton: skipped non-screening "UNA VELADA CON NARCISO IBÁÑEZ MENTA"',
+    );
+    expect(result.warnings.some((w) => w.includes('all non-screening activities'))).toBe(
+      true,
+    );
+  });
+
+  it('still fails when the venue slug no longer appears on the agenda', () => {
+    const verdict = explainEmptyVenue(onlyActivity, {
+      ...VENUES.lumiton,
+      locationSlug: 'this-slug-does-not-exist',
+    });
+    expect(verdict.ok).toBe(false);
+  });
+
+  it('still fails when no venue on the agenda yields a screening', async () => {
+    // Same page with the screening class renamed sitewide: every tile now
+    // reads as an activity, which is a breakage, not a quiet week.
+    stubAgenda(onlyActivity.replaceAll('tipo-proyecciones', 'tipo-renamed'));
+    const result = await fetchAndParse(VENUES.lumiton);
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/selector likely broke/);
+  });
+
+  // Value: protects=a venue whose own screening tiles all failed to parse is
+  // reported broken, not quiet; fails_when=the own-tile check is dropped and
+  // explainEmptyVenue only looks at the slug and other venues; why_new=the
+  // tests above only cover the slug and the sitewide class; seam=none;
+  // no_claim=which tile-level parse failure caused it.
+  it('fails when the venue itself has screening tiles (they were rejected, not absent)', async () => {
+    // Mark Lumiton's one tile as a screening but give it a broken date, so
+    // parseAgenda rejects it: that is a parse failure, not a quiet week.
+    const broken = onlyActivity.replace(
+      /post-33890 (evento[^"]*)"(\s+data-event\s+)data-date="[^"]*"/,
+      'post-33890 $1 tipo-proyecciones"$2data-date="not-a-date"',
+    );
+    expect(broken).not.toBe(onlyActivity);
+    stubAgenda(broken);
+    const result = await fetchAndParse(VENUES.lumiton);
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/screening tile\(s\) on the agenda but none parsed/);
+  });
+
+  it('leaves the other venues on the same page untouched', () => {
+    expect(parseAgenda(onlyActivity, VENUES.cineYork, [])).toHaveLength(24);
+    expect(parseAgenda(onlyActivity, VENUES.munro, [])).toHaveLength(4);
   });
 });

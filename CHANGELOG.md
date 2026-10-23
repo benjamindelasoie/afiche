@@ -2,6 +2,26 @@
 
 All notable changes to Afiche are documented here.
 
+## [1.2.2.0] - 2026-10-23
+
+**Four salas are back in the cartelera.** Three venue sites changed under us in the past weeks and a fourth was misread as broken, so Sala Lugones (since Oct 6), Cine Gaumont (since Sep 30) and Cineclub Lucero had quietly stopped updating. Each scraper now reads the venue's new source, and each one fails loudly, instead of looking healthy, when that source changes again.
+
+### Fixed
+
+- **Sala Leopoldo Lugones.** The Complejo Teatral redesigned its site and removed the sala's page. The schedule now comes from the homepage's production cards, keeping only cine at Sala Lugones (checked against each production page's own "Dónde:" line), and reads both the old and the new cycle layouts.
+  - **Dates land in the right year.** A cycle open since October stays this year in December, a December card for a March season is next year's, and an old card left on the homepage is dropped instead of being dated a year out. If a page's weekday disagrees with the year, the run says so.
+  - **A run is never wiped by a stale card or a blocked page.** Past dates are not sent, a page that redirects off the venue's site is refused, and when every detail page fails the run fails and the last good schedule stays up.
+- **Cine Gaumont.** The cinema moved to a new ticketing platform; its schedule now comes from that platform's day-by-day feed. Titles and directors that arrive in capitals are written the way the page shows them ("Lo dejamos aca", "Hernan Goldfrind"). A week of listed films with no showtimes, or two days answered with the same showtimes, fails the run rather than publishing a wrong week.
+- **Cineclub Lucero.** Eventbrite retired the listing it used. It now reads the organizer's events and keeps only Lucero's own screenings. The new credit style "Dir. Rob Reiner · Estados Unidos · 1990" now yields the director and year, so films like *Misery* and *Carrie* match their TMDB page again.
+- **Lumiton.** A week where Lumiton's only event is a talk is reported as a quiet week, not a broken scraper. A venue whose own film tiles fail to parse is reported as broken, with a reason that points at the tiles.
+- **The site refreshes after a partial scrape.** When one venue failed, the scheduled scrape stopped before refreshing afiche.ar, so the venues that did update stayed hidden behind the cache. It now always refreshes, and still reports the failure.
+- **A crashed scrape can no longer mark the data as fresh.** The freshness stamp now reads only the current run's result.
+
+### Changed
+
+- **El Cairo is listed as "El Cairo".**
+||||||| e51269f
+
 ## [1.2.1.0] - 2026-10-22
 
 **Posters and backdrops now come straight from TMDB, so a traffic spike can no longer switch the site's images off.** Every image used to go through Vercel's optimizer, which the Hobby plan caps at 5,000 transformations a month — and Vercel counts one per image × width it has not cached yet. With fifteen widths offered per poster, a single crawl that fetched every candidate burned ~1,800 in one day (Oct 1), and the month reached 4,329. TMDB already serves each image pre-resized, so the optimizer was re-encoding files that did not need it.

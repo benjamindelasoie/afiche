@@ -4,6 +4,73 @@ Captured work that was considered but deferred. Each item has enough context tha
 
 ---
 
+## 42. Scraper hardening left over from the v1.2.1.0 review (found 2026-10-23, /ship on fix/provider-site-changes)
+
+**What:** small, independent items the review found and deliberately did not
+fix in the provider-repair release (it hit its review-cycle cap):
+
+- **Gaumont `trasnoche`.** `src/providers/cine-gaumont.ts` ignores the Cinexo
+  `trasnoche` flag; a post-midnight show listed under the previous cinema day
+  would be dated 24h early. No such shows existed at capture.
+- **Lugones date wording.** `parseDateRange` still returns null for dd/mm
+  ranges ("Desde el 17/10 hasta el 1°/11", seen on the Oxitocina page), day
+  lists ("Jueves 5, viernes 6 y sábado 7 de noviembre"), and "Del 1 de
+  octubre al 30" (no end month); the card-date fallback covers them today. An
+  explicit year ("de 2025") skips the stale-card check. `checkWeekdayYear`
+  (warn-only) reads the first weekday line even when it is a title heading
+  ("Viernes 13") or a multi-day line whose month belongs to the last day.
+- **Lugones tests.** No test for a December→January first header in
+  `checkWeekdayYear`, a weekday that fits no year, an open-ended start just
+  past `OPEN_AGE_MS`, or a homepage that redirects off-site.
+- **Redirect hop.** Lugones refuses off-site redirect *content*, but
+  `fetch` has already followed the hop; `redirect: 'manual'` plus a
+  same-host check would stop the request itself.
+- **Scrape scripts.** `scripts/scrape-prod.sh`'s revalidate `curl` has no
+  `--max-time`, and a revalidate failure exits 1 instead of the scrape's own
+  code. `scripts/scrape-cron.sh` matches `Done. N/M providers ok.` anywhere in
+  the run's log slice; anchoring it (`^Done\.`), or having `run.ts` write the
+  count to its own file, would stop scraped text or a concurrent manual run
+  from stamping freshness.
+- **Simplification.** `parseCycle` and `parseSingleFilm` repeat the
+  month/year rollover walk, and `matchDayHeader` repeats `matchShowtimeLine`'s
+  day regex; one shared helper would remove ~11 lines.
+
+**Why it matters:** each is a way a schedule could be misdated or a failure
+could look healthy, but none is triggered by today's live data.
+
+**Effort:** M in total; every bullet is an S on its own. **Priority:** P2.
+
+---
+
+## 41. Ingest can't tell a confirmed-empty week from a partial or broken one (found 2026-10-23, /ship on fix/provider-site-changes)
+
+**What:** `replaceFutureScreenings` (`src/scrapers/ingest/screenings.ts`)
+deletes a cinema's future screenings and inserts the scraped set, with a
+circuit breaker that only trips on an empty fetch. Two consequences:
+
+- **Partial success deletes the missing slice.** When one Gaumont day, one
+  Lugones program or part of the Lucero destination response fails, the
+  provider reports success with warnings, and ingest deletes the screenings
+  for the slice it didn't fetch until the next run.
+- **A confirmed-empty week can't clear stale rows.** Lumiton's quiet-week
+  verdict returns success with no screenings; the breaker then keeps the old
+  rows and logs "scraper likely broke", contradicting the provider.
+
+**Why it matters:** both are silent and both surface as wrong listings, not
+errors.
+
+**Context:** fix shape: let a provider report the scope it fetched (dates or
+programs) so ingest only replaces inside it, and a `confirmedEmpty` flag the
+breaker honours. Add ingest-level tests for the cells the state-machine
+review listed: a failed run keeps rows, a partial run keeps the failed
+slice, a confirmed-empty run clears or keeps by design. There is still no
+shell test harness for `scrape-prod.sh` / `scrape-cron.sh`; their exit and
+stamp paths were checked by hand with stubbed `npx`/`curl`.
+
+**Effort:** M. **Priority:** P2.
+
+---
+
 ## 40. MCP `get_film` publishes a six-vote TMDB average bare (found 2026-09-09, /plan-eng-review on the aggregator-links branch)
 
 **What:** `src/mcp/format.ts:145` puts `films.vote_average` into the public

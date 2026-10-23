@@ -1,0 +1,2104 @@
+{
+  "events": [
+    {
+      "id": "2003213221671",
+      "eid": "2003213221671",
+      "eventbrite_event_id": "2003213221671",
+      "name": "PET SEMATARY Dir. Mary Lambert · Estados Unidos ·",
+      "url": "https://www.eventbrite.com.ar/e/pet-sematary-dir-mary-lambert-estados-unidos-tickets-2003213221671",
+      "start_date": "2026-10-22",
+      "start_time": "19:00:00",
+      "end_date": "2026-10-22",
+      "end_time": "19:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-22",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1195466650%2F571465989745%2F1%2Foriginal.20261009-173521?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=1c8bb7dd618d1d3423221c34833c4fa7",
+        "edge_color": "#444842",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1195466650%2F571465989745%2F1%2Foriginal.20261009-173521?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=72ec6bd027ab5b8de4e72118ea41d37d",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1195466650%2F571465989745%2F1%2Foriginal.20261009-173521?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=e7123c5c5b69a736dcc0f3302338a74e"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299782134",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299782134",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": true,
+        "is_free": true,
+        "has_available_tickets": false,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "sales_ended",
+        "message": "Sales Ended",
+        "message_code": "tickets_with_sales_ended",
+        "message_type": "default"
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": []
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003213451358",
+      "eid": "2003213451358",
+      "eventbrite_event_id": "2003213451358",
+      "name": "MISERY Dir. Rob Reiner · Estados Unidos · 1990",
+      "url": "https://www.eventbrite.com.ar/e/misery-dir-rob-reiner-estados-unidos-1990-tickets-2003213451358",
+      "start_date": "2026-10-22",
+      "start_time": "21:00:00",
+      "end_date": "2026-10-22",
+      "end_time": "21:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-22",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1195466954%2F571465989745%2F1%2Foriginal.20261009-173855?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=64a08acd40f7924c1b230644c6d7c3f7",
+        "edge_color": "#715d53",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1195466954%2F571465989745%2F1%2Foriginal.20261009-173855?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=b72483a38ab113d00de4ecb07fa966cd",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1195466954%2F571465989745%2F1%2Foriginal.20261009-173855?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=4c69fb1ec44121a8e41968ee18f8577d"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299782190",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299782190",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": false,
+        "is_free": true,
+        "has_available_tickets": true,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "on_sale",
+        "message": "",
+        "message_code": "",
+        "message_type": ""
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": []
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003213562691",
+      "eid": "2003213562691",
+      "eventbrite_event_id": "2003213562691",
+      "name": "CARRIE Dir. Brian De Palma · Estados Unidos · 1976",
+      "url": "https://www.eventbrite.com.ar/e/carrie-dir-brian-de-palma-estados-unidos-1976-tickets-2003213562691",
+      "start_date": "2026-10-22",
+      "start_time": "23:00:00",
+      "end_date": "2026-10-22",
+      "end_time": "23:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-22",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1195467281%2F571465989745%2F1%2Foriginal.20261009-174250?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=1b392c556ccea7e15525c510a11d1478",
+        "edge_color": "#2c2b51",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1195467281%2F571465989745%2F1%2Foriginal.20261009-174250?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=fff62fea3acf2178f916f86a1dac317c"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299782242",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299782242",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": false,
+        "is_free": true,
+        "has_available_tickets": true,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "on_sale",
+        "message": "",
+        "message_code": "",
+        "message_type": ""
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": []
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2002096543657",
+      "eid": "2002096543657",
+      "eventbrite_event_id": "2002096543657",
+      "name": "DJ IAN, en nuestros viernes de volate la peluca",
+      "url": "https://www.eventbrite.com.ar/e/dj-ian-en-nuestros-viernes-de-volate-la-peluca-tickets-2002096543657",
+      "start_date": "2026-10-23",
+      "start_time": "22:00:00",
+      "end_date": "2026-10-23",
+      "end_time": "22:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-23",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1194140109%2F571465989745%2F1%2Foriginal.20250429-215119?h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&rect=0%2C0%2C2160%2C1080&s=5ba615835bd60e2f445cb39827ad51af",
+        "edge_color": "#151417",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1194140109%2F571465989745%2F1%2Foriginal.20250429-215119?w=320&auto=format%2Ccompress&q=75&sharp=10&rect=0%2C0%2C2160%2C1080&s=688ec13dc3083abba8da08c3a266f519",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1194140109%2F571465989745%2F1%2Foriginal.20250429-215119?w=640&auto=format%2Ccompress&q=75&sharp=10&rect=0%2C0%2C2160%2C1080&s=642bf05ea1989267e83b9ba6b1100481"
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299543936",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299543936",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": false,
+        "is_free": true,
+        "has_available_tickets": true,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "on_sale",
+        "message": "",
+        "message_code": "",
+        "message_type": ""
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": []
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2002096996010",
+      "eid": "2002096996010",
+      "eventbrite_event_id": "2002096996010",
+      "name": "DJ LA MALIBU-NOCHES DE SABADUKI",
+      "url": "https://www.eventbrite.com.ar/e/dj-la-malibu-noches-de-sabaduki-tickets-2002096996010",
+      "start_date": "2026-10-24",
+      "start_time": "22:00:00",
+      "end_date": "2026-10-24",
+      "end_time": "22:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-24",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1194141238%2F571465989745%2F1%2Foriginal.20250429-180632?h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&rect=0%2C0%2C2160%2C1080&s=518ca2372ce0cdd87c7daa0cdf8c0d1a",
+        "edge_color": "#336154",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1194141238%2F571465989745%2F1%2Foriginal.20250429-180632?w=320&auto=format%2Ccompress&q=75&sharp=10&rect=0%2C0%2C2160%2C1080&s=f60cc18c51fa7832284178a237adf50e",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1194141238%2F571465989745%2F1%2Foriginal.20250429-180632?w=640&auto=format%2Ccompress&q=75&sharp=10&rect=0%2C0%2C2160%2C1080&s=78a75839bb24d9410329c73c365ec5e9"
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299544154",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299544154",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": false,
+        "is_free": true,
+        "has_available_tickets": true,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "on_sale",
+        "message": "",
+        "message_code": "",
+        "message_type": ""
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": [
+          "salesEndSoon"
+        ]
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003636820667",
+      "eid": "2003636820667",
+      "eventbrite_event_id": "2003636820667",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES I",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-i-tickets-2003636820667",
+      "start_date": "2026-10-28",
+      "start_time": "19:00:00",
+      "end_date": "2026-10-28",
+      "end_time": "19:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-28",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=c23685630a8ea68ead820725d445b61d",
+        "edge_color": "#73628c",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=9852cc2e5358ab60993621f97aa6a3ce",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=21f0e067d273a91c0b866be9f0c72aca"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299913598",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299913598",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": false,
+        "is_free": true,
+        "has_available_tickets": true,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "on_sale",
+        "message": "",
+        "message_code": "",
+        "message_type": ""
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": [
+          "salesEndSoon"
+        ]
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003637038318",
+      "eid": "2003637038318",
+      "eventbrite_event_id": "2003637038318",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES II",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-ii-tickets-2003637038318",
+      "start_date": "2026-10-28",
+      "start_time": "20:00:00",
+      "end_date": "2026-10-28",
+      "end_time": "20:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-28",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=c23685630a8ea68ead820725d445b61d",
+        "edge_color": "#73628c",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=9852cc2e5358ab60993621f97aa6a3ce",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=21f0e067d273a91c0b866be9f0c72aca"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299913641",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299913641",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": false,
+        "is_free": true,
+        "has_available_tickets": true,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "on_sale",
+        "message": "",
+        "message_code": "",
+        "message_type": ""
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": [
+          "salesEndSoon"
+        ]
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003637374323",
+      "eid": "2003637374323",
+      "eventbrite_event_id": "2003637374323",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES III",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-iii-tickets-2003637374323",
+      "start_date": "2026-10-28",
+      "start_time": "21:00:00",
+      "end_date": "2026-10-28",
+      "end_time": "21:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-28",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=c23685630a8ea68ead820725d445b61d",
+        "edge_color": "#73628c",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=9852cc2e5358ab60993621f97aa6a3ce",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=21f0e067d273a91c0b866be9f0c72aca"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299913723",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299913723",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": false,
+        "is_free": true,
+        "has_available_tickets": true,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "on_sale",
+        "message": "",
+        "message_code": "",
+        "message_type": ""
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": [
+          "salesEndSoon"
+        ]
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003637642124",
+      "eid": "2003637642124",
+      "eventbrite_event_id": "2003637642124",
+      "name": "FESTIVAL BITBANG! CORTOS VERTICALES",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-verticales-tickets-2003637642124",
+      "start_date": "2026-10-28",
+      "start_time": "22:15:00",
+      "end_date": "2026-10-28",
+      "end_time": "22:15:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-28",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=c23685630a8ea68ead820725d445b61d",
+        "edge_color": "#73628c",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=9852cc2e5358ab60993621f97aa6a3ce",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=21f0e067d273a91c0b866be9f0c72aca"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299913769",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299913769",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": false,
+        "is_free": true,
+        "has_available_tickets": true,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "on_sale",
+        "message": "",
+        "message_code": "",
+        "message_type": ""
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": [
+          "salesEndSoon"
+        ]
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003637714340",
+      "eid": "2003637714340",
+      "eventbrite_event_id": "2003637714340",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES IV",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-iv-tickets-2003637714340",
+      "start_date": "2026-10-28",
+      "start_time": "23:00:00",
+      "end_date": "2026-10-28",
+      "end_time": "23:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-28",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=c23685630a8ea68ead820725d445b61d",
+        "edge_color": "#73628c",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=9852cc2e5358ab60993621f97aa6a3ce",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=21f0e067d273a91c0b866be9f0c72aca"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299913830",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299913830",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": false,
+        "is_free": true,
+        "has_available_tickets": true,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "on_sale",
+        "message": "",
+        "message_code": "",
+        "message_type": ""
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": []
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003639128570",
+      "eid": "2003639128570",
+      "eventbrite_event_id": "2003639128570",
+      "name": "FESTIVAL BITBANG! CORTOS VERGONZOSOS",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-vergonzosos-tickets-2003639128570",
+      "start_date": "2026-10-28",
+      "start_time": "23:00:00",
+      "end_date": "2026-10-28",
+      "end_time": "23:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-28",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=c23685630a8ea68ead820725d445b61d",
+        "edge_color": "#73628c",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=9852cc2e5358ab60993621f97aa6a3ce",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=21f0e067d273a91c0b866be9f0c72aca"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299914368",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299914368",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": true,
+        "is_free": true,
+        "has_available_tickets": false,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "sold_out",
+        "message": "Sold Out",
+        "message_code": "tickets_sold_out",
+        "message_type": "default"
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": []
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003639043315",
+      "eid": "2003639043315",
+      "eventbrite_event_id": "2003639043315",
+      "name": "NANI: CICLO DE ANIMÉ × SAME Y AILÍN",
+      "url": "https://www.eventbrite.com.ar/e/nani-ciclo-de-anime-same-y-ailin-tickets-2003639043315",
+      "start_date": "2026-10-29",
+      "start_time": "00:00:00",
+      "end_date": "2026-10-29",
+      "end_time": "00:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-29",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=c23685630a8ea68ead820725d445b61d",
+        "edge_color": "#73628c",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=9852cc2e5358ab60993621f97aa6a3ce",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=21f0e067d273a91c0b866be9f0c72aca"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299914327",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299914327",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": false,
+        "is_free": true,
+        "has_available_tickets": true,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "on_sale",
+        "message": "",
+        "message_code": "",
+        "message_type": ""
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": []
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003637820658",
+      "eid": "2003637820658",
+      "eventbrite_event_id": "2003637820658",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES V",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-v-tickets-2003637820658",
+      "start_date": "2026-10-29",
+      "start_time": "19:00:00",
+      "end_date": "2026-10-29",
+      "end_time": "19:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-29",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=c23685630a8ea68ead820725d445b61d",
+        "edge_color": "#73628c",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=9852cc2e5358ab60993621f97aa6a3ce",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=21f0e067d273a91c0b866be9f0c72aca"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299913883",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299913883",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": true,
+        "is_free": true,
+        "has_available_tickets": false,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "sold_out",
+        "message": "Sold Out",
+        "message_code": "tickets_sold_out",
+        "message_type": "default"
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": []
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003637889865",
+      "eid": "2003637889865",
+      "eventbrite_event_id": "2003637889865",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES VI",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-vi-tickets-2003637889865",
+      "start_date": "2026-10-29",
+      "start_time": "20:00:00",
+      "end_date": "2026-10-29",
+      "end_time": "20:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-29",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=c23685630a8ea68ead820725d445b61d",
+        "edge_color": "#73628c",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=9852cc2e5358ab60993621f97aa6a3ce",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=21f0e067d273a91c0b866be9f0c72aca"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299913925",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299913925",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": true,
+        "is_free": true,
+        "has_available_tickets": false,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "sold_out",
+        "message": "Sold Out",
+        "message_code": "tickets_sold_out",
+        "message_type": "default"
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": []
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003637958069",
+      "eid": "2003637958069",
+      "eventbrite_event_id": "2003637958069",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES VII",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-vii-tickets-2003637958069",
+      "start_date": "2026-10-29",
+      "start_time": "21:00:00",
+      "end_date": "2026-10-29",
+      "end_time": "21:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-29",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=c23685630a8ea68ead820725d445b61d",
+        "edge_color": "#73628c",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=9852cc2e5358ab60993621f97aa6a3ce",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=21f0e067d273a91c0b866be9f0c72aca"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299913958",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299913958",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": true,
+        "is_free": true,
+        "has_available_tickets": false,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "sold_out",
+        "message": "Sold Out",
+        "message_code": "tickets_sold_out",
+        "message_type": "default"
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": []
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003638044327",
+      "eid": "2003638044327",
+      "eventbrite_event_id": "2003638044327",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES VIII",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-viii-tickets-2003638044327",
+      "start_date": "2026-10-29",
+      "start_time": "22:00:00",
+      "end_date": "2026-10-29",
+      "end_time": "22:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-29",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=c23685630a8ea68ead820725d445b61d",
+        "edge_color": "#73628c",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=9852cc2e5358ab60993621f97aa6a3ce",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=21f0e067d273a91c0b866be9f0c72aca"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299913991",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299913991",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": true,
+        "is_free": true,
+        "has_available_tickets": false,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "sold_out",
+        "message": "Sold Out",
+        "message_code": "tickets_sold_out",
+        "message_type": "default"
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": []
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003638206813",
+      "eid": "2003638206813",
+      "eventbrite_event_id": "2003638206813",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES IX",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-ix-tickets-2003638206813",
+      "start_date": "2026-10-29",
+      "start_time": "23:00:00",
+      "end_date": "2026-10-29",
+      "end_time": "23:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-29",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=c23685630a8ea68ead820725d445b61d",
+        "edge_color": "#73628c",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=9852cc2e5358ab60993621f97aa6a3ce",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=21f0e067d273a91c0b866be9f0c72aca"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299914083",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299914083",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": true,
+        "is_free": true,
+        "has_available_tickets": false,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "sold_out",
+        "message": "Sold Out",
+        "message_code": "tickets_sold_out",
+        "message_type": "default"
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": [
+          "new"
+        ]
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003638324164",
+      "eid": "2003638324164",
+      "eventbrite_event_id": "2003638324164",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES X",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-x-tickets-2003638324164",
+      "start_date": "2026-10-30",
+      "start_time": "19:00:00",
+      "end_date": "2026-10-30",
+      "end_time": "19:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-30",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=c23685630a8ea68ead820725d445b61d",
+        "edge_color": "#73628c",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=9852cc2e5358ab60993621f97aa6a3ce",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=21f0e067d273a91c0b866be9f0c72aca"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299914133",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299914133",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": true,
+        "is_free": true,
+        "has_available_tickets": false,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "sold_out",
+        "message": "Sold Out",
+        "message_code": "tickets_sold_out",
+        "message_type": "default"
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": [
+          "new"
+        ]
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003638665184",
+      "eid": "2003638665184",
+      "eventbrite_event_id": "2003638665184",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES XI",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-xi-tickets-2003638665184",
+      "start_date": "2026-10-30",
+      "start_time": "20:00:00",
+      "end_date": "2026-10-30",
+      "end_time": "20:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-30",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=c23685630a8ea68ead820725d445b61d",
+        "edge_color": "#73628c",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=9852cc2e5358ab60993621f97aa6a3ce",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=21f0e067d273a91c0b866be9f0c72aca"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299914214",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299914214",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": true,
+        "is_free": true,
+        "has_available_tickets": false,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "sold_out",
+        "message": "Sold Out",
+        "message_code": "tickets_sold_out",
+        "message_type": "default"
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": [
+          "new"
+        ]
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003638383341",
+      "eid": "2003638383341",
+      "eventbrite_event_id": "2003638383341",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES XII",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-xii-tickets-2003638383341",
+      "start_date": "2026-10-30",
+      "start_time": "21:00:00",
+      "end_date": "2026-10-30",
+      "end_time": "21:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-30",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=c23685630a8ea68ead820725d445b61d",
+        "edge_color": "#73628c",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=9852cc2e5358ab60993621f97aa6a3ce",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1196144697%2F571465989745%2F1%2Foriginal.20261019-232158?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=21f0e067d273a91c0b866be9f0c72aca"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299914166",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299914166",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": true,
+        "is_free": true,
+        "has_available_tickets": false,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "sold_out",
+        "message": "Sold Out",
+        "message_code": "tickets_sold_out",
+        "message_type": "default"
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": [
+          "new"
+        ]
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2002096575753",
+      "eid": "2002096575753",
+      "eventbrite_event_id": "2002096575753",
+      "name": "DJ IAN, en nuestros viernes de volate la peluca",
+      "url": "https://www.eventbrite.com.ar/e/dj-ian-en-nuestros-viernes-de-volate-la-peluca-tickets-2002096575753",
+      "start_date": "2026-10-30",
+      "start_time": "22:00:00",
+      "end_date": "2026-10-30",
+      "end_time": "22:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-30",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1194140237%2F571465989745%2F1%2Foriginal.20250429-215119?h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&rect=0%2C0%2C2160%2C1080&s=c1d4984426c564ac5351ff4ea4734d7e",
+        "edge_color": "#151417",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1194140237%2F571465989745%2F1%2Foriginal.20250429-215119?w=320&auto=format%2Ccompress&q=75&sharp=10&rect=0%2C0%2C2160%2C1080&s=d047daecf68c570aa0014890d24596c8",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1194140237%2F571465989745%2F1%2Foriginal.20250429-215119?w=640&auto=format%2Ccompress&q=75&sharp=10&rect=0%2C0%2C2160%2C1080&s=ea1cb3411d34590dd118662851f33fd2"
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299543961",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299543961",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": false,
+        "is_free": true,
+        "has_available_tickets": true,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "on_sale",
+        "message": "",
+        "message_code": "",
+        "message_type": ""
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": []
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2002908815183",
+      "eid": "2002908815183",
+      "eventbrite_event_id": "2002908815183",
+      "name": "ESPECIAL HALLOWEN \"LA VIRGEN DE LA TOSQUERA de Laura Casabé",
+      "url": "https://www.eventbrite.com.ar/e/especial-hallowen-la-virgen-de-la-tosquera-de-laura-casabe-tickets-2002908815183",
+      "start_date": "2026-10-31",
+      "start_time": "20:00:00",
+      "end_date": "2026-10-31",
+      "end_time": "20:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-31",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1195001529%2F571465989745%2F1%2Foriginal.20261004-082556?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=a4cb8c7fd3d813020601e3f8a1939658",
+        "edge_color": "#7b7067",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1195001529%2F571465989745%2F1%2Foriginal.20261004-082556?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=258702f6574bfacfafc3c443bb85267f",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1195001529%2F571465989745%2F1%2Foriginal.20261004-082556?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=d096665ec8f33be1e7b8b66b58507d99"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299701490",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299701490",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": false,
+        "is_free": false,
+        "has_available_tickets": true,
+        "minimum_ticket_price": {
+          "currency": "ARS",
+          "major_value": "15000.00",
+          "value": 1500000,
+          "display": "15000.00 ARS"
+        },
+        "maximum_ticket_price": {
+          "currency": "ARS",
+          "major_value": "15000.00",
+          "value": 1500000,
+          "display": "15000.00 ARS"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "on_sale",
+        "message": "",
+        "message_code": "",
+        "message_type": ""
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": []
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    },
+    {
+      "id": "2003206357139",
+      "eid": "2003206357139",
+      "eventbrite_event_id": "2003206357139",
+      "name": "DJ ZOE -NOCHES DE SABADUKI",
+      "url": "https://www.eventbrite.com.ar/e/dj-zoe-noches-de-sabaduki-tickets-2003206357139",
+      "start_date": "2026-10-31",
+      "start_time": "22:00:00",
+      "end_date": "2026-10-31",
+      "end_time": "22:00:00",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "is_online_event": false,
+      "is_cancelled": false,
+      "is_protected_event": false,
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "summary": "",
+      "language": "en",
+      "checkout_flow": "widget",
+      "published": "2026-10-31",
+      "_type": "event",
+      "image_id": "",
+      "series_id": null,
+      "primary_organizer_id": "34315560147",
+      "image": {
+        "url": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1183854217%2F571465989745%2F1%2Foriginal.20260505-201901?crop=focalpoint&fit=crop&h=230&w=460&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=a4dbf4fb83f616c71b5ac92dfa987aea",
+        "edge_color": "#653a28",
+        "image_sizes": {
+          "small": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1183854217%2F571465989745%2F1%2Foriginal.20260505-201901?crop=focalpoint&fit=crop&w=320&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=cb88e03b89d974bf5d398e9030a09876",
+          "medium": "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F1183854217%2F571465989745%2F1%2Foriginal.20260505-201901?crop=focalpoint&fit=crop&w=640&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=4d2b6dee051aac9057914f4373df078f"
+        },
+        "focal_point": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "primary_venue": {
+        "_type": "venue",
+        "name": "Club Lucero",
+        "id": "299779253",
+        "address": {
+          "city": "Palermo",
+          "country": "AR",
+          "region": "CABA",
+          "longitude": "-58.43824",
+          "latitude": "-34.57822160000001",
+          "postal_code": "C1414",
+          "address_1": "6048 Nicaragua",
+          "localized_address_display": "6048 Nicaragua, Palermo, CABA C1414",
+          "localized_multi_line_address_display": [
+            "6048 Nicaragua",
+            "Palermo, CABA C1414"
+          ],
+          "localized_area_display": "Palermo, CABA"
+        }
+      },
+      "primary_venue_id": "299779253",
+      "saves": {
+        "saved_by_you": false
+      },
+      "ticket_availability": {
+        "is_sold_out": false,
+        "is_free": true,
+        "has_available_tickets": true,
+        "minimum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        },
+        "maximum_ticket_price": {
+          "currency": "USD",
+          "major_value": "0.00",
+          "value": 0,
+          "display": "Free"
+        }
+      },
+      "event_sales_status": {
+        "sales_status": "on_sale",
+        "message": "",
+        "message_code": "",
+        "message_type": ""
+      },
+      "urgency_signals": {
+        "categories": [],
+        "messages": []
+      },
+      "tickets_url": "",
+      "tickets_by": "eventbrite",
+      "additionalSessionsCount": 0
+    }
+  ],
+  "hasMore": false,
+  "total": 23
+}

@@ -1,542 +1,775 @@
 /**
  * Tests for the Sala Leopoldo Lugones provider.
  *
- * Fixture: captured 2026-04-21 from the live Boris Karloff Parte 2 detail
- * page. This cycle is the canonical regression test for the "April program
- * silently stored as May" bug — the dateRange "Del 28 de abril al 5 de mayo"
- * spans two months, and the parser used to pick the END month as the anchor,
- * so April screenings would be dated a month in the future.
+ * Fixtures were captured 2026-10-22 from the redesigned complejoteatral.gob.ar
+ * (homepage + /produccion/<slug>/ pages), except syncro-film-fest.html and
+ * tres-tardes-con-gardel.html, captured 2026-06-08 from the previous site.
+ * Those two keep guarding the multi-short program-block skip; the detail
+ * block markup they use is the same one the new site renders.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
+  extractPrograms,
   parseDetailPage,
   parseDateRange,
-  matchSingleFilmShowtime,
+  matchShowtimeLine,
+  lugonesProvider,
   type ProgramLink,
 } from './lugones';
+import type { ScrapedScreening } from './types';
 
 function fixture(name: string): string {
   return readFileSync(resolve(__dirname, '../../test/fixtures/lugones', name), 'utf8');
 }
 
-// Fixed reference "now" for every fixture-based parse below. All fixtures in
-// this file were captured Apr–Jun 2026 and assert absolute 2026 dates; the
-// parser's year inference keys off `now`, so without a fixed anchor these
-// tests silently mis-date to the following year once wall-clock time passes
-// ~30 days after each program's start (the failure that surfaced 2026-05-30).
-// April 1 2026 sits before every fixture's start date, so all resolve to 2026.
-const FIXED_NOW = new Date(Date.UTC(2026, 3, 1));
+// Fixed reference "now" for fixture parses: the parser's year inference keys
+// off `now`, so without a fixed anchor these tests would silently mis-date to
+// the following year once wall-clock time passes ~30 days after each
+// program's start. October 1 2026 sits before every new fixture's start.
+const FIXED_NOW = new Date(Date.UTC(2026, 9, 1));
+
+function program(slug: string, title: string, dateRangeText = ''): ProgramLink {
+  return {
+    slug,
+    title,
+    dateRangeText,
+    detailUrl: `https://complejoteatral.gob.ar/produccion/${slug}/`,
+  };
+}
+
+/** "MM-DD HH:MM Title" in BA local time (UTC-3, no DST), sorted. */
+function baSchedule(screenings: ScrapedScreening[]): string[] {
+  return screenings
+    .map((s) => {
+      const ba = new Date(s.startsAtUtc.getTime() - 3 * 3600 * 1000);
+      const p = (n: number) => String(n).padStart(2, '0');
+      return `${p(ba.getUTCMonth() + 1)}-${p(ba.getUTCDate())} ${p(ba.getUTCHours())}:${p(ba.getUTCMinutes())} ${s.filmTitle}`;
+    })
+    .sort();
+}
+
+describe('extractPrograms (homepage fixture)', () => {
+  const { programs, cardCount } = extractPrograms(fixture('home.html'));
+
+  it('keeps only cine productions at Sala Lugones', () => {
+    expect(cardCount).toBe(30);
+    expect(programs.map((p) => p.slug)).toEqual([
+      'seis-tardes-con-mae-west',
+      'en-las-rutas-de-wim-wenders',
+      'frank-borzage-un-romantico-en-hollywood-parte-2',
+      'las-furias-y-lo-que-le-paso-a-reynoso',
+      'shohei-imamura-bis',
+      'el-joven-frankenstein',
+      'museo-de-la-subversion',
+      'herzog-kinski-enemigo-mio',
+    ]);
+  });
+
+  it('drops theatre, dance and exhibitions in other salas', () => {
+    const slugs = programs.map((p) => p.slug);
+    // Theatre in Sala Cunill Cabanellas, dance in Sala Martín Coronado, an
+    // exhibition in the Teatro San Martín building.
+    expect(slugs).not.toContain('oxitocina');
+    expect(slugs).not.toContain('paraiso-perdido');
+    expect(slugs).not.toContain('jorge-lavelli-el-gesto-inconformista');
+  });
+
+  it('drops a non-cine production even when it is in Sala Lugones', () => {
+    const card = (genre: string, slug: string) => `
+      <div class="list-item list-item-programacion">
+        <span class="category">${genre}</span><h2>${slug}</h2>
+        <span class="date">Lunes 2 de noviembre</span>
+        <span class="place">Sala Leopoldo Lugones / Teatro San Martín</span>
+        <a href="https://complejoteatral.gob.ar/produccion/${slug}/">+ info</a>
+      </div>`;
+    const html = card('actividades especiales', 'charla') + card('cine', 'film');
+    expect(extractPrograms(html).programs.map((p) => p.slug)).toEqual(['film']);
+  });
+
+  it('carries title, date range and absolute detail URL from the card', () => {
+    expect(programs[2]).toEqual({
+      slug: 'frank-borzage-un-romantico-en-hollywood-parte-2',
+      title: 'Frank Borzage, un romántico en Hollywood – Parte 2',
+      dateRangeText: 'Del 23 de octubre al 6 de noviembre',
+      detailUrl:
+        'https://complejoteatral.gob.ar/produccion/frank-borzage-un-romantico-en-hollywood-parte-2/',
+    });
+  });
+});
 
 describe('parseDateRange', () => {
   it('anchors on the START month when the range spans two months', () => {
-    // Regression: before the fix this returned { startMonth: 4 /* May */ }.
-    expect(parseDateRange('Del 28 de abril al 5 de mayo')).toMatchObject({
-      startMonth: 3, // April (0-indexed)
+    // The original Karloff regression: anchoring on the end month dated a
+    // whole cycle a month late.
+    expect(parseDateRange('Del 23 de octubre al 6 de noviembre', FIXED_NOW)).toEqual({
+      startMonth: 9,
+      startYear: 2026,
     });
   });
 
-  it('anchors on the shared month in the short-form same-month range', () => {
-    expect(parseDateRange('Del 15 al 26 de abril')).toMatchObject({
+  it('anchors on the shared month of a same-month range', () => {
+    expect(parseDateRange('Del 12 al 25 de noviembre', FIXED_NOW)).toMatchObject({
+      startMonth: 10,
+    });
+  });
+
+  it('accepts a weekday inside "A partir del"', () => {
+    expect(parseDateRange('A partir del sábado 31 de octubre', FIXED_NOW)).toMatchObject({
+      startMonth: 9,
+    });
+    expect(parseDateRange('A partir del 5 de noviembre', FIXED_NOW)).toMatchObject({
+      startMonth: 10,
+    });
+  });
+
+  it('anchors a single-day one-off with inline times', () => {
+    expect(
+      parseDateRange('Jueves 29 de octubre, 16.30 y 20.30 horas', FIXED_NOW),
+    ).toMatchObject({ startMonth: 9 });
+  });
+
+  // Value: protects=a long or open-ended run keeps its own year after opening;
+  // fails_when=the year is chosen from the start date alone (dates jump to
+  // next year a month in); why_new=FIXED_NOW sits before every start; seam=none;
+  // no_claim=none beyond protects.
+  it('keeps a run that is still on in its own year', () => {
+    const DEC_5 = new Date(Date.UTC(2026, 11, 5));
+    const OCT_23 = new Date(Date.UTC(2026, 9, 23));
+    expect(parseDateRange('A partir del sábado 31 de octubre', DEC_5)).toEqual({
+      startMonth: 9,
+      startYear: 2026,
+    });
+    expect(parseDateRange('Del 1 de octubre al 20 de diciembre', DEC_5)).toEqual({
+      startMonth: 9,
+      startYear: 2026,
+    });
+    // An open-ended run months in is still on, not next year's.
+    expect(parseDateRange('A partir del 5 de marzo', OCT_23)).toEqual({
+      startMonth: 2,
+      startYear: 2026,
+    });
+    // "Desde el … al …" is a dated range, not open-ended.
+    expect(parseDateRange('Desde el 5 de marzo al 20 de diciembre', OCT_23)).toEqual({
+      startMonth: 2,
+      startYear: 2026,
+    });
+    // A run across New Year, read in January, is still last year's start.
+    expect(
+      parseDateRange(
+        'Del 10 de diciembre al 15 de enero',
+        new Date(Date.UTC(2027, 0, 5)),
+      ),
+    ).toEqual({ startMonth: 11, startYear: 2026 });
+  });
+
+  it('starts a same-month range that wraps in the previous month', () => {
+    expect(parseDateRange('Del 28 al 3 de noviembre', FIXED_NOW)).toEqual({
+      startMonth: 9,
+      startYear: 2026,
+    });
+  });
+
+  it('dates an announced open-ended run in its upcoming year', () => {
+    expect(parseDateRange('A partir del sábado 31 de octubre', FIXED_NOW)).toEqual({
+      startMonth: 9,
+      startYear: 2026,
+    });
+    // A December card for a March season is next year's, not last March's.
+    expect(
+      parseDateRange('A partir del 5 de marzo', new Date(Date.UTC(2026, 11, 1))),
+    ).toEqual({ startMonth: 2, startYear: 2027 });
+  });
+
+  it('reads "hasta", explicit years and a same-month wrap across New Year', () => {
+    const DEC_10 = new Date(Date.UTC(2026, 11, 10));
+    expect(parseDateRange('Desde el 5 de abril hasta el 30 de mayo', DEC_10)).toEqual({
       startMonth: 3,
+      startYear: 2027,
+    });
+    expect(
+      parseDateRange('Desde el 20 de diciembre hasta el 30 de enero', DEC_10),
+    ).toEqual({
+      startMonth: 11,
+      startYear: 2026,
+    });
+    expect(
+      parseDateRange('Del 1 de diciembre de 2026 al 10 de enero de 2027', FIXED_NOW),
+    ).toEqual({ startMonth: 11, startYear: 2026 });
+    expect(parseDateRange('Del 5 al 7 de noviembre de 2027', FIXED_NOW)).toEqual({
+      startMonth: 10,
+      startYear: 2027,
+    });
+    expect(
+      parseDateRange('Del 28 al 3 de enero', new Date(Date.UTC(2026, 11, 20))),
+    ).toEqual({
+      startMonth: 11,
+      startYear: 2026,
     });
   });
 
-  it('anchors on the month after "a partir del"', () => {
-    expect(parseDateRange('A partir del 7 de mayo')).toMatchObject({
-      startMonth: 4,
+  it('gives up on a stale card instead of dating it next year', () => {
+    const DEC_5 = new Date(Date.UTC(2026, 11, 5));
+    expect(parseDateRange('Jueves 29 de octubre, 20 horas', DEC_5)).toBeNull();
+    expect(parseDateRange('Del 1 al 15 de octubre', DEC_5)).toBeNull();
+    // A long run that ended months ago is not next year's either.
+    expect(
+      parseDateRange('Del 1 de marzo al 30 de junio', new Date(Date.UTC(2026, 9, 23))),
+    ).toBeNull();
+  });
+
+  it('rolls to next year when the start is well in the past', () => {
+    expect(parseDateRange('Del 5 al 9 de enero', FIXED_NOW)).toEqual({
+      startMonth: 0,
+      startYear: 2027,
     });
   });
 
   it('returns null for unparseable text', () => {
+    expect(parseDateRange('Marzo a noviembre')).toBeNull();
+    expect(parseDateRange('Del 23 de octubre al 6 de noviembr', FIXED_NOW)).toBeNull();
     expect(parseDateRange('próximamente')).toBeNull();
   });
+});
 
-  // Regression: Lugones uses a single-day form for one-off "bis" encore
-  // screenings, special events, and festival add-ons. The dateRangeText
-  // looks nothing like the cycle "Del X al Y" syntax, so before this
-  // form was added, parseDateRange returned null and the entire program
-  // was dropped (warning: 'could not parse date range "Jueves 28 de
-  // mayo, 15 y 18 horas"'). Source: Claude Chabrol-bis program, 2026-05.
-  it('anchors on day + month for single-day shape with inline times', () => {
-    expect(parseDateRange('Jueves 28 de mayo, 15 y 18 horas')).toMatchObject({
-      startMonth: 4, // May (0-indexed)
+describe('matchShowtimeLine', () => {
+  it('splits a comma + "y" day list sharing one time', () => {
+    expect(matchShowtimeLine('Jueves 5, viernes 6 y sábado 7, 21 horas')).toEqual({
+      days: [{ day: 5 }, { day: 6 }, { day: 7 }],
+      times: [{ hour: 21, minute: 0 }],
     });
   });
 
-  it('anchors on day + month for single-day shape without inline times', () => {
-    expect(parseDateRange('Sábado 14 de junio')).toMatchObject({
-      startMonth: 5,
+  it('reads a per-day month, including "1°"', () => {
+    expect(matchShowtimeLine('Domingo 1° de noviembre, 18 horas')).toEqual({
+      days: [{ day: 1, month: 10 }],
+      times: [{ hour: 18, minute: 0 }],
     });
   });
 
-  it('does not let the single-day form steal cycle matches', () => {
-    // Cycle strings never start with a weekday, but pin the precedence
-    // so a future contributor doesn't reorder the forms array and break
-    // the multi-month anchor (the canonical Karloff regression).
-    expect(parseDateRange('Del 28 de abril al 5 de mayo')).toMatchObject({
-      startMonth: 3, // April, not May
+  it('back-fills a trailing month onto earlier days ("a las" form)', () => {
+    expect(matchShowtimeLine('Jueves 28 y viernes 29 de mayo a las 21 horas')).toEqual({
+      days: [
+        { day: 28, month: 4 },
+        { day: 29, month: 4 },
+      ],
+      times: [{ hour: 21, minute: 0 }],
     });
+  });
+
+  it('parses dotted minutes and several times', () => {
+    expect(matchShowtimeLine('Martes 12, 20.30 y 22 horas')).toEqual({
+      days: [{ day: 12 }],
+      times: [
+        { hour: 20, minute: 30 },
+        { hour: 22, minute: 0 },
+      ],
+    });
+  });
+
+  it('returns null for non-showtimes and unknown months', () => {
+    expect(matchShowtimeLine('Martes 12, 20:30 horas')).toEqual({
+      days: [{ day: 12 }],
+      times: [{ hour: 20, minute: 30 }],
+    });
+    expect(matchShowtimeLine('A las 20 horas')).toBeNull();
+    expect(matchShowtimeLine('Dirección: Mel Brooks.')).toBeNull();
+    expect(matchShowtimeLine('Sábado 30 de mesnoexistente, 18 horas')).toBeNull();
   });
 });
 
-describe('parseDetailPage (Boris Karloff Parte 2 fixture)', () => {
-  const html = fixture('karloff-parte-2.html');
-  const program: ProgramLink = {
-    slug: 'Boris-Karloff:-el-hombre-y-la-bestia - Parte 2',
-    title: 'Boris Karloff: el hombre y la bestia - Parte 2',
-    dateRangeText: 'Del 28 de abril al 5 de mayo',
-    detailUrl:
-      'https://complejoteatral.gob.ar/ver/Boris-Karloff:-el-hombre-y-la-bestia%20-%20Parte%202',
-  };
+describe('parseDetailPage — cycle, one <p> per line (Wim Wenders fixture)', () => {
+  const p = program('en-las-rutas-de-wim-wenders', 'En las rutas de Wim Wenders');
+  const screenings = parseDetailPage(fixture('wenders.html'), p, [], FIXED_NOW);
 
-  it('emits all 18 screenings across the 7-day cycle', () => {
+  it('emits every function of the cycle at its BA-local time, no warnings', () => {
     const warnings: string[] = [];
-    const screenings = parseDetailPage(html, program, warnings, FIXED_NOW);
+    parseDetailPage(fixture('wenders.html'), p, warnings, FIXED_NOW);
     expect(warnings).toEqual([]);
-    expect(screenings).toHaveLength(18);
-  });
-
-  it('places Martes 28 screenings on April 28, not May 28', () => {
-    const warnings: string[] = [];
-    const screenings = parseDetailPage(html, program, warnings, FIXED_NOW);
-
-    // Martes 28 = April 28 local BA. 15h BA and 18h BA stay on April 28 UTC.
-    // 21h BA rolls to April 29 00:00 UTC — but NOT to May.
-    const aprilDates = new Set(
-      screenings
-        .map((s) => s.startsAtUtc)
-        .filter((d) => d.getUTCFullYear() === 2026 && d.getUTCMonth() === 3)
-        .map((d) => d.getUTCDate()),
-    );
-
-    // Days 28, 29, 30 of April must appear. 21h screenings on Apr 30 roll to
-    // May 1, and May 1 has "no hay funciones" — so UTC day 1 of May can
-    // legitimately appear via rollover and is not a bug.
-    expect(aprilDates.has(28)).toBe(true);
-    expect(aprilDates.has(29)).toBe(true);
-    expect(aprilDates.has(30)).toBe(true);
-  });
-
-  it('does not place any screening on May 28-30 (the old bug manifestation)', () => {
-    const warnings: string[] = [];
-    const screenings = parseDetailPage(html, program, warnings, FIXED_NOW);
-
-    const mayMisdated = screenings.filter((s) => {
-      const d = s.startsAtUtc;
-      if (d.getUTCFullYear() !== 2026 || d.getUTCMonth() !== 4) return false;
-      const day = d.getUTCDate();
-      return day >= 28 && day <= 31;
-    });
-
-    expect(mayMisdated).toEqual([]);
-  });
-
-  it('emits "El hijo de Frankenstein" at both 15h and 21h on April 28', () => {
-    const warnings: string[] = [];
-    const screenings = parseDetailPage(html, program, warnings, FIXED_NOW);
-
-    const elHijo = screenings.filter((s) => s.filmTitle === 'El hijo de Frankenstein');
-    // Cycle has: Apr 28 (15+21), Apr 30 (18). 3 total.
-    expect(elHijo).toHaveLength(3);
-
-    // 15h BA on Apr 28 → 18:00 UTC on Apr 28.
-    expect(
-      elHijo.some(
-        (s) =>
-          s.startsAtUtc.getUTCMonth() === 3 &&
-          s.startsAtUtc.getUTCDate() === 28 &&
-          s.startsAtUtc.getUTCHours() === 18,
-      ),
-    ).toBe(true);
-
-    // 21h BA on Apr 28 → 00:00 UTC on Apr 29.
-    expect(
-      elHijo.some(
-        (s) =>
-          s.startsAtUtc.getUTCMonth() === 3 &&
-          s.startsAtUtc.getUTCDate() === 29 &&
-          s.startsAtUtc.getUTCHours() === 0,
-      ),
-    ).toBe(true);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// S2 — single-film layout (Ojos extraños fixture, captured 2026-04-25)
-// ---------------------------------------------------------------------------
-describe('matchSingleFilmShowtime', () => {
-  it('parses "Jueves 7, 20 horas" as one day at 20:00', () => {
-    expect(matchSingleFilmShowtime('Jueves 7, 20 horas')).toEqual({
-      days: [7],
-      hour: 20,
-      minute: 0,
-    });
-  });
-
-  it('parses decimal-point minutes "Martes 12, 20.30 horas" as 20:30', () => {
-    expect(matchSingleFilmShowtime('Martes 12, 20.30 horas')).toEqual({
-      days: [12],
-      hour: 20,
-      minute: 30,
-    });
-  });
-
-  it('splits "Viernes 8 y sábado 9, 20.30 horas" into two days at 20:30', () => {
-    expect(matchSingleFilmShowtime('Viernes 8 y sábado 9, 20.30 horas')).toEqual({
-      days: [8, 9],
-      hour: 20,
-      minute: 30,
-    });
-  });
-
-  it('also accepts colon as minute separator', () => {
-    expect(matchSingleFilmShowtime('Jueves 7, 20:30 horas')).toEqual({
-      days: [7],
-      hour: 20,
-      minute: 30,
-    });
-  });
-
-  it('returns null for the cycle-style time marker "A las 20 horas"', () => {
-    // Cycle-format pages use a different shape — must not be falsely
-    // claimed by the single-film matcher.
-    expect(matchSingleFilmShowtime('A las 20 horas')).toBeNull();
-  });
-
-  it('returns null for non-showtime prose', () => {
-    expect(matchSingleFilmShowtime('Director: Some Person')).toBeNull();
-    expect(matchSingleFilmShowtime('Color')).toBeNull();
-  });
-
-  // -------------------------------------------------------------------------
-  // "a las" connector + optional "de MONTH" suffix (Justa-class editorial
-  // prose schedules — first observed in the Teresa Villaverde "Justa" cycle
-  // 2026-05). The compressed comma form ("Viernes 8 y sábado 9, 20.30 horas")
-  // continues to be supported; this just adds the prose-shaped form alongside.
-  // -------------------------------------------------------------------------
-  it('parses "Sábado 30 a las 18 horas" via the "a las" connector', () => {
-    expect(matchSingleFilmShowtime('Sábado 30 a las 18 horas')).toEqual({
-      days: [30],
-      hour: 18,
-      minute: 0,
-    });
-  });
-
-  it('parses decimal-minute via "a las" form: "Domingo 31 a las 17.30 horas"', () => {
-    expect(matchSingleFilmShowtime('Domingo 31 a las 17.30 horas')).toEqual({
-      days: [31],
-      hour: 17,
-      minute: 30,
-    });
-  });
-
-  it('captures explicit "de MONTH" suffix: "Jueves 28 y viernes 29 de mayo a las 21 horas"', () => {
-    expect(
-      matchSingleFilmShowtime('Jueves 28 y viernes 29 de mayo a las 21 horas'),
-    ).toEqual({
-      days: [28, 29],
-      hour: 21,
-      minute: 0,
-      month: 4, // mayo
-    });
-  });
-
-  it('captures a different month: "Martes 2 y miércoles 3 de junio a las 21 horas"', () => {
-    expect(
-      matchSingleFilmShowtime('Martes 2 y miércoles 3 de junio a las 21 horas'),
-    ).toEqual({
-      days: [2, 3],
-      hour: 21,
-      minute: 0,
-      month: 5, // junio
-    });
-  });
-
-  it('parses single day without explicit month under "a las" form', () => {
-    // The line that proves month-context carryover is needed in the caller
-    // (Justa line [12]: inherits "junio" from the preceding "Martes 2 y
-    // miércoles 3 de junio" line).
-    expect(matchSingleFilmShowtime('Jueves 4 a las 18 horas')).toEqual({
-      days: [4],
-      hour: 18,
-      minute: 0,
-    });
-  });
-
-  it('returns null when "de MONTH" suffix is unrecognized (defensive — would silently drift the date otherwise)', () => {
-    expect(
-      matchSingleFilmShowtime('Sábado 30 de mesnoexistente a las 18 horas'),
-    ).toBeNull();
-  });
-});
-
-describe('parseDetailPage S2 fallback (Ojos extraños fixture)', () => {
-  const html = fixture('ver-ojos-extranos.html');
-  const program: ProgramLink = {
-    slug: 'Ojos-extraños',
-    title: 'Ojos extraños',
-    dateRangeText: 'A partir del 7 de mayo',
-    detailUrl: 'https://complejoteatral.gob.ar/ver/Ojos-extra%C3%B1os',
-  };
-
-  it('emits 7 screenings (May 7, 8, 9, 10, 12, 13, 14) with no warnings', () => {
-    const warnings: string[] = [];
-    const screenings = parseDetailPage(html, program, warnings, FIXED_NOW);
-    expect(warnings).toEqual([]);
-    expect(screenings).toHaveLength(7);
-
-    const dates = screenings
-      .map((s) => s.startsAtUtc.getTime() - 3 * 3600 * 1000)
-      .map((t) => new Date(t).getUTCDate())
-      .sort((a, b) => a - b);
-    expect(dates).toEqual([7, 8, 9, 10, 12, 13, 14]);
-
-    for (const s of screenings) {
-      expect(s.startsAtUtc.getUTCFullYear()).toBe(2026);
-      // BA local = UTC - 3, so May 7 BA stays in May UTC most of the day.
-      // Showtime hours are 18, 20, 20:30 → UTC 21, 23, 23:30, all same day.
-      expect(s.startsAtUtc.getUTCMonth()).toBe(4); // May
-    }
-  });
-
-  it('places "Viernes 8 y sábado 9, 20.30 horas" at 20:30 BA on both days', () => {
-    const warnings: string[] = [];
-    const screenings = parseDetailPage(html, program, warnings, FIXED_NOW);
-    const friAndSat = screenings
-      .filter((s) => {
-        const baLocal = new Date(s.startsAtUtc.getTime() - 3 * 3600 * 1000);
-        const day = baLocal.getUTCDate();
-        return day === 8 || day === 9;
-      })
-      .sort((a, b) => a.startsAtUtc.getTime() - b.startsAtUtc.getTime());
-    expect(friAndSat).toHaveLength(2);
-    // 20:30 BA → 23:30 UTC.
-    for (const s of friAndSat) {
-      expect(s.startsAtUtc.getUTCHours()).toBe(23);
-      expect(s.startsAtUtc.getUTCMinutes()).toBe(30);
-    }
-  });
-
-  it('extracts the editorial synopsis from the SINOPSIS section', () => {
-    const screenings = parseDetailPage(html, program, [], FIXED_NOW);
-    const s = screenings[0];
-    expect(s.synopsisEs).toBeDefined();
-    expect(s.synopsisEs!.startsWith('Tras la misteriosa desaparición')).toBe(true);
-    // Must not bleed into the FICHA TÉCNICA section that follows.
-    expect(s.synopsisEs).not.toMatch(/FICHA T[ÉE]CNICA/i);
-    expect(s.synopsisEs).not.toContain('Título original');
-  });
-
-  it('extracts FICHA TÉCNICA fields (year, director, country, runtime, original title)', () => {
-    const s = parseDetailPage(html, program, [], FIXED_NOW)[0];
-    expect(s.year).toBe(2024);
-    expect(s.director).toBe('Yeo Siew Hua');
-    expect(s.country).toBe('Singapur, Taiwán, Francia, Estados Unidos');
-    expect(s.runtimeMin).toBe(126);
-    expect(s.filmTitleOriginal).toBe('Mo shi lu');
-  });
-
-  it('uses the on_view <h2> title (stripping the "(YEAR)" suffix)', () => {
-    const s = parseDetailPage(html, program, [], FIXED_NOW)[0];
-    expect(s.filmTitle).toBe('Ojos extraños');
-  });
-});
-
-describe('parseDetailPage single-day one-off (Chabrol bis fixture)', () => {
-  // Captured 2026-05-05 from /ver/Claude-%20Chabrol-bis. The index page
-  // exposes this program with dateRangeText "Jueves 28 de mayo, 15 y 18
-  // horas" — a single-day form (no "del...al..." range syntax). Before
-  // the parseDateRange single-day form was added, the entire program was
-  // dropped at the warning at lugones.ts:191. With the fix, the existing
-  // S1 layout walker handles the detail page since matchDayHeader already
-  // accepts the month-less "Jueves 28" header (lugones.ts:666).
-  //
-  // Known source-quality limitation: the source page only labels the
-  // 15h film ("Bodas sangrientas") with a <strong> title. The 18h film
-  // ("Al anochecer") appears only in the prose intro, NOT as a structured
-  // <strong> title in its screening block — so emit() skips it (no title).
-  // This is a Lugones CMS data-entry gap, not a scraper bug. The test
-  // asserts what is structurally extractable; the 18h screening is
-  // intentionally not asserted.
-  const html = fixture('chabrol-bis.html');
-  const program: ProgramLink = {
-    slug: 'Claude- Chabrol-bis',
-    title: 'Claude Chabrol bis',
-    dateRangeText: 'Jueves 28 de mayo, 15 y 18 horas',
-    detailUrl: 'https://complejoteatral.gob.ar/ver/Claude-%20Chabrol-bis',
-  };
-
-  it('extracts the 15h Bodas sangrientas screening on May 28', () => {
-    const warnings: string[] = [];
-    const screenings = parseDetailPage(html, program, warnings, FIXED_NOW);
-
-    // No "could not parse date range" warning — the regression itself.
-    expect(warnings.find((w) => /could not parse date range/i.test(w))).toBeUndefined();
-
-    const bodas = screenings.filter((s) => s.filmTitle === 'Bodas sangrientas');
-    expect(bodas).toHaveLength(1);
-
-    const s = bodas[0];
-    // 15h BA → 18:00 UTC on May 28.
-    expect(s.startsAtUtc.getUTCMonth()).toBe(4); // May
-    expect(s.startsAtUtc.getUTCDate()).toBe(28);
-    expect(s.startsAtUtc.getUTCHours()).toBe(18);
-    expect(s.director).toBe('Claude Chabrol');
-    expect(s.runtimeMin).toBe(95);
-  });
-});
-
-describe('parseDetailPage Justa-class prose schedule (Justa fixture, captured 2026-05-11)', () => {
-  // The bug: Lugones started using an editorial prose schedule format for
-  // Justa (Teresa Villaverde 2025), spreading dates across multiple <p>s
-  // with the connector "a las" instead of a comma, plus optional
-  // "de MONTH" suffixes for the first line of each month. Before the
-  // matchSingleFilmShowtime regex was extended, all 45 detail-page <p>s
-  // failed to parse and the run logged 0 screenings + a warning. Now the
-  // 7 announced funciones come through.
-  //
-  // Source: https://complejoteatral.gob.ar/ver/Justa
-  // Schedule (per the page):
-  //   Jueves 28 y viernes 29 de mayo a las 21 horas       → 2026-05-28 21:00, 2026-05-29 21:00
-  //   Sábado 30 a las 18 horas                            → 2026-05-30 18:00
-  //   Domingo 31 a las 17.30 horas                        → 2026-05-31 17:30
-  //   Martes 2 y miércoles 3 de junio a las 21 horas      → 2026-06-02 21:00, 2026-06-03 21:00
-  //   Jueves 4 a las 18 horas (inherits junio)            → 2026-06-04 18:00
-  const html = fixture('justa.html');
-  const program: ProgramLink = {
-    slug: 'Justa',
-    title: 'Justa',
-    dateRangeText: 'A partir del 28 de mayo',
-    detailUrl: 'https://complejoteatral.gob.ar/ver/Justa',
-  };
-
-  it('emits all 7 announced funciones with no parser warnings', () => {
-    const warnings: string[] = [];
-    const screenings = parseDetailPage(html, program, warnings, FIXED_NOW);
-    expect(warnings).toEqual([]);
-    expect(screenings).toHaveLength(7);
-  });
-
-  it('produces the announced (date, BA-local-hour, BA-local-minute) tuples exactly', () => {
-    const screenings = parseDetailPage(html, program, [], FIXED_NOW);
-    // Convert to (month, day, hourBA, minuteBA) tuples for legible asserts.
-    // BA is UTC-3 year-round (no DST), so UTC time minus 3h = BA local.
-    const tuples = screenings
-      .map((s) => {
-        const baMs = s.startsAtUtc.getTime() - 3 * 3600 * 1000;
-        const d = new Date(baMs);
-        return [
-          d.getUTCMonth(),
-          d.getUTCDate(),
-          d.getUTCHours(),
-          d.getUTCMinutes(),
-        ] as const;
-      })
-      .sort(([m1, d1], [m2, d2]) => m1 - m2 || d1 - d2);
-
-    expect(tuples).toEqual([
-      [4, 28, 21, 0], // mayo 28, 21:00 BA
-      [4, 29, 21, 0], // mayo 29, 21:00 BA
-      [4, 30, 18, 0], // mayo 30, 18:00 BA
-      [4, 31, 17, 30], // mayo 31, 17:30 BA
-      [5, 2, 21, 0], // junio 2, 21:00 BA
-      [5, 3, 21, 0], // junio 3, 21:00 BA
-      [5, 4, 18, 0], // junio 4, 18:00 BA (inherits 'junio' from the preceding line)
+    expect(baSchedule(screenings)).toEqual([
+      '10-15 20:30 Las alas del deseo',
+      '10-16 18:00 El miedo del arquero al tiro penal',
+      '10-16 20:30 El amigo americano',
+      '10-17 14:30 Hasta el fin del mundo (Versión del director)',
+      '10-17 20:30 Paris, Texas',
+      '10-18 21:00 Buena Vista Social Club',
+      '10-20 18:00 Buena Vista Social Club',
+      '10-20 21:00 Alicia en las ciudades',
+      '10-21 17:30 El estado de las cosas',
+      '10-21 21:00 El miedo del arquero al tiro penal',
+      '10-22 17:00 El amigo americano',
+      '10-22 20:00 En el curso del tiempo',
+      '10-23 17:30 Alicia en las ciudades',
+      '10-23 21:00 Tokyo-Ga',
+      '10-24 17:00 Las alas del deseo',
+      '10-24 20:00 En el curso del tiempo',
+      '10-25 15:00 Tokyo-Ga',
+      '10-25 17:30 Paris, Texas',
+      '10-25 21:00 El estado de las cosas',
+      '10-30 18:00 Hasta el fin del mundo (Versión del director)',
     ]);
   });
 
-  it('attaches the film metadata across every screening (single-film page invariant)', () => {
-    const screenings = parseDetailPage(html, program, [], FIXED_NOW);
-    for (const s of screenings) {
-      expect(s.filmTitle).toBe('Justa');
-      expect(s.year).toBe(2025); // FICHA TÉCNICA section: "Portugal/Francia, 2025"
-      expect(s.director).toBe('Teresa Villaverde');
-      expect(s.runtimeMin).toBe(108); // "108 minutos"
-    }
+  it('converts BA-local to UTC (+3h), rolling late shows into the next UTC day', () => {
+    const alas = screenings.find((s) => s.filmTitle === 'Las alas del deseo')!;
+    expect(alas.startsAtUtc.toISOString()).toBe('2026-10-15T23:30:00.000Z');
+    const bvsc = screenings.find((s) => s.filmTitle === 'Buena Vista Social Club')!;
+    expect(bvsc.startsAtUtc.toISOString()).toBe('2026-10-19T00:00:00.000Z');
   });
 
-  it('does not emit the "0 screenings parsed" warning that surfaced the bug', () => {
-    // Pre-fix, the run's warnings included:
-    //   program "Justa": 0 screenings parsed from 45 <p> tags...
-    // That's the regression guard against the matchSingleFilmShowtime regex
-    // tightening back up to comma-only.
-    const warnings: string[] = [];
-    parseDetailPage(html, program, warnings, FIXED_NOW);
-    expect(warnings.find((w) => /0 screenings parsed/i.test(w))).toBeUndefined();
+  it('extracts original title, country, year, director and runtime', () => {
+    const alas = screenings.find((s) => s.filmTitle === 'Las alas del deseo')!;
+    expect(alas).toMatchObject({
+      cinemaId: 'lugones',
+      filmTitleOriginal: 'Der Himmel über Berlin',
+      country: 'República Federal de Alemania/Reino Unido/Francia',
+      year: 1987,
+      director: 'Wim Wenders',
+      runtimeMin: 127,
+      programName: 'En las rutas de Wim Wenders',
+      sourceUrl: 'https://complejoteatral.gob.ar/produccion/en-las-rutas-de-wim-wenders/',
+      tags: ['cycle'],
+    });
+    expect(alas.synopsisEs).toMatch(/^Dos ángeles sobrevuelan Berlín/);
+  });
+
+  it('reads country + year when there is no original title', () => {
+    const paris = screenings.find((s) => s.filmTitle === 'Paris, Texas')!;
+    expect(paris.filmTitleOriginal).toBeUndefined();
+    expect(paris.year).toBe(1984);
+    expect(paris.runtimeMin).toBe(148);
+  });
+
+  it('does not take a screening note as the synopsis', () => {
+    const alicia = screenings.filter((s) => s.filmTitle === 'Alicia en las ciudades');
+    // The second listing has only "Al término de la proyección…" prose.
+    expect(alicia[1].synopsisEs).toBeUndefined();
   });
 });
 
-describe('parseDetailPage festival-of-shorts guard (Syncro Film Fest fixture, captured 2026-06-08)', () => {
-  // Syncro Film Fest groups multiple short films into single timed "program"
-  // blocks (Programa de apertura, Competencia Internacional – Programa N),
-  // marking the shorts with standalone <p><strong>+</strong></p> separators.
-  // Before the guard, the S1 cycle state machine emitted ~10 garbage entries
-  // titled by the program names, each with the first short's director attached
-  // and no poster — polluting the cartelera. The parser now detects the
-  // "+"-separator structure and skips the page with a warning. See the
-  // 2026-06-08 investigation.
-  const program: ProgramLink = {
-    slug: 'Syncro-Film-Fest',
-    title: 'Syncro Film Fest',
-    dateRangeText: 'Del 25 al 29 de junio',
-    detailUrl: 'https://complejoteatral.gob.ar/ver/Syncro-Film-Fest',
-  };
+describe('parseDetailPage — cycle, <br>-joined film blocks (Borzage fixture)', () => {
+  const p = program(
+    'frank-borzage-un-romantico-en-hollywood-parte-2',
+    'Frank Borzage, un romántico en Hollywood – Parte 2',
+    'Del 23 de octubre al 6 de noviembre',
+  );
+  const screenings = parseDetailPage(fixture('borzage-parte-2.html'), p, [], FIXED_NOW);
 
-  it('emits 0 screenings instead of garbage program-name "films"', () => {
+  it('emits all 18 functions across the October → November boundary', () => {
+    expect(baSchedule(screenings)).toEqual([
+      '10-23 15:00 El ángel de la calle',
+      '10-24 14:30 Una chica mala',
+      '10-28 15:00 Fueros humanos',
+      '10-29 14:00 La hora fatal',
+      '10-30 15:00 Siempre te he querido',
+      '10-31 15:00 El ángel de la calle',
+      '10-31 18:00 Fueros humanos',
+      '11-01 15:00 Tigre de la China',
+      '11-01 21:00 Tigre de la China',
+      // Martes 3 gives this film's time AFTER its metadata ("A las 15 horas (99′; DM).").
+      '11-03 15:00 Tigre de la China',
+      '11-03 18:00 Siempre te he querido',
+      '11-03 21:00 Fueros humanos',
+      '11-04 15:00 Siempre te he querido',
+      '11-04 18:00 La hora fatal',
+      '11-04 21:00 Una chica mala',
+      '11-05 15:00 La hora fatal',
+      '11-05 18:00 El ángel de la calle',
+      '11-06 18:00 Una chica mala',
+    ]);
+  });
+
+  it('splits one <br>-joined <p> into title, metadata and synopsis', () => {
+    const angel = screenings[0];
+    expect(angel).toMatchObject({
+      filmTitle: 'El ángel de la calle',
+      filmTitleOriginal: 'Street Angel',
+      country: 'EE.UU',
+      year: 1928,
+      director: 'Frank Borzage',
+      runtimeMin: 102,
+    });
+    expect(angel.synopsisEs).toMatch(/^Angela es una humilde muchacha/);
+  });
+
+  it('reads the runtime off a trailing time marker', () => {
+    const tigre = screenings.filter((s) => s.filmTitle === 'Tigre de la China');
+    expect(tigre.map((s) => s.runtimeMin)).toEqual([99, 99, 99]);
+  });
+});
+
+describe('parseDetailPage — single-day cycle (Shohei Imamura bis fixture)', () => {
+  it("anchors on the page's own Funciones line and converts 16.30 / 20.30", () => {
+    // Empty card date: the page's "Funciones: Jueves 29 de octubre, …" must
+    // be enough on its own.
     const warnings: string[] = [];
     const screenings = parseDetailPage(
-      fixture('syncro-film-fest.html'),
-      program,
+      fixture('imamura-bis.html'),
+      program('shohei-imamura-bis', 'Shohei Imamura bis'),
       warnings,
       FIXED_NOW,
     );
-    expect(screenings).toHaveLength(0);
+    expect(warnings).toEqual([]);
+    expect(screenings.map((s) => [s.filmTitle, s.startsAtUtc.toISOString()])).toEqual([
+      ['El profundo deseo de los dioses', '2026-10-29T19:30:00.000Z'],
+      ['La balada de Narayama', '2026-10-29T23:30:00.000Z'],
+    ]);
+    expect(screenings[0]).toMatchObject({
+      filmTitleOriginal: 'Kamigami no fukaki yokubo',
+      country: 'Japón',
+      year: 1968,
+      director: 'Shohei Imamura',
+      runtimeMin: 173,
+    });
+  });
+});
+
+describe('parseDetailPage — single film', () => {
+  it('reads comma-separated day lists (Museo de la subversión)', () => {
+    const warnings: string[] = [];
+    const screenings = parseDetailPage(
+      fixture('museo-de-la-subversion.html'),
+      program(
+        'museo-de-la-subversion',
+        'Museo de la subversión',
+        'A partir del 5 de noviembre',
+      ),
+      warnings,
+      FIXED_NOW,
+    );
+    expect(warnings).toEqual([]);
+    expect(baSchedule(screenings)).toEqual([
+      '11-05 21:00 Museo de la subversión',
+      '11-06 21:00 Museo de la subversión',
+      '11-07 21:00 Museo de la subversión',
+      '11-08 18:00 Museo de la subversión',
+      '11-12 18:00 Museo de la subversión',
+      '11-13 15:00 Museo de la subversión',
+      '11-17 21:00 Museo de la subversión',
+    ]);
+    expect(screenings[0]).toMatchObject({
+      year: 2025,
+      country: 'Argentina',
+      runtimeMin: 70,
+      director: 'Francisco D´Eufemia',
+    });
+    expect(screenings[0].synopsisEs).toMatch(/^Las palabras museo y subversión/);
+    expect(screenings[0].synopsisEs).not.toMatch(/FICHA/);
   });
 
-  it('logs a multi-short/festival warning so the skip is visible in scrape_runs', () => {
+  it('reads per-line explicit months from an <h4> (El joven Frankenstein)', () => {
+    const screenings = parseDetailPage(
+      fixture('el-joven-frankenstein.html'),
+      program('el-joven-frankenstein', 'El joven Frankenstein'),
+      [],
+      FIXED_NOW,
+    );
+    expect(baSchedule(screenings)).toEqual([
+      '10-31 21:00 El joven Frankenstein',
+      '11-01 18:00 El joven Frankenstein',
+      '11-07 18:00 El joven Frankenstein',
+      '11-08 21:00 El joven Frankenstein',
+    ]);
+    expect(screenings[0]).toMatchObject({
+      year: 1974,
+      country: 'Estados Unidos',
+      runtimeMin: 106,
+      director: 'Mel Brooks',
+    });
+  });
+});
+
+describe('parseDetailPage — sala guard (Oxitocina fixture)', () => {
+  it('emits nothing for a production whose page is not at Sala Lugones', () => {
     const warnings: string[] = [];
-    parseDetailPage(fixture('syncro-film-fest.html'), program, warnings, FIXED_NOW);
+    const screenings = parseDetailPage(
+      fixture('oxitocina.html'),
+      program('oxitocina', 'OXITOCINA', 'Desde el 17/10 hasta el 1°/11'),
+      warnings,
+      FIXED_NOW,
+    );
+    expect(screenings).toEqual([]);
+    expect(warnings.some((w) => /not at Sala Lugones/.test(w))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Multi-short program blocks (previous-site fixtures, same detail markup)
+// ---------------------------------------------------------------------------
+const JUNE_NOW = new Date(Date.UTC(2026, 3, 1));
+
+describe('parseDetailPage festival-of-shorts guard (Syncro Film Fest fixture)', () => {
+  // Syncro Film Fest groups short films into timed "program" blocks marked by
+  // "Duración total del programa". Emitting them produced garbage "films"
+  // titled by the program names, so they are skipped with a warning.
+  const p = program('Syncro-Film-Fest', 'Syncro Film Fest', 'Del 25 al 29 de junio');
+
+  it('emits 0 screenings and a multi-short warning', () => {
+    const warnings: string[] = [];
+    const screenings = parseDetailPage(
+      fixture('syncro-film-fest.html'),
+      p,
+      warnings,
+      JUNE_NOW,
+    );
+    expect(screenings).toHaveLength(0);
     expect(warnings.some((w) => /multi-short|festival/i.test(w))).toBe(true);
   });
 });
 
-describe('parseDetailPage mixed cycle + program block (Tres tardes con Gardel fixture, captured 2026-06-08)', () => {
-  // Regression for the festival-guard over-skip (2026-06-08): this is a NORMAL
-  // Gardel cycle — Miércoles 17 "El día que me quieras", Jueves 18 "Tango Bar"
-  // — plus ONE double-bill day (Viernes 19) carrying "Duración total del
-  // programa". An over-blunt whole-page guard dropped the two real single-film
-  // days; the parser must keep them and skip ONLY the program block.
-  const program: ProgramLink = {
-    slug: 'Tres-tardes-con-Gardel',
-    title: 'Tres tardes con Gardel',
-    dateRangeText: 'Del 17 al 19 de junio',
-    detailUrl: 'https://complejoteatral.gob.ar/ver/Tres-tardes-con-Gardel',
-  };
+describe('parseDetailPage mixed cycle + program block (Tres tardes con Gardel fixture)', () => {
+  // A normal cycle with ONE double-bill day: keep the two single-film days,
+  // skip only the program block.
+  const p = program(
+    'Tres-tardes-con-Gardel',
+    'Tres tardes con Gardel',
+    'Del 17 al 19 de junio',
+  );
 
-  it('keeps the 2 single-film days and skips only the program block', () => {
+  it('keeps the 2 single-film days and warns about the skipped block', () => {
     const warnings: string[] = [];
     const screenings = parseDetailPage(
       fixture('tres-tardes-con-gardel.html'),
-      program,
+      p,
       warnings,
-      FIXED_NOW,
+      JUNE_NOW,
     );
-    const titles = screenings.map((s) => s.filmTitle);
-    expect(titles).toContain('El día que me quieras');
-    expect(titles).toContain('Tango Bar');
-    // The Viernes-19 double-bill is a program block — skipped, never emitted as
-    // a "+" entry or a garbage film.
-    expect(titles).not.toContain('+');
-    expect(titles).not.toContain('Así cantaba Carlos Gardel');
-    expect(screenings).toHaveLength(2);
+    expect(baSchedule(screenings).map((l) => l.slice(12))).toEqual([
+      'El día que me quieras',
+      'Tango Bar',
+    ]);
+    expect(warnings.some((w) => /program block/i.test(w))).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// fetch() run verdicts (stubbed network)
+// ---------------------------------------------------------------------------
+
+// Value: protects=a cycle day header with a misspelled month drops its films
+// with a warning instead of filing them under the wrong day; fails_when=the
+// badMonth branch is removed (films land on the previous day or a guessed
+// month); why_new=no fixture has a bad month; seam=none; no_claim=none beyond protects.
+describe('parseDetailPage — unknown month in a cycle day header', () => {
+  const html = `<div class="details"><div>
+    <p>Jueves 22 de octubre</p><p>A las 20 horas</p>
+    <p><strong>Primera</strong></p><p>(Primera; Francia, 1990)</p>
+    <p>Viernes 23 de octubr</p><p>A las 18 horas</p>
+    <p><strong>Segunda</strong></p><p>(Segunda; Italia, 1975)</p>
+  </div></div>`;
+  const program = {
+    slug: 'ciclo',
+    title: 'Ciclo',
+    dateRangeText: 'Del 22 al 30 de octubre',
+    detailUrl: 'https://complejoteatral.gob.ar/produccion/ciclo/',
+  };
+
+  it('keeps the well-dated film and skips the badly dated one with a warning', () => {
+    const warnings: string[] = [];
+    const out = parseDetailPage(html, program, warnings, FIXED_NOW);
+    expect(out.map((s) => [s.filmTitle, s.startsAtUtc.toISOString()])).toEqual([
+      ['Primera', '2026-10-22T23:00:00.000Z'],
+    ]);
+    expect(warnings).toEqual([
+      'program "ciclo": unknown month in "Viernes 23 de octubr" — day skipped',
+    ]);
+  });
+});
+
+// Value: protects=a weekday that disagrees with the guessed year is flagged
+// but never moves the run (a typo must not hide a current cycle); fails_when=
+// the check moves the year or drops the warning; why_new=every fixture's guess
+// agrees with its weekdays; seam=none; no_claim=none beyond protects.
+describe('parseDetailPage — weekdays cross-check the year', () => {
+  const page = (header: string) => `<div class="details"><div>
+    <p>${header}</p><p>A las 20 horas</p>
+    <p><strong>Film</strong></p><p>(Film; Francia, 1990)</p>
+  </div></div>`;
+  const program = {
+    slug: 'enero',
+    title: 'Ciclo',
+    dateRangeText: 'Del 5 al 9 de enero',
+    detailUrl: 'https://complejoteatral.gob.ar/produccion/enero/',
+  };
+
+  it('keeps the guessed year when the weekday agrees', () => {
+    const warnings: string[] = [];
+    // The guess for "Del 5 al 9 de enero" read on 1 Oct 2026 is 2027; 5 Jan 2027 is a Tuesday.
+    const [s] = parseDetailPage(page('Martes 5 de enero'), program, warnings, FIXED_NOW);
+    expect(s.startsAtUtc.toISOString()).toBe('2027-01-05T23:00:00.000Z');
+    expect(warnings).toEqual([]);
   });
 
-  it('warns about the skipped program block', () => {
+  it('keeps the year but warns when the weekday fits another one', () => {
     const warnings: string[] = [];
-    parseDetailPage(fixture('tres-tardes-con-gardel.html'), program, warnings, FIXED_NOW);
-    expect(warnings.some((w) => /program block/i.test(w))).toBe(true);
+    // 5 Jan 2026 was a Monday: a "Lunes 5 de enero" page disagrees with 2027.
+    const [s] = parseDetailPage(page('Lunes 5 de enero'), program, warnings, FIXED_NOW);
+    expect(s.startsAtUtc.toISOString()).toBe('2027-01-05T23:00:00.000Z');
+    expect(warnings).toEqual([
+      'program "enero": weekdays fit 2026, not 2027 — year kept',
+    ]);
+  });
+
+  it('keeps a run that is on now despite a one-day weekday typo', () => {
+    const warnings: string[] = [];
+    const now = new Date(Date.UTC(2026, 9, 23));
+    const current = { ...program, slug: 'oct', dateRangeText: 'Del 15 al 30 de octubre' };
+    // 15 Oct 2026 is a Thursday; the page says Viernes.
+    const [s] = parseDetailPage(page('Viernes 15 de octubre'), current, warnings, now);
+    expect(s.startsAtUtc.toISOString()).toBe('2026-10-15T23:00:00.000Z');
+    expect(warnings).toEqual(['program "oct": weekdays fit 2027, not 2026 — year kept']);
+  });
+});
+
+// Generated by /ship test coverage audit.
+// Value: protects=fetch() fails on a homepage with no cards, succeeds+warns when no
+// cine at Lugones, and keeps going past a failed detail page; fails_when=the
+// cardCount guard is dropped or inverted, or a detail error aborts the run;
+// why_new=existing tests cover only the pure parsers, never the fetch() verdicts;
+// seam=none; no_claim=live site markup or 403 behaviour (fetch is stubbed with
+// minimal HTML).
+describe('lugonesProvider.fetch — run verdicts', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const card = (genre: string, place: string, slug: string) => `
+    <div class="list-item list-item-programacion">
+      <span class="category">${genre}</span><h2>${slug}</h2>
+      <span class="date">Del 15 al 30 de octubre</span>
+      <span class="place">${place}</span>
+      <a href="https://complejoteatral.gob.ar/produccion/${slug}/">+ info</a>
+    </div>`;
+
+  /** `detailStatus`: one status for every detail page, or per slug (default 200). */
+  function stub(home: string, detailStatus: number | Record<string, number> = 200) {
+    const calls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL) => {
+        const url = String(input);
+        calls.push(url);
+        if (url === 'https://complejoteatral.gob.ar/') return new Response(home);
+        const slug = url.replace(/\/+$/, '').split('/').pop() ?? '';
+        const status =
+          typeof detailStatus === 'number' ? detailStatus : (detailStatus[slug] ?? 200);
+        return new Response('nope', { status });
+      }),
+    );
+    return calls;
+  }
+
+  const LUGONES = 'Sala Leopoldo Lugones / Teatro San Martín';
+
+  it('fails when the homepage has no production cards at all (selector broke)', async () => {
+    stub('<html><body><main>redesigned</main></body></html>');
+    const result = await lugonesProvider.fetch();
+    expect(result.success).toBe(false);
+    expect(result.screenings).toEqual([]);
+    expect(result.error).toMatch(/No production cards/);
+  });
+
+  it('succeeds with a warning when the sala has no cine this season', async () => {
+    const calls = stub(
+      card('teatro', 'Sala Cunill Cabanellas / Teatro San Martín', 'obra'),
+    );
+    const result = await lugonesProvider.fetch();
+    expect(result.success).toBe(true);
+    expect(result.screenings).toEqual([]);
+    expect(result.warnings).toEqual(['no cine programs at Sala Lugones among 1 cards']);
+    expect(calls).toHaveLength(1); // no detail page fetched
+  });
+
+  it('records a failed detail page as a warning and still succeeds', async () => {
+    stub(card('cine', LUGONES, 'ciclo') + card('cine', LUGONES, 'otro'), { ciclo: 500 });
+    const result = await lugonesProvider.fetch();
+    expect(result.success).toBe(true);
+    expect(result.warnings.filter((w) => /HTTP/.test(w))).toEqual([
+      expect.stringMatching(/^program "ciclo": HTTP 500/),
+    ]);
+  });
+
+  // Value: protects=a total block on detail pages fails the run instead of
+  // reading as a quiet season; fails_when=the all-failed guard is dropped;
+  // why_new=the one-page test above only covers partial failure; seam=none;
+  // no_claim=live 403 behaviour (fetch stubbed).
+  it('fails when every cine detail page errors (a block, not a quiet season)', async () => {
+    stub(card('cine', LUGONES, 'a') + card('cine', LUGONES, 'b'), 403);
+    const result = await lugonesProvider.fetch();
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('All 2 Sala Lugones detail pages failed to load.');
+    expect(result.warnings).toHaveLength(2);
+  });
+
+  // Value: protects=only https links on the venue's own host are fetched and
+  // published; fails_when=the host check is removed; why_new=no fixture has an
+  // off-site card link; seam=none; no_claim=none beyond protects.
+  it('ignores cards whose link leaves the venue site', async () => {
+    const linked = (to: string) =>
+      card('cine', LUGONES, 'x').replace(
+        'https://complejoteatral.gob.ar/produccion/x/',
+        to,
+      );
+    const calls = stub(
+      linked('http://complejoteatral.gob.ar/produccion/plain/') +
+        linked('https://elsewhere.example/produccion/other/') +
+        linked('https://[bad/produccion/broken/') +
+        card('cine', LUGONES, 'ok'),
+    );
+    await lugonesProvider.fetch();
+    expect(calls).toEqual([
+      'https://complejoteatral.gob.ar/',
+      'https://complejoteatral.gob.ar/produccion/ok/',
+    ]);
+  });
+
+  it('refuses a detail page that redirects off-site', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL) => {
+        if (String(input) === 'https://complejoteatral.gob.ar/') {
+          return new Response(card('cine', LUGONES, 'a') + card('cine', LUGONES, 'b'));
+        }
+        const res = new Response('<div class="details"><div></div></div>');
+        Object.defineProperty(res, 'url', { value: 'https://elsewhere.example/x' });
+        return res;
+      }),
+    );
+    const result = await lugonesProvider.fetch();
+    expect(result.success).toBe(false);
+    expect(result.warnings).toEqual([
+      expect.stringMatching(/^program "a": redirected off-site/),
+      expect.stringMatching(/^program "b": redirected off-site/),
+    ]);
+  });
+
+  // Value: protects=a past-only fetch is sent as empty so the ingest breaker
+  // keeps the live schedule; fails_when=the future filter is dropped (past
+  // rows make the fetch non-empty and the breaker never trips); why_new=no
+  // fetch test ran after a program's dates; seam=none; no_claim=none beyond protects.
+  it('sends no screenings once every listed date is past', async () => {
+    vi.useFakeTimers({ now: new Date('2026-11-20T12:00:00Z'), toFake: ['Date'] });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL) =>
+        String(input) === 'https://complejoteatral.gob.ar/'
+          ? new Response(card('cine', LUGONES, 'wenders'))
+          : new Response(fixture('wenders.html')),
+      ),
+    );
+    const result = await lugonesProvider.fetch();
+    vi.useRealTimers();
+    expect(result.success).toBe(true);
+    expect(result.screenings).toEqual([]);
+  });
+
+  it('fails (without throwing) when the homepage itself errors', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('forbidden', { status: 403 })),
+    );
+    const result = await lugonesProvider.fetch();
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/HTTP 403/);
   });
 });

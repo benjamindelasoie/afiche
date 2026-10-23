@@ -62,13 +62,18 @@ export async function fetchAndParse(
     const screenings = parseAgenda(html, config, warnings);
 
     if (screenings.length === 0) {
-      return {
-        cinemaId: config.cinemaId,
-        screenings: [],
-        success: false,
-        warnings,
-        error: `No ${config.displayName} screenings parsed from agenda page — selector likely broke or the location slug "${config.locationSlug}" changed.`,
-      };
+      const verdict = explainEmptyVenue(html, config);
+      if (!verdict.ok) {
+        return {
+          cinemaId: config.cinemaId,
+          screenings: [],
+          success: false,
+          warnings,
+          error: verdict.error,
+        };
+      }
+      warnings.push(verdict.warning);
+      return { cinemaId: config.cinemaId, screenings: [], success: true, warnings };
     }
 
     await enrichFromDetailPages(screenings, warnings);
@@ -171,6 +176,57 @@ export function parseAgenda(
   });
 
   return out;
+}
+
+/**
+ * Decide whether zero screenings for a venue is a broken scraper or a quiet
+ * week. Lumiton's own space programmes little, and on 2026-10-22 its only
+ * tile was a talk with clips ("UNA VELADA CON NARCISO IBÁÑEZ MENTA", no
+ * `tipo-proyecciones`), so an empty result was correct, not a breakage.
+ *
+ * Empty is legitimate only when all three hold: the venue's slug still
+ * appears on the agenda (so a renamed slug still fails), none of the venue's
+ * own tiles is a screening (so a screening tile the parser rejected still
+ * fails), and the agenda yields screenings for some venue (so broken tile
+ * selectors or a renamed screening class still fail). Pure, exported for tests.
+ */
+export function explainEmptyVenue(
+  html: string,
+  config: LumitonVenueConfig,
+): { ok: true; warning: string } | { ok: false; error: string } {
+  const $ = cheerio.load(html);
+  const slugs = new Set<string>();
+  let venueTiles = 0;
+  let venueScreeningTiles = 0;
+  $('article[data-event]').each((_i, el) => {
+    const locs = parseLocationsJson($(el).attr('data-locations') ?? '');
+    locs.forEach((l) => slugs.add(l));
+    if (!locs.includes(config.locationSlug)) return;
+    venueTiles++;
+    if (isScreening($(el))) venueScreeningTiles++;
+  });
+
+  const agendaScreenings = [...slugs].reduce(
+    (n, slug) => n + parseAgenda(html, { ...config, locationSlug: slug }, []).length,
+    0,
+  );
+
+  if (venueScreeningTiles > 0) {
+    return {
+      ok: false,
+      error: `${venueScreeningTiles} ${config.displayName} screening tile(s) on the agenda but none parsed — see warnings (date/time/title selectors).`,
+    };
+  }
+  if (venueTiles === 0 || agendaScreenings === 0) {
+    return {
+      ok: false,
+      error: `No ${config.displayName} screenings parsed from agenda page — selector likely broke or the location slug "${config.locationSlug}" changed.`,
+    };
+  }
+  return {
+    ok: true,
+    warning: `${config.cinemaId}: no screenings this run — the venue's ${venueTiles} agenda tile(s) are all non-screening activities, while the agenda parsed ${agendaScreenings} screenings for other venues.`,
+  };
 }
 
 // ---------------------------------------------------------------------------

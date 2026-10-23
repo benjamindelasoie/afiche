@@ -183,6 +183,9 @@ fi
 
 # --- run -------------------------------------------------------------------
 log "starting scrape:prod (node $(node --version))"
+# Lines already in the append-only LOG; the providers-ok check below reads
+# only what THIS run appends after them.
+log_start=$(wc -l <"$LOG" 2>/dev/null | tr -d ' ')
 if npm run scrape:prod >>"$LOG" 2>&1; then
   scrape_rc=0
   log "scrape OK"
@@ -198,7 +201,9 @@ fi
 # cares whether fresh screenings actually landed. Without this the guard was
 # dead from 2026-07-31 onward: most runs before the 09-15 outage landed
 # 10/12 providers but still exited non-zero, so STAMP never advanced.
-providers_ok=$(grep -o 'Done\. [0-9]\+/[0-9]\+ providers ok\.' "$LOG" | tail -1 | grep -o '^Done\. [0-9]\+' | grep -o '[0-9]\+$')
+# Only this run's lines: a run that dies before printing "Done." must not
+# inherit the previous run's count and stamp stale data as fresh.
+providers_ok=$(tail -n +"$((${log_start:-0} + 1))" "$LOG" | grep -o 'Done\. [0-9]\+/[0-9]\+ providers ok\.' | tail -1 | grep -o '^Done\. [0-9]\+' | grep -o '[0-9]\+$')
 if [ -n "${providers_ok:-}" ] && [ "$providers_ok" -gt 0 ] 2>/dev/null; then
   date +%s >"$STAMP"
   [ "$scrape_rc" -eq 0 ] || log "partial success ($providers_ok providers ok) — staleness stamp updated despite exit $scrape_rc"

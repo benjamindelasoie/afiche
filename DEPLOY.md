@@ -83,7 +83,7 @@ For local dev, the shortcut is `npm run db:rescrape` — chains
 5. **Deploy.** First build takes ~2 min. You'll get a URL like `afiche-xyz.vercel.app`.
 6. (Optional) **Domains** → add a custom domain if you have one.
 
-Copy the production URL — `scrape-prod.sh` hardcodes it as the revalidate target, so if yours differs from `afiche.vercel.app` you'll want to edit `scripts/scrape-prod.sh:25`.
+Copy the production URL — `scrape-prod.sh` hardcodes it as the revalidate target, so if yours differs from `https://afiche.ar` you'll want to edit `SITE_URL` near the top of `scripts/scrape-prod.sh`.
 
 ---
 
@@ -193,8 +193,12 @@ npm run scrape:prod
 
 Expected output:
 - `🎞  Scraping against Turso prod...` followed by per-cinema stats
-- `🔄 Revalidating https://afiche.vercel.app...` → `✓ Cache revalidated.`
-- `Done. Check https://afiche.vercel.app to verify.`
+- `🔄 Revalidating https://afiche.ar...` → `✓ Cache revalidated.`
+- `Done. Check https://afiche.ar to verify.`
+
+If any provider fails, you'll also see `⚠  Scraper exited non-zero. Revalidating anyway…`: the
+script still revalidates so the providers that succeeded reach the site, then exits with the
+scraper's non-zero code.
 
 Visit the site. The cartelera should render real data from Turso on next load.
 
@@ -241,8 +245,10 @@ Alternative for one-off cases: add an entry to `tmdb-overrides.json` (mapped on 
 - **Turso → Dashboard** for query / storage usage (free tier is generous)
 - **The heal digest** on Telegram after each scrape — applied vs. queued counts and the 7-day `heal_runs` trend; a growing queue or a spike in errors is the signal to look
 
-If a scrape fails, the script exits non-zero and prints the failing step. Re-run
-it manually once you've fixed the issue.
+If a scrape fails, the script exits non-zero and prints the failing step. A
+partial failure (some providers down) still revalidates before exiting non-zero;
+a failed revalidate exits non-zero too. Re-run it manually once you've fixed the
+issue.
 
 ### Staleness alerting (the failure that actually bites)
 

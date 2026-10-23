@@ -2,75 +2,76 @@
  * Cine Gaumont provider — Espacio INCAA Km 0, the state cinema for Argentine
  * national film, facing Plaza del Congreso.
  *
- * The site (cinegaumont.ar) runs on the "Voy al Cine" platform. Three sources,
- * no JS rendering needed — everything we use is server-rendered HTML or a clean
- * JSON endpoint:
+ * The site (cinegaumont.ar) runs on the Cinexo ticketing platform: a
+ * client-rendered Next.js shell whose cartelera is fetched in the browser from
+ * one clean JSON endpoint, so there is no HTML to scrape:
  *
- *   1. GET /                      → the cartelera: films grouped into sections
- *      (`.peliculas-section`). "Estrenos" → premieres, "Películas en cartel" →
- *      regular run, and one `.peliculas-ciclos` block per curatorial cycle
- *      (e.g. "Ciclo Bleak Week"), each headed by an `<h2 class="section-title">`.
- *      This gives us the film id list + cycle/program context + base tags.
+ *   GET https://apifront.cinexo.com.ar/mobile/consultas/peliculas/
+ *       PeliculasConFuncionesYHorarios?idComplejo=372001&fecha=DD/MM/YYYY
  *
- *   2. GET https://www.cinegaumont.com.ar/films/{id}/tree  → JSON showtimes for
- *      a ~6-day window. NOTE the host is `.com.ar` (the `.ar` host 404s this).
- *      Shape: { days: { "YYYY-MM-DD": [ { name, formats: [ { performances:
- *      [ { showTime: "HH:MM" } ] } ] } ] } }. Times are BA-local.
+ * One call per day. Shape: { success, data: { datos: [film], funciones:
+ * [showtime] } }. `datos` is the whole cartelera (same list every day) with
+ * title, director, runtime, synopsis and `fecha_estreno`; `funciones` holds
+ * that day's showtimes ({ codPelicula, hora: "HH:MM" }), joined to `datos` by
+ * `peliculas_codigo`. The site offers a 7-day window starting today; for today
+ * the API only returns showtimes that haven't started yet.
  *
- *   3. GET /pelicula?filmid={id}  → the detail page: proper-case title, original
- *      title, director, origin/country, runtime, synopsis. (The `.aspx` form
- *      301-redirects here.) These feed TMDB matching — the more we emit, the
- *      smaller /admin/unmatched stays.
+ * Titles (and most directors) arrive ALL-CAPS with sloppy spacing
+ * ("ADOLESCENCIA,SEXO Y…", "XUL "). normalizeTitle sentence-cases them the
+ * same way displayFilmTitle would at render, so the stored key reads like
+ * the page; normalizeDirector name-cases each word. The API carries no
+ * original title, country or year; TMDB enrichment fills those. Cycles aren't
+ * exposed anymore, so no programName.
  *
- * Per film we fetch the tree first; a film with no showtime in the window is
- * skipped before we bother fetching its detail page. The scraped title is taken
- * from the detail page (proper-case, stable) so the immutable (scrapedTitle,
- * scrapedYear) upsert key doesn't drift. The detail page exposes no production
- * year — fine, the matcher accepts any candidate year when scrapedYear is
- * undefined and leans on the title + director hints instead.
- *
- * TIMEZONE: Argentina is UTC-3, no DST. We read each "YYYY-MM-DD" + "HH:MM" as
+ * TIMEZONE: Argentina is UTC-3, no DST. We read each date + "HH:MM" as
  * BA-local and shift +3h to true UTC before emitting `startsAtUtc`.
  */
 
-import * as cheerio from 'cheerio';
 import { type Provider, type ProviderRunResult, type ScrapedScreening } from './types';
 import type { ScreeningTag } from '@/db';
+import { caseIfAllCaps } from '@/lib/title-case';
 
 const CINEMA_ID = 'cine-gaumont';
 const SITE_BASE = 'https://www.cinegaumont.ar';
-const API_BASE = 'https://www.cinegaumont.com.ar'; // showtime tree lives on .com.ar
-const LISTING_URL = `${SITE_BASE}/`;
-const DETAIL_DELAY_MS = 250;
+const API_BASE = 'https://apifront.cinexo.com.ar';
+const COMPLEJO_ID = '372001'; // Cine Gaumont on the Cinexo platform
+const WINDOW_DAYS = 7; // matches the date strip the site offers
+const DAY_DELAY_MS = 250;
+const FETCH_TIMEOUT_MS = 20_000;
+const RELEASE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 // Realistic desktop Chrome UA. Datacenter IPs + scraper-shaped UAs invite 403s
 // from a lot of AR cinema infra; send a normal browser UA to be safe.
 const USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
 
-// --- Intermediate shapes (exported pieces are pure + fixture-tested) --------
+// --- API response shapes (only the fields we use) --------------------------
 
-export interface FilmListing {
-  filmId: number;
-  /** Raw card title — ALL CAPS on this site. Detail page carries proper case. */
-  listingTitle: string;
-  /** Cycle name, only for films inside a `.peliculas-ciclos` section. */
-  programName?: string;
-  /** Base tags derived from the section the film sits in. */
-  tags: ScreeningTag[];
-}
-
-export interface FilmMeta {
-  title: string;
-  titleOriginal?: string;
+interface ApiFilm {
+  peliculas_codigo?: string;
+  peliculas_nombre?: string;
+  peliculas_duracion?: string; // minutes, as a string
+  peliculas_sinopsis?: string;
   director?: string;
-  country?: string;
-  runtimeMin?: number;
-  synopsisEs?: string;
+  fecha_estreno?: string; // "DD/MM/YYYY", or "-" when unknown
 }
 
-export interface TreeShowtime {
-  date: string; // "YYYY-MM-DD"
-  time: string; // "HH:MM"
+interface ApiFuncion {
+  _id?: string; // unique per showtime; never repeats across days
+  codPelicula?: string;
+  hora?: string; // "HH:MM", BA-local
+  idUltracine?: string;
+}
+
+interface DayResponse {
+  success?: boolean;
+  data?: { datos?: ApiFilm[]; funciones?: ApiFuncion[] };
+}
+
+export interface DayParse {
+  screenings: ScrapedScreening[];
+  /** Films in the cartelera list — 0 means the API shape likely changed. */
+  filmCount: number;
+  warnings: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -82,55 +83,67 @@ export const cineGaumontProvider: Provider = {
 
   async fetch(): Promise<ProviderRunResult> {
     const warnings: string[] = [];
-    try {
-      const listingHtml = await fetchText(LISTING_URL);
-      const films = parseListing(listingHtml);
-      if (films.length === 0) {
-        return {
-          cinemaId: CINEMA_ID,
-          screenings: [],
-          success: false,
-          warnings,
-          error: 'No films parsed from cartelera — listing selectors likely broke.',
-        };
-      }
+    const screenings: ScrapedScreening[] = [];
+    let filmCount = 0;
+    let daysOk = 0;
 
-      const screenings: ScrapedScreening[] = [];
-      for (const film of films) {
-        try {
-          // Tree first: skip the detail fetch for films not scheduled in the
-          // ~6-day window (common for cycle entries announced ahead of time).
-          const tree = await fetchJson<unknown>(`${API_BASE}/films/${film.filmId}/tree`);
-          const showtimes = parseTree(tree);
-          if (showtimes.length === 0) continue;
+    // Showtimes carry no date of their own; each is stamped with the date we
+    // asked for. If the API ever ignored `fecha`, every day would come back
+    // with the same showtimes, so two days with the same ids fail the run.
+    const daysByShowtimes = new Map<string, string>();
+    let repeatedDays: [string, string] | undefined;
 
-          const detailHtml = await fetchText(
-            `${SITE_BASE}/pelicula?filmid=${film.filmId}`,
-          );
-          const meta = parseDetail(detailHtml);
-          if (!meta.title) {
-            warnings.push(
-              `film ${film.filmId} "${film.listingTitle}": detail page had no title — skipped`,
-            );
-            continue;
-          }
-          screenings.push(...toScreenings(film, meta, showtimes));
-          await sleep(DETAIL_DELAY_MS);
-        } catch (err) {
-          warnings.push(`film ${film.filmId} "${film.listingTitle}": ${msg(err)}`);
+    for (const date of baDateWindow(new Date(), WINDOW_DAYS)) {
+      try {
+        const day = await fetchJson<DayResponse>(dayUrl(date));
+        const ids = (day?.data?.funciones ?? [])
+          .map((fn) => fn?._id)
+          .filter((id): id is string => !!id)
+          .sort()
+          .join(',');
+        if (ids) {
+          const seen = daysByShowtimes.get(ids);
+          if (seen && !repeatedDays) repeatedDays = [seen, date];
+          daysByShowtimes.set(ids, date);
         }
+        const parsed = parseDay(day, date);
+        screenings.push(...parsed.screenings);
+        warnings.push(...parsed.warnings);
+        filmCount = Math.max(filmCount, parsed.filmCount);
+        daysOk++;
+      } catch (err) {
+        warnings.push(`${date}: ${msg(err)}`);
       }
-
-      return { cinemaId: CINEMA_ID, screenings, success: true, warnings };
-    } catch (err) {
-      return {
-        cinemaId: CINEMA_ID,
-        screenings: [],
-        success: false,
-        warnings,
-        error: msg(err),
-      };
+      await sleep(DAY_DELAY_MS);
     }
+
+    // The Gaumont screens every day, so a week of listed films with no
+    // matched showtime is a reshaped `funciones` (or a changed complejo id),
+    // not a quiet week.
+    const fail = (error: string): ProviderRunResult => ({
+      cinemaId: CINEMA_ID,
+      screenings: [],
+      success: false,
+      warnings,
+      error,
+    });
+    if (daysOk === 0) return fail('Every day request to the Cinexo API failed.');
+    if (repeatedDays) {
+      return fail(
+        `Cinexo API returned the same showtimes for ${repeatedDays[0]} and ${repeatedDays[1]} — the date parameter may be ignored.`,
+      );
+    }
+    if (filmCount === 0) {
+      return fail(
+        'Cinexo API returned no films for any day — API shape may have changed.',
+      );
+    }
+    if (screenings.length === 0) {
+      return fail(
+        `Cinexo API listed ${filmCount} films but no showtimes matched them in ${daysOk} day(s) — funciones shape or complejo id may have changed.`,
+      );
+    }
+    return { cinemaId: CINEMA_ID, screenings, success: true, warnings };
   },
 };
 
@@ -139,165 +152,78 @@ export const cineGaumontProvider: Provider = {
 // ---------------------------------------------------------------------------
 
 /**
- * Parse the cartelera homepage into the film list. Walks each
- * `.peliculas-section` block (skipping the hero swiper, which duplicates
- * films), reads its `.section-title`, and collects one entry per card.
- * Cycle sections (`.peliculas-ciclos`) carry their title as `programName`.
+ * Map one day's API response ("YYYY-MM-DD" BA-local `date`) to screenings.
+ * Defensive against the shape shifting (everything optional) and filters to
+ * the Gaumont complejo so a multi-venue response can't bleed in other times.
  */
-export function parseListing(html: string): FilmListing[] {
-  const $ = cheerio.load(html);
-  const byId = new Map<number, FilmListing>();
+export function parseDay(json: unknown, date: string): DayParse {
+  const out: DayParse = { screenings: [], filmCount: 0, warnings: [] };
+  const data = (json as DayResponse | null)?.data;
+  const datos = Array.isArray(data?.datos) ? data.datos : [];
+  const funciones = Array.isArray(data?.funciones) ? data.funciones : [];
 
-  $('.peliculas-section').each((_i, section) => {
-    const $section = $(section);
-    const sectionTitle = $section.find('.section-title').first().text().trim();
-    const isCiclo = $section.hasClass('peliculas-ciclos');
-    const isEstreno = $section.hasClass('peliculas-estrenos');
-
-    $section.find('.category-thumb').each((_j, thumb) => {
-      const $thumb = $(thumb);
-      const href = $thumb.find('a[href*="filmid="]').first().attr('href') ?? '';
-      const idMatch = href.match(/filmid=(\d+)/);
-      if (!idMatch) return;
-      const filmId = parseInt(idMatch[1], 10);
-      const listingTitle = $thumb.find('.name').first().text().trim();
-      if (!listingTitle) return;
-
-      const entry: FilmListing = {
-        filmId,
-        listingTitle,
-        tags: sectionTags(isCiclo, isEstreno, sectionTitle),
-        ...(isCiclo && sectionTitle ? { programName: sectionTitle } : {}),
-      };
-
-      // A film could appear in more than one section; keep the one that
-      // carries a cycle context so the cartelera pill survives.
-      const existing = byId.get(filmId);
-      if (!existing || (!existing.programName && entry.programName)) {
-        byId.set(filmId, entry);
-      }
-    });
-  });
-
-  return [...byId.values()];
-}
-
-/** Tags implied by the section a film sits in. No language tags — see note. */
-function sectionTags(
-  isCiclo: boolean,
-  isEstreno: boolean,
-  title: string,
-): ScreeningTag[] {
-  const tags: ScreeningTag[] = [];
-  if (isEstreno) tags.push('premiere');
-  if (isCiclo) {
-    tags.push('cycle');
-    const t = title.toLowerCase();
-    if (/funciones?\s+[úu]nicas?|[úu]nica\s+funci/.test(t)) tags.push('unique');
-    if (/retrospectiv/.test(t)) tags.push('retrospective');
-    if (/restaurad|restor/.test(t)) tags.push('restored');
+  const films = new Map<string, ApiFilm>();
+  for (const film of datos) {
+    if (film?.peliculas_codigo) films.set(String(film.peliculas_codigo), film);
   }
-  // Deliberately no 'vos'/'dubbed': the tree's format ("2D-Castellano" /
-  // "2D-Subtitulado") can't tell an Argentine original-Spanish film from a
-  // dubbed foreign one, and in an all-indie cartelera a language tag would be
-  // universal-noise (same stance as the Cacodelphia provider).
-  return Array.from(new Set(tags));
-}
+  out.filmCount = films.size;
 
-/** Parse a film detail page (`/pelicula?filmid=N`) into its metadata. */
-export function parseDetail(html: string): FilmMeta {
-  const $ = cheerio.load(html);
-  const $box = $('.movie-info-box').first();
-
-  const title = $box.find('h2.name').first().text().replace(/\s+/g, ' ').trim();
-
-  // First `.year` div is the runtime ("102 minutos."); a later `.year` holds
-  // the audience rating — don't confuse them.
-  const runtimeMin = parseRuntime($box.find('.year').first().text());
-  const synopsisEs = cleanText($box.find('p.description').first().text());
-
-  const meta: FilmMeta = { title };
-  if (runtimeMin !== undefined) meta.runtimeMin = runtimeMin;
-  if (synopsisEs) meta.synopsisEs = synopsisEs;
-
-  $('.movie-side-info-box li').each((_i, li) => {
-    const text = $(li).text().replace(/\s+/g, ' ').trim();
-    const m = text.match(/^([^:]+):\s*(.*)$/);
-    if (!m) return;
-    const label = stripDiacritics(m[1].trim().toLowerCase());
-    const value = m[2].trim();
-    if (!value) return;
-    if (label === 'titulo original') meta.titleOriginal = value;
-    else if (label === 'origen') meta.country = value;
-    else if (label === 'direccion') meta.director = value;
-  });
-
-  return meta;
-}
-
-/**
- * Flatten the `/films/{id}/tree` JSON into a flat showtime list. Defensive
- * against the API shape shifting (everything optional) and filters to the
- * Gaumont cinema node so a future multi-venue tree can't bleed in other times.
- */
-export function parseTree(json: unknown): TreeShowtime[] {
-  const out: TreeShowtime[] = [];
-  const days = (json as { days?: Record<string, unknown> } | null)?.days;
-  if (!days || typeof days !== 'object') return out;
-
-  for (const [date, cinemas] of Object.entries(days)) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
-    if (!Array.isArray(cinemas)) continue;
-    for (const cinema of cinemas) {
-      const name = (cinema as { name?: string })?.name;
-      if (name && !/gaumont/i.test(name)) continue;
-      const formats = (cinema as { formats?: unknown })?.formats;
-      if (!Array.isArray(formats)) continue;
-      for (const fmt of formats) {
-        const perfs = (fmt as { performances?: unknown })?.performances;
-        if (!Array.isArray(perfs)) continue;
-        for (const perf of perfs) {
-          const time = (perf as { showTime?: string })?.showTime;
-          if (typeof time === 'string' && /^\d{1,2}:\d{2}$/.test(time)) {
-            out.push({ date, time });
-          }
-        }
-      }
+  for (const fn of funciones) {
+    if (fn?.idUltracine && fn.idUltracine !== COMPLEJO_ID) continue;
+    const code = String(fn?.codPelicula ?? '');
+    const film = films.get(code);
+    const filmTitle = normalizeTitle(film?.peliculas_nombre ?? '');
+    if (!film || !filmTitle) {
+      out.warnings.push(`${date}: showtime for unknown film ${code || '?'} — skipped`);
+      continue;
     }
+    const startsAtUtc = baLocalToUtc(date, fn.hora ?? '');
+    if (!startsAtUtc) {
+      out.warnings.push(`${date} "${filmTitle}": unparseable time "${fn.hora}"`);
+      continue;
+    }
+
+    const director = normalizeDirector(film.director);
+    const runtimeMin = parseRuntime(film.peliculas_duracion);
+    const synopsisEs = cleanText(film.peliculas_sinopsis);
+    out.screenings.push({
+      cinemaId: CINEMA_ID,
+      filmTitle,
+      ...(director ? { director } : {}),
+      ...(runtimeMin ? { runtimeMin } : {}),
+      startsAtUtc,
+      tags: screeningTags(film, date),
+      ...(synopsisEs ? { synopsisEs } : {}),
+      sourceUrl: `${SITE_BASE}/es-AR/programacion/corp/${COMPLEJO_ID}/${code}`,
+    });
   }
   return out;
 }
 
-/** Combine a listing entry, its detail metadata, and its showtimes. */
-export function toScreenings(
-  listing: FilmListing,
-  meta: FilmMeta,
-  showtimes: TreeShowtime[],
-): ScrapedScreening[] {
-  const filmTitle = (meta.title || listing.listingTitle).trim();
-  const sourceUrl = `${SITE_BASE}/pelicula?filmid=${listing.filmId}`;
+/**
+ * 'premiere' during the film's release week (the 7 days from `fecha_estreno`),
+ * standing in for the old site's "Estrenos" section. No language tags: the API's
+ * `subtitulada` flag can't tell an Argentine original-Spanish film from a dubbed
+ * foreign one, and in an all-indie cartelera a language tag would be
+ * universal-noise (same stance as the Cacodelphia provider).
+ */
+function screeningTags(film: ApiFilm, date: string): ScreeningTag[] {
+  const release = film.fecha_estreno?.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!release) return [];
+  const releaseMs = Date.UTC(+release[3], +release[2] - 1, +release[1]);
+  const [y, m, d] = date.split('-').map(Number);
+  const dayMs = Date.UTC(y, m - 1, d);
+  return dayMs >= releaseMs && dayMs - releaseMs < RELEASE_WEEK_MS ? ['premiere'] : [];
+}
 
-  const out: ScrapedScreening[] = [];
-  for (const st of showtimes) {
-    const startsAtUtc = baLocalToUtc(st.date, st.time);
-    if (!startsAtUtc) continue;
-    out.push({
-      cinemaId: CINEMA_ID,
-      filmTitle,
-      // Only when it actually differs — for Spanish-language films the
-      // "original" equals the display title and carries no extra signal.
-      ...(meta.titleOriginal && meta.titleOriginal !== filmTitle
-        ? { filmTitleOriginal: meta.titleOriginal }
-        : {}),
-      ...(meta.director ? { director: meta.director } : {}),
-      ...(meta.country ? { country: meta.country } : {}),
-      ...(meta.runtimeMin ? { runtimeMin: meta.runtimeMin } : {}),
-      startsAtUtc,
-      tags: listing.tags,
-      ...(meta.synopsisEs ? { synopsisEs: meta.synopsisEs } : {}),
-      sourceUrl,
-      ...(listing.programName ? { programName: listing.programName } : {}),
-    });
+/** `count` consecutive BA-local dates ("YYYY-MM-DD") starting today in BA. */
+export function baDateWindow(now: Date, count: number): string[] {
+  const baMidnight = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+  baMidnight.setUTCHours(0, 0, 0, 0);
+  const out: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const d = new Date(baMidnight.getTime() + i * 24 * 60 * 60 * 1000);
+    out.push(d.toISOString().slice(0, 10));
   }
   return out;
 }
@@ -317,11 +243,44 @@ export function baLocalToUtc(date: string, time: string): Date | null {
 // Small helpers
 // ---------------------------------------------------------------------------
 
+/** The API wants the date as "DD/MM/YYYY". */
+function dayUrl(date: string): string {
+  const [y, m, d] = date.split('-');
+  return `${API_BASE}/mobile/consultas/peliculas/PeliculasConFuncionesYHorarios?idComplejo=${COMPLEJO_ID}&fecha=${d}/${m}/${y}`;
+}
+
 function parseRuntime(raw: string | undefined): number | undefined {
-  const m = raw?.match(/(\d+)\s*min/i);
-  if (!m) return undefined;
-  const n = parseInt(m[1], 10);
+  const n = parseInt(raw ?? '', 10);
   return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+/** Collapse whitespace, restore the space after a comma, sentence-case caps. */
+export function normalizeTitle(raw: string): string {
+  const s = raw
+    .replace(/\s+/g, ' ')
+    .replace(/,(?=\p{L})/gu, ', ')
+    .trim();
+  return caseIfAllCaps(s);
+}
+
+const NAME_PARTICLES = new Set(['de', 'del', 'la', 'las', 'los', 'y', 'van', 'von']);
+
+/** `HERNAN GOLDFRIND` → `Hernan Goldfrind`; mixed-case names pass through. */
+export function normalizeDirector(raw: string | undefined): string | undefined {
+  const s = cleanText(raw);
+  if (!s || s !== s.toLocaleUpperCase('es')) return s;
+  return s
+    .toLocaleLowerCase('es')
+    .split(' ')
+    .map((word, i) =>
+      i > 0 && NAME_PARTICLES.has(word)
+        ? word
+        : word.replace(
+            /(^|[-'])(\p{L})/gu,
+            (_m, sep: string, ch: string) => sep + ch.toLocaleUpperCase('es'),
+          ),
+    )
+    .join(' ');
 }
 
 function cleanText(raw: string | undefined): string | undefined {
@@ -330,21 +289,9 @@ function cleanText(raw: string | undefined): string | undefined {
   return s.length > 1 ? s : undefined;
 }
 
-function stripDiacritics(s: string): string {
-  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-}
-
 // ---------------------------------------------------------------------------
 // Network
 // ---------------------------------------------------------------------------
-
-async function fetchText(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: { 'User-Agent': USER_AGENT, 'Accept-Language': 'es-AR,es;q=0.9' },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-  return res.text();
-}
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, {
@@ -353,9 +300,14 @@ async function fetchJson<T>(url: string): Promise<T> {
       Accept: 'application/json',
       'Accept-Language': 'es-AR,es;q=0.9',
     },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-  return res.json() as Promise<T>;
+  const json = (await res.json()) as T & { success?: boolean; message?: string };
+  if (json?.success === false) {
+    throw new Error(`API error for ${url}: ${json.message ?? 'success=false'}`);
+  }
+  return json;
 }
 
 function sleep(ms: number): Promise<void> {

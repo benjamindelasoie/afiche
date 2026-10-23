@@ -56,11 +56,11 @@ done
 # ---------------------------------------------------------------------------
 echo "🎞  Scraping against Turso prod..."
 echo
-npx tsx src/scrapers/run.ts
-SCRAPE_EXIT=$?
+# npx tsx exits non-zero if ANY provider failed. Capture the code with `||`:
+# a bare call would let `set -e` abort here and skip the revalidate below.
+SCRAPE_EXIT=0
+npx tsx src/scrapers/run.ts || SCRAPE_EXIT=$?
 
-# npx tsx exits non-zero if ANY provider failed. With the current datacenter-IP
-# block on GitHub Actions, expect 5/5 ok from residential but be defensive.
 if [ "$SCRAPE_EXIT" -ne 0 ]; then
   echo
   echo "⚠  Scraper exited non-zero. Revalidating anyway so partial updates"
@@ -86,3 +86,6 @@ fi
 
 echo
 echo "Done. Check https://afiche.ar to verify."
+
+# Surface a partial scrape to the caller (scrape-cron.sh notifies on it).
+exit "$SCRAPE_EXIT"

@@ -81,7 +81,7 @@ export interface TribeEventsPage {
 
 export const elCairoProvider: Provider = {
   id: CINEMA_ID,
-  name: 'El Cairo Cine Público',
+  name: 'El Cairo',
 
   async fetch(): Promise<ProviderRunResult> {
     const warnings: string[] = [];

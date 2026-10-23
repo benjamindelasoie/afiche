@@ -1,0 +1,1808 @@
+{
+  "events": [
+    {
+      "id": "2003213221671",
+      "eid": "exgcrwkd",
+      "eventbrite_event_id": "2003213221671",
+      "name": "PET SEMATARY Dir. Mary Lambert · Estados Unidos ·",
+      "summary": "PET SEMATARY\nDir. Mary Lambert · Estados Unidos ·",
+      "start_time": "19:00",
+      "end_time": "21:00",
+      "start_date": "2026-10-22",
+      "end_date": "2026-10-22",
+      "published": "2026-10-09T17:37:05Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/pet-sematary-dir-mary-lambert-estados-unidos-tickets-2003213221671",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003213221671",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299782134",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1195466650",
+      "checkout_flow": "widget",
+      "status": "started",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003213451358",
+      "eid": "exgcrwrc",
+      "eventbrite_event_id": "2003213451358",
+      "name": "MISERY Dir. Rob Reiner · Estados Unidos · 1990",
+      "summary": "PET SEMATARY\n MISERY\nDir. Rob Reiner · Estados Unidos · 1990",
+      "start_time": "21:00",
+      "end_time": "23:00",
+      "start_date": "2026-10-22",
+      "end_date": "2026-10-22",
+      "published": "2026-10-09T17:39:36Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/misery-dir-rob-reiner-estados-unidos-1990-tickets-2003213451358",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003213451358",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299782190",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1195466954",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003213562691",
+      "eid": "exgcrwxm",
+      "eventbrite_event_id": "2003213562691",
+      "name": "CARRIE Dir. Brian De Palma · Estados Unidos · 1976",
+      "summary": "CARRIE\nDir. Brian De Palma · Estados Unidos · 1976",
+      "start_time": "23:00",
+      "end_time": "01:00",
+      "start_date": "2026-10-22",
+      "end_date": "2026-10-23",
+      "published": "2026-10-09T17:43:24Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/carrie-dir-brian-de-palma-estados-unidos-1976-tickets-2003213562691",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003213562691",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299782242",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1195467281",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2002096543657",
+      "eid": "exfyhtfp",
+      "eventbrite_event_id": "2002096543657",
+      "name": "DJ IAN, en nuestros viernes de volate la peluca",
+      "summary": "DJ IAN, en nuestros viernes de volate la peluca",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-10-23",
+      "end_date": "2026-10-24",
+      "published": "2026-09-22T20:50:15Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-ian-en-nuestros-viernes-de-volate-la-peluca-tickets-2002096543657",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2002096543657",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299543936",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Concert or Performance",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/6"
+        },
+        {
+          "_type": "tag",
+          "display_name": "fiesta",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/fiesta"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj_ian",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj_ian"
+        },
+        {
+          "_type": "tag",
+          "display_name": "viernes_de_volate",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/viernes_de_volate"
+        }
+      ],
+      "image_id": "1194140109",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2002096996010",
+      "eid": "exfyhtyy",
+      "eventbrite_event_id": "2002096996010",
+      "name": "DJ LA MALIBU-NOCHES DE SABADUKI",
+      "summary": "DJ LAMALIBU en nuestros sábados a puro fuego",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-10-24",
+      "end_date": "2026-10-25",
+      "published": "2026-09-22T21:01:30Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-la-malibu-noches-de-sabaduki-tickets-2002096996010",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2002096996010",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299544154",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Party or Social Gathering",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/11"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "miercoles",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/miercoles"
+        },
+        {
+          "_type": "tag",
+          "display_name": "preferiado",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/preferiado"
+        },
+        {
+          "_type": "tag",
+          "display_name": "la_malibu",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/la_malibu"
+        }
+      ],
+      "image_id": "1194141238",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003636820667",
+      "eid": "exgfmbyk",
+      "eventbrite_event_id": "2003636820667",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES I",
+      "summary": "FESTIVAL BITBANG! CORTOS INTERNACIONALES I",
+      "start_time": "19:00",
+      "end_time": "20:00",
+      "start_date": "2026-10-28",
+      "end_date": "2026-10-28",
+      "published": "2026-10-19T23:25:14Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-i-tickets-2003636820667",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003636820667",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299913598",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1196144697",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003637038318",
+      "eid": "exgfmccq",
+      "eventbrite_event_id": "2003637038318",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES II",
+      "summary": "FESTIVAL BITBANG! CORTOS INTERNACIONALES Ii",
+      "start_time": "20:00",
+      "end_time": "21:00",
+      "start_date": "2026-10-28",
+      "end_date": "2026-10-28",
+      "published": "2026-10-19T23:27:00Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-ii-tickets-2003637038318",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003637038318",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299913641",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1196144697",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003637374323",
+      "eid": "exgfmckf",
+      "eventbrite_event_id": "2003637374323",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES III",
+      "summary": "FESTIVAL BITBANG! CORTOS INTERNACIONALES III",
+      "start_time": "21:00",
+      "end_time": "22:00",
+      "start_date": "2026-10-28",
+      "end_date": "2026-10-28",
+      "published": "2026-10-19T23:37:06Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-iii-tickets-2003637374323",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003637374323",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299913723",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1196144697",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003637642124",
+      "eid": "exgfmcpw",
+      "eventbrite_event_id": "2003637642124",
+      "name": "FESTIVAL BITBANG! CORTOS VERTICALES",
+      "summary": "FESTIVAL BITBANG! CORTOS VERTICALES",
+      "start_time": "22:15",
+      "end_time": "23:00",
+      "start_date": "2026-10-28",
+      "end_date": "2026-10-28",
+      "published": "2026-10-19T23:44:25Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-verticales-tickets-2003637642124",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003637642124",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299913769",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1196144697",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003637714340",
+      "eid": "exgfmctx",
+      "eventbrite_event_id": "2003637714340",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES IV",
+      "summary": "FESTIVAL BITBANG! CORTOS INTERNACIONALES IV",
+      "start_time": "23:00",
+      "end_time": "00:00",
+      "start_date": "2026-10-28",
+      "end_date": "2026-10-29",
+      "published": "2026-10-19T23:47:15Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-iv-tickets-2003637714340",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003637714340",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299913830",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1196144697",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003639128570",
+      "eid": "exgfmfqb",
+      "eventbrite_event_id": "2003639128570",
+      "name": "FESTIVAL BITBANG! CORTOS VERGONZOSOS",
+      "summary": "FESTIVAL BITBANG! CORTOS VERGONZOSOS",
+      "start_time": "23:00",
+      "end_time": "00:30",
+      "start_date": "2026-10-28",
+      "end_date": "2026-10-29",
+      "published": "2026-10-20T00:45:51Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-vergonzosos-tickets-2003639128570",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003639128570",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299914368",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1196144697",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003639043315",
+      "eid": "exgfmfmb",
+      "eventbrite_event_id": "2003639043315",
+      "name": "NANI: CICLO DE ANIMÉ × SAME Y AILÍN",
+      "summary": "NANI: CICLO DE ANIMÉ × SAME Y AILÍN",
+      "start_time": "00:00",
+      "end_time": "01:00",
+      "start_date": "2026-10-29",
+      "end_date": "2026-10-29",
+      "published": "2026-10-20T00:41:03Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/nani-ciclo-de-anime-same-y-ailin-tickets-2003639043315",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003639043315",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299914327",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1196144697",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003637820658",
+      "eid": "exgfmcyw",
+      "eventbrite_event_id": "2003637820658",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES V",
+      "summary": "FESTIVAL BITBANG! CORTOS INTERNACIONALES V",
+      "start_time": "19:00",
+      "end_time": "20:00",
+      "start_date": "2026-10-29",
+      "end_date": "2026-10-29",
+      "published": "2026-10-19T23:52:15Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-v-tickets-2003637820658",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003637820658",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299913883",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1196144697",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003637889865",
+      "eid": "exgfmdcb",
+      "eventbrite_event_id": "2003637889865",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES VI",
+      "summary": "FESTIVAL BITBANG! CORTOS INTERNACIONALES VI",
+      "start_time": "20:00",
+      "end_time": "21:00",
+      "start_date": "2026-10-29",
+      "end_date": "2026-10-29",
+      "published": "2026-10-19T23:56:12Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-vi-tickets-2003637889865",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003637889865",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299913925",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1196144697",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003637958069",
+      "eid": "exgfmdfb",
+      "eventbrite_event_id": "2003637958069",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES VII",
+      "summary": "FESTIVAL BITBANG! CORTOS INTERNACIONALES VII",
+      "start_time": "21:00",
+      "end_time": "22:00",
+      "start_date": "2026-10-29",
+      "end_date": "2026-10-29",
+      "published": "2026-10-19T23:58:46Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-vii-tickets-2003637958069",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003637958069",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299913958",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1196144697",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003638044327",
+      "eid": "exgfmdgt",
+      "eventbrite_event_id": "2003638044327",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES VIII",
+      "summary": "FESTIVAL BITBANG! CORTOS INTERNACIONALES VII",
+      "start_time": "22:00",
+      "end_time": "23:00",
+      "start_date": "2026-10-29",
+      "end_date": "2026-10-29",
+      "published": "2026-10-20T00:04:10Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-viii-tickets-2003638044327",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003638044327",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299913991",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1196144697",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003638206813",
+      "eid": "exgfmdqg",
+      "eventbrite_event_id": "2003638206813",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES IX",
+      "summary": "FESTIVAL BITBANG! CORTOS INTERNACIONALES IX",
+      "start_time": "23:00",
+      "end_time": "00:00",
+      "start_date": "2026-10-29",
+      "end_date": "2026-10-30",
+      "published": "2026-10-20T00:14:47Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-ix-tickets-2003638206813",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003638206813",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299914083",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1196144697",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003638324164",
+      "eid": "exgfmdwf",
+      "eventbrite_event_id": "2003638324164",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES X",
+      "summary": "FESTIVAL BITBANG! CORTOS INTERNACIONALES X",
+      "start_time": "19:00",
+      "end_time": "20:00",
+      "start_date": "2026-10-30",
+      "end_date": "2026-10-30",
+      "published": "2026-10-20T00:21:20Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-x-tickets-2003638324164",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003638324164",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299914133",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1196144697",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003638665184",
+      "eid": "exgfmfch",
+      "eventbrite_event_id": "2003638665184",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES XI",
+      "summary": "FESTIVAL BITBANG! CORTOS INTERNACIONALES XI",
+      "start_time": "20:00",
+      "end_time": "21:00",
+      "start_date": "2026-10-30",
+      "end_date": "2026-10-30",
+      "published": "2026-10-20T00:29:57Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-xi-tickets-2003638665184",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003638665184",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299914214",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1196144697",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003638383341",
+      "eid": "exgfmdyg",
+      "eventbrite_event_id": "2003638383341",
+      "name": "FESTIVAL BITBANG! CORTOS INTERNACIONALES XII",
+      "summary": "FESTIVAL BITBANG! CORTOS INTERNACIONALES XII",
+      "start_time": "21:00",
+      "end_time": "23:00",
+      "start_date": "2026-10-30",
+      "end_date": "2026-10-30",
+      "published": "2026-10-20T00:24:06Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/festival-bitbang-cortos-internacionales-xii-tickets-2003638383341",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003638383341",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299914166",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "evento",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/evento"
+        },
+        {
+          "_type": "tag",
+          "display_name": "maraton",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/maraton"
+        },
+        {
+          "_type": "tag",
+          "display_name": "atardecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/atardecer"
+        },
+        {
+          "_type": "tag",
+          "display_name": "2004",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/2004"
+        },
+        {
+          "_type": "tag",
+          "display_name": "amanecer",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/amanecer"
+        }
+      ],
+      "image_id": "1196144697",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2002096575753",
+      "eid": "exfyhthh",
+      "eventbrite_event_id": "2002096575753",
+      "name": "DJ IAN, en nuestros viernes de volate la peluca",
+      "summary": "DJ IAN, en nuestros viernes de volate la peluca",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-10-30",
+      "end_date": "2026-10-31",
+      "published": "2026-09-22T20:51:31Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-ian-en-nuestros-viernes-de-volate-la-peluca-tickets-2002096575753",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2002096575753",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299543961",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Concert or Performance",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/6"
+        },
+        {
+          "_type": "tag",
+          "display_name": "fiesta",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/fiesta"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj_ian",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj_ian"
+        },
+        {
+          "_type": "tag",
+          "display_name": "viernes_de_volate",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/viernes_de_volate"
+        }
+      ],
+      "image_id": "1194140237",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2002908815183",
+      "eid": "exgbpcry",
+      "eventbrite_event_id": "2002908815183",
+      "name": "ESPECIAL HALLOWEN \"LA VIRGEN DE LA TOSQUERA de Laura Casabé",
+      "summary": "ESPECIAL HALLOWEN \"LA VIRGEN DE LA TOSQUERA de Laura Casabé",
+      "start_time": "20:00",
+      "end_time": "21:30",
+      "start_date": "2026-10-31",
+      "end_date": "2026-10-31",
+      "published": "2026-10-04T08:29:55Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/especial-hallowen-la-virgen-de-la-tosquera-de-laura-casabe-tickets-2002908815183",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2002908815183",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299701490",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Film",
+          "prefix": "EventbriteSubCategory",
+          "tag": "EventbriteSubCategory/4002"
+        },
+        {
+          "display_name": "Film, Media & Entertainment",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/104",
+          "localized": {
+            "display_name": "Film, Media & Entertainment"
+          }
+        },
+        {
+          "display_name": "Screening",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/7"
+        },
+        {
+          "_type": "tag",
+          "display_name": "eventtitle",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/eventtitle"
+        },
+        {
+          "_type": "tag",
+          "display_name": "uniquekeywords",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/uniquekeywords"
+        },
+        {
+          "_type": "tag",
+          "display_name": "ciclotresinicios",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/ciclotresinicios"
+        },
+        {
+          "_type": "tag",
+          "display_name": "tresgenias",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/tresgenias"
+        },
+        {
+          "_type": "tag",
+          "display_name": "hannatakesstairs",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/hannatakesstairs"
+        }
+      ],
+      "image_id": "1195001529",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    },
+    {
+      "id": "2003206357139",
+      "eid": "exgcrczg",
+      "eventbrite_event_id": "2003206357139",
+      "name": "DJ ZOE -NOCHES DE SABADUKI",
+      "summary": "DJ ZOE en nuestros sábados a puro fuego",
+      "start_time": "22:00",
+      "end_time": "03:00",
+      "start_date": "2026-10-31",
+      "end_date": "2026-11-01",
+      "published": "2026-10-09T14:25:32Z",
+      "hide_start_date": false,
+      "hide_end_date": false,
+      "language": "en-us",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "url": "https://www.eventbrite.com.ar/e/dj-zoe-noches-de-sabaduki-tickets-2003206357139",
+      "tickets_url": "https://www.eventbrite.com/checkout-external?eid=2003206357139",
+      "tickets_by": "Eventbrite",
+      "is_cancelled": null,
+      "is_online_event": false,
+      "privacy_setting": "unlocked",
+      "is_protected_event": false,
+      "primary_venue_id": "299779253",
+      "primary_organizer_id": "34315560147",
+      "series_id": null,
+      "tags": [
+        {
+          "display_name": "Music",
+          "prefix": "EventbriteCategory",
+          "tag": "EventbriteCategory/103",
+          "localized": {
+            "display_name": "Music"
+          }
+        },
+        {
+          "display_name": "Party or Social Gathering",
+          "prefix": "EventbriteFormat",
+          "tag": "EventbriteFormat/11"
+        },
+        {
+          "_type": "tag",
+          "display_name": "dj",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/dj"
+        },
+        {
+          "_type": "tag",
+          "display_name": "event",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/event"
+        },
+        {
+          "_type": "tag",
+          "display_name": "miercoles",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/miercoles"
+        },
+        {
+          "_type": "tag",
+          "display_name": "preferiado",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/preferiado"
+        },
+        {
+          "_type": "tag",
+          "display_name": "la_malibu",
+          "prefix": "OrganizerTag",
+          "tag": "OrganizerTag/la_malibu"
+        }
+      ],
+      "image_id": "1183854217",
+      "checkout_flow": "widget",
+      "status": "live",
+      "_type": "destination_event"
+    }
+  ],
+  "pagination": {
+    "page_size": 50,
+    "continuation": null,
+    "page_number": 1,
+    "object_count": 23,
+    "has_more_items": false,
+    "page_count": 1
+  }
+}
