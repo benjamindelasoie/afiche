@@ -25,7 +25,9 @@ import { slugify } from './slug';
  *     sentence-cased when all-caps.
  *
  * We do NOT re-case `scraped_title` at scrape time — it stays raw (matcher
- * normalization decision, 2026-05-19). This helper is render-only.
+ * normalization decision, 2026-05-19). This helper is render-only. The one
+ * exception is Cine Gaumont, which re-cases via `caseIfAllCaps` while its
+ * source was new (2026-10) and no stored key depended on the caps form.
  *
  * Sentence-casing strategy: capitalize the first letter + the first letter
  * after a sentence terminator (.!?). Colon ":" is intentionally NOT a
@@ -59,7 +61,7 @@ export function displayFilmTitle(film: FilmTitleInputs): string {
 }
 
 /** Sentence-case the string only when it's detectably all-caps; else verbatim. */
-function caseIfAllCaps(s: string): string {
+export function caseIfAllCaps(s: string): string {
   return isAllCaps(s) ? toSentenceCase(s) : s;
 }
 

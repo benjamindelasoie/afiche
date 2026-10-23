@@ -16,8 +16,10 @@
  * `peliculas_codigo`. The site offers a 7-day window starting today; for today
  * the API only returns showtimes that haven't started yet.
  *
- * Titles (and most directors) arrive ALL-CAPS — emitted verbatim, like
- * Cacodelphia; displayFilmTitle title-cases at render. The API carries no
+ * Titles (and most directors) arrive ALL-CAPS with sloppy spacing
+ * ("ADOLESCENCIA,SEXO Y…", "XUL "). normalizeTitle sentence-cases them the
+ * same way displayFilmTitle would at render, so the stored key reads like
+ * the page; normalizeDirector name-cases each word. The API carries no
  * original title, country or year; TMDB enrichment fills those. Cycles aren't
  * exposed anymore, so no programName.
  *
@@ -27,6 +29,7 @@
 
 import { type Provider, type ProviderRunResult, type ScrapedScreening } from './types';
 import type { ScreeningTag } from '@/db';
+import { caseIfAllCaps } from '@/lib/title-case';
 
 const CINEMA_ID = 'cine-gaumont';
 const SITE_BASE = 'https://www.cinegaumont.ar';
@@ -137,7 +140,7 @@ export function parseDay(json: unknown, date: string): DayParse {
     if (fn?.idUltracine && fn.idUltracine !== COMPLEJO_ID) continue;
     const code = String(fn?.codPelicula ?? '');
     const film = films.get(code);
-    const filmTitle = film?.peliculas_nombre?.replace(/\s+/g, ' ').trim();
+    const filmTitle = normalizeTitle(film?.peliculas_nombre ?? '');
     if (!film || !filmTitle) {
       out.warnings.push(`${date}: showtime for unknown film ${code || '?'} — skipped`);
       continue;
@@ -148,7 +151,7 @@ export function parseDay(json: unknown, date: string): DayParse {
       continue;
     }
 
-    const director = cleanText(film.director);
+    const director = normalizeDirector(film.director);
     const runtimeMin = parseRuntime(film.peliculas_duracion);
     const synopsisEs = cleanText(film.peliculas_sinopsis);
     out.screenings.push({
@@ -217,6 +220,35 @@ function dayUrl(date: string): string {
 function parseRuntime(raw: string | undefined): number | undefined {
   const n = parseInt(raw ?? '', 10);
   return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+/** Collapse whitespace, restore the space after a comma, sentence-case caps. */
+export function normalizeTitle(raw: string): string {
+  const s = raw
+    .replace(/\s+/g, ' ')
+    .replace(/,(?=\p{L})/gu, ', ')
+    .trim();
+  return caseIfAllCaps(s);
+}
+
+const NAME_PARTICLES = new Set(['de', 'del', 'la', 'las', 'los', 'y', 'van', 'von']);
+
+/** `HERNAN GOLDFRIND` → `Hernan Goldfrind`; mixed-case names pass through. */
+export function normalizeDirector(raw: string | undefined): string | undefined {
+  const s = cleanText(raw);
+  if (!s || s !== s.toLocaleUpperCase('es')) return s;
+  return s
+    .toLocaleLowerCase('es')
+    .split(' ')
+    .map((word, i) =>
+      i > 0 && NAME_PARTICLES.has(word)
+        ? word
+        : word.replace(
+            /(^|[-'])(\p{L})/gu,
+            (_m, sep: string, ch: string) => sep + ch.toLocaleUpperCase('es'),
+          ),
+    )
+    .join(' ');
 }
 
 function cleanText(raw: string | undefined): string | undefined {
