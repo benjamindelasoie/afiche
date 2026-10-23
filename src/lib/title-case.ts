@@ -26,8 +26,9 @@ import { slugify } from './slug';
  *
  * We do NOT re-case `scraped_title` at scrape time — it stays raw (matcher
  * normalization decision, 2026-05-19). This helper is render-only. The one
- * exception is Cine Gaumont, which re-cases via `caseIfAllCaps` while its
- * source was new (2026-10) and no stored key depended on the caps form.
+ * exception is Cine Gaumont, which re-cases via `caseIfAllCaps` since its
+ * 2026-10 source switch: no stored key used the caps form, and the old
+ * site's mixed-case keys differ either way (TMDB merges fold the overlap).
  *
  * Sentence-casing strategy: capitalize the first letter + the first letter
  * after a sentence terminator (.!?). Colon ":" is intentionally NOT a

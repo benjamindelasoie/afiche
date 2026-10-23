@@ -579,6 +579,101 @@
     {
       "raw": "COSMOS DE CARL SAGAN: CAPITULOS 1-8",
       "excluded": "TV episodes"
+    },
+    {
+      "raw": "ONIBABA Dir. Kaneto Shindō · Japón · 1964 ·",
+      "parsed": {
+        "filmTitle": "ONIBABA",
+        "director": "Kaneto Shindō",
+        "year": 1964
+      }
+    },
+    {
+      "raw": "VIDEODROME Dir. David Cronenberg · Canadá · 1983 ·",
+      "parsed": {
+        "filmTitle": "VIDEODROME",
+        "director": "David Cronenberg",
+        "year": 1983
+      }
+    },
+    {
+      "raw": "VENECIA ROJO SHOCKING Dir. Nicolas Roeg · Reino Unido / Italia · 1973",
+      "parsed": {
+        "filmTitle": "VENECIA ROJO SHOCKING",
+        "director": "Nicolas Roeg",
+        "year": 1973
+      }
+    },
+    {
+      "raw": "PERFECT BLUE Dir. Satoshi Kon · Japón · 1997",
+      "parsed": {
+        "filmTitle": "PERFECT BLUE",
+        "director": "Satoshi Kon",
+        "year": 1997
+      }
+    },
+    {
+      "raw": "SCREAM Dir. Wes Craven · Estados Unidos · 1996",
+      "parsed": {
+        "filmTitle": "SCREAM",
+        "director": "Wes Craven",
+        "year": 1996
+      }
+    },
+    {
+      "raw": "PEEPING TOM Dir. Michael Powell · Reino Unido · 1960 ·",
+      "parsed": {
+        "filmTitle": "PEEPING TOM",
+        "director": "Michael Powell",
+        "year": 1960
+      }
+    },
+    {
+      "raw": "AKIRA Dir. Katsuhiro Ōtomo · Japón · 1988 ·",
+      "parsed": {
+        "filmTitle": "AKIRA",
+        "director": "Katsuhiro Ōtomo",
+        "year": 1988
+      }
+    },
+    {
+      "raw": "THE HUNGER / EL ANSIA Dir. Tony Scott · 1983 · 97 min",
+      "parsed": {
+        "filmTitle": "THE HUNGER / EL ANSIA",
+        "director": "Tony Scott",
+        "year": 1983
+      }
+    },
+    {
+      "raw": "LOS OJOS SIN ROSTRO Dir. Georges Franju · 1960",
+      "parsed": {
+        "filmTitle": "LOS OJOS SIN ROSTRO",
+        "director": "Georges Franju",
+        "year": 1960
+      }
+    },
+    {
+      "raw": "PET SEMATARY Dir. Mary Lambert · Estados Unidos ·",
+      "parsed": {
+        "filmTitle": "PET SEMATARY",
+        "director": "Mary Lambert"
+      }
+    },
+    {
+      "raw": "MISERY Dir. Rob Reiner · Estados Unidos · 1990",
+      "parsed": {
+        "filmTitle": "MISERY",
+        "director": "Rob Reiner",
+        "year": 1990
+      }
+    },
+    {
+      "raw": "CARRIE Dir. Brian De Palma · Estados Unidos · 1976",
+      "parsed": {
+        "filmTitle": "CARRIE",
+        "director": "Brian De Palma",
+        "year": 1976
+      }
     }
   ]
 }

@@ -236,8 +236,9 @@ export function parseEvents(
       continue;
     }
     // The upcoming feed keeps an event listed until it ENDS, so tonight's
-    // already-started session is still in it. Drop it: ingest only ever deletes FUTURE rows, so a past-dated
-    // insert would become a permanent orphan no later scrape can clean up.
+    // already-started session is still in it. Drop it: ingest only ever
+    // deletes FUTURE rows, so a past-dated insert would become a permanent
+    // orphan no later scrape can clean up.
     if (startsAtUtc <= now) continue;
 
     const parsed = parseEventTitle(rawTitle);
@@ -508,7 +509,8 @@ export function formatId(e: Pick<ApiEvent, 'tags'>): string | undefined {
 
 /**
  * The event's BA wall-clock (`start_date` + `start_time`) as a true UTC Date.
- * Callers have already checked the zone is an Argentine one.
+ * Callers have rejected non-Argentine zones; an event with no zone is
+ * assumed to be BA wall-clock.
  */
 export function toUtc(e: Pick<ApiEvent, 'start_date' | 'start_time'>): Date | null {
   if (!e.start_date || !e.start_time) return null;

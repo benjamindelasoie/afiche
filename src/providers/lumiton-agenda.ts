@@ -184,10 +184,11 @@ export function parseAgenda(
  * tile was a talk with clips ("UNA VELADA CON NARCISO IBÁÑEZ MENTA", no
  * `tipo-proyecciones`), so an empty result was correct, not a breakage.
  *
- * Empty is legitimate only when both hold: the venue's slug still appears
- * on the agenda (so a renamed slug still fails), and the agenda yields
- * screenings for some venue (so broken tile selectors or a renamed
- * screening class still fail). Pure, exported for tests.
+ * Empty is legitimate only when all three hold: the venue's slug still
+ * appears on the agenda (so a renamed slug still fails), none of the venue's
+ * own tiles is a screening (so a screening tile the parser rejected still
+ * fails), and the agenda yields screenings for some venue (so broken tile
+ * selectors or a renamed screening class still fail). Pure, exported for tests.
  */
 export function explainEmptyVenue(
   html: string,
@@ -196,10 +197,13 @@ export function explainEmptyVenue(
   const $ = cheerio.load(html);
   const slugs = new Set<string>();
   let venueTiles = 0;
+  let venueScreeningTiles = 0;
   $('article[data-event]').each((_i, el) => {
     const locs = parseLocationsJson($(el).attr('data-locations') ?? '');
     locs.forEach((l) => slugs.add(l));
-    if (locs.includes(config.locationSlug)) venueTiles++;
+    if (!locs.includes(config.locationSlug)) return;
+    venueTiles++;
+    if (isScreening($(el))) venueScreeningTiles++;
   });
 
   const agendaScreenings = [...slugs].reduce(
@@ -207,7 +211,7 @@ export function explainEmptyVenue(
     0,
   );
 
-  if (venueTiles === 0 || agendaScreenings === 0) {
+  if (venueTiles === 0 || venueScreeningTiles > 0 || agendaScreenings === 0) {
     return {
       ok: false,
       error: `No ${config.displayName} screenings parsed from agenda page — selector likely broke or the location slug "${config.locationSlug}" changed.`,

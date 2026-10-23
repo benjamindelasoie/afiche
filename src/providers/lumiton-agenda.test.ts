@@ -442,6 +442,16 @@ describe('fetchAndParse — a venue whose only tiles are activities', () => {
     expect(result.error).toMatch(/selector likely broke/);
   });
 
+  // Value: protects=a venue whose own screening tiles all failed to parse is
+  // reported broken, not quiet; fails_when=the own-tile check is dropped and
+  // explainEmptyVenue only looks at the slug and other venues; why_new=the
+  // tests above only cover the slug and the sitewide class; seam=none;
+  // no_claim=which tile-level parse failure caused it.
+  it('fails when the venue itself has screening tiles (they were rejected, not absent)', () => {
+    const verdict = explainEmptyVenue(onlyActivity, VENUES.cineYork);
+    expect(verdict.ok).toBe(false);
+  });
+
   it('leaves the other venues on the same page untouched', () => {
     expect(parseAgenda(onlyActivity, VENUES.cineYork, [])).toHaveLength(24);
     expect(parseAgenda(onlyActivity, VENUES.munro, [])).toHaveLength(4);

@@ -37,6 +37,7 @@ const API_BASE = 'https://apifront.cinexo.com.ar';
 const COMPLEJO_ID = '372001'; // Cine Gaumont on the Cinexo platform
 const WINDOW_DAYS = 7; // matches the date strip the site offers
 const DAY_DELAY_MS = 250;
+const FETCH_TIMEOUT_MS = 20_000;
 const RELEASE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 // Realistic desktop Chrome UA. Datacenter IPs + scraper-shaped UAs invite 403s
 // from a lot of AR cinema infra; send a normal browser UA to be safe.
@@ -99,17 +100,19 @@ export const cineGaumontProvider: Provider = {
       await sleep(DAY_DELAY_MS);
     }
 
-    if (daysOk === 0 || filmCount === 0) {
-      return {
-        cinemaId: CINEMA_ID,
-        screenings: [],
-        success: false,
-        warnings,
-        error:
-          daysOk === 0
-            ? 'Every day request to the Cinexo API failed.'
-            : 'Cinexo API returned no films for any day — API shape may have changed.',
-      };
+    // The Gaumont screens every day, so a week of listed films with no
+    // matched showtime is a reshaped `funciones` (or a changed complejo id),
+    // not a quiet week.
+    const error =
+      daysOk === 0
+        ? 'Every day request to the Cinexo API failed.'
+        : filmCount === 0
+          ? 'Cinexo API returned no films for any day — API shape may have changed.'
+          : screenings.length === 0
+            ? `Cinexo API listed ${filmCount} films but no showtimes matched them in ${daysOk} day(s) — funciones shape or complejo id may have changed.`
+            : undefined;
+    if (error) {
+      return { cinemaId: CINEMA_ID, screenings: [], success: false, warnings, error };
     }
     return { cinemaId: CINEMA_ID, screenings, success: true, warnings };
   },
@@ -268,6 +271,7 @@ async function fetchJson<T>(url: string): Promise<T> {
       Accept: 'application/json',
       'Accept-Language': 'es-AR,es;q=0.9',
     },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   const json = (await res.json()) as T & { success?: boolean; message?: string };

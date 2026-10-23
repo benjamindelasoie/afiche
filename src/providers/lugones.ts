@@ -27,7 +27,8 @@
  *     then SINOPSIS and FICHA TÉCNICA Y ARTÍSTICA sections.
  *
  * The cycle walk runs first; the single-film parser runs when it finds
- * nothing. Both anchor month and year on the page's "Funciones:" range.
+ * nothing. Both anchor month and year on the page's "Funciones:" range,
+ * falling back to the homepage card's date line.
  *
  * The source is free-form cinephile prose, so the parser is defensive: when
  * it can't parse a page it logs a warning and moves on rather than failing
@@ -43,6 +44,11 @@ const LISTING_URL = 'https://complejoteatral.gob.ar/';
 const DETAIL_DELAY_MS = 300;
 /** A hung government host must not stall every provider queued behind it. */
 const FETCH_TIMEOUT_MS = 20_000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** How long past a run's end its dates may still be read in that year. */
+const GRACE_MS = 30 * DAY_MS;
+/** Assumed length of an open-ended ("A partir del…") run, for the year guess. */
+const OPEN_RUN_MS = 180 * DAY_MS;
 // Realistic desktop Chrome UA. complejoteatral.gob.ar 403s scraper-shaped
 // agents, especially from datacenter IP ranges such as CI runners.
 const USER_AGENT =
@@ -98,16 +104,31 @@ export const lugonesProvider: Provider = {
       }
 
       const screenings: ScrapedScreening[] = [];
+      let detailsFailed = 0;
       for (const [i, program] of listing.programs.entries()) {
         if (i > 0) await sleep(DETAIL_DELAY_MS);
         try {
           const detailHtml = await fetchText(program.detailUrl);
           screenings.push(...parseDetailPage(detailHtml, program, warnings));
         } catch (err) {
+          detailsFailed++;
           warnings.push(
             `program "${program.slug}": ${err instanceof Error ? err.message : String(err)}`,
           );
         }
+      }
+
+      if (detailsFailed > 0 && detailsFailed === listing.programs.length) {
+        // Every detail page erroring (a 403 wall on /produccion/, say) is a
+        // blocked scraper, not a quiet season: fail so the last good schedule
+        // stays up and the run is reported as broken.
+        return {
+          cinemaId: CINEMA_ID,
+          screenings: [],
+          success: false,
+          warnings,
+          error: `All ${detailsFailed} Sala Lugones detail pages failed to load.`,
+        };
       }
 
       return { cinemaId: CINEMA_ID, screenings, success: true, warnings };
@@ -153,7 +174,12 @@ export function extractPrograms(html: string): {
     const href = $el.find('a[href*="/produccion/"]').first().attr('href');
     if (!title || !href) return;
 
-    const detailUrl = new URL(href, LISTING_URL).toString();
+    // Detail pages are fetched and published as ticket links, so a card may
+    // only point at the venue's own site over https.
+    const url = new URL(href, LISTING_URL);
+    if (url.protocol !== 'https:' || url.hostname !== new URL(LISTING_URL).hostname)
+      return;
+    const detailUrl = url.toString();
     if (seen.has(detailUrl)) return;
     seen.add(detailUrl);
 
@@ -370,6 +396,16 @@ function parseCycle(
     if (dayMatch) {
       emit(state);
       state = { kind: 'idle' };
+      if (dayMatch.badMonth) {
+        // An unknown month is not guessed (same stance as matchShowtimeLine):
+        // the films under this header are dropped with a warning rather than
+        // filed under the previous day or a rolled-over month.
+        warnings.push(
+          `program "${program.slug}": unknown month in "${text}" — day skipped`,
+        );
+        currentDay = null;
+        continue;
+      }
       if (dayMatch.month !== undefined) {
         if (dayMatch.month < currentMonth) currentYear += 1;
         currentMonth = dayMatch.month;
@@ -696,14 +732,20 @@ function isAllCapsBanner(line: string): boolean {
 // ---------------------------------------------------------------------------
 // Parsing helpers
 // ---------------------------------------------------------------------------
-function matchDayHeader(text: string): { day: number; month?: number } | null {
+function matchDayHeader(
+  text: string,
+): { day: number; month?: number; badMonth?: string } | null {
   const cleaned = text.toLowerCase().replace(/[°º]/g, '').trim();
   // "martes 28" / "domingo 1 de noviembre"
   const m = cleaned.match(
     new RegExp(`^${WEEKDAY}\\s+(\\d{1,2})(?:\\s+de\\s+([a-záéíóú]+))?$`),
   );
   if (!m) return null;
-  return { day: parseInt(m[1], 10), month: m[2] ? MONTH_INDEX[m[2]] : undefined };
+  return {
+    day: parseInt(m[1], 10),
+    month: m[2] ? MONTH_INDEX[m[2]] : undefined,
+    ...(m[2] && MONTH_INDEX[m[2]] === undefined ? { badMonth: m[2] } : {}),
+  };
 }
 
 /**
@@ -742,7 +784,8 @@ function parseTimeList(text: string): Array<{ hour: number; minute: number }> {
  *   "Jueves 29 de octubre, 16.30 y 20.30 horas"   single day
  *
  * The START month is the anchor (taking the end month dated April cycles a
- * month late — the original Karloff regression).
+ * month late — the original Karloff regression). The END date picks the
+ * year: a run that started months ago but is still on stays this year.
  */
 export function parseDateRange(text: string, now: Date = new Date()): MonthAnchor | null {
   const cleaned = text
@@ -752,27 +795,41 @@ export function parseDateRange(text: string, now: Date = new Date()): MonthAncho
     .replace(/\s+/g, ' ')
     .trim();
 
-  const forms = [
-    /del (\d{1,2}) de ([a-záéíóú]+) al \d{1,2} de [a-záéíóú]+/,
-    /del (\d{1,2}) al \d{1,2} de ([a-záéíóú]+)/,
-    /(?:a partir del|desde el) (\d{1,2}) de ([a-záéíóú]+)/,
-    /^(\d{1,2}) de ([a-záéíóú]+)/,
+  // Groups: start day, start month, then (when the form has one) end day and
+  // end month. The open-ended form has no end, so it is given OPEN_RUN_MS.
+  const forms: Array<{ re: RegExp; open?: boolean }> = [
+    { re: /del (\d{1,2}) de ([a-záéíóú]+) al (\d{1,2}) de ([a-záéíóú]+)/ },
+    { re: /del (\d{1,2}) al (\d{1,2}) de ([a-záéíóú]+)/ },
+    { re: /(?:a partir del|desde el) (\d{1,2}) de ([a-záéíóú]+)/, open: true },
+    { re: /^(\d{1,2}) de ([a-záéíóú]+)/ },
   ];
 
-  for (const form of forms) {
-    const m = cleaned.match(form);
+  for (const [i, form] of forms.entries()) {
+    const m = cleaned.match(form.re);
     if (!m) continue;
-    const startDay = parseInt(m[1], 10);
-    const startMonth = MONTH_INDEX[m[2]];
+    // The same-month form puts the shared month last: "del 12 al 25 de noviembre".
+    const [startDay, startMonthName, endDay, endMonthName] =
+      i === 1 ? [m[1], m[3], m[2], m[3]] : [m[1], m[2], m[3], m[4]];
+    const startMonth = MONTH_INDEX[startMonthName];
     if (startMonth === undefined) return null;
+    const endMonth = endMonthName ? MONTH_INDEX[endMonthName] : undefined;
+    if (endMonthName && endMonth === undefined) return null;
 
-    // Year inference: the year where the start date is closest to now,
-    // preferring the future but tolerating up to ~30 days in the past. `now`
-    // is injectable so fixture tests stay deterministic as time advances.
+    // Year inference: the earliest year whose run has not ended more than
+    // GRACE_MS ago. Judging by the END keeps a long or open-ended run in its
+    // own year once it is well under way. `now` is injectable so fixture tests
+    // stay deterministic as time advances.
+    const runEnd = (year: number) => {
+      const startMs = Date.UTC(year, startMonth, parseInt(startDay, 10));
+      if (form.open) return startMs + OPEN_RUN_MS;
+      if (endMonth === undefined) return startMs;
+      const endYear = endMonth < startMonth ? year + 1 : year;
+      return Date.UTC(endYear, endMonth, parseInt(endDay, 10));
+    };
     const thisYear = now.getUTCFullYear();
-    const candidate = Date.UTC(thisYear, startMonth, startDay);
-    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-    const startYear = candidate < now.getTime() - thirtyDays ? thisYear + 1 : thisYear;
+    const startYear =
+      [thisYear - 1, thisYear].find((y) => runEnd(y) >= now.getTime() - GRACE_MS) ??
+      thisYear + 1;
     return { startMonth, startYear };
   }
   return null;
