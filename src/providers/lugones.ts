@@ -47,10 +47,10 @@ const FETCH_TIMEOUT_MS = 20_000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** How long past a run's end its dates may still be read in that year. */
 const GRACE_MS = 30 * DAY_MS;
-/** How far ahead an open-ended ("A partir del…") run may start. */
-const OPEN_LEAD_MS = 90 * DAY_MS;
-/** Beyond this a computed start is a stale card, not an announcement. */
-const MAX_LEAD_MS = 240 * DAY_MS;
+/** How far ahead a card may announce a run before it reads as a stale card. */
+const ANNOUNCE_LEAD_MS = 120 * DAY_MS;
+/** How long an open-ended ("A partir del…") run is assumed to stay on. */
+const OPEN_AGE_MS = 240 * DAY_MS;
 // Realistic desktop Chrome UA. complejoteatral.gob.ar 403s scraper-shaped
 // agents, especially from datacenter IP ranges such as CI runners.
 const USER_AGENT =
@@ -275,11 +275,17 @@ export function parseDetailPage(
   }
 
   const lines = blockLines($, $block);
+  const placed = checkWeekdayYear(lines, anchor, now);
+  if (placed.startYear !== anchor.startYear) {
+    warnings.push(
+      `program "${program.slug}": weekdays put it in ${placed.startYear}, not ${anchor.startYear}`,
+    );
+  }
 
-  const cycle = parseCycle(lines, program, anchor, warnings);
+  const cycle = parseCycle(lines, program, placed, warnings);
   if (cycle.length > 0) return cycle;
 
-  const single = parseSingleFilm(lines, program, anchor);
+  const single = parseSingleFilm(lines, program, placed);
   if (single.length > 0) return single;
 
   warnings.push(
@@ -781,8 +787,10 @@ function parseTimeList(text: string): Array<{ hour: number; minute: number }> {
  *   "Jueves 29 de octubre, 16.30 y 20.30 horas"   single day
  *
  * The START month is the anchor (taking the end month dated April cycles a
- * month late — the original Karloff regression). The END date picks the
- * year: a run that started months ago but is still on stays this year.
+ * month late — the original Karloff regression). An explicit year in the
+ * text wins. Otherwise a dated run's END picks the year (a run that started
+ * months ago but is still on stays this year) and an open-ended run is
+ * assumed on for OPEN_AGE_MS. "Desde el … al/hasta el …" is a dated range.
  * Null when the text is unparseable or only fits a stale card.
  */
 export function parseDateRange(text: string, now: Date = new Date()): MonthAnchor | null {
@@ -793,29 +801,42 @@ export function parseDateRange(text: string, now: Date = new Date()): MonthAncho
     .replace(/\s+/g, ' ')
     .trim();
 
-  // Each form maps its groups to start day/month and end day/month. The
-  // same-month form has no start month (it shares the end's); the open-ended
-  // form has no end.
-  type Groups = { sd: string; sm?: string; ed?: string; em?: string };
+  // Each form maps its groups to start day/month(/year) and end
+  // day/month(/year). The same-month form has no start month (it shares the
+  // end's); the open-ended form has no end. "al" and "hasta (el)" both close a
+  // range, and a month may carry an explicit year ("de diciembre de 2026").
+  type Groups = {
+    sd: string;
+    sm?: string;
+    sy?: string;
+    ed?: string;
+    em?: string;
+    ey?: string;
+  };
+  const MES = '([a-záéíóú]+)(?: de (\\d{4}))?';
+  const TO = '(?:al|hasta(?: el)?)';
   const forms: Array<{
     re: RegExp;
     pick: (m: RegExpMatchArray) => Groups;
     open?: boolean;
   }> = [
     {
-      re: /(?:del|desde el) (\d{1,2}) de ([a-záéíóú]+) al (\d{1,2}) de ([a-záéíóú]+)/,
-      pick: (m) => ({ sd: m[1], sm: m[2], ed: m[3], em: m[4] }),
+      re: new RegExp(`(?:del|desde el) (\\d{1,2}) de ${MES} ${TO} (\\d{1,2}) de ${MES}`),
+      pick: (m) => ({ sd: m[1], sm: m[2], sy: m[3], ed: m[4], em: m[5], ey: m[6] }),
     },
     {
-      re: /(?:del|desde el) (\d{1,2}) al (\d{1,2}) de ([a-záéíóú]+)/,
-      pick: (m) => ({ sd: m[1], ed: m[2], em: m[3] }),
+      re: new RegExp(`(?:del|desde el) (\\d{1,2}) ${TO} (\\d{1,2}) de ${MES}`),
+      pick: (m) => ({ sd: m[1], ed: m[2], em: m[3], ey: m[4] }),
     },
     {
-      re: /(?:a partir del|desde el) (\d{1,2}) de ([a-záéíóú]+)/,
-      pick: (m) => ({ sd: m[1], sm: m[2] }),
+      re: new RegExp(`(?:a partir del|desde el) (\\d{1,2}) de ${MES}`),
+      pick: (m) => ({ sd: m[1], sm: m[2], sy: m[3] }),
       open: true,
     },
-    { re: /^(\d{1,2}) de ([a-záéíóú]+)/, pick: (m) => ({ sd: m[1], sm: m[2] }) },
+    {
+      re: new RegExp(`^(\\d{1,2}) de ${MES}`),
+      pick: (m) => ({ sd: m[1], sm: m[2], sy: m[3] }),
+    },
   ];
 
   for (const form of forms) {
@@ -840,22 +861,72 @@ export function parseDateRange(text: string, now: Date = new Date()): MonthAncho
         ? startMs(y)
         : Date.UTC(endMonth < sMonth ? y + 1 : y, endMonth, endDay);
 
-    // Year inference. A homepage card is for a run that is on or coming up,
-    // so a dated run takes the earliest year it has not been over for more
-    // than GRACE_MS, and an open-ended run takes the latest start no further
-    // than OPEN_LEAD_MS ahead (it is assumed still on). A start more than
-    // MAX_LEAD_MS out means a stale card, not an announcement: give up. `now`
-    // is injectable so fixture tests stay deterministic as time advances.
+    // An explicit year wins; the end's year implies the start's.
+    if (g.sy) return { startMonth: sMonth, startYear: parseInt(g.sy, 10) };
+    if (g.ey && endMonth !== undefined) {
+      const endYear = parseInt(g.ey, 10);
+      return { startMonth: sMonth, startYear: endMonth < sMonth ? endYear - 1 : endYear };
+    }
+
+    // Year inference. A homepage card is for a run that is on or coming up.
+    // A dated run takes the earliest year it has not been over for more than
+    // GRACE_MS; an open-ended run, the earliest start within OPEN_AGE_MS
+    // behind (assumed still on). Either way a start more than
+    // ANNOUNCE_LEAD_MS ahead means a stale card, not an announcement: give
+    // up. parseDetailPage then checks the year against the page's weekdays.
+    // `now` is injectable so fixture tests stay deterministic as time advances.
     const t = now.getTime();
     const thisYear = now.getUTCFullYear();
     const years = [thisYear - 1, thisYear, thisYear + 1];
     const startYear = form.open
-      ? years.reverse().find((y) => startMs(y) <= t + OPEN_LEAD_MS)
+      ? years.find((y) => startMs(y) >= t - OPEN_AGE_MS)
       : years.find((y) => endMs(y) >= t - GRACE_MS);
-    if (startYear === undefined || startMs(startYear) > t + MAX_LEAD_MS) return null;
+    if (startYear === undefined || startMs(startYear) > t + ANNOUNCE_LEAD_MS) return null;
     return { startMonth: sMonth, startYear };
   }
   return null;
+}
+
+const WEEKDAY_INDEX: Record<string, number> = {
+  domingo: 0,
+  lunes: 1,
+  martes: 2,
+  miércoles: 3,
+  miercoles: 3,
+  jueves: 4,
+  viernes: 5,
+  sábado: 6,
+  sabado: 6,
+};
+
+/**
+ * The page's first "Jueves 15 [de octubre]" line pins the year better than
+ * any date-range guess: among last, this and next year usually only one puts
+ * that weekday on that date. Keep the anchor when it agrees or nothing
+ * decides; otherwise move it to the single year that matches.
+ */
+function checkWeekdayYear(lines: Line[], anchor: MonthAnchor, now: Date): MonthAnchor {
+  const re = new RegExp(
+    `^${WEEKDAY}\\s+(\\d{1,2})[°º]?(?:,|\\s|$)(?:.*?\\bde\\s+([a-záéíóú]+))?`,
+  );
+  for (const line of lines) {
+    const m = line.text.toLowerCase().match(re);
+    if (!m) continue;
+    const weekday = WEEKDAY_INDEX[line.text.toLowerCase().split(/\s+/)[0]];
+    const day = parseInt(m[1], 10);
+    const named = m[2] ? MONTH_INDEX[m[2]] : undefined;
+    const month = named ?? anchor.startMonth;
+    const fits = (startYear: number) => {
+      const year = month < anchor.startMonth ? startYear + 1 : startYear;
+      const d = new Date(Date.UTC(year, month, day));
+      return d.getUTCMonth() === month && d.getUTCDay() === weekday;
+    };
+    if (weekday === undefined || fits(anchor.startYear)) return anchor;
+    const thisYear = now.getUTCFullYear();
+    const matches = [thisYear - 1, thisYear, thisYear + 1].filter(fits);
+    return matches.length === 1 ? { ...anchor, startYear: matches[0] } : anchor;
+  }
+  return anchor;
 }
 
 /** BA-local wall time to UTC. Argentina is UTC-3 with no DST (stable since 2009). */
@@ -902,7 +973,8 @@ async function fetchText(url: string): Promise<string> {
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-  // The request was vetted; a redirect must not take us off-site either.
+  // The request was vetted; content from a redirect off-site is refused too
+  // (fetch has already followed it, so this guards what we parse, not the hop).
   if (res.url && !venueUrl(res.url)) throw new Error(`redirected off-site to ${res.url}`);
   return res.text();
 }

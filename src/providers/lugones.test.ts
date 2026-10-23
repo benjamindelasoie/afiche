@@ -172,10 +172,52 @@ describe('parseDateRange', () => {
     });
   });
 
+  it('dates an announced open-ended run in its upcoming year', () => {
+    expect(parseDateRange('A partir del sábado 31 de octubre', FIXED_NOW)).toEqual({
+      startMonth: 9,
+      startYear: 2026,
+    });
+    // A December card for a March season is next year's, not last March's.
+    expect(
+      parseDateRange('A partir del 5 de marzo', new Date(Date.UTC(2026, 11, 1))),
+    ).toEqual({ startMonth: 2, startYear: 2027 });
+  });
+
+  it('reads "hasta", explicit years and a same-month wrap across New Year', () => {
+    const DEC_10 = new Date(Date.UTC(2026, 11, 10));
+    expect(parseDateRange('Desde el 5 de abril hasta el 30 de mayo', DEC_10)).toEqual({
+      startMonth: 3,
+      startYear: 2027,
+    });
+    expect(
+      parseDateRange('Desde el 20 de diciembre hasta el 30 de enero', DEC_10),
+    ).toEqual({
+      startMonth: 11,
+      startYear: 2026,
+    });
+    expect(
+      parseDateRange('Del 1 de diciembre de 2026 al 10 de enero de 2027', FIXED_NOW),
+    ).toEqual({ startMonth: 11, startYear: 2026 });
+    expect(parseDateRange('Del 5 al 7 de noviembre de 2027', FIXED_NOW)).toEqual({
+      startMonth: 10,
+      startYear: 2027,
+    });
+    expect(
+      parseDateRange('Del 28 al 3 de enero', new Date(Date.UTC(2026, 11, 20))),
+    ).toEqual({
+      startMonth: 11,
+      startYear: 2026,
+    });
+  });
+
   it('gives up on a stale card instead of dating it next year', () => {
     const DEC_5 = new Date(Date.UTC(2026, 11, 5));
     expect(parseDateRange('Jueves 29 de octubre, 20 horas', DEC_5)).toBeNull();
     expect(parseDateRange('Del 1 al 15 de octubre', DEC_5)).toBeNull();
+    // A long run that ended months ago is not next year's either.
+    expect(
+      parseDateRange('Del 1 de marzo al 30 de junio', new Date(Date.UTC(2026, 9, 23))),
+    ).toBeNull();
   });
 
   it('rolls to next year when the start is well in the past', () => {
@@ -533,6 +575,38 @@ describe('parseDetailPage — unknown month in a cycle day header', () => {
     expect(warnings).toEqual([
       'program "ciclo": unknown month in "Viernes 23 de octubr" — day skipped',
     ]);
+  });
+});
+
+// Value: protects=the page's weekdays correct a mis-guessed year; fails_when=
+// checkWeekdayYear is removed or ignores a mismatch; why_new=every fixture's
+// guess already agrees with its weekdays; seam=none; no_claim=none beyond protects.
+describe('parseDetailPage — weekdays pin the year', () => {
+  const page = (header: string) => `<div class="details"><div>
+    <p>${header}</p><p>A las 20 horas</p>
+    <p><strong>Film</strong></p><p>(Film; Francia, 1990)</p>
+  </div></div>`;
+  const program = {
+    slug: 'enero',
+    title: 'Ciclo',
+    dateRangeText: 'Del 5 al 9 de enero',
+    detailUrl: 'https://complejoteatral.gob.ar/produccion/enero/',
+  };
+
+  it('keeps the guessed year when the weekday agrees', () => {
+    const warnings: string[] = [];
+    // The guess for "Del 5 al 9 de enero" read on 1 Oct 2026 is 2027; 5 Jan 2027 is a Tuesday.
+    const [s] = parseDetailPage(page('Martes 5 de enero'), program, warnings, FIXED_NOW);
+    expect(s.startsAtUtc.toISOString()).toBe('2027-01-05T23:00:00.000Z');
+    expect(warnings).toEqual([]);
+  });
+
+  it('moves the year to the one the weekday fits, with a warning', () => {
+    const warnings: string[] = [];
+    // 5 Jan 2026 was a Monday, so a "Lunes 5 de enero" page is last season's.
+    const [s] = parseDetailPage(page('Lunes 5 de enero'), program, warnings, FIXED_NOW);
+    expect(s.startsAtUtc.toISOString()).toBe('2026-01-05T23:00:00.000Z');
+    expect(warnings).toEqual(['program "enero": weekdays put it in 2026, not 2027']);
   });
 });
 
