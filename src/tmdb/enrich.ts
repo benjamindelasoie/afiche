@@ -16,8 +16,8 @@
  * enrich layer downloaded posters to /public/posters/*.jpg, but that
  * directory is read-only at runtime on Vercel deployments, so production
  * would have crashed on every miss. Hotlinking is also what TMDB
- * recommends for client-side rendering and matches what next/image
- * optimizes against via `remotePatterns: ['image.tmdb.org']`.
+ * recommends for client-side rendering. next/image resizes by swapping the
+ * size segment via src/lib/tmdb-image-loader.ts (no Vercel optimization).
  */
 
 import {
@@ -596,8 +596,8 @@ async function buildDelta(
     country,
     year: Number.isNaN(year) ? null : year,
     runtimeMin: details.runtime ?? null,
-    // Hotlinked TMDB CDN URL. next/image handles optimization via the
-    // image.tmdb.org remotePattern in next.config.ts.
+    // Hotlinked TMDB CDN URL. next/image picks the rendered size via
+    // src/lib/tmdb-image-loader.ts.
     posterUrl: posterImageUrl(details.poster_path, 'w342'),
     backdropUrl: backdropImageUrl(details.backdrop_path, 'w1280'),
     synopsisEs,

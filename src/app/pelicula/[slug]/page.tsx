@@ -201,13 +201,16 @@ export default async function FilmPage({ params }: { params: Promise<Params> }) 
       {film.backdropUrl && (
         <figure className="mb-12 hidden md:block">
           <div className="relative aspect-[16/9] w-full overflow-hidden border border-black">
+            {/* Browsers fetch eager images even under display:none, so the
+                `1px` below md makes phones take the smallest srcset rung
+                instead of the w1280 JPEG they never show. */}
             <Image
               src={film.backdropUrl}
               alt=""
               fill
               loading="eager"
               fetchPriority="high"
-              sizes="(min-width: 1024px) 1024px, 100vw"
+              sizes="(min-width: 1024px) 1024px, (min-width: 768px) 100vw, 1px"
               className="object-cover"
             />
           </div>
