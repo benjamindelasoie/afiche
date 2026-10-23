@@ -578,10 +578,11 @@ describe('parseDetailPage — unknown month in a cycle day header', () => {
   });
 });
 
-// Value: protects=the page's weekdays correct a mis-guessed year; fails_when=
-// checkWeekdayYear is removed or ignores a mismatch; why_new=every fixture's
-// guess already agrees with its weekdays; seam=none; no_claim=none beyond protects.
-describe('parseDetailPage — weekdays pin the year', () => {
+// Value: protects=a weekday that disagrees with the guessed year is flagged
+// but never moves the run (a typo must not hide a current cycle); fails_when=
+// the check moves the year or drops the warning; why_new=every fixture's guess
+// agrees with its weekdays; seam=none; no_claim=none beyond protects.
+describe('parseDetailPage — weekdays cross-check the year', () => {
   const page = (header: string) => `<div class="details"><div>
     <p>${header}</p><p>A las 20 horas</p>
     <p><strong>Film</strong></p><p>(Film; Francia, 1990)</p>
@@ -601,12 +602,24 @@ describe('parseDetailPage — weekdays pin the year', () => {
     expect(warnings).toEqual([]);
   });
 
-  it('moves the year to the one the weekday fits, with a warning', () => {
+  it('keeps the year but warns when the weekday fits another one', () => {
     const warnings: string[] = [];
-    // 5 Jan 2026 was a Monday, so a "Lunes 5 de enero" page is last season's.
+    // 5 Jan 2026 was a Monday: a "Lunes 5 de enero" page disagrees with 2027.
     const [s] = parseDetailPage(page('Lunes 5 de enero'), program, warnings, FIXED_NOW);
-    expect(s.startsAtUtc.toISOString()).toBe('2026-01-05T23:00:00.000Z');
-    expect(warnings).toEqual(['program "enero": weekdays put it in 2026, not 2027']);
+    expect(s.startsAtUtc.toISOString()).toBe('2027-01-05T23:00:00.000Z');
+    expect(warnings).toEqual([
+      'program "enero": weekdays fit 2026, not 2027 — year kept',
+    ]);
+  });
+
+  it('keeps a run that is on now despite a one-day weekday typo', () => {
+    const warnings: string[] = [];
+    const now = new Date(Date.UTC(2026, 9, 23));
+    const current = { ...program, slug: 'oct', dateRangeText: 'Del 15 al 30 de octubre' };
+    // 15 Oct 2026 is a Thursday; the page says Viernes.
+    const [s] = parseDetailPage(page('Viernes 15 de octubre'), current, warnings, now);
+    expect(s.startsAtUtc.toISOString()).toBe('2026-10-15T23:00:00.000Z');
+    expect(warnings).toEqual(['program "oct": weekdays fit 2027, not 2026 — year kept']);
   });
 });
 

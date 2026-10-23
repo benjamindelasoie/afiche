@@ -275,17 +275,19 @@ export function parseDetailPage(
   }
 
   const lines = blockLines($, $block);
-  const placed = checkWeekdayYear(lines, anchor, now);
-  if (placed.startYear !== anchor.startYear) {
+  // Warn-only: one typo'd weekday must not move a run that is on now to
+  // another year (the films would vanish), so the anchor's year stands.
+  const weekdayYear = checkWeekdayYear(lines, anchor, now);
+  if (weekdayYear !== undefined) {
     warnings.push(
-      `program "${program.slug}": weekdays put it in ${placed.startYear}, not ${anchor.startYear}`,
+      `program "${program.slug}": weekdays fit ${weekdayYear}, not ${anchor.startYear} — year kept`,
     );
   }
 
-  const cycle = parseCycle(lines, program, placed, warnings);
+  const cycle = parseCycle(lines, program, anchor, warnings);
   if (cycle.length > 0) return cycle;
 
-  const single = parseSingleFilm(lines, program, placed);
+  const single = parseSingleFilm(lines, program, anchor);
   if (single.length > 0) return single;
 
   warnings.push(
@@ -873,7 +875,8 @@ export function parseDateRange(text: string, now: Date = new Date()): MonthAncho
     // GRACE_MS; an open-ended run, the earliest start within OPEN_AGE_MS
     // behind (assumed still on). Either way a start more than
     // ANNOUNCE_LEAD_MS ahead means a stale card, not an announcement: give
-    // up. parseDetailPage then checks the year against the page's weekdays.
+    // up. parseDetailPage then cross-checks the year against the page's
+    // weekdays (warning only).
     // `now` is injectable so fixture tests stay deterministic as time advances.
     const t = now.getTime();
     const thisYear = now.getUTCFullYear();
@@ -900,12 +903,16 @@ const WEEKDAY_INDEX: Record<string, number> = {
 };
 
 /**
- * The page's first "Jueves 15 [de octubre]" line pins the year better than
- * any date-range guess: among last, this and next year usually only one puts
- * that weekday on that date. Keep the anchor when it agrees or nothing
- * decides; otherwise move it to the single year that matches.
+ * Cross-check the anchor against the page's first "Jueves 15 [de octubre]"
+ * line: among last, this and next year usually only one puts that weekday on
+ * that date. Returns that year when it differs from the anchor's, otherwise
+ * undefined (agrees, or nothing decides).
  */
-function checkWeekdayYear(lines: Line[], anchor: MonthAnchor, now: Date): MonthAnchor {
+function checkWeekdayYear(
+  lines: Line[],
+  anchor: MonthAnchor,
+  now: Date,
+): number | undefined {
   const re = new RegExp(
     `^${WEEKDAY}\\s+(\\d{1,2})[°º]?(?:,|\\s|$)(?:.*?\\bde\\s+([a-záéíóú]+))?`,
   );
@@ -921,12 +928,12 @@ function checkWeekdayYear(lines: Line[], anchor: MonthAnchor, now: Date): MonthA
       const d = new Date(Date.UTC(year, month, day));
       return d.getUTCMonth() === month && d.getUTCDay() === weekday;
     };
-    if (weekday === undefined || fits(anchor.startYear)) return anchor;
+    if (weekday === undefined || fits(anchor.startYear)) return undefined;
     const thisYear = now.getUTCFullYear();
     const matches = [thisYear - 1, thisYear, thisYear + 1].filter(fits);
-    return matches.length === 1 ? { ...anchor, startYear: matches[0] } : anchor;
+    return matches.length === 1 ? matches[0] : undefined;
   }
-  return anchor;
+  return undefined;
 }
 
 /** BA-local wall time to UTC. Argentina is UTC-3 with no DST (stable since 2009). */
