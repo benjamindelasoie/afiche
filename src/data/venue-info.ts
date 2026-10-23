@@ -128,6 +128,28 @@ export const VENUE_INFO: Record<string, VenueInfo> = {
     ticketing:
       'Entradas por Passline, función por función, y conviene sacarlas con tiempo: las funciones se agotan. Dos turnos por noche, uno temprano y otro más tarde.',
   },
+  'el-cairo': {
+    // BORRADOR (reescribir): el voice final es de Benjamin. Datos tomados el
+    // 2026-10-22 de fuentes oficiales: la nota del Gobierno de Santa Fe por
+    // los 80 años (santafe.gob.ar/noticias/noticia/282980: abrió el 8 de mayo
+    // de 1945, reinaugurado como cine público el 17 de septiembre de 2009,
+    // 400 butacas, "la única sala pública sostenida por un gobierno
+    // provincial en Argentina"), la página "El cine" del propio sitio, la
+    // nota de reapertura de 2022 del sitio (boletería exclusiva, sin reserva)
+    // y la ficha de rosario.tur.ar (funciones de jueves a domingo, boletería
+    // una hora antes de la primera función). La plataforma de venta online de
+    // la pandemia (entradascineelcairo.com.ar) ya no resuelve.
+    blurb:
+      'El cine público de la provincia de Santa Fe, en el centro de Rosario: abrió en 1945, estuvo a punto de desaparecer y en 2009 lo recuperó el Estado provincial. Hoy es la única sala sostenida por un gobierno provincial en el país — 400 butacas para el cine argentino y latinoamericano, estrenos y ciclos.',
+    // Precio omitido a propósito, según la postura del registro. Al
+    // 2026-10-21 las fichas de cada función decían: general $4.000, estudiantes
+    // y jubilados $3.000, estudiantes de la EPCTV $2.000; varias funciones
+    // gratuitas (el ciclo La Gratis, las funciones especiales) y algunas a
+    // $2.000 (Zoom / Versus). Cada función lo dice en su página, a la que
+    // linkea la cartelera.
+    ticketing:
+      'En la boletería del cine, que abre una hora antes de la primera función, sin reserva previa. Hay funciones gratuitas todas las semanas, como el ciclo La Gratis.',
+  },
 };
 
 /** Editorial info for a venue, or null if none is curated yet. */

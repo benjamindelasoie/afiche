@@ -190,6 +190,15 @@ describe('buildMovieTheater', () => {
     expect(json).not.toContain('Palermo');
     expect(json).not.toContain('San Nicolás');
   });
+
+  it('uses the sala’s own city when it is outside Buenos Aires', () => {
+    // Regression: the locality was a "Buenos Aires" constant, so El Cairo's
+    // screenings told search engines Santa Fe 1120 was in Buenos Aires.
+    const t = buildMovieTheater(
+      makeCinema({ id: 'el-cairo', neighborhood: 'Rosario', address: 'Santa Fe 1120' }),
+    );
+    expect(t.address.addressLocality).toBe('Rosario');
+  });
 });
 
 // ---------------------------------------------------------------------------

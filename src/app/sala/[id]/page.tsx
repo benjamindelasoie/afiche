@@ -17,6 +17,7 @@ import { PageShell, BackLink, SectionHeading } from '@/app/_components/ui';
 import { getVenueInfo, hasVenueInfo } from '@/data/venue-info';
 import { isWeeklyRunVenue } from '@/lib/venue-agenda-style';
 import { groupScreeningRuns } from '@/lib/screening-runs';
+import { venueCity } from '@/lib/venue-city';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,9 +44,15 @@ export async function generateMetadata({
   const title = cinema.neighborhood
     ? `${cinema.name} · ${cinema.neighborhood}`
     : cinema.name;
+  const city = venueCity(cinema.neighborhood);
+  // A sala outside BA keeps its city in `neighborhood`; don't say it twice.
+  const where =
+    cinema.neighborhood && cinema.neighborhood !== city
+      ? ` en ${cinema.neighborhood}`
+      : '';
   return {
     title,
-    description: `Cartelera de ${cinema.name}${cinema.neighborhood ? ` en ${cinema.neighborhood}` : ''} — funciones de la semana en Buenos Aires.`,
+    description: `Cartelera de ${cinema.name}${where} — funciones de la semana en ${city}.`,
     robots: { index: false, follow: true },
   };
 }
@@ -107,11 +114,15 @@ export default async function SalaPage({
 
   const venueInfo = getVenueInfo(id);
 
+  const city = venueCity(cinema.neighborhood);
   const mapsHref = cinema.address
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-        `${cinema.name} ${cinema.address} Buenos Aires Argentina`,
+        `${cinema.name} ${cinema.address} ${city} Argentina`,
       )}`
     : null;
+  // "Santa Fe 1120" alone reads as the BA avenue: outside BA, name the city.
+  const addressLine =
+    cinema.neighborhood === city ? `${cinema.address}, ${city}` : cinema.address;
 
   return (
     <PageShell
@@ -147,7 +158,7 @@ export default async function SalaPage({
               target="_blank"
               rel="noopener noreferrer"
               className="text-ink-gray hover:text-carmine mt-3 inline-flex min-h-[44px] items-center gap-1.5 font-mono text-[11px] tracking-wider uppercase transition-colors"
-              aria-label={`Ver en Google Maps — ${cinema.address}`}
+              aria-label={`Ver en Google Maps — ${addressLine}`}
             >
               <svg
                 aria-hidden="true"
@@ -156,7 +167,7 @@ export default async function SalaPage({
               >
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" />
               </svg>
-              <span className="border-ink-gray/40 border-b pb-0.5">{cinema.address}</span>
+              <span className="border-ink-gray/40 border-b pb-0.5">{addressLine}</span>
             </a>
           )}
           {cinema.ticketingBaseUrl && (

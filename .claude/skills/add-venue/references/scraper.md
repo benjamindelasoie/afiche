@@ -37,6 +37,7 @@ export interface ScrapedScreening {
   sourceUrl: string;           // back-link to the page describing this screening
   filmDetailUrl?: string;      // optional per-film URL when sourceUrl is a cycle page
   programName?: string;        // curatorial cycle name → rendered as a pill
+  skipTmdb?: boolean;          // listing is not one identifiable film (e.g. an audience-vote duel); set on insert only
 }
 ```
 
@@ -53,6 +54,7 @@ provider and copy its structure:
 | Listing → cycle/detail pages, a few layouts | `src/providers/malba.ts` | Multiple parse strategies + a `DETAIL_DELAY_MS` fetch delay to avoid 429s. |
 | One shared agenda page, many venues, tagged by a location slug | `src/providers/lumiton-agenda.ts` (core) + thin wrappers `cine-york.ts`, `centro-cultural-munro.ts`, `lumiton.ts` | One parser, filtered per venue by a `data-locations` slug. Register one provider per venue; they share the parse. |
 | Weekly day-of-week grid | `src/providers/cine-cosmos.ts` | Anchor on the cycle's start weekday in BA time; map "ju/vi/sá…" to offsets. |
+| WordPress + The Events Calendar (`/wp-json/tribe/events/v1/events`) | `src/providers/el-cairo.ts` | Structured JSON for the event list, then one detail-page fetch per series for the ficha técnica. Per-fetch timeout. |
 | Image-only cartelera (a poster JPG) | `src/providers/cine-lorca.ts` | LAST RESORT. Claude vision + image-hash caching in the `providers` table. Only when there's no structured HTML. |
 
 Each provider exports BOTH the `Provider` object (with async `fetch()`) AND its
@@ -81,6 +83,9 @@ them against saved HTML without the network.
   (Phase 4) and the disambiguation that keeps `/admin/unmatched` small.
 - Set `programName` when the venue organizes screenings into a named cycle
   (renders as a pill). Leave it undefined for single-film venues.
+- Set `skipTmdb: true` only when the provider knows a listing can never be one
+  film (El Cairo's audience-vote duels). Ingest applies it when the film row is
+  first created; an existing row keeps whatever the operator set.
 
 ## Test it (required) — `src/providers/<id>.test.ts`
 

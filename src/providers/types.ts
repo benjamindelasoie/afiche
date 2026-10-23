@@ -46,6 +46,13 @@ export interface ScrapedScreening {
    * pill renders only when non-null. Pill placement: card tag strip.
    */
   programName?: string;
+  /**
+   * The provider knows this listing is not one identifiable film (e.g. an
+   * audience-vote duel between two titles), so TMDB must never match it.
+   * Applied as `films.skip_tmdb` only when the film row is first created;
+   * an existing row keeps whatever the operator set.
+   */
+  skipTmdb?: boolean;
 }
 
 export interface ProviderRunResult {

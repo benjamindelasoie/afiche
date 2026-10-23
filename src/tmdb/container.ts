@@ -15,6 +15,19 @@
 
 import { stripSearchNoise } from './similarity';
 
+/**
+ * A competition section ("Cortometrajes en Competencia", "Competencia
+ * Internacional"), not the bare word: "Competencia desleal" (Scola) and
+ * "Competencia oficial" (Duprat & Cohn) are films. Shared with the self-heal
+ * shape list so it cannot propose the bare word back.
+ */
+export const COMPETITION_SECTION_PATTERNS: RegExp[] = [
+  /\b(?:EN|DE)\s+COMPETENCIA\b/i,
+  // "Competencia" + a section name. "Competencia oficial" needs a qualifier
+  // after it ("… argentina", "… de largometrajes"); "desleal" never counts.
+  /\bCOMPETENCIA\s+(?:OFICIAL\s+[A-ZÁÉÍÓÚÑ]|(?!OFICIAL\b|DESLEAL\b)[A-ZÁÉÍÓÚÑ])/i,
+];
+
 const CONTAINER_PATTERNS: RegExp[] = [
   // Added by Actor 2 (issue #58): container/placeholder skip words.
   /\bFESTIVAL\b/i,
@@ -24,7 +37,7 @@ const CONTAINER_PATTERNS: RegExp[] = [
   /\bPROGRAMA\s+(?:\d+|I{1,3}|IV|VI{0,3}|IX|XI{0,3}|X|DOBLE)\b/i,
   /\bCORTOMETRAJES?\b/i,
   /\bCORTOS\b/i,
-  /\bCOMPETENCIA\b/i,
+  ...COMPETITION_SECTION_PATTERNS,
   /\bCONVOCATORIA\b/i,
   /\bPROYECCIONES\s+DE\s+CORTOS\b/i,
   /\bMUESTRA\s+DE\b/i,

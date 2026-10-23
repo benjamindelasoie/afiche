@@ -23,7 +23,6 @@ const KEYWORDS: string[] = [
   'CICLO',
   'SEMANA',
   'CONVOCATORIA',
-  'COMPETENCIA',
   'SORPRESA',
   'CORTOMETRAJES',
   'CORTOS',
