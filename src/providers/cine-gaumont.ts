@@ -103,16 +103,23 @@ export const cineGaumontProvider: Provider = {
     // The Gaumont screens every day, so a week of listed films with no
     // matched showtime is a reshaped `funciones` (or a changed complejo id),
     // not a quiet week.
-    const error =
-      daysOk === 0
-        ? 'Every day request to the Cinexo API failed.'
-        : filmCount === 0
-          ? 'Cinexo API returned no films for any day — API shape may have changed.'
-          : screenings.length === 0
-            ? `Cinexo API listed ${filmCount} films but no showtimes matched them in ${daysOk} day(s) — funciones shape or complejo id may have changed.`
-            : undefined;
-    if (error) {
-      return { cinemaId: CINEMA_ID, screenings: [], success: false, warnings, error };
+    const fail = (error: string): ProviderRunResult => ({
+      cinemaId: CINEMA_ID,
+      screenings: [],
+      success: false,
+      warnings,
+      error,
+    });
+    if (daysOk === 0) return fail('Every day request to the Cinexo API failed.');
+    if (filmCount === 0) {
+      return fail(
+        'Cinexo API returned no films for any day — API shape may have changed.',
+      );
+    }
+    if (screenings.length === 0) {
+      return fail(
+        `Cinexo API listed ${filmCount} films but no showtimes matched them in ${daysOk} day(s) — funciones shape or complejo id may have changed.`,
+      );
     }
     return { cinemaId: CINEMA_ID, screenings, success: true, warnings };
   },

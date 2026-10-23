@@ -211,7 +211,13 @@ export function explainEmptyVenue(
     0,
   );
 
-  if (venueTiles === 0 || venueScreeningTiles > 0 || agendaScreenings === 0) {
+  if (venueScreeningTiles > 0) {
+    return {
+      ok: false,
+      error: `${venueScreeningTiles} ${config.displayName} screening tile(s) on the agenda but none parsed — see warnings (date/time/title selectors).`,
+    };
+  }
+  if (venueTiles === 0 || agendaScreenings === 0) {
     return {
       ok: false,
       error: `No ${config.displayName} screenings parsed from agenda page — selector likely broke or the location slug "${config.locationSlug}" changed.`,

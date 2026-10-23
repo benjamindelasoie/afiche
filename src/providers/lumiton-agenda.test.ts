@@ -447,9 +447,18 @@ describe('fetchAndParse — a venue whose only tiles are activities', () => {
   // explainEmptyVenue only looks at the slug and other venues; why_new=the
   // tests above only cover the slug and the sitewide class; seam=none;
   // no_claim=which tile-level parse failure caused it.
-  it('fails when the venue itself has screening tiles (they were rejected, not absent)', () => {
-    const verdict = explainEmptyVenue(onlyActivity, VENUES.cineYork);
-    expect(verdict.ok).toBe(false);
+  it('fails when the venue itself has screening tiles (they were rejected, not absent)', async () => {
+    // Mark Lumiton's one tile as a screening but give it a broken date, so
+    // parseAgenda rejects it: that is a parse failure, not a quiet week.
+    const broken = onlyActivity.replace(
+      /post-33890 (evento[^"]*)"(\s+data-event\s+)data-date="[^"]*"/,
+      'post-33890 $1 tipo-proyecciones"$2data-date="not-a-date"',
+    );
+    expect(broken).not.toBe(onlyActivity);
+    stubAgenda(broken);
+    const result = await fetchAndParse(VENUES.lumiton);
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/screening tile\(s\) on the agenda but none parsed/);
   });
 
   it('leaves the other venues on the same page untouched', () => {

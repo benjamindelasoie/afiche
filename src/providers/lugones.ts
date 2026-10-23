@@ -47,8 +47,10 @@ const FETCH_TIMEOUT_MS = 20_000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** How long past a run's end its dates may still be read in that year. */
 const GRACE_MS = 30 * DAY_MS;
-/** Assumed length of an open-ended ("A partir del…") run, for the year guess. */
-const OPEN_RUN_MS = 180 * DAY_MS;
+/** How far ahead an open-ended ("A partir del…") run may start. */
+const OPEN_LEAD_MS = 90 * DAY_MS;
+/** Beyond this a computed start is a stale card, not an announcement. */
+const MAX_LEAD_MS = 240 * DAY_MS;
 // Realistic desktop Chrome UA. complejoteatral.gob.ar 403s scraper-shaped
 // agents, especially from datacenter IP ranges such as CI runners.
 const USER_AGENT =
@@ -176,10 +178,8 @@ export function extractPrograms(html: string): {
 
     // Detail pages are fetched and published as ticket links, so a card may
     // only point at the venue's own site over https.
-    const url = new URL(href, LISTING_URL);
-    if (url.protocol !== 'https:' || url.hostname !== new URL(LISTING_URL).hostname)
-      return;
-    const detailUrl = url.toString();
+    const detailUrl = venueUrl(href);
+    if (!detailUrl) return;
     if (seen.has(detailUrl)) return;
     seen.add(detailUrl);
 
@@ -269,7 +269,7 @@ export function parseDetailPage(
     parseDateRange(program.dateRangeText, now);
   if (!anchor) {
     warnings.push(
-      `program "${program.slug}": could not parse date range "${funciones ?? program.dateRangeText}"`,
+      `program "${program.slug}": could not parse or place date range "${funciones ?? program.dateRangeText}"`,
     );
     return [];
   }
@@ -734,18 +734,15 @@ function isAllCapsBanner(line: string): boolean {
 // ---------------------------------------------------------------------------
 function matchDayHeader(
   text: string,
-): { day: number; month?: number; badMonth?: string } | null {
+): { day: number; month?: number; badMonth?: boolean } | null {
   const cleaned = text.toLowerCase().replace(/[°º]/g, '').trim();
   // "martes 28" / "domingo 1 de noviembre"
   const m = cleaned.match(
     new RegExp(`^${WEEKDAY}\\s+(\\d{1,2})(?:\\s+de\\s+([a-záéíóú]+))?$`),
   );
   if (!m) return null;
-  return {
-    day: parseInt(m[1], 10),
-    month: m[2] ? MONTH_INDEX[m[2]] : undefined,
-    ...(m[2] && MONTH_INDEX[m[2]] === undefined ? { badMonth: m[2] } : {}),
-  };
+  const month = m[2] ? MONTH_INDEX[m[2]] : undefined;
+  return { day: parseInt(m[1], 10), month, badMonth: !!m[2] && month === undefined };
 }
 
 /**
@@ -786,6 +783,7 @@ function parseTimeList(text: string): Array<{ hour: number; minute: number }> {
  * The START month is the anchor (taking the end month dated April cycles a
  * month late — the original Karloff regression). The END date picks the
  * year: a run that started months ago but is still on stays this year.
+ * Null when the text is unparseable or only fits a stale card.
  */
 export function parseDateRange(text: string, now: Date = new Date()): MonthAnchor | null {
   const cleaned = text
@@ -795,42 +793,67 @@ export function parseDateRange(text: string, now: Date = new Date()): MonthAncho
     .replace(/\s+/g, ' ')
     .trim();
 
-  // Groups: start day, start month, then (when the form has one) end day and
-  // end month. The open-ended form has no end, so it is given OPEN_RUN_MS.
-  const forms: Array<{ re: RegExp; open?: boolean }> = [
-    { re: /del (\d{1,2}) de ([a-záéíóú]+) al (\d{1,2}) de ([a-záéíóú]+)/ },
-    { re: /del (\d{1,2}) al (\d{1,2}) de ([a-záéíóú]+)/ },
-    { re: /(?:a partir del|desde el) (\d{1,2}) de ([a-záéíóú]+)/, open: true },
-    { re: /^(\d{1,2}) de ([a-záéíóú]+)/ },
+  // Each form maps its groups to start day/month and end day/month. The
+  // same-month form has no start month (it shares the end's); the open-ended
+  // form has no end.
+  type Groups = { sd: string; sm?: string; ed?: string; em?: string };
+  const forms: Array<{
+    re: RegExp;
+    pick: (m: RegExpMatchArray) => Groups;
+    open?: boolean;
+  }> = [
+    {
+      re: /(?:del|desde el) (\d{1,2}) de ([a-záéíóú]+) al (\d{1,2}) de ([a-záéíóú]+)/,
+      pick: (m) => ({ sd: m[1], sm: m[2], ed: m[3], em: m[4] }),
+    },
+    {
+      re: /(?:del|desde el) (\d{1,2}) al (\d{1,2}) de ([a-záéíóú]+)/,
+      pick: (m) => ({ sd: m[1], ed: m[2], em: m[3] }),
+    },
+    {
+      re: /(?:a partir del|desde el) (\d{1,2}) de ([a-záéíóú]+)/,
+      pick: (m) => ({ sd: m[1], sm: m[2] }),
+      open: true,
+    },
+    { re: /^(\d{1,2}) de ([a-záéíóú]+)/, pick: (m) => ({ sd: m[1], sm: m[2] }) },
   ];
 
-  for (const [i, form] of forms.entries()) {
+  for (const form of forms) {
     const m = cleaned.match(form.re);
     if (!m) continue;
-    // The same-month form puts the shared month last: "del 12 al 25 de noviembre".
-    const [startDay, startMonthName, endDay, endMonthName] =
-      i === 1 ? [m[1], m[3], m[2], m[3]] : [m[1], m[2], m[3], m[4]];
-    const startMonth = MONTH_INDEX[startMonthName];
+    const g = form.pick(m);
+    const startDay = parseInt(g.sd, 10);
+    const endDay = g.ed ? parseInt(g.ed, 10) : undefined;
+    const endMonth = g.em ? MONTH_INDEX[g.em] : undefined;
+    if (g.em && endMonth === undefined) return null;
+    // "Del 28 al 3 de noviembre" starts in the month before the shared one.
+    let startMonth = g.sm ? MONTH_INDEX[g.sm] : endMonth;
     if (startMonth === undefined) return null;
-    const endMonth = endMonthName ? MONTH_INDEX[endMonthName] : undefined;
-    if (endMonthName && endMonth === undefined) return null;
+    if (!g.sm && endDay !== undefined && endDay < startDay) {
+      startMonth = (startMonth + 11) % 12;
+    }
+    const sMonth = startMonth;
 
-    // Year inference: the earliest year whose run has not ended more than
-    // GRACE_MS ago. Judging by the END keeps a long or open-ended run in its
-    // own year once it is well under way. `now` is injectable so fixture tests
-    // stay deterministic as time advances.
-    const runEnd = (year: number) => {
-      const startMs = Date.UTC(year, startMonth, parseInt(startDay, 10));
-      if (form.open) return startMs + OPEN_RUN_MS;
-      if (endMonth === undefined) return startMs;
-      const endYear = endMonth < startMonth ? year + 1 : year;
-      return Date.UTC(endYear, endMonth, parseInt(endDay, 10));
-    };
+    const startMs = (y: number) => Date.UTC(y, sMonth, startDay);
+    const endMs = (y: number) =>
+      endMonth === undefined || endDay === undefined
+        ? startMs(y)
+        : Date.UTC(endMonth < sMonth ? y + 1 : y, endMonth, endDay);
+
+    // Year inference. A homepage card is for a run that is on or coming up,
+    // so a dated run takes the earliest year it has not been over for more
+    // than GRACE_MS, and an open-ended run takes the latest start no further
+    // than OPEN_LEAD_MS ahead (it is assumed still on). A start more than
+    // MAX_LEAD_MS out means a stale card, not an announcement: give up. `now`
+    // is injectable so fixture tests stay deterministic as time advances.
+    const t = now.getTime();
     const thisYear = now.getUTCFullYear();
-    const startYear =
-      [thisYear - 1, thisYear].find((y) => runEnd(y) >= now.getTime() - GRACE_MS) ??
-      thisYear + 1;
-    return { startMonth, startYear };
+    const years = [thisYear - 1, thisYear, thisYear + 1];
+    const startYear = form.open
+      ? years.reverse().find((y) => startMs(y) <= t + OPEN_LEAD_MS)
+      : years.find((y) => endMs(y) >= t - GRACE_MS);
+    if (startYear === undefined || startMs(startYear) > t + MAX_LEAD_MS) return null;
+    return { startMonth: sMonth, startYear };
   }
   return null;
 }
@@ -879,5 +902,19 @@ async function fetchText(url: string): Promise<string> {
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+  // The request was vetted; a redirect must not take us off-site either.
+  if (res.url && !venueUrl(res.url)) throw new Error(`redirected off-site to ${res.url}`);
   return res.text();
+}
+
+/** `href` resolved against the site, or null unless it is https on the venue's host. */
+function venueUrl(href: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(href, LISTING_URL);
+  } catch {
+    return null;
+  }
+  const ok = url.protocol === 'https:' && url.hostname === new URL(LISTING_URL).hostname;
+  return ok ? url.toString() : null;
 }

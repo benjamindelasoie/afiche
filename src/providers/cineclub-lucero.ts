@@ -193,6 +193,23 @@ const NON_FEATURE_PATTERNS: ReadonlyArray<{ re: RegExp; why: string }> = [
   { re: /\b(CORTOS|CORTOMETRAJES)\b/i, why: 'shorts programme' },
 ];
 
+/** The event's own page, only when it is an https Eventbrite URL (it is published). */
+function eventbriteUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    const u = new URL(url);
+    const host = u.hostname;
+    const ok =
+      u.protocol === 'https:' &&
+      (host === 'eventbrite.com' ||
+        host.endsWith('.eventbrite.com') ||
+        /^(www\.)?eventbrite\.com\.ar$/.test(host));
+    return ok ? u.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function nonFeatureReason(title: string): string | undefined {
   return NON_FEATURE_PATTERNS.find((p) => p.re.test(title))?.why;
 }
@@ -260,7 +277,7 @@ export function parseEvents(
       ...(parsed.director !== undefined ? { director: parsed.director } : {}),
       ...(parsed.year !== undefined ? { year: parsed.year } : {}),
       ...(parsed.programName !== undefined ? { programName: parsed.programName } : {}),
-      sourceUrl: e.url ?? ORG_URL,
+      sourceUrl: eventbriteUrl(e.url) ?? ORG_URL,
     });
   }
 
@@ -366,7 +383,7 @@ const ORIGINAL_TITLE_RE = /@@\d+@@\s*\(\s*([^)]+?)\s*\)/;
  * therefore forks a new film row for every title whose parse shifts, and
  * silently un-keys any manual TMDB override written against the old string —
  * which bites hardest on exactly the films that needed manual help. The golden
- * corpus in `cineclub-lucero.test.ts` pins all 82 published titles so such a
+ * corpus in `cineclub-lucero.test.ts` pins every published title so such a
  * shift fails CI instead of landing quietly. If a change is intended: update
  * the corpus fixture in the same commit, re-key affected `tmdb-overrides.json`
  * entries, and UPDATE the existing `films.scraped_title` rather than letting a

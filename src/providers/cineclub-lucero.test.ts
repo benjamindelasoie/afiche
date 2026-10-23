@@ -438,6 +438,20 @@ describe('parseEvents (real past fixture)', () => {
     expect(warnings[0]).toMatch(/unexpected timezone Europe\/Madrid/);
   });
 
+  it('publishes only an https Eventbrite event URL, else the organizer page', () => {
+    const [onibaba] = events.filter((e) => e.name?.startsWith('ONIBABA'));
+    const [ok] = parseEvents([onibaba], BEFORE_ALL);
+    expect(new URL(ok.sourceUrl!).hostname).toMatch(/eventbrite\.com/);
+    for (const url of [
+      'javascript:alert(1)',
+      'https://elsewhere.example/e/1',
+      'http://www.eventbrite.com/e/1',
+    ]) {
+      const [s] = parseEvents([{ ...onibaba, url }], BEFORE_ALL);
+      expect(s.sourceUrl).toBe('https://www.eventbrite.com/o/club-lucero-34315560147');
+    }
+  });
+
   it('reads an event with no timezone as BA wall-clock', () => {
     const [onibaba] = events.filter((e) => e.name?.startsWith('ONIBABA'));
     const withZone = parseEvents([onibaba], BEFORE_ALL);
