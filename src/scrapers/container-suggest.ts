@@ -9,12 +9,17 @@
  * the file edit, the suite run, and the match-diff safety check.
  */
 
+import { stripSearchNoise } from '@/tmdb/similarity';
+
 /**
  * Priority-ordered container keywords. Order matters: a title with both
  * FESTIVAL and CORTOS is filed under FESTIVAL. Each entry is a single word (or
  * fixed phrase) matched on a word boundary, case-insensitive, accent-tolerant
  * via the caller's normalization is NOT used here — we match the raw token so
- * the generated regex is human-legible in the diff.
+ * the generated regex is human-legible in the diff. Keywords are looked up on
+ * the noise-stripped title, the same text `isNonFilmContainer` tests: a
+ * "FESTIVAL X:" prefix is stripped there, so a keyword found only in it can
+ * never fire.
  */
 const KEYWORDS: string[] = [
   'FESTIVAL',
@@ -38,6 +43,11 @@ function keywordRe(k: string): RegExp {
   return new RegExp(`\\b${k}\\b`, 'i');
 }
 
+function keywordFor(title: string): string | undefined {
+  const stripped = stripSearchNoise(title);
+  return KEYWORDS.find((k) => keywordRe(k).test(stripped));
+}
+
 /**
  * Given failing titles and a predicate for what the CURRENT classifier already
  * catches, return the new keyword regexes needed so every still-uncaught title
@@ -52,7 +62,7 @@ export function suggestContainerPatterns(
   const needed = new Set<string>();
   for (const title of titles) {
     if (alreadyCaught(title)) continue;
-    const hit = KEYWORDS.find((k) => keywordRe(k).test(title));
+    const hit = keywordFor(title);
     if (hit) needed.add(hit);
   }
   return KEYWORDS.filter((k) => needed.has(k)).map((keyword) => ({
@@ -68,6 +78,6 @@ export function uncoveredTitles(
 ): string[] {
   return titles.filter((t) => {
     if (alreadyCaught(t)) return false;
-    return !KEYWORDS.some((k) => keywordRe(k).test(t));
+    return keywordFor(t) === undefined;
   });
 }

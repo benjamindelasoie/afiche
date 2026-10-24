@@ -30,6 +30,23 @@ describe('suggestContainerPatterns', () => {
     expect(s.map((x) => x.keyword)).toEqual(['FESTIVAL', 'CORTOS']);
   });
 
+  it('reads the noise-stripped title the classifier sees, not the festival prefix (#64)', () => {
+    // isNonFilmContainer strips "FESTIVAL X:" before matching, so a FESTIVAL
+    // skip word can never fire on these. The keyword must come from what is left.
+    const titles = [
+      'FESTIVAL BITBANG: Retrospectiva Alberto Vázquez',
+      'FESTIVAL BITBANG: LA HUELLA DE ORO (PROYECCIÓN + Q&A)',
+      'CICLO CUADRO A CUADRO. LA OTRA FORMA',
+    ];
+    expect(suggestContainerPatterns(titles, NONE_CAUGHT).map((x) => x.keyword)).toEqual([
+      'RETROSPECTIVA',
+      'CICLO',
+    ]);
+    expect(uncoveredTitles(titles, NONE_CAUGHT)).toEqual([
+      'FESTIVAL BITBANG: LA HUELLA DE ORO (PROYECCIÓN + Q&A)',
+    ]);
+  });
+
   it('reports titles no keyword covers as uncovered', () => {
     expect(uncoveredTitles(['FESTIVAL A', 'Just A Normal Film'], NONE_CAUGHT)).toEqual([
       'Just A Normal Film',
