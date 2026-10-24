@@ -40,3 +40,13 @@ describe('container classifier — issue #58 regressions', () => {
     expect(isNonFilmContainer(title as string)).toBe(expected);
   });
 });
+
+describe('container classifier — issue #64 regressions', () => {
+  it.each([
+    ['CICLO CUADRO A CUADRO. LA OTRA FORMA', true],
+    ['FESTIVAL BITBANG: Retrospectiva Alberto Vázquez', true],
+    ['FESTIVAL BITBANG: Retrospectiva Frederic Siegel', true],
+  ])('classifies %j as container=%s', (title, expected) => {
+    expect(isNonFilmContainer(title as string)).toBe(expected);
+  });
+});

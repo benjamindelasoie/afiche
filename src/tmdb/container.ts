@@ -29,6 +29,9 @@ export const COMPETITION_SECTION_PATTERNS: RegExp[] = [
 ];
 
 const CONTAINER_PATTERNS: RegExp[] = [
+  // Added by Actor 2 (issue #64): container/placeholder skip words.
+  /\bRETROSPECTIVA\b/i,
+  /\bCICLO\b/i,
   // Added by Actor 2 (issue #58): container/placeholder skip words.
   /\bFESTIVAL\b/i,
   /\bSORPRESA\b/i,
