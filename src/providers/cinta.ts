@@ -81,6 +81,14 @@ const HOME_ROOM = 'Crepas Palermo';
  */
 const LISTING_MARKER = '.masonry-item .fecha-site';
 
+/**
+ * Between cycles Passline keeps the event grid but fills it with a single
+ * placeholder item. Only that exact shape counts as an empty month, so a
+ * challenge page or a new template still fails the run.
+ */
+const EMPTY_LISTING_MARKER = '.masonry .masonry-item h2';
+const EMPTY_LISTING_TEXT = /^\s*No hay eventos disponibles\.?\s*$/i;
+
 // ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
@@ -162,7 +170,11 @@ export async function fetchListing(warnings: string[]): Promise<string> {
 
 /** True when the document actually contains Passline's event cards. */
 export function looksLikeListing(html: string): boolean {
-  return cheerio.load(html)(LISTING_MARKER).length > 0;
+  const $ = cheerio.load(html);
+  if ($(LISTING_MARKER).length > 0) return true;
+  return $(EMPTY_LISTING_MARKER)
+    .toArray()
+    .some((el) => EMPTY_LISTING_TEXT.test($(el).text()));
 }
 
 /** Headers are passed whole, never merged — see PROXY_USER_AGENT. */

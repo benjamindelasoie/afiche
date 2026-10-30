@@ -115,6 +115,20 @@ describe('looksLikeListing', () => {
       ),
     ).toBe(false);
   });
+
+  it("accepts Passline's empty state, so a quiet month is not a failed run", () => {
+    // Captured 2026-10-29 between cycles: the event grid holds only the
+    // "No hay eventos disponibles." placeholder.
+    const empty = fixture('sitio-empty.html');
+    expect(looksLikeListing(empty)).toBe(true);
+    expect(parseListing(empty, BEFORE_ALL, [])).toEqual([]);
+  });
+
+  it('rejects the empty-state text outside the event grid', () => {
+    expect(
+      looksLikeListing('<html><body><h2>No hay eventos disponibles.</h2></body></html>'),
+    ).toBe(false);
+  });
 });
 
 describe('parseListing', () => {

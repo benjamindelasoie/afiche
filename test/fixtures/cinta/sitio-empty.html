@@ -1,0 +1,444 @@
+<html>
+
+<head>
+    <!-- Basic -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>
+        CINTA PROYECCIONES - Passline    </title>
+    <meta name="keywords" content="Passline">
+    <meta name="description" content="CINTA PROYECCIONES - Passline">
+    
+    <meta name="author" content="passline.com">
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="../favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" href="../favicon.ico">
+
+
+    <!-- Mobile Metas -->
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Web Fonts  -->
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700,800%7CShadows+Into+Light" rel="stylesheet" type="text/css">
+    <!-- carga bootstrap si viene de un mobile device -->
+    <style type="text/css">
+        .corner-ribbon {
+            font-size: 22px;
+            width: 200px;
+            background: #e43;
+            position: absolute;
+            top: 25px;
+            left: -50px;
+            text-align: center;
+            line-height: 50px;
+            letter-spacing: 1px;
+            color: #f0f0f0;
+            transform: rotate(-45deg);
+            -webkit-transform: rotate(-45deg);
+        }
+
+        .corner-ribbon.sticky {
+            position: fixed;
+        }
+
+        .corner-ribbon.shadow {
+            box-shadow: 0 0 3px rgba(0, 0, 0, .3);
+        }
+
+        .corner-ribbon.top-left {
+            top: 25px;
+            left: -50px;
+            transform: rotate(-45deg);
+            -webkit-transform: rotate(-45deg);
+        }
+
+        .corner-ribbon.top-right {
+            top: 25px;
+            right: -50px;
+            left: auto;
+            transform: rotate(45deg);
+            -webkit-transform: rotate(45deg);
+        }
+
+        .corner-ribbon.bottom-left {
+            top: auto;
+            bottom: 25px;
+            left: -50px;
+            transform: rotate(45deg);
+            -webkit-transform: rotate(45deg);
+        }
+
+        .corner-ribbon.bottom-right {
+            top: auto;
+            right: -50px;
+            bottom: 25px;
+            left: auto;
+            transform: rotate(-45deg);
+            -webkit-transform: rotate(-45deg);
+        }
+
+        .corner-ribbon.white {
+            background: #f0f0f0;
+            color: #555;
+        }
+
+        .corner-ribbon.black {
+            background: #333;
+        }
+
+        .corner-ribbon.grey {
+            background: #999;
+        }
+
+        .corner-ribbon.blue {
+            background: #39d;
+        }
+
+        .corner-ribbon.green {
+            background: #2c7;
+        }
+
+        .corner-ribbon.turquoise {
+            background: #1b9;
+        }
+
+        .corner-ribbon.purple {
+            background: #95b;
+        }
+
+        .corner-ribbon.red {
+            background: #e43;
+        }
+
+        .corner-ribbon.orange {
+            background: #e82;
+        }
+
+        .corner-ribbon.yellow {
+            color: #000 !important;
+            background: #ffb700 !important;
+        }
+
+        .social-icons {
+            margin-top: 4% !important
+        }
+        
+
+        @media only screen and (max-width: 480px) {
+            .social-icons {
+                margin-top: 3% !important
+            }
+        }
+
+        @media (max-width: 479px) {
+            .page-header h1 {
+                font-size: 21px !important;
+                line-height: 26px !important;
+            }
+        }
+
+        .topo {
+            margin: 0px !important;
+            padding: 0px !important;
+            width: 100% !important;
+            display: block !important;
+        }
+
+        @media only screen and (max-width: 700px) {
+            .topo {
+                margin: 0px !important;
+                padding: 0px !important;
+                width: 100% !important;
+                /*display: none !important;*/
+            }
+        }
+
+        section.section {
+            padding: 1px 0px !important;
+        }
+    </style>
+    <!-- Vendor CSS -->
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/font-awesome-5.4.1/css/all.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/font-awesome-5.4.1/css/v4-shims.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/simple-line-icons/css/simple-line-icons.min.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/owl.carousel/assets/owl.carousel.min.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/owl.carousel/assets/owl.theme.default.min.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/magnific-popup/magnific-popup.min.css">
+    <!-- Theme CSS -->
+    <link rel="stylesheet" type="text/css" href="../site-static/css/theme.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/css/theme-elements.css">
+    <!-- Current Page CSS -->
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/rs-plugin/css/settings.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/rs-plugin/css/layers.css">
+    <link rel="stylesheet" type="text/css" href="../site-static/vendor/rs-plugin/css/navigation.css">
+    <!-- Skin CSS -->
+    <link rel="stylesheet" type="text/css" href="../site-static/css/skins/default.css">
+    <!-- Theme Custom CSS -->
+    <link rel="stylesheet" type="text/css" href="../site-static/css/custom.css">
+    <!-- Theme Skin CSS -->
+    <link rel="stylesheet" type="text/css" href="../site-static/css/index.php">
+    <style type="text/css">
+        section.section-dark.dark-black {
+            background-color: #2b2b2b !important;
+            background-image: url('https://www.passline.com/imagenes/mi-sitio/fondo/cinta-proyecciones_4.png') !important;
+        }
+
+        h4 {
+            line-height: 12px;
+        }
+    </style>
+    <script type="text/javascript" src="//static.queue-it.net/script/queueclient.min.js"></script>
+    <script data-queueit-c="passline" type="text/javascript" src="//static.queue-it.net/script/queueconfigloader.min.js"></script>
+
+    <!-- Head Libs -->
+    <script src="../site-static/vendor/modernizr/modernizr.min.js"></script>
+    <script language="javascript">
+        window.onload = function() {
+            var owl = $('.owl-carousel');
+            $(".owl-nav").removeClass("disabled");
+            $(".owl-dots").removeClass("disabled");
+            $(".owl-prev").addClass('added-class');
+            $(".owl-prev").html("<");
+            $(".owl-next").addClass('added-class');
+            $(".owl-next").html(">");
+            $(".owl-prev").click(function() {
+                $(".owl-nav").removeClass("disabled");
+                $(".owl-dots").removeClass("disabled");
+            });
+            $(".owl-next").click(function() {
+                $(".owl-nav").removeClass("disabled");
+                $(".owl-dots").removeClass("disabled");
+            });
+            owl.trigger('play.owl.autoplay', [2000]);
+            owl.on('changed.owl.carousel', function(event) {
+                $(".owl-nav").removeClass("disabled");
+                $(".owl-dots").removeClass("disabled");
+                owl.trigger('play.owl.autoplay');
+            })
+        }
+    </script>
+
+        
+
+    <script>
+        (function(w, d, s, l, i) {
+            w[l] = w[l] || [];
+            w[l].push({
+                'gtm.start': new Date().getTime(),
+                event: 'gtm.js'
+            });
+            var f = d.getElementsByTagName(s)[0],
+                j = d.createElement(s),
+                dl = l != 'dataLayer' ? '&l=' + l : '';
+            j.async = true;
+            j.src =
+                'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+            f.parentNode.insertBefore(j, f);
+        })(window, document, 'script', 'dataLayer', 'GTM-NZLNCS8');
+    </script>
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-NZLNCS8" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+
+    <script type="text/javascript">
+		(function testMetaDataLayerPush() {
+		  window.dataLayer = window.dataLayer || [];
+
+		  const mockData = {
+		    event: 'page_context',
+		    event_id: '0',
+		    country: 'argentina',
+		    pixel_ids_meta: [''], 
+		    pixel_ids_tiktok: [''], 
+            pixel_ids_ga: [''],
+		    currency: 'ARP'
+		  };
+
+		  console.log('Enviando dataLayer push de prueba:', mockData);
+		  dataLayer.push(mockData);
+
+		  // Confirmar visualmente
+		  console.log(' Último push en dataLayer:', dataLayer[dataLayer.length - 1]);
+		})();
+	</script>
+
+     
+        
+</head>
+
+<body class="one-page" data-target="#header" data-spy="scroll" data-offset="150">
+        <div class="body">
+        
+                <header id="header" class="header-mobile-nav-only" data-plugin-options="{&quot;stickyEnabled&quot;: true, &quot;stickyEnableOnBoxed&quot;: false, &quot;stickyEnableOnMobile&quot;: true, &quot;stickyStartAt&quot;: 50, &quot;stickySetTop&quot;: &quot;-30px&quot;, &quot;stickyChangeLogo&quot;: true}">
+                    <div class="header-body">
+                        <div class="header-container container">
+                            <div class="header-row">
+                                <div class="header-column pt-lg">
+                                    <div class="header-logo">
+                                        <a href="#">
+                                                                                            <img alt="Catalina Spangenberg Casasco" width="260" height="55" data-sticky-width="260" data-sticky-height="55" data-sticky-top="12" src="https://imagenes.passline.com/mi-sitio/logo/cinta-proyecciones.jpeg">
+                                                                                    </a>
+                                        <!-- <div style="font-size: 0.5em;margin-top: -5px;">Powered By Passline.com</div> -->
+                                    </div>
+                                </div>
+                                <div class="header-column">
+                                    <div class="header-row">
+                                        <div class="header-nav">
+                                            <button class="btn header-btn-collapse-nav" data-toggle="collapse" data-target=".header-nav-main">
+                                                <i class="fa fa-bars"></i>
+                                            </button>
+                                            <div class="header-nav-main header-nav-main-square header-nav-main-effect-3 header-nav-main-sub-effect-1 collapse">
+                                                <nav>
+                                                    <ul class="nav nav-pills" id="mainNav">
+                                                        <li id="bothome2">
+                                                            <a data-offset="120" id="bothome" style="background: #555555 !important;color:#fff !important;" href="#home" class="navtop-go" data-toggle="collapse" data-target=".header-nav-main">Home</a>
+                                                        </li>
+                                                                                                                    <li>
+                                                                <a data-offset="95" href="#next-event" class="navtop-go" data-toggle="collapse" data-target=".header-nav-main">Nuestros Eventos</a>
+                                                            </li>
+                                                                                                            </ul>
+                                                </nav>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                        <div class="container topo">
+                <div id="myCarousel" class="carousel slide" data-ride="carousel">
+                    <!-- Indicators -->
+                    <ol class="carousel-indicators">
+                                            </ol>
+                    <!-- Wrapper for slides -->
+                    <div class="carousel-inner">
+                                            </div>
+                                    </div>
+            </div>
+
+
+                <div role="main" class="main" id="home">
+
+            <section class="section section-dark dark-black mt-none pt-none mb-none" style="background-repeat: repeat-y;">
+                <div class="container" style="margin-top: 30px;">
+                                    </div>
+            </section>
+
+            <section class="section section-dark dark-black mt-none pt-none mb-none" style="background-repeat: repeat-y;">
+
+                <div class="container" style="margin-top: 30px;">
+                    <div class="row row-white-transparent mt-eventos-home">
+                        <div class="masonry" data-plugin-masonry="" data-plugin-options="{&quot;itemSelector&quot;: &quot;.masonry-item&quot;}">
+                                                            <div class="col-md-12 col-sm-12 col-xs-12 masonry-item">
+                                    <h2> No hay eventos disponibles. </h2>
+                                </div>
+                                                    </div>
+                    </div>
+                </div>
+                            </section>
+
+            <section class="page-header page-header-color page-header-center page-header-primary m-none" id="contact">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <ul class="social-icons" style="font-size: 20px;">
+                                                                    <li class="social-icons-instagram"><a href="https://www.instagram.com/cintaproyecciones/" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a></li>
+                                                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+                            <section class="page-header page-header-color page-header-center page-header-primary page-header-more-padding m-none hidden" id="maps" style="border-bottom: 0px solid !important">
+                                    <div class="container" style="font-size: 10px;">
+                        <div class="row">
+                                                            <div class="col-md-12 hidden-xs">
+                                    <p>
+                                    </p><h1>Gurruchaga 1791</h1>
+                                    <p></p>
+                                    <p>
+                                    </p><h1><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="b8ccd7d5d5c196c8ddcad9c2c2d7f8dfd5d9d1d496dbd7d5">[email&#160;protected]</a></h1>
+                                    <p></p>
+                                    <p>
+                                    </p><h1>1128230756</h1>
+                                    <p></p>
+                                </div>
+                                <div class="col-md-12 visible-xs-* hidden-sm hidden-md hidden-lg">
+                                    <p>
+                                    </p><h1>Gurruchaga 1791</h1>
+                                    <p></p>
+                                    <p>
+                                    </p><h1><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="ef9b80828296c19f8a9d8e959580af88828e8683c18c8082">[email&#160;protected]</a></h1>
+                                    <p></p>
+                                    <p>
+                                    </p><h1>1128230756</h1>
+                                    <p></p>
+                                </div>
+                                                    </div>
+                    </div>
+                    </section>
+        </div>
+
+                    <footer class="short light mt-none" id="footer" style="border-bottom: 0px solid #0088CC;">
+                <div class="container hidden-xs">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <!-- <img src="https://imagenes.passline.com/mi-sitio/logo/cinta-proyecciones.jpeg" class="img-w-50"/> -->
+                            <img src="../site-static/img/log-pass.png" class="img-w-50">
+                        </div>
+                        <div class="col-md-8">
+                            <p>Importante: Passline no se hace responsable de la calidad o satisfacción de los eventos publicados. Passline es un sistema que presta el servicio de venta de entradas online. Al usar este sitio usted acepta los términos y condiciones de la aplicación.</p>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+            </div>
+
+    <!-- Vendor -->
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="text/javascript" src="../site-static/vendor/jquery/jquery.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/jquery.appear/jquery.appear.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/jquery.easing/jquery.easing.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/jquery-cookie/jquery-cookie.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/bootstrap/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/common/common.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/jquery.validation/jquery.validation.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/jquery.easy-pie-chart/jquery.easy-pie-chart.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/jquery.gmap/jquery.gmap.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/jquery.lazyload/jquery.lazyload.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/isotope/jquery.isotope.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/owl.carousel/owl.carousel.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/magnific-popup/jquery.magnific-popup.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/vide/vide.min.js"></script>
+
+    <!-- Theme Base, Components and Settings -->
+    <script type="text/javascript" src="../site-static/js/theme.js"></script>
+    <!-- Current Page Vendor and Views -->
+    <script type="text/javascript" src="../site-static/vendor/rs-plugin/js/jquery.themepunch.tools.min.js"></script>
+    <script type="text/javascript" src="../site-static/vendor/rs-plugin/js/jquery.themepunch.revolution.min.js"></script>
+    <script type="text/javascript" src="../site-static/js/views/view.contact.js"></script>
+    <!-- Theme Initialization Files -->
+    <script type="text/javascript" src="../site-static/js/theme.init.js"></script>
+    <!-- Theme Custom -->
+    <script type="text/javascript" src="../site-static/js/custom.js"></script>
+    <!-- Examples -->
+    <script type="text/javascript" src="../site-static/js/examples/examples.portfolio.js"></script>
+    <!-- Examples -->
+    <script type="text/javascript" src="../site-static/js/examples/examples.carousels.js"></script>
+
+    <script type="text/javascript">
+        window.onload = function() {
+            setTimeout(hide_slider_pointer(), 200);
+            setTimeout(hide_slider_pointer(), 500);
+            setTimeout(hide_slider_pointer(), 1000);
+        }
+
+        function hide_slider_pointer() {
+            try {
+                document.getElementsByClassName("carousel-indicators")[0].style.visibility = "hidden";
+                document.getElementsByClassName("carousel-indicators")[0].style.display = "none";
+            } catch (e) {}
+        }
+    </script>
+
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a5265aa56b75d6d4',t:'MTc5MzMyMDY3NA=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a5265aa56b75d6d4',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+
+</html>
